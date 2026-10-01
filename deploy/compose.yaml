@@ -1,0 +1,42 @@
+# Fase 0 (local) e Fase 2 (servidor do CIn): Docker Compose (ADR-03).
+#
+# Por enquanto só o analyzer (S6-01). A api entra na Sprint 8, ligada às redes analyzer_net (para
+# falar com o analyzer) e a uma rede pública; o analyzer nunca ganha porta publicada nem rota para
+# fora. Cada controle abaixo é conferido por backend/tests/test_container.py (NFR-07).
+#
+#     docker compose -f deploy/compose.yaml up --build -d --wait
+
+name: ip-checker
+
+services:
+  analyzer:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: ip-checker-analyzer:local
+    user: "10001:10001"
+    # Raiz do sistema de arquivos só leitura. O /tmp em memória existe porque o forkserver do pool
+    # cria ali o socket pelo qual nascem os workers; noexec impede executar o que for gravado.
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    # /dev/shm guarda os semáforos do pool; o Docker já o monta com noexec, aqui só encolhe.
+    shm_size: 16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 512m
+    # Igual ao mem_limit: sem swap, a memória total do contêiner fica em 512 MB.
+    memswap_limit: 512m
+    # Um init mínimo como PID 1 repassa sinais e recolhe processos órfãos dos workers mortos.
+    init: true
+    # Sem "ports": nada é publicado na máquina, então o analyzer não disputa portas com outros
+    # projetos. Só quem está na analyzer_net o alcança, em analyzer:8001.
+    networks: [analyzer_net]
+    restart: unless-stopped
+
+networks:
+  # Sem gateway: os contêineres desta rede só falam entre si, nunca com a internet (NFR-07).
+  analyzer_net:
+    internal: true

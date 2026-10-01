@@ -33,6 +33,13 @@ uv run uvicorn ipc_analyzer.service.app:create_app --factory --port 8001
 Configuração por variáveis de ambiente: `IPC_RULESET_PATH` (padrão: `rulesets/2026.2/base.yaml` do
 repositório), `IPC_WORKERS` (2), `IPC_MAX_TASKS` (500), `IPC_TIMEOUT_S` (2) e `IPC_MEMORY_MB` (256).
 
+## Contêiner
+
+A imagem do `analyzer` (`backend/Dockerfile`) é construída a partir da raiz do repositório, porque
+embute os rulesets. O endurecimento e os testes de isolamento estão em
+[`../deploy/README.md`](../deploy/README.md). Os testes do contêiner (`tests/test_container.py`)
+são pulados na suíte normal e rodam com `IPC_CONTAINER_TESTS=1`.
+
 ## Limites só no Linux
 
 Os limites de recursos dos workers usam o módulo `resource`, que só existe em Unix. No Windows, o
