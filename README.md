@@ -43,7 +43,7 @@ O `analyzer` endurecido em Docker, com os testes de isolamento, está em
 A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
 
 - backend: ruff, mypy strict e pytest;
-- contêiner: build da imagem e testes de isolamento do NFR-07;
+- segurança: build da imagem, isolamento do NFR-07 e submissões maliciosas contra o contêiner;
 - frontend: ESLint, TypeScript, Vitest e build.
 
 ### Portas locais
@@ -91,4 +91,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 4 | S4-01 avaliador de política v1; S4-02 corpus golden (120 casos, 34 de evasão) | Concluída |
 | 5 | S5-01 analisador isolado: pool de workers com limites calibrados e serviço interno | Concluída |
 | 6 | S6-01 contêiner endurecido do analisador, rede sem saída e testes de isolamento na CI | Concluída |
-| 7 | S7-01 suíte de segurança contra o analisador | Próxima |
+| 7 | S7-01 suíte de segurança: 70 ataques e 13 testes de isolamento contra o contêiner, na CI | Concluída |
+| 8 | S8-01 API pública: endpoint de validação, listas, health e readiness | Próxima |

@@ -117,7 +117,7 @@ _FACT_CHECKS: Mapping[str, Callable[[str], bool]] = MappingProxyType(
         "call": lambda name: name in {"user", "user_kwarg", "star_args"},
         "return": lambda name: name == "multi",
         "target": lambda name: name == "for_unpack",
-        "derived": lambda name: name in {"recursion", "loop_else"},
+        "derived": lambda name: name in {"recursion", "loop_else", "decorator", "dict_unpack"},
     }
 )
 

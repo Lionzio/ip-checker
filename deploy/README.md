@@ -20,11 +20,12 @@ O analyzer não publica porta na máquina. Para mandar uma análise, entre na re
 docker compose -f deploy/compose.yaml exec analyzer python -c "import json, urllib.request; r = urllib.request.Request('http://127.0.0.1:8001/internal/analyze', data=json.dumps({'code': 'for i in range(3):\n    print(i)\n', 'list_number': 1}).encode(), headers={'Content-Type': 'application/json'}); print(urllib.request.urlopen(r).read().decode())"
 ```
 
-Rodar os testes de isolamento. Eles sobem um projeto próprio (`ipc-isolation-test`), conferem
-tudo e o derrubam no final:
+Rodar a suíte de segurança: isolamento e submissões maliciosas. Ela sobe um projeto próprio
+(`ipc-security-test`) e um contêiner cliente na rede interna, ataca o analyzer e derruba tudo no
+final:
 
 ```bash
-cd backend && IPC_CONTAINER_TESTS=1 uv run pytest tests/test_container.py --no-cov -v
+cd backend && IPC_SECURITY_TESTS=1 uv run pytest tests/security --no-cov -v
 ```
 
 Derrubar o analyzer:
@@ -37,7 +38,7 @@ docker compose -f deploy/compose.yaml down
 
 Se uma submissão explorar uma falha do parser do Python, o processo comprometido não encontra
 segredo, rede, disco gravável, privilégio nem recurso ilimitado. Cada controle tem um teste em
-`backend/tests/test_container.py`, que roda no job `container` da CI.
+`backend/tests/security/test_isolation.py`, que roda no job `security` da CI.
 
 | Controle | Onde | Teste |
 |---|---|---|
@@ -52,11 +53,31 @@ segredo, rede, disco gravável, privilégio nem recurso ilimitado. Cada controle
 | Workers com `RLIMIT_AS` 256 MB, `RLIMIT_FSIZE` 0 e `RLIMIT_NOFILE` 32 | pool da S5-01 | `test_workers_run_with_resource_limits` |
 | Imagem só com o necessário: sem uv, sem testes, sem gabaritos | build em dois estágios, `backend/Dockerfile.dockerignore` | `test_image_contains_only_runtime_files` |
 
-Outros três testes confirmam que o serviço funciona com todo esse endurecimento:
+Outros dois testes confirmam que o serviço funciona com todo esse endurecimento: o healthcheck
+fica `healthy`, e outro contêiner na `analyzer_net` alcança o analyzer pelo nome `analyzer:8001`,
+como a `api` fará.
 
-- o healthcheck fica `healthy`;
-- uma entrada patológica vira 422 `ANALYSIS_LIMIT` e o serviço continua respondendo;
-- outro contêiner na `analyzer_net` alcança o analyzer pelo nome `analyzer:8001`, como a `api` fará.
+## Submissões maliciosas (DoD, seção 8)
+
+`backend/tests/security/test_malicious_submissions.py` ataca o endpoint interno a partir do
+contêiner cliente. O cliente reprova qualquer resposta 5xx, e os tempos são medidos dentro da
+rede interna.
+
+| Item | O que é enviado | O que se espera |
+|---|---|---|
+| 2 | 1.000 e 1.001 linhas | 200 e 422 `INVALID_INPUT` |
+| 3 | Nulo, caracteres de controle, surrogate, UTF-8 inválido ou truncado, JSON quebrado ou de outro tipo | 422 `INVALID_INPUT` |
+| 4 e 5 | 1.000 níveis de `(`, `[`, `{`, `not` ou `-`; 25 mil somas encadeadas | 422 `ANALYSIS_LIMIT` em ≤ 2,5 s |
+| 5 | A entrada mais larga que cabe em 50 KB (~53 mil nós) | 200 em < 2 s |
+| 6 | Literal de 50 KB e f-strings aninhadas ou largas | Resposta em < 2,5 s |
+| 7 | `while True`, recursão infinita, `10 ** 10 ** 10` | Resposta em < 100 ms, prova de que nada é executado |
+| 8 | 12 tentativas de execução (`__import__`, `open`, `eval`, `exec`, `compile`, `breakpoint`, `getattr(__builtins__, ...)`, `__subclasses__`, `import os`, `globals`, `vars`), em todas as listas | Violações; o canário `/tmp/canary` não é criado |
+| 9 | 24 evasões do motor e 3 built-ins sombreados | As violações esperadas, sem falso positivo |
+| 10 | 60 requisições concorrentes com marcadores distintos | Cada resposta traz só o próprio marcador |
+| 12 | Depois de tudo | Health 200, nenhum worker zumbi, 2 workers vivos, logs sem `Traceback` nem 500 |
+
+O item 11 é o isolamento da seção anterior. Os itens 1 e 13 a 15 dependem da API, do proxy e da
+telemetria e entram nas Sprints 9 a 14.
 
 ### Por que `/tmp` e `/dev/shm` são graváveis
 

@@ -209,6 +209,31 @@ def test_loop_without_else_has_no_loop_else_fact() -> None:
     assert "derived:loop_else" not in names("for i in range(2):\n    x = i\n")
 
 
+@pytest.mark.parametrize(
+    "definition",
+    ["def g():\n    return 1\n", "async def g():\n    return 1\n", "class C:\n    x = 1\n"],
+    ids=["funcao", "async", "classe"],
+)
+def test_decorator_is_a_derived_fact(definition: str) -> None:
+    source = "def d(f):\n    return f\n\n\n@d\n" + definition
+
+    # O fato aponta para a expressão depois do '@' (linha 5, coluna 2).
+    assert located(source, "derived:decorator") == [(5, 2, 5, 3)]
+
+
+def test_each_decorator_is_a_fact() -> None:
+    source = "def d(f):\n    return f\n\n\n@d\n@d\ndef g():\n    return 1\n"
+
+    assert [position[0] for position in located(source, "derived:decorator")] == [5, 6]
+
+
+def test_dict_unpacking_is_a_derived_fact() -> None:
+    source = "a = {1: 2}\nb = {**a, 3: 4, **a}\n"
+
+    assert located(source, "derived:dict_unpack") == [(2, 8, 2, 9), (2, 19, 2, 20)]
+    assert "derived:dict_unpack" not in names("a = {1: 2}\n")
+
+
 def test_multiple_return_values() -> None:
     assert {"return:multi", "node:Tuple"} <= names("def f():\n    return 1, 2\n")
 

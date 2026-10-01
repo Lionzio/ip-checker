@@ -20,8 +20,15 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   (argumento nomeado nessa chamada, ex.: `f(x=1)`), `return:multi` (`return a, b`) e os de
   parâmetro: `param:vararg`, `param:kwarg`, `param:default`, `param:kwonly` (`def f(*, k)`) e
   `param:posonly` (`def f(a, /)`).
-- **Fatos derivados**: `derived:loop_else` marca o `else` de `for`/`while` (Q-02, item g), que
-  não é nó na AST e aponta para o primeiro comando do `else`; `derived:recursion` entra na Sprint 16.
+- **Fatos derivados** marcam sintaxe que não tem nó próprio na AST. Nenhum deles tem regra que o
+  permita, então todos viram R-04 (não consta):
+  - `derived:loop_else`: o `else` de `for`/`while` (Q-02, item g); aponta para o primeiro comando
+    do `else`;
+  - `derived:decorator`: cada `@decorador` de função ou classe, que é uma chamada implícita
+    (S7-01, DoD item 9); aponta para a expressão depois do `@`;
+  - `derived:dict_unpack`: cada `**d` dentro de um dicionário literal (S7-01); aponta para `d`.
+
+  `derived:recursion` entra na Sprint 16.
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
 - **Built-in ou nome do aluno** (`engine/symbols.py`): `len = 3` seguido de `print(len)` não gera
   `builtin:len`. A resolução segue a ordem de execução, para impedir que o aluno esconda um
@@ -36,6 +43,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | `if __name__ == "__main__":` | Gera `builtin:__name__` → R-04 (não consta) | As listas usam esse padrão? Se sim, liberar a partir da L4. |
 | `f(x=1)` com função do aluno | `call:user_kwarg` → R-04 | A R-59 ("parâmetros") inclui argumentos nomeados na chamada? |
 | `for a, b in pares:` na L3 ou depois | `target:for_unpack` | A R-40 (tuplas) deve casar `target:for_unpack` a partir da L3, além da R-37 (zip, L2–L4). |
+| `f"{x!r}"`, `f"{x!s}"`, `f"{x!a}"` | Aceito como parte da f-string (R-31) | A conversão chama `repr()`, `str()` ou `ascii()` por baixo. Deve contar como esses built-ins (`repr` e `ascii` não constam)? |
 
 ## Decisões aplicadas
 

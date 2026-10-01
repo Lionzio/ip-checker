@@ -37,8 +37,8 @@ repositório), `IPC_WORKERS` (2), `IPC_MAX_TASKS` (500), `IPC_TIMEOUT_S` (2) e `
 
 A imagem do `analyzer` (`backend/Dockerfile`) é construída a partir da raiz do repositório, porque
 embute os rulesets. O endurecimento e os testes de isolamento estão em
-[`../deploy/README.md`](../deploy/README.md). Os testes do contêiner (`tests/test_container.py`)
-são pulados na suíte normal e rodam com `IPC_CONTAINER_TESTS=1`.
+[`../deploy/README.md`](../deploy/README.md). A suíte de segurança (`tests/security/`:
+isolamento e submissões maliciosas) é pulada na suíte normal e roda com `IPC_SECURITY_TESTS=1`.
 
 ## Limites só no Linux
 

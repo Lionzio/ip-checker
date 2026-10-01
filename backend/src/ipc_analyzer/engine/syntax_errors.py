@@ -72,6 +72,7 @@ _PATTERNS: tuple[tuple[str, str], ...] = (
         "string de aspas triplas não terminada (detectada na linha {n})",
     ),
     (r"unterminated f-string literal.*", "f-string não terminada"),
+    (r"too many nested f-strings", "f-strings aninhadas demais"),
     (r"invalid character '(?P<c>.)' \((?P<u>U\+[0-9A-F]+)\)", "caractere inválido '{c}' ({u})"),
     (r"invalid non-printable character (?P<u>U\+[0-9A-F]+)", "caractere invisível inválido ({u})"),
     (r"invalid decimal literal", "número decimal inválido"),
