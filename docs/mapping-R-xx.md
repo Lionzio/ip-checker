@@ -61,7 +61,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | R-06 | `node:Try`, `node:TryStar` | No ruleset |
 | R-07 | `node:Set`, `node:SetComp`, `builtin:set`, `builtin:frozenset` | No ruleset |
 | R-08 | `builtin:exit`, `method:exit` | No ruleset |
-| R-09 | `node:ClassDef`; `builtin:type` com 3 argumentos (predicado) | `node:ClassDef` no ruleset; predicado na Sprint 4 |
+| R-09 | `node:ClassDef`; `builtin:type` com `call_args` ≥ 3 | No ruleset |
 | R-10 | `param:vararg`, `param:kwarg`, `call:star_args`, `kwarg:**` | No ruleset |
 | R-11 | `node:Break`, `node:Continue` | No ruleset |
 | R-12 | `node:Pass` | No ruleset |
@@ -85,7 +85,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | R-30 | `cmp:In`, `cmp:NotIn` | No ruleset |
 | R-31 | `node:JoinedStr`, `node:FormattedValue` | No ruleset |
 | R-32 | `kwarg:print.end` (o `\n` faz parte do texto) | No ruleset |
-| R-33 | `builtin:type` com 1 argumento | No ruleset; predicado na Sprint 4 |
+| R-33 | `builtin:type` com `call_args` = 1 | No ruleset |
 | R-34 | `node:For`, `node:While` | No ruleset |
 | R-35 | `builtin:range` | No ruleset |
 | R-36 | `cmp:In` | No ruleset |

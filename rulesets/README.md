@@ -25,11 +25,33 @@ privado separado (Q-14).
 | `category` | só em `deny` | Sempre `ANULACAO`. |
 | `since_list` | só em `allow` | Primeira lista em que a construção é permitida (vale daí em diante, R-03). |
 | `until_list` | não | Última lista em que a regra vale (ex.: o `zip` condicional da R-37 vai até a Lista 4). |
-| `match` | sim | Fatos da AST que a regra cobre, no formato `<tipo>:<nome>` (ver `docs/mapping-R-xx.md`). |
+| `match` | sim | Fatos da AST que a regra cobre, no formato `<tipo>:<nome>` (ver `docs/mapping-R-xx.md`). Um item pode ter condição (ver abaixo). |
 | `message` | sim | Texto mostrado ao aluno. Pode usar `{allowed_from_list}` e `{construct}`. Chaves literais são escritas duplicadas: `{{a, b}}`. |
 | `source` | sim | Página e seção do documento de permissões, começando por `Permissões, p.` |
 
 Tudo que nenhuma regra `allow` cobre é proibido (R-04, *default deny*).
+
+### Fatos com condição
+
+Um item de `match` pode trocar o texto do fato por um objeto com `fact` e `when`. O fato só casa
+com a regra quando o predicado é verdadeiro. Exemplo real (R-09): `type()` só cria classe com 3
+ou mais argumentos.
+
+```yaml
+match:
+  - "node:ClassDef"
+  - fact: "builtin:type"
+    when: { predicate: call_args, params: { min: 3 } }
+```
+
+Predicados disponíveis (lista fechada; um predicado novo exige código e ADR):
+
+| Predicado | Parâmetros | Verdadeiro quando |
+|---|---|---|
+| `call_args` | `min`, `max` | O fato é a função de uma chamada com esse número de argumentos |
+
+Numa regra `allow`, `when.message` é a mensagem mostrada quando a regra vale na lista, mas a
+condição não é atendida (ex.: `type()` com 2 argumentos).
 
 ## Como validar uma mudança
 

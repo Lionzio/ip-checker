@@ -100,5 +100,15 @@ def test_every_rule_cites_the_permissions_document(base_ruleset: CompiledRuleset
         assert meta.source.startswith("Permissões, p."), meta.id
 
 
-def test_no_predicates_before_sprint_13(base_ruleset: CompiledRuleset) -> None:
-    assert all(rule.when is None for rule in base_ruleset.ruleset.rules)
+def test_only_type_has_conditions_so_far(base_ruleset: CompiledRuleset) -> None:
+    conditional = {
+        (rule.id, fact, condition.predicate)
+        for rule in base_ruleset.ruleset.rules
+        for fact, condition in rule.matches()
+        if condition is not None
+    }
+
+    assert conditional == {
+        ("R-09", "builtin:type", "call_args"),  # Q-07: type() com 3 argumentos cria classe
+        ("R-33", "builtin:type", "call_args"),
+    }

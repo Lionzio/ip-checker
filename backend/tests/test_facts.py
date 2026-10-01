@@ -226,6 +226,18 @@ def test_columns_are_counted_in_characters() -> None:
     assert located("s = 'ação'; t = s.upper()\n", "method:upper") == [(1, 19, 1, 24)]
 
 
+def test_node_facts_take_their_own_position() -> None:
+    source = "x = 3\nwhile x > 0:\n    x -= 1\n"
+
+    assert located(source, "node:While") == [(2, 1, 3, 11)]
+    assert located(source, "node:AugAssign") == [(3, 5, 3, 11)]
+    assert located(source, "node:Module") == [(1, 1, 1, 1)]
+
+
+def test_context_nodes_take_the_position_of_their_parent() -> None:
+    assert located("x = 1\n", "node:Store") == [(1, 1, 1, 2)]
+
+
 def test_operator_takes_the_position_of_its_expression() -> None:
     assert located("x = 1 + 2\n", "op:Add") == [(1, 5, 1, 10)]
 
