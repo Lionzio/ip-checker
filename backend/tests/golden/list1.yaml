@@ -1,0 +1,458 @@
+# Corpus golden: permissões da Lista 1 (R-15 a R-33). Valem da Lista 1 em diante (R-03).
+
+- id: R-15-if-elif-else-L1
+  rule: R-15
+  list: 1
+  code: |
+    x = int(input())
+    if x > 0:
+        print("positivo")
+    elif x < 0:
+        print("negativo")
+    else:
+        print("zero")
+  expect: []
+
+- id: R-15-nested-if-L2
+  rule: R-15
+  list: 2
+  code: |
+    x = 3
+    if x > 0:
+        if x % 2 == 0:
+            print("par")
+  expect: []
+
+- id: R-15-if-L6
+  rule: R-15
+  list: 6
+  code: |
+    if 1 < 2:
+        print("ok")
+  expect: []
+
+- id: R-16-assignments-L1
+  rule: R-16
+  list: 1
+  code: |
+    nome = "Ana"
+    idade = 20
+    altura = 1.65
+    print(nome, idade, altura)
+  expect: []
+
+- id: R-16-chained-assignment-L2
+  rule: R-16
+  list: 2
+  code: |
+    a = b = 0
+    print(a, b)
+  expect: []
+
+- id: R-16-shadowing-builtin-name-L1
+  rule: R-16
+  list: 1
+  code: |
+    max = 10
+    print(max)
+  expect: []
+
+- id: R-17-is-L1
+  rule: R-17
+  list: 1
+  code: |
+    x = True
+    if x is True:
+        print("sim")
+  expect: []
+
+- id: R-17-is-not-L1
+  rule: R-17
+  list: 1
+  code: |
+    a = 1
+    b = 2
+    print(a is not b)
+  expect: []
+
+- id: R-17-is-L2
+  rule: R-17
+  list: 2
+  code: |
+    print(1 is 1)
+  expect: []
+
+- id: R-18-arithmetic-L1
+  rule: R-18
+  list: 1
+  code: |
+    x = 7
+    y = x + 2 - 1 * 3 / 2 // 1 % 5 ** 2
+    print(-y, +y)
+  expect: []
+
+- id: R-18-augmented-L1
+  rule: R-18
+  list: 1
+  code: |
+    x = 1
+    x += 2
+    x *= 3
+    x -= 1
+    x //= 2
+    print(x)
+  expect: []
+
+- id: R-18-bitwise-not-listed-L1
+  rule: R-18
+  list: 1
+  code: |
+    x = 6 & 3
+  expect: [R-04 NAO_CONSTA 1]
+
+- id: R-19-logical-relational-L1
+  rule: R-19
+  list: 1
+  code: |
+    a = 3
+    b = 4
+    print(a < b and not a == b or a >= b, a != b, a <= b, a > b)
+  expect: []
+
+- id: R-19-booleans-L1
+  rule: R-19
+  list: 1
+  code: |
+    ligado = True
+    desligado = False
+    print(ligado or desligado)
+  expect: []
+
+- id: R-19-chained-comparison-L2
+  rule: R-19
+  list: 2
+  code: |
+    x = 5
+    print(0 < x < 10)
+  expect: []
+
+- id: R-20-ternary-L1
+  rule: R-20
+  list: 1
+  code: |
+    x = int(input())
+    paridade = "par" if x % 2 == 0 else "ímpar"
+    print(paridade)
+  expect: []
+
+- id: R-20-nested-ternary-L1
+  rule: R-20
+  list: 1
+  code: |
+    x = 0
+    print("positivo" if x > 0 else "negativo" if x < 0 else "zero")
+  expect: []
+
+- id: R-20-ternary-L2
+  rule: R-20
+  list: 2
+  code: |
+    print("a" if True else "b")
+  expect: []
+
+- id: R-21-concatenation-L1
+  rule: R-21
+  list: 1
+  code: |
+    nome = input()
+    print("Olá, " + nome + "!")
+  expect: []
+
+- id: R-21-repetition-L1
+  rule: R-21
+  list: 1
+  code: |
+    print("-" * 20)
+  expect: []
+
+- id: R-21-concatenation-L2
+  rule: R-21
+  list: 2
+  code: |
+    texto = "a" + "b"
+    print(texto)
+  expect: []
+
+- id: R-22-print-input-L1
+  rule: R-22
+  list: 1
+  code: |
+    nome = input("Nome: ")
+    print(nome)
+  expect: []
+
+- id: R-22-print-no-args-L1
+  rule: R-22
+  list: 1
+  code: |
+    print()
+  expect: []
+
+- id: R-22-input-in-print-L2
+  rule: R-22
+  list: 2
+  code: |
+    print(input())
+  expect: []
+
+- id: R-23-abs-L1
+  rule: R-23
+  list: 1
+  code: |
+    print(abs(-3))
+  expect: []
+
+- id: R-23-abs-float-L1
+  rule: R-23
+  list: 1
+  code: |
+    x = float(input())
+    print(abs(x))
+  expect: []
+
+- id: R-23-abs-L2
+  rule: R-23
+  list: 2
+  code: |
+    print(abs(2 - 5))
+  expect: []
+
+- id: R-24-conversions-L1
+  rule: R-24
+  list: 1
+  code: |
+    x = int("3")
+    y = float("2.5")
+    z = str(x + y)
+    print(z)
+  expect: []
+
+- id: R-24-int-as-value-L1
+  rule: R-24
+  list: 1
+  code: |
+    x = 3
+    print(type(x) == int)
+  expect: []
+
+- id: R-24-conversions-L2
+  rule: R-24
+  list: 2
+  code: |
+    print(int(float("1.5")))
+  expect: []
+
+- id: R-25-max-min-L1
+  rule: R-25
+  list: 1
+  code: |
+    a = 3
+    b = 7
+    print(max(a, b), min(a, b))
+  expect: []
+
+- id: R-25-max-three-L1
+  rule: R-25
+  list: 1
+  code: |
+    print(max(1, 5, 3))
+  expect: []
+
+- id: R-25-min-L2
+  rule: R-25
+  list: 2
+  code: |
+    print(min(4, 2))
+  expect: []
+
+- id: R-26-round-L1
+  rule: R-26
+  list: 1
+  code: |
+    print(round(2.567, 2))
+  expect: []
+
+- id: R-26-round-no-digits-L1
+  rule: R-26
+  list: 1
+  code: |
+    print(round(2.5))
+  expect: []
+
+- id: R-26-round-L2
+  rule: R-26
+  list: 2
+  code: |
+    x = round(10 / 3, 1)
+    print(x)
+  expect: []
+
+- id: R-27-len-L1
+  rule: R-27
+  list: 1
+  code: |
+    nome = input()
+    print(len(nome))
+  expect: []
+
+- id: R-27-len-in-if-L1
+  rule: R-27
+  list: 1
+  code: |
+    senha = input()
+    if len(senha) < 8:
+        print("curta")
+  expect: []
+
+- id: R-27-len-L2
+  rule: R-27
+  list: 2
+  code: |
+    print(len("abc"))
+  expect: []
+
+- id: R-28-format-function-L1
+  rule: R-28
+  list: 1
+  code: |
+    print(format(3.14159, ".2f"))
+  expect: []
+
+- id: R-28-format-method-L1
+  rule: R-28
+  list: 1
+  code: |
+    x = 2.5
+    print("Valor: {:.2f}".format(x))
+  expect: []
+
+- id: R-28-format-method-L2
+  rule: R-28
+  list: 2
+  code: |
+    print("{} e {}".format(1, 2))
+  expect: []
+
+- id: R-29-string-methods-L1
+  rule: R-29
+  list: 1
+  code: |
+    s = input()
+    print(s.upper(), s.lower(), s.capitalize())
+    print(s.isupper(), s.islower(), s.isnumeric())
+  expect: []
+
+- id: R-29-chained-methods-L1
+  rule: R-29
+  list: 1
+  code: |
+    print("abc".upper().lower())
+  expect: []
+
+- id: R-29-method-not-listed-L1
+  rule: R-29
+  list: 1
+  code: |
+    s = "123"
+    print(s.isdigit())
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-30-in-string-L1
+  rule: R-30
+  list: 1
+  code: |
+    frase = input()
+    if "a" in frase:
+        print("tem a")
+  expect: []
+
+- id: R-30-not-in-string-L1
+  rule: R-30
+  list: 1
+  code: |
+    print("z" not in "abc")
+  expect: []
+
+- id: R-30-in-string-L2
+  rule: R-30
+  list: 2
+  code: |
+    print("b" in "abc")
+  expect: []
+
+- id: R-31-fstring-L1
+  rule: R-31
+  list: 1
+  code: |
+    nome = "Ana"
+    nota = 9.5
+    print(f"{nome} tirou {nota:.1f}")
+  expect: []
+
+- id: R-31-fstring-conversion-L1
+  rule: R-31
+  list: 1
+  code: |
+    x = "oi"
+    print(f"{x!r}")
+  expect: []
+
+- id: R-31-fstring-L2
+  rule: R-31
+  list: 2
+  code: |
+    print(f"{1 + 1}")
+  expect: []
+
+- id: R-32-end-L1
+  rule: R-32
+  list: 1
+  code: |
+    print("a", end="")
+    print("b\n")
+  expect: []
+
+- id: R-32-sep-not-listed-L1
+  rule: R-32
+  list: 1
+  code: |
+    print("a", "b", sep="")
+  expect: [R-04 NAO_CONSTA 1]
+
+- id: R-32-end-L2
+  rule: R-32
+  list: 2
+  code: |
+    print("x", end=" ")
+  expect: []
+
+- id: R-33-type-L1
+  rule: R-33
+  list: 1
+  code: |
+    print(type(3))
+  expect: []
+
+- id: R-33-type-two-arguments-L1
+  rule: R-33
+  list: 1
+  code: |
+    x = type(1, 2)
+  expect: [R-33 NAO_CONSTA 1]
+
+- id: R-33-type-L2
+  rule: R-33
+  list: 2
+  code: |
+    print(type("a") == str)
+  expect: []

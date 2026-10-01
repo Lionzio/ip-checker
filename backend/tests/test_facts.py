@@ -192,6 +192,23 @@ def test_parameter_facts(source: str, fact: str) -> None:
     assert fact in names(source)
 
 
+@pytest.mark.parametrize(
+    ("source", "line"),
+    [
+        ("for i in range(2):\n    x = i\nelse:\n    x = 9\n", 4),
+        ("x = 0\nwhile x < 2:\n    x += 1\nelse:\n    x = 9\n", 5),
+    ],
+)
+def test_loop_else_is_a_derived_fact(source: str, line: int) -> None:
+    (position,) = located(source, "derived:loop_else")
+
+    assert position[0] == line
+
+
+def test_loop_without_else_has_no_loop_else_fact() -> None:
+    assert "derived:loop_else" not in names("for i in range(2):\n    x = i\n")
+
+
 def test_multiple_return_values() -> None:
     assert {"return:multi", "node:Tuple"} <= names("def f():\n    return 1, 2\n")
 

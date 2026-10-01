@@ -1,0 +1,82 @@
+# Corpus golden: permissões da Lista 2 (R-34 a R-36). O zip condicional (R-37) entra na Sprint 13.
+
+- id: R-34-for-L2
+  rule: R-34
+  list: 2
+  code: |
+    for i in range(3):
+        print(i)
+  expect: []
+
+- id: R-34-while-before-list-L1
+  rule: R-34
+  list: 1
+  code: |
+    x = 3
+    while x > 0:
+        x -= 1
+  expect: [R-34 FORA_DA_LISTA 2]
+
+- id: R-34-for-before-list-L1
+  rule: R-34
+  list: 1
+  code: |
+    for c in "abc":
+        print(c)
+  expect: [R-34 FORA_DA_LISTA 1]
+
+- id: R-34-while-L6
+  rule: R-34
+  list: 6
+  code: |
+    x = 0
+    while x < 3:
+        x += 1
+  expect: []
+
+- id: R-35-range-L2
+  rule: R-35
+  list: 2
+  code: |
+    for i in range(1, 10, 2):
+        print(i)
+  expect: []
+
+- id: R-35-range-before-list-L1
+  rule: R-35
+  list: 1
+  code: |
+    x = range(3)
+  expect: [R-35 FORA_DA_LISTA 1]
+
+- id: R-35-for-range-before-list-L1
+  rule: R-35
+  list: 1
+  code: |
+    for i in range(3):
+        print(i)
+  expect: [R-34 FORA_DA_LISTA 1, R-35 FORA_DA_LISTA 1]
+
+- id: R-36-in-range-L2
+  rule: R-36
+  list: 2
+  code: |
+    x = int(input())
+    if x in range(1, 11):
+        print("entre 1 e 10")
+  expect: []
+
+- id: R-36-in-range-before-list-L1
+  rule: R-36
+  list: 1
+  code: |
+    print(3 in range(5))
+  # O in já é permitido na Lista 1 (R-30); o range() ainda não.
+  expect: [R-35 FORA_DA_LISTA 1]
+
+- id: R-36-not-in-range-L6
+  rule: R-36
+  list: 6
+  code: |
+    print(7 not in range(5))
+  expect: []

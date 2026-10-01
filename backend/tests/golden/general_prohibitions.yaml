@@ -1,0 +1,252 @@
+# Corpus golden: proibições gerais (R-05 a R-14). Valem em todas as listas e anulam a questão.
+# Formato de "expect": "R-xx CATEGORIA linha". A comparação é exata (NFR-18).
+
+- id: R-05-import-L1
+  rule: R-05
+  list: 1
+  code: |
+    import math
+  expect: [R-05 ANULACAO 1]
+
+- id: R-05-from-import-L2
+  rule: R-05
+  list: 2
+  code: |
+    from math import sqrt
+  expect: [R-05 ANULACAO 1]
+
+- id: R-05-import-alias-L6
+  rule: R-05
+  list: 6
+  code: |
+    x = 1
+    import os as sistema
+  expect: [R-05 ANULACAO 2]
+
+- id: R-06-try-except-L1
+  rule: R-06
+  list: 1
+  code: |
+    try:
+        x = int(input())
+    except:
+        x = 0
+  expect: [R-06 ANULACAO 1]
+
+- id: R-06-try-except-L2
+  rule: R-06
+  list: 2
+  code: |
+    x = 0
+    try:
+        x = int(input())
+    except:
+        x = 1
+  expect: [R-06 ANULACAO 2]
+
+- id: R-06-try-finally-L6
+  rule: R-06
+  list: 6
+  code: |
+    try:
+        x = 1
+    finally:
+        x = 2
+  expect: [R-06 ANULACAO 1]
+
+- id: R-07-set-literal-L1
+  rule: R-07
+  list: 1
+  code: |
+    s = {1, 2}
+  expect: [R-07 ANULACAO 1]
+
+- id: R-07-set-call-L2
+  rule: R-07
+  list: 2
+  code: |
+    s = set()
+  expect: [R-07 ANULACAO 1]
+
+- id: R-07-set-comprehension-L2
+  rule: R-07
+  list: 2
+  code: |
+    s = {c for c in "abc"}
+  expect: [R-07 ANULACAO 1]
+
+- id: R-07-frozenset-L1
+  rule: R-07
+  list: 1
+  code: |
+    s = frozenset()
+  expect: [R-07 ANULACAO 1]
+
+- id: R-08-exit-L1
+  rule: R-08
+  list: 1
+  code: |
+    exit()
+  expect: [R-08 ANULACAO 1]
+
+- id: R-08-exit-in-if-L2
+  rule: R-08
+  list: 2
+  code: |
+    x = int(input())
+    if x < 0:
+        exit(0)
+  expect: [R-08 ANULACAO 3]
+
+- id: R-08-exit-reference-L6
+  rule: R-08
+  list: 6
+  code: |
+    sair = exit
+  expect: [R-08 ANULACAO 1]
+
+- id: R-09-class-L1
+  rule: R-09
+  list: 1
+  code: |
+    class Aluno:
+        nota = 10
+  expect: [R-09 ANULACAO 1]
+
+- id: R-09-type-three-arguments-L1
+  rule: R-09
+  list: 1
+  code: |
+    C = type("C", (), {})
+  # type com 3 argumentos cria classe (Q-07); a tupla e o dicionário ainda não constam.
+  expect: [R-09 ANULACAO 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
+
+- id: R-09-class-L6
+  rule: R-09
+  list: 6
+  code: |
+    class Vazia:
+        x = 1
+  expect: [R-09 ANULACAO 1]
+
+- id: R-10-star-in-call-L1
+  rule: R-10
+  list: 1
+  code: |
+    print(*"ab")
+  expect: [R-10 ANULACAO 1]
+
+- id: R-10-double-star-in-call-L1
+  rule: R-10
+  list: 1
+  code: |
+    print("a", **{"end": ""})
+  # O dicionário ainda não consta (R-04).
+  expect: [R-10 ANULACAO 1, R-04 NAO_CONSTA 1]
+
+- id: R-10-kwargs-in-lambda-L1
+  rule: R-10
+  list: 1
+  code: |
+    f = lambda **extras: 1
+  # lambda ainda não consta (R-04); **extras é R-10.
+  expect: [R-04 NAO_CONSTA 1, R-10 ANULACAO 1]
+
+- id: R-11-break-L2
+  rule: R-11
+  list: 2
+  code: |
+    while True:
+        break
+  expect: [R-11 ANULACAO 2]
+
+- id: R-11-continue-L2
+  rule: R-11
+  list: 2
+  code: |
+    for i in range(3):
+        continue
+  expect: [R-11 ANULACAO 2]
+
+- id: R-11-break-nested-L6
+  rule: R-11
+  list: 6
+  code: |
+    x = 5
+    while x > 0:
+        x -= 1
+        if x == 2:
+            break
+  expect: [R-11 ANULACAO 5]
+
+- id: R-12-pass-in-if-L1
+  rule: R-12
+  list: 1
+  code: |
+    if True:
+        pass
+  expect: [R-12 ANULACAO 2]
+
+- id: R-12-pass-in-if-else-L1
+  rule: R-12
+  list: 1
+  code: |
+    x = 1
+    if x:
+        pass
+    else:
+        print(x)
+  expect: [R-12 ANULACAO 3]
+
+- id: R-12-pass-in-while-L2
+  rule: R-12
+  list: 2
+  code: |
+    while False:
+        pass
+  expect: [R-12 ANULACAO 2]
+
+- id: R-13-none-assignment-L1
+  rule: R-13
+  list: 1
+  code: |
+    x = None
+  expect: [R-13 ANULACAO 1]
+
+- id: R-13-is-none-L1
+  rule: R-13
+  list: 1
+  code: |
+    x = input()
+    if x is None:
+        print("vazio")
+  expect: [R-13 ANULACAO 2]
+
+- id: R-13-print-none-L2
+  rule: R-13
+  list: 2
+  code: |
+    print(None)
+  expect: [R-13 ANULACAO 1]
+
+- id: R-14-global-L1
+  rule: R-14
+  list: 1
+  code: |
+    global x
+  expect: [R-14 ANULACAO 1]
+
+- id: R-14-global-after-code-L2
+  rule: R-14
+  list: 2
+  code: |
+    x = 1
+    global y
+  expect: [R-14 ANULACAO 2]
+
+- id: R-14-global-L6
+  rule: R-14
+  list: 6
+  code: |
+    global contador
+  expect: [R-14 ANULACAO 1]

@@ -20,6 +20,8 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   (argumento nomeado nessa chamada, ex.: `f(x=1)`), `return:multi` (`return a, b`) e os de
   parâmetro: `param:vararg`, `param:kwarg`, `param:default`, `param:kwonly` (`def f(*, k)`) e
   `param:posonly` (`def f(a, /)`).
+- **Fatos derivados**: `derived:loop_else` marca o `else` de `for`/`while` (Q-02, item g), que
+  não é nó na AST e aponta para o primeiro comando do `else`; `derived:recursion` entra na Sprint 16.
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
 - **Built-in ou nome do aluno** (`engine/symbols.py`): `len = 3` seguido de `print(len)` não gera
   `builtin:len`. A resolução segue a ordem de execução, para impedir que o aluno esconda um
