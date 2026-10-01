@@ -50,9 +50,14 @@ _LINE_BREAK = re.compile(r"\r\n|\r|\n")
 _FORBIDDEN_CONTROL = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f]")
 
 
+def split_lines(text: str) -> list[str]:
+    """Linhas físicas do texto, sem as quebras, na mesma numeração usada pela AST."""
+    return _LINE_BREAK.split(text)
+
+
 def count_lines(text: str) -> int:
     """Conta linhas físicas como o Python: a quebra final não abre uma linha nova."""
-    parts = _LINE_BREAK.split(text)
+    parts = split_lines(text)
     if parts[-1] == "":
         parts.pop()
     return len(parts)
