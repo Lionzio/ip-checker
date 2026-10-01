@@ -5,6 +5,15 @@
 	admin off
 	auto_https off
 	persist_config off
+	# Timeouts de 10 s (C2): uma conexão lenta de propósito não prende a borda.
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 10s
+			write 10s
+			idle 2m
+		}
+	}
 	# Os logs do Caddy não guardam IP, cabeçalhos nem URL (NFR-11). Não há log de acesso: a API
 	# já escreve uma linha por requisição, sem esses dados.
 	log default {
@@ -71,10 +80,14 @@
 	# Erros da borda no mesmo formato do contrato (5.2.2), para a SPA tratar como os da API.
 	handle_errors 411 {
 		header Content-Type application/json
+		# Fecha a conexão: sem isso, o servidor HTTP do Go lê até 256 KB do corpo antes de responder.
+		header Connection close
 		respond `{"error":{"code":"INVALID_INPUT","message":"Envie o corpo da requisição com Content-Length.","retry_after_s":null}}` 411
 	}
 	handle_errors 413 {
 		header Content-Type application/json
+		# Fecha a conexão: sem isso, o servidor HTTP do Go lê até 256 KB do corpo antes de responder.
+		header Connection close
 		respond `{"error":{"code":"PAYLOAD_TOO_LARGE","message":"O corpo da requisição passa de 128 KB.","retry_after_s":null}}` 413
 	}
 	handle_errors 502 503 504 {

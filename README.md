@@ -43,7 +43,7 @@ O `analyzer` endurecido em Docker, com os testes de isolamento, está em
 A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
 
 - backend: ruff, mypy strict, import-linter e pytest, com o contrato OpenAPI;
-- segurança: build da imagem, isolamento do NFR-07 e submissões maliciosas contra o contêiner;
+- segurança: build das imagens, isolamento do NFR-07, submissões maliciosas contra o analyzer e ataques à API pública pela borda;
 - frontend: tipos gerados do OpenAPI em dia, ESLint, TypeScript, Vitest e build;
 - e2e: o compose completo e o smoke do Marco 1 no Playwright.
 
@@ -95,4 +95,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 6 | S6-01 contêiner endurecido do analisador, rede sem saída e testes de isolamento na CI | Concluída |
 | 7 | S7-01 suíte de segurança: 70 ataques e 13 testes de isolamento contra o contêiner, na CI | Concluída |
 | 8 | S8-01 API pública: validação, listas, health e ready, contrato OpenAPI e import-linter | Concluída |
-| 9 | Marco 1: logs estruturados, SPA ligada à API real e suíte de segurança na API | Próxima |
+| 9 | Marco 1 (MVP local): S9-01 logs sem código nem IP; S9-02 SPA na API real, borda Caddy e e2e; S9-03 segurança da API pública | Concluída |
+| 10 | Proteção para exposição pública: rate limit e admissão | Próxima |
