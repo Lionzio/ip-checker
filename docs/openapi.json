@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IP-Checker",
-    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`.\n",
+    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
     "version": "1.0.0"
   },
   "paths": {
@@ -13,15 +13,35 @@
         ],
         "summary": "Confere se o código respeita as permissões da lista, sem executá-lo",
         "operationId": "validate_api_v1_validate_post",
+        "parameters": [
+          {
+            "name": "x-client-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado.",
+              "title": "X-Client-Id"
+            },
+            "description": "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado."
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ValidateRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -54,8 +74,18 @@
               }
             }
           },
+          "429": {
+            "description": "RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma rede em 1 minuto. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "503": {
-            "description": "ANALYZER_UNAVAILABLE: o analisador não respondeu. Veja retry_after_s.",
+            "description": "OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não respondeu). Veja retry_after_s.",
             "content": {
               "application/json": {
                 "schema": {

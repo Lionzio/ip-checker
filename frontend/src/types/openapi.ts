@@ -210,7 +210,10 @@ export interface operations {
     validate_api_v1_validate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado. */
+                "x-client-id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -247,7 +250,16 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. Veja retry_after_s. */
+            /** @description RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma rede em 1 minuto. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não respondeu). Veja retry_after_s. */
             503: {
                 headers: {
                     [name: string]: unknown;

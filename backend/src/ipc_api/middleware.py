@@ -75,13 +75,14 @@ class RequestContextMiddleware:
                 "request",
                 request_id=request_id,
                 method=scope["method"],
-                path=getattr(route, "path", "outra"),
+                path=getattr(route, "path", state.get("route_path", "outra")),
                 status=status,
                 latency_ms=round((time.perf_counter() - started) * 1000, 1),
                 payload_bytes=received,
                 list_number=state.get("list_number"),
                 ruleset_version=state.get("ruleset_version"),
                 outcome=str(state.get("outcome") or status),
+                **({"rate_limit": state["rate_limit"]} if "rate_limit" in state else {}),
             )
 
     def _too_large_message(self) -> str:

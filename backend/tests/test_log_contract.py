@@ -24,10 +24,14 @@ from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api import logging as api_logging
 from ipc_api.app import create_app
+from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
 
 CANARY = "CANARIO7F3A"
 CLIENT_IP = "203.0.113.77"
+#: Os testes daqui mandam centenas de requisições de um mesmo cliente; o limite de taxa tem
+#: os próprios testes (test_api_rate_limit.py).
+UNLIMITED = ApiSettings(rate_limit=RateLimitConfig(client_per_min=1_000_000, ip_per_min=1_000_000))
 REQUEST_FIELDS = {
     "timestamp",
     "level",
@@ -66,7 +70,7 @@ def bridged_api(analyzer: TestClient) -> FastAPI:
             headers={"Content-Type": answer.headers["content-type"]},
         )
 
-    return create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(bridge))
+    return create_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge))
 
 
 def send_everything(api: TestClient) -> list[httpx2.Response]:

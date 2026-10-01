@@ -6,6 +6,9 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from ipc_api.admission import AdmissionConfig
+from ipc_api.ratelimit import RateLimitConfig, parse_networks
+
 KIB = 1024
 
 
@@ -32,6 +35,10 @@ class ApiSettings:
     max_body_bytes: int = 128 * KIB
     #: Logs JSON no stdout (S9-01). Ligado por padrão; desligar só para depurar localmente.
     json_logs: bool = True
+    #: Limite de taxa por cliente anônimo e por IP (S10-01, FR-19).
+    rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
+    #: Controle de admissão das chamadas ao analyzer (S10-01, NFR-05).
+    admission: AdmissionConfig = field(default_factory=AdmissionConfig)
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -46,4 +53,28 @@ class ApiSettings:
             ),
             max_body_bytes=int(env.get("IPC_MAX_BODY_BYTES", defaults.max_body_bytes)),
             json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
+            rate_limit=_rate_limit_from_env(env),
+            admission=_admission_from_env(env),
         )
+
+
+def _rate_limit_from_env(env: Mapping[str, str]) -> RateLimitConfig:
+    defaults = RateLimitConfig()
+    cidrs = env.get("IPC_RATE_LIMIT_CAMPUS_CIDRS")
+    return RateLimitConfig(
+        client_per_min=int(env.get("IPC_RATE_LIMIT_CLIENT_PER_MIN", defaults.client_per_min)),
+        ip_per_min=int(env.get("IPC_RATE_LIMIT_IP_PER_MIN", defaults.ip_per_min)),
+        campus_per_min=int(env.get("IPC_RATE_LIMIT_CAMPUS_PER_MIN", defaults.campus_per_min)),
+        campus_networks=parse_networks(cidrs) if cidrs is not None else defaults.campus_networks,
+        trusted_proxy_hops=int(env.get("IPC_TRUSTED_PROXY_HOPS", defaults.trusted_proxy_hops)),
+        max_keys=int(env.get("IPC_RATE_LIMIT_MAX_KEYS", defaults.max_keys)),
+    )
+
+
+def _admission_from_env(env: Mapping[str, str]) -> AdmissionConfig:
+    defaults = AdmissionConfig()
+    return AdmissionConfig(
+        capacity=int(env.get("IPC_ADMISSION_CAPACITY", defaults.capacity)),
+        max_waiting=int(env.get("IPC_ADMISSION_MAX_WAITING", defaults.max_waiting)),
+        max_wait_s=float(env.get("IPC_ADMISSION_MAX_WAIT_S", defaults.max_wait_s)),
+    )

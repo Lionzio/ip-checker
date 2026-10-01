@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import Request
 
+from ipc_api.admission import Admission
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.settings import ApiSettings
 
@@ -11,6 +12,11 @@ from ipc_api.settings import ApiSettings
 def get_analyzer(request: Request) -> AnalyzerClient:
     client: AnalyzerClient = request.app.state.analyzer
     return client
+
+
+def get_admission(request: Request) -> Admission:
+    admission: Admission = request.app.state.admission
+    return admission
 
 
 def get_settings(request: Request) -> ApiSettings:

@@ -53,9 +53,16 @@ services:
       - --port
       - "8000"
       - --no-server-header
+      # Só a própria API interpreta o X-Forwarded-For (IPC_TRUSTED_PROXY_HOPS).
+      - --no-proxy-headers
     environment:
       IPC_ANALYZER_URL: http://analyzer:8001
       IPC_ENABLED_LISTS: "1"
+      # Limite de taxa (FR-19). Há um proxy confiável na frente da API, o Caddy: o IP do
+      # cliente é o último endereço do X-Forwarded-For, que o Caddy escreve.
+      IPC_TRUSTED_PROXY_HOPS: "1"
+      # Faixa da UFPE (Q-11): limite por IP de 1.000/min, em vez de 120/min.
+      IPC_RATE_LIMIT_CAMPUS_CIDRS: 150.161.0.0/16
     healthcheck:
       test:
         - CMD
