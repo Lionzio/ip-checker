@@ -31,7 +31,9 @@ from ipc_analyzer.engine.guards import (
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.logging import configure_logging
 from ipc_analyzer.runtime.pool import AnalyzerPool
+from ipc_analyzer.service.access_log import AccessLogMiddleware
 from ipc_analyzer.service.settings import AnalyzerSettings
 
 
@@ -137,6 +139,9 @@ def _ruleset(request: Request) -> CompiledRuleset:
 
 
 def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
+    if (settings or AnalyzerSettings.from_env()).json_logs:
+        configure_logging()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config = settings or AnalyzerSettings.from_env()
@@ -161,14 +166,17 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         openapi_url=None,
         lifespan=lifespan,
     )
+    app.add_middleware(AccessLogMiddleware)
 
     @app.exception_handler(InputError)
-    async def input_error(_request: Request, exc: InputError) -> JSONResponse:
+    async def input_error(request: Request, exc: InputError) -> JSONResponse:
+        request.state.outcome = exc.code
         status = 413 if isinstance(exc, PayloadTooLargeError) else 422
         return _error(status, exc.code, exc.message)
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error(_request: Request, _exc: RequestValidationError) -> JSONResponse:
+    async def validation_error(request: Request, _exc: RequestValidationError) -> JSONResponse:
+        request.state.outcome = "INVALID_INPUT"
         return _error(
             422, "INVALID_INPUT", "Requisição inválida: envie code e list_number (1 a 6)."
         )
@@ -177,21 +185,30 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
     async def http_error(request: Request, exc: HTTPException) -> Response:
         # O FastAPI responde 400 genérico quando o corpo não é UTF-8 válido (DoD, item 3).
         if exc.status_code == 400:
+            request.state.outcome = "INVALID_INPUT"
             return _error(422, "INVALID_INPUT", "O corpo da requisição não é JSON em UTF-8 válido.")
         return await http_exception_handler(request, exc)
 
     @app.post("/internal/analyze")
     async def analyze(
-        body: AnalyzeRequest, pool: Annotated[AnalyzerPool, Depends(_pool)]
+        body: AnalyzeRequest,
+        request: Request,
+        pool: Annotated[AnalyzerPool, Depends(_pool)],
+        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
     ) -> AnalyzeResponse:
         # Recusa cedo um texto que não cabe no limite, sem enviá-lo a um worker.
         size = len(body.code.encode("utf-8", errors="surrogatepass"))
+        request.state.payload_bytes = size
+        request.state.list_number = body.list_number
+        request.state.ruleset_version = ruleset.version
         if size > DEFAULT_LIMITS.max_bytes:
             raise PayloadTooLargeError(
                 f"O código tem {thousands(size)} bytes; o limite é "
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
         result = await pool.analyze(body.code, body.list_number)
+        request.state.outcome = result.status
+        request.state.violations = len(result.violations)
         return AnalyzeResponse.from_result(result)
 
     @app.get("/internal/ruleset/manifest")

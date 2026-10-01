@@ -69,9 +69,13 @@ class AnalyzerClient:
     async def aclose(self) -> None:
         await self._http.aclose()
 
-    async def _request(self, method: str, path: str, payload: Any = None) -> tuple[int, bytes]:
+    async def _request(
+        self, method: str, path: str, payload: Any = None, request_id: str | None = None
+    ) -> tuple[int, bytes]:
+        # O mesmo request_id nos logs dos dois serviços liga a requisição à análise.
+        headers = {"X-Request-Id": request_id} if request_id else None
         try:
-            async with self._http.stream(method, path, json=payload) as response:
+            async with self._http.stream(method, path, json=payload, headers=headers) as response:
                 body = bytearray()
                 async for chunk in response.aiter_bytes():
                     body += chunk
@@ -85,9 +89,11 @@ class AnalyzerClient:
                 f"falha ao falar com o analyzer: {type(exc).__name__}"
             ) from None
 
-    async def analyze(self, code: str, list_number: int) -> AnalyzerResult:
+    async def analyze(
+        self, code: str, list_number: int, request_id: str | None = None
+    ) -> AnalyzerResult:
         status, body = await self._request(
-            "POST", "/internal/analyze", {"code": code, "list_number": list_number}
+            "POST", "/internal/analyze", {"code": code, "list_number": list_number}, request_id
         )
         if status == 200:
             result = _parse(AnalyzerResult, body)

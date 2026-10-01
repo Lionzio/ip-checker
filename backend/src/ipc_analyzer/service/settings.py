@@ -18,6 +18,8 @@ _REPOSITORY_RULESET = Path(__file__).resolve().parents[4] / "rulesets" / "2026.2
 class AnalyzerSettings:
     ruleset_path: Path
     pool: PoolConfig
+    #: Logs JSON no stdout (S9-01). Ligado por padrão; desligar só para depurar localmente.
+    json_logs: bool = True
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> AnalyzerSettings:
@@ -34,4 +36,5 @@ class AnalyzerSettings:
                     * MIB,
                 ),
             ),
+            json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
         )

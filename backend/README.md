@@ -55,6 +55,15 @@ uv run python -m ipc_api.openapi ../docs/openapi.json
 O mesmo teste roda o schemathesis: gera requisições a partir do OpenAPI publicado, manda-as à API
 ligada ao analisador de verdade e confere que toda resposta está documentada e segue o esquema.
 
+## Logs
+
+Os dois serviços escrevem logs JSON no stdout (`structlog`, S9-01): uma linha por requisição na
+API (`event: request`) e uma por análise no analyzer (`event: analysis`), ligadas pelo mesmo
+`request_id`. Os campos ficam numa lista de permissão (`LOG_FIELDS`): código, IP, cabeçalhos, URL
+pedida e mensagens de exceção nunca são gravados, e o log de acesso do uvicorn (que tem IP) fica
+desligado. `tests/test_log_contract.py` confere o esquema e roda o teste canário (NFR-11).
+Para depurar localmente com o formato padrão do uvicorn, use `IPC_JSON_LOGS=0`.
+
 ## Contêiner
 
 A imagem do backend (`backend/Dockerfile`) roda os dois serviços, cada um com o seu comando, e é
