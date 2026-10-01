@@ -51,7 +51,9 @@ async def health() -> HealthResponse:
     responses=UNAVAILABLE,
 )
 async def ready(
-    response: Response, analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)]
+    response: Response,
+    analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> ReadyResponse:
     response.headers["Cache-Control"] = "no-store"
     try:
@@ -59,4 +61,6 @@ async def ready(
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
         raise analyzer_unavailable() from None
-    return ReadyResponse(status="ready", ruleset_version=status.ruleset_version)
+    return ReadyResponse(
+        status="ready", ruleset_version=status.ruleset_version, release=settings.release
+    )

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ipc_analyzer.runtime.limits import MIB, ResourceLimits
 from ipc_analyzer.runtime.pool import PoolConfig
+from ipc_analyzer.runtime.sandbox import SandboxMode
 
 #: Ruleset do repositório, usado quando ``IPC_RULESET_PATH`` não é definida (desenvolvimento).
 _REPOSITORY_RULESET = Path(__file__).resolve().parents[4] / "rulesets" / "2026.2" / "base.yaml"
@@ -35,6 +36,7 @@ class AnalyzerSettings:
                     memory_bytes=int(env.get("IPC_MEMORY_MB", defaults.limits.memory_bytes // MIB))
                     * MIB,
                 ),
+                sandbox=SandboxMode(env.get("IPC_SANDBOX", defaults.sandbox)),
             ),
             json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
         )

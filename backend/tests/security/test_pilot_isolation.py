@@ -1,0 +1,341 @@
+"""Isolamento por processo na imagem do piloto (S11-01; NFR-07 e DoD item 11 na Fase 1).
+
+O Render roda um único contêiner, sem rede interna nem flags de contêiner. Este módulo sobe a
+imagem ``deploy/render/Dockerfile`` como o Render a roda (sem endurecimento do Docker, com uma
+variável que faz o papel de segredo) e confere, de dentro dela, o que o blueprint exige:
+
+- a API roda como UID 10001 e o analisador como UID 10002, com o ambiente vazio;
+- o analisador não lê o ambiente da API nem o do supervisord;
+- os workers têm o filtro seccomp e os limites de recursos, e lá dentro abrir socket, executar
+  programa e gravar em disco falham;
+- só a API escuta fora do loopback;
+- o pior caso de 50 KB cabe nos 160 MiB por worker;
+- CORS, HSTS e a versão implantada se comportam como no piloto.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+from collections.abc import Iterator
+from typing import Any
+
+import pytest
+
+from security.harness import (
+    REPO_ROOT,
+    Client,
+    docker,
+    requires_docker,
+)
+
+pytestmark = requires_docker
+
+PILOT_IMAGE = "ip-checker-pilot:local"
+CONTAINER = "ipc-security-test-pilot"
+#: Faz o papel de uma credencial no ambiente do Render: só a API pode recebê-la.
+CANARY_SECRET = "segredo-canario-7d1f"  # noqa: S105 - valor de teste, não é segredo
+SPA = "https://ip-checker.vercel.app"
+RELEASE = "0123456789abcdef"
+API_UID, ANALYZER_UID = 10001, 10002
+MIB = 1024 * 1024
+#: O que o analisador pode ter no ambiente (o supervisord o inicia com ``env -i``). LC_CTYPE é
+#: acrescentado pelo próprio Python (coerção de locale).
+ANALYZER_ENV = frozenset(
+    {
+        "PATH",
+        "PYTHONDONTWRITEBYTECODE",
+        "PYTHONUNBUFFERED",
+        "IPC_RULESET_PATH",
+        "IPC_SANDBOX",
+        "IPC_MEMORY_MB",
+        "LC_CTYPE",
+    }
+)
+
+#: Lista os processos; o ambiente só aparece quando quem roda a sonda pode lê-lo.
+PROCESSES_PROBE = r"""
+import json, pathlib
+found = []
+for entry in pathlib.Path("/proc").iterdir():
+    if not entry.name.isdigit():
+        continue
+    try:
+        lines = (entry / "status").read_text().splitlines()
+        cmdline = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode().strip()
+        limits = (entry / "limits").read_text().splitlines()
+    except OSError:
+        continue
+    try:
+        raw = (entry / "environ").read_bytes().split(b"\0")
+        env = sorted({item.split(b"=", 1)[0].decode() for item in raw if item})
+    except OSError:
+        env = None
+    status = dict(line.split(":\t", 1) for line in lines if ":\t" in line)
+    found.append({
+        "pid": int(entry.name),
+        "ppid": int(status["PPid"]),
+        "uid": int(status["Uid"].split()[0]),
+        "filters": int(status.get("Seccomp_filters", "0")),
+        "cmdline": cmdline,
+        "env": env,
+        "limits": limits,
+    })
+print(json.dumps(found))
+"""
+
+#: Roda como o usuário do analisador e se fecha como um worker; depois tenta escapar.
+ESCAPE_PROBE = r"""
+import errno, json, os, socket, subprocess, sys
+from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits
+from ipc_analyzer.runtime.sandbox import SandboxMode, enforce
+api_pid = int(sys.argv[1])
+results = {}
+for name, path in {"api": f"/proc/{api_pid}/environ", "supervisord": "/proc/1/environ"}.items():
+    try:
+        open(path, "rb").read()
+        results["environ_" + name] = "leu"
+    except OSError as exc:
+        results["environ_" + name] = errno.errorcode[exc.errno]
+target = "/tmp/ipc-canario-%d" % os.getpid()
+apply_limits(ResourceLimits(memory_bytes=160 * 1024 * 1024))
+enforce(SandboxMode.REQUIRED)
+
+def write_file():
+    # RLIMIT_FSIZE = 0: criar um arquivo vazio ainda é possível, gravar um byte não.
+    with open(target, "w") as handle:
+        handle.write("x" * 4096)
+        handle.flush()
+
+attempts = {
+    "socket": lambda: socket.create_connection(("1.1.1.1", 443), timeout=2),
+    "loopback": lambda: socket.create_connection(("127.0.0.1", 10000), timeout=2),
+    "exec": lambda: subprocess.run(["/bin/sh", "-c", "true"], check=True),
+    "write": write_file,
+}
+for name, attempt in attempts.items():
+    try:
+        attempt()
+        results[name] = "conseguiu"
+    except OSError as exc:
+        results[name] = errno.errorcode.get(exc.errno or 0, str(exc.errno))
+print(json.dumps(results))
+"""
+
+LISTEN_PROBE = r"""
+import json
+listening = []
+for line in open("/proc/net/tcp").read().splitlines()[1:]:
+    fields = line.split()
+    if fields[3] == "0A":
+        address, port = fields[1].split(":")
+        ip = ".".join(str(int(address[i:i + 2], 16)) for i in (6, 4, 2, 0))
+        listening.append(f"{ip}:{int(port, 16)}")
+print(json.dumps(sorted(listening)))
+"""
+
+
+def probe_as(user: int | str, code: str, *args: str) -> Any:
+    return json.loads(docker("exec", "-u", str(user), CONTAINER, "python", "-c", code, *args))
+
+
+@pytest.fixture(scope="module")
+def pilot() -> Iterator[str]:
+    docker(
+        "build",
+        "-f",
+        str(REPO_ROOT / "deploy/render/Dockerfile"),
+        "-t",
+        PILOT_IMAGE,
+        str(REPO_ROOT),
+        timeout=900,
+    )
+    docker("rm", "--force", CONTAINER, check=False)
+    docker(
+        "run", "--detach", "--name", CONTAINER,
+        "-e", f"IPC_FAKE_SECRET={CANARY_SECRET}",
+        "-e", f"IPC_CORS_ORIGINS={SPA}",
+        "-e", "IPC_HSTS=1",
+        "-e", f"RENDER_GIT_COMMIT={RELEASE}",
+        PILOT_IMAGE,
+    )  # fmt: skip
+    try:
+        client = Client(CONTAINER, base="http://127.0.0.1:10000")
+        deadline = time.monotonic() + 90
+        while True:
+            state = docker("inspect", "--format", "{{.State.Status}}", CONTAINER).strip()
+            if state != "running":
+                pytest.fail(f"o contêiner do piloto parou:\n{docker('logs', CONTAINER)}")
+            if docker("exec", CONTAINER, "python", "-c", READY_PROBE, check=False).strip() == "200":
+                break
+            if time.monotonic() > deadline:
+                pytest.fail(f"o piloto não ficou pronto em 90 s:\n{docker('logs', CONTAINER)}")
+            time.sleep(1)
+        yield client.container
+    finally:
+        docker("rm", "--force", CONTAINER, check=False)
+
+
+READY_PROBE = r"""
+import urllib.request
+try:
+    print(urllib.request.urlopen("http://127.0.0.1:10000/ready", timeout=2).status)
+except Exception:
+    print(0)
+"""
+
+
+@pytest.fixture(scope="module")
+def processes(pilot: str) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = probe_as("root", PROCESSES_PROBE)
+    return [p for p in found if "python -c" not in p["cmdline"]]  # sem a própria sonda
+
+
+def _by_role(found: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    roles: dict[str, list[dict[str, Any]]] = {"supervisord": [], "api": [], "analyzer": []}
+    for process in found:
+        if "supervisord" in process["cmdline"]:
+            roles["supervisord"].append(process)
+        elif "ipc_api.app" in process["cmdline"]:
+            roles["api"].append(process)
+        else:
+            roles["analyzer"].append(process)  # serviço, forkserver, resource tracker e workers
+    return roles
+
+
+def _soft_limit(lines: list[str], name: str) -> str:
+    return next(line[26:].split()[0] for line in lines if line.startswith(name))
+
+
+# ---------------------------------------------------------------------------------------------
+
+
+def test_each_process_runs_as_its_own_user(processes: list[dict[str, Any]]) -> None:
+    roles = _by_role(processes)
+
+    assert [p["pid"] for p in roles["supervisord"]] == [1]
+    assert roles["supervisord"][0]["uid"] == 0
+    assert {p["uid"] for p in roles["api"]} == {API_UID}
+    assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e 2 workers
+    assert {p["uid"] for p in roles["analyzer"]} == {ANALYZER_UID}
+
+
+def test_analyzer_environment_has_no_secret(pilot: str) -> None:
+    mine = [p for p in probe_as(ANALYZER_UID, PROCESSES_PROBE) if p["uid"] == ANALYZER_UID]
+    analyzer = [p for p in mine if "python -c" not in p["cmdline"]]
+
+    assert analyzer
+    for process in analyzer:
+        assert set(process["env"]) <= ANALYZER_ENV, process["cmdline"]
+
+    # Prova de que o segredo existe no contêiner e chega a quem deve: a API.
+    (api,) = [p for p in probe_as(API_UID, PROCESSES_PROBE) if "ipc_api.app" in p["cmdline"]]
+    assert "IPC_FAKE_SECRET" in api["env"]
+
+
+def test_workers_are_sandboxed_and_limited(processes: list[dict[str, Any]]) -> None:
+    analyzer = _by_role(processes)["analyzer"]
+    service = next(p for p in analyzer if "uvicorn" in p["cmdline"])
+    forkserver = next(
+        p for p in analyzer if p["ppid"] == service["pid"] and "forkserver" in p["cmdline"]
+    )
+    workers = [p for p in analyzer if p["ppid"] == forkserver["pid"]]
+
+    assert len(workers) == 2
+    for worker in workers:
+        # Um filtro a mais que o processo que o criou: o seccomp do IP-Checker.
+        assert worker["filters"] == service["filters"] + 1
+        assert _soft_limit(worker["limits"], "Max address space") == str(160 * MIB)
+        assert _soft_limit(worker["limits"], "Max file size") == "0"
+        assert _soft_limit(worker["limits"], "Max open files") == "32"
+    assert service["filters"] == forkserver["filters"]  # o serviço não é filtrado
+
+
+def test_analyzer_user_cannot_read_other_environments_or_escape(
+    processes: list[dict[str, Any]],
+) -> None:
+    (api,) = _by_role(processes)["api"]
+
+    results = probe_as(ANALYZER_UID, ESCAPE_PROBE, str(api["pid"]))
+
+    assert results == {
+        "environ_api": "EACCES",
+        "environ_supervisord": "EACCES",
+        "socket": "EPERM",
+        "loopback": "EPERM",
+        "exec": "EPERM",
+        "write": "EFBIG",
+    }
+
+
+def test_only_the_api_listens_outside_loopback(pilot: str) -> None:
+    assert probe_as("root", LISTEN_PROBE) == ["0.0.0.0:10000", "127.0.0.1:8001"]
+
+
+def test_worst_case_inputs_fit_in_160_mib(pilot: str) -> None:
+    client = Client(pilot, base="http://127.0.0.1:10000")
+    widest = ("a = " + ",".join("bcdefghijklmnopqrstuvwxy") + "\n") * 980
+    dense = "a = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)\n" * 1_000
+    literal = 'x = "' + "a" * 51_180 + '"\n'
+    requests = [
+        {
+            "method": "POST",
+            "path": "/api/v1/validate",
+            "json": {"code": code, "list_number": 1},
+            "headers": {"X-Client-Id": f"0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c{index:02d}"},
+        }
+        for index, code in enumerate([widest, dense, literal])
+    ]
+
+    answers = client.send(requests)
+
+    # Nenhuma vira ANALYSIS_LIMIT por falta de memória: todas são analisadas.
+    assert [answer.status for answer in answers] == [200, 200, 200]
+    assert [answer.body["status"] for answer in answers] == ["invalid", "invalid", "valid"]
+
+
+def test_pilot_api_cors_headers_and_release(pilot: str) -> None:
+    client = Client(pilot, base="http://127.0.0.1:10000")
+    preflight, validate, ready, evil = client.send(
+        [
+            {
+                "method": "OPTIONS",
+                "path": "/api/v1/validate",
+                "headers": {
+                    "Origin": SPA,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "content-type,x-client-id",
+                },
+            },
+            {
+                "method": "POST",
+                "path": "/api/v1/validate",
+                "json": {"code": "x = 1\n", "list_number": 1},
+                "headers": {"Origin": SPA},
+            },
+            {"method": "GET", "path": "/ready"},
+            {
+                "method": "POST",
+                "path": "/api/v1/validate",
+                "json": {"code": "x = 1\n", "list_number": 1},
+                "headers": {"Origin": "https://evil.example"},
+            },
+        ]
+    )
+
+    assert preflight.status == 200
+    assert preflight.headers["access-control-allow-origin"] == SPA
+    assert validate.headers["access-control-allow-origin"] == SPA
+    assert "retry-after" in validate.headers["access-control-expose-headers"].lower()
+    assert validate.headers["strict-transport-security"].startswith("max-age=31536000")
+    assert validate.headers["x-content-type-options"] == "nosniff"
+    assert ready.body == {"status": "ready", "ruleset_version": "2026.2.0", "release": RELEASE}
+    assert "access-control-allow-origin" not in evil.headers
+
+
+def test_logs_have_no_secret(pilot: str) -> None:
+    logs = docker("logs", pilot) + docker("logs", pilot, check=False)
+
+    assert CANARY_SECRET not in logs
+    assert '"service": "api"' in logs
+    assert '"service": "analyzer"' in logs

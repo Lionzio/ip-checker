@@ -22,6 +22,20 @@ npm run build
 (http://127.0.0.1:8180). Para usar a API rodando fora do Docker, defina
 `IPC_API_URL=http://127.0.0.1:8101`.
 
+## Piloto na Vercel
+
+No piloto, a página fica na Vercel e a API no Render, em outra origem. O projeto da Vercel usa
+`frontend/` como raiz e o `vercel.json` daqui: `npm ci` e `npm run build:vercel`, sem deploy
+automático a cada push (o pipeline de deploy chama o deploy hook depois da CI).
+
+`npm run build:vercel` exige `VITE_API_BASE_URL` (endereço HTTPS da API) e gera `.vercel/output`
+(Build Output API v3): a página, os cabeçalhos de segurança (CSP com `connect-src` só para a API,
+HSTS, `nosniff`, `no-referrer`) e `version.json` com o commit do build. Para testar localmente:
+
+```bash
+VITE_API_BASE_URL=https://ip-checker-api.onrender.com npm run build:vercel
+```
+
 ## Contrato da API
 
 Os tipos de `src/types/openapi.ts` são gerados do contrato versionado (`docs/openapi.json`) e nunca

@@ -18,6 +18,6 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     // Os testes ponta a ponta (e2e/) rodam com o Playwright, contra o compose.
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
   },
 });

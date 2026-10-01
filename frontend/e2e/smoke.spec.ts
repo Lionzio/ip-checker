@@ -5,6 +5,9 @@ import { expect, type Page, test } from "@playwright/test";
  * resultado do motor de verdade. Nada aqui é simulado.
  */
 
+/** No piloto (pipeline de deploy), a página está na Vercel e a API no Render (E2E_API_ORIGIN). */
+const PILOT = process.env.E2E_TARGET === "pilot";
+
 async function verify(page: Page, code: string) {
   await page.goto("/");
   await page.getByLabel("Lista").selectOption("1");
@@ -86,7 +89,15 @@ test("a borda envia os cabeçalhos de segurança", async ({ page }) => {
   const headers = response?.headers() ?? {};
 
   expect(headers["content-security-policy"]).toContain("script-src 'self'");
+  expect(headers["content-security-policy"]).not.toContain("unsafe-inline");
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["referrer-policy"]).toBe("no-referrer");
-  expect(headers["server"]).toBeUndefined();
+  if (PILOT) {
+    // Piloto (Vercel, HTTPS): HSTS e a CSP liberando só a API no Render (NFR-10).
+    expect(headers["strict-transport-security"]).toContain("max-age=31536000");
+    expect(headers["content-security-policy"]).toContain(`connect-src 'self' ${process.env.E2E_API_ORIGIN}`);
+  } else {
+    // Compose: a borda é o Caddy, que não se apresenta.
+    expect(headers["server"]).toBeUndefined();
+  }
 });

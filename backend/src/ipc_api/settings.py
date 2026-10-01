@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from ipc_api.admission import AdmissionConfig
+from ipc_api.edge import parse_origins
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 
 KIB = 1024
@@ -39,6 +40,13 @@ class ApiSettings:
     rate_limit: RateLimitConfig = field(default_factory=RateLimitConfig)
     #: Controle de admissão das chamadas ao analyzer (S10-01, NFR-05).
     admission: AdmissionConfig = field(default_factory=AdmissionConfig)
+    #: Origens da página que podem chamar a API pelo navegador (CORS). Vazio nas Fases 0 e 2,
+    #: em que página e API têm a mesma origem; no piloto, o endereço da página na Vercel.
+    cors_origins: tuple[str, ...] = ()
+    #: Cabeçalho HSTS nas respostas (piloto: a API é servida em HTTPS pelo Render).
+    hsts: bool = False
+    #: Versão implantada (commit), mostrada em /ready para o pipeline saber que o deploy entrou.
+    release: str | None = None
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -55,6 +63,10 @@ class ApiSettings:
             json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
             rate_limit=_rate_limit_from_env(env),
             admission=_admission_from_env(env),
+            cors_origins=parse_origins(env.get("IPC_CORS_ORIGINS", "")),
+            hsts=env.get("IPC_HSTS", "0") == "1",
+            # O Render informa o commit implantado em RENDER_GIT_COMMIT.
+            release=env.get("IPC_RELEASE") or env.get("RENDER_GIT_COMMIT") or None,
         )
 
 

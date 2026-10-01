@@ -440,7 +440,7 @@ def test_ready_reports_the_ruleset(client: TestClient) -> None:
     response = client.get("/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "ruleset_version": "2026.2.0"}
+    assert response.json() == {"status": "ready", "ruleset_version": "2026.2.0", "release": None}
     assert response.headers["Cache-Control"] == "no-store"
 
 

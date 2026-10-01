@@ -10,6 +10,8 @@ dependencies = [
   "httpx2>=2.13.1",
   "pebble>=5.2.2",
   "pydantic>=2.10,<3",
+  # Filtro seccomp dos workers (S11-01). Só funciona em Linux, onde existe a libseccomp.
+  "pyseccomp>=0.1.2; sys_platform == 'linux'",
   "pyyaml>=6.0.2,<7",
   "structlog>=25.1",
   "uvicorn>=0.54.0",
@@ -24,6 +26,9 @@ dev = [
   "ruff>=0.9",
   "schemathesis>=4.28.0",
   "types-pyyaml>=6.0.12",
+]
+pilot = [
+    "supervisor>=4.3.0",
 ]
 
 [build-system]
@@ -80,3 +85,8 @@ name = "O motor de regras é puro: não importa o serviço, o pool nem framework
 type = "forbidden"
 source_modules = ["ipc_analyzer.engine"]
 forbidden_modules = ["ipc_analyzer.service", "ipc_analyzer.runtime", "fastapi", "starlette", "uvicorn", "pebble", "httpx2"]
+
+[[tool.mypy.overrides]]
+# pyseccomp não publica tipos; o uso fica restrito a ipc_analyzer/runtime/sandbox.py.
+module = ["pyseccomp"]
+ignore_missing_imports = true

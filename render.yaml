@@ -1,0 +1,31 @@
+# Piloto (Fase 1, 2027.1; ADR-03, S11-01): Blueprint do Render para o backend.
+#
+# Um único serviço Docker, com a API e o analisador isolados por processo (deploy/render/). O deploy
+# nunca é automático a cada push: o pipeline (.github/workflows/deploy.yml) chama o deploy hook
+# depois que a CI passa na main. Passo a passo da criação em deploy/README.md, seção "Piloto".
+services:
+  - type: web
+    name: ip-checker-api
+    runtime: docker
+    plan: free
+    # Leste dos EUA: a região do Render mais próxima de Recife.
+    region: virginia
+    branch: main
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    # O Render só troca a versão no ar quando a nova responde /ready (API e analisador prontos).
+    healthCheckPath: /ready
+    envVars:
+      # Endereço da página na Vercel, definido no painel depois de criar o projeto lá.
+      - key: IPC_CORS_ORIGINS
+        sync: false
+      - key: IPC_HSTS
+        value: "1"
+      - key: IPC_ENABLED_LISTS
+        value: "1"
+      # A borda do Render acrescenta o IP do cliente ao fim do X-Forwarded-For [PREMISSA P-12].
+      - key: IPC_TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: IPC_RATE_LIMIT_CAMPUS_CIDRS
+        value: 150.161.0.0/16

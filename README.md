@@ -14,7 +14,7 @@ O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
 | `frontend/` | SPA React + Vite + TypeScript | Sprint 2 |
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
-| `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; depois a configuração do Render | Sprint 6 |
+| `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; imagem do piloto no Render (`deploy/render/`) | Sprint 6 |
 | `database/` | Migrações SQL da telemetria (Supabase) | Sprint 14 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
@@ -68,7 +68,7 @@ se a porta estiver ocupada, ele falha em vez de pular para outra.
 |---|---|---|
 | `develop` | Branch principal e padrão no GitHub | PR de uma branch de task, com a CI verde |
 | `feature/<task>-<descrição>` | Uma por task (ex.: `feature/S2-01-parser`) | Criada a partir da `develop` |
-| `main` | Branch de release (o deploy do piloto sai dela, Sprint 11) | Só por *fast-forward* da `develop` |
+| `main` | Branch de release: cada push nela, com a CI verde, faz o deploy do piloto (`.github/workflows/deploy.yml`) | Só por *fast-forward* da `develop` |
 
 A `main` fica sempre igual ou atrás da `develop`. Por isso ela nunca recebe commit direto nem
 merge de PR pelo GitHub: o botão de merge cria um commit que não existe na `develop`. Uma release
@@ -97,4 +97,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 8 | S8-01 API pública: validação, listas, health e ready, contrato OpenAPI e import-linter | Concluída |
 | 9 | Marco 1 (MVP local): S9-01 logs sem código nem IP; S9-02 SPA na API real, borda Caddy e e2e; S9-03 segurança da API pública | Concluída |
 | 10 | Proteção para exposição pública: S10-01 limite de taxa por cliente e por IP e admissão; S10-02 mensagens e contagem de espera na página; S10-03 limite de taxa atacado pela borda | Concluída |
-| 11 | Deploy do piloto: isolamento por processo no Render e SPA na Vercel | Próxima |
+| 11 | Deploy do piloto: S11-01 imagem do Render com isolamento por processo e seccomp; S11-02 CORS, HSTS e página para a Vercel; S11-03 deploy depois da CI e verificações do piloto no ar | Concluída (falta a configuração das contas, `deploy/README.md`) |
+| 12 | Liberação do piloto e apresentação (Marco 2) | Próxima |

@@ -88,6 +88,21 @@ uv run python -m ipc_api.openapi ../docs/openapi.json
 O mesmo teste roda o schemathesis: gera requisições a partir do OpenAPI publicado, manda-as à API
 ligada ao analisador de verdade e confere que toda resposta está documentada e segue o esquema.
 
+## Piloto (Render)
+
+No piloto, a API e o analisador dividem um contêiner (`deploy/render/`), e o isolamento é por
+processo: UIDs diferentes, analisador com ambiente vazio e filtro seccomp nos workers.
+
+| Variável | Serviço | Padrão | Papel |
+|---|---|---|---|
+| `IPC_SANDBOX` | analisador | `optional` (`required` nas imagens) | Filtro seccomp dos workers: `off`, `optional` ou `required` (sem o filtro, o serviço não sobe) |
+| `IPC_CORS_ORIGINS` | API | vazio | Origens da página que podem chamar a API pelo navegador (só HTTPS, exceto `localhost`) |
+| `IPC_HSTS` | API | `0` | `1` manda o cabeçalho HSTS (a API é servida em HTTPS pelo Render) |
+| `IPC_RELEASE` | API | `RENDER_GIT_COMMIT` | Commit implantado, mostrado em `/ready` |
+
+O filtro só funciona em Linux. No Windows, `optional` segue sem ele, com um aviso no log, e os testes
+que dependem dele são pulados.
+
 ## Logs
 
 Os dois serviços escrevem logs JSON no stdout (`structlog`, S9-01): uma linha por requisição na

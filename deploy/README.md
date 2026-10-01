@@ -1,8 +1,9 @@
 # deploy
 
-Configuração de implantação do IP-Checker nas Fases 0 (local) e 2 (servidor do CIn): a borda
-`web` (Caddy com a SPA, S9-02), a `api` pública (S8-01) e o `analyzer` endurecido (S6-01). O piloto
-no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por processo (ADR-03).
+Configuração de implantação do IP-Checker. Nas Fases 0 (local) e 2 (servidor do CIn), o compose
+sobe a borda `web` (Caddy com a SPA, S9-02), a `api` pública (S8-01) e o `analyzer` endurecido
+(S6-01). No piloto (Fase 1, 2027.1), a página vai para a Vercel e o backend para o Render, com o
+isolamento por processo (seção "Piloto").
 
 | Serviço | Redes | Porta na máquina | Endurecimento |
 |---|---|---|---|
@@ -10,7 +11,95 @@ no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por pro
 | `api` | `analyzer_net` e `edge_net` | nenhuma | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
 | `web` | `edge_net` | `127.0.0.1:8180` | UID 10001, só leitura, sem capabilities (nem a de portas baixas), `no-new-privileges`, 64 processos, 128 MB |
 
-## Uso
+## Piloto (Render + Vercel, Fase 1)
+
+No piloto de 2027.1 (ADR-03), a página fica na Vercel e o backend num único serviço Docker no
+Render, no plano gratuito. O Render não tem rede interna nem flags de contêiner, então o isolamento
+entre a API e o analisador é feito por processo (`deploy/render/`):
+
+| Processo | Usuário | O que recebe | Isolamento |
+|---|---|---|---|
+| `supervisord` | root | O ambiente do Render | Só inicia os outros dois; não abre socket de controle |
+| `api` | 10001 | O ambiente do Render (CORS, limites, credenciais futuras) | Porta pública do Render |
+| `analyzer` | 10002 | Ambiente vazio (`env -i`), só 6 variáveis próprias | Escuta só em `127.0.0.1:8001`; workers com seccomp (sem `socket`, `socketpair`, `execve` nem `execveat`), `RLIMIT_AS` de 160 MiB, `RLIMIT_FSIZE` 0 e `RLIMIT_NOFILE` 32 |
+
+O UID 10002 não lê o ambiente da API nem o do supervisord: o kernel só permite isso ao dono. Com
+`IPC_SANDBOX=required`, se o Render não permitir o filtro seccomp, nenhum worker nasce e o `/ready`
+nunca fica verde, ou seja, o deploy falha em vez de subir sem o isolamento.
+
+`backend/tests/security/test_pilot_isolation.py` sobe a imagem do piloto como o Render a roda e
+confere tudo isso na CI, inclusive o pior caso de 50 KB dentro dos 160 MiB por worker.
+
+### Como o deploy acontece
+
+```
+develop ──(release: fast-forward)──> main ──> CI ──(verde)──> deploy.yml
+    deploy hooks do Render e da Vercel ──> espera a versão nova em /ready e /version.json
+    ──> confere cabeçalhos, CORS e TLS (backend/tests/pilot) ──> smoke e2e no navegador
+```
+
+O Render e a Vercel estão com o deploy automático desligado (`render.yaml` e `frontend/vercel.json`):
+nada vai ao ar sem a CI verde na `main`. Enquanto o piloto não estiver configurado no GitHub, o
+pipeline só avisa e não faz nada.
+
+### Passo a passo da configuração (uma vez)
+
+Estes passos são feitos por você nos painéis, com as suas contas. Nenhum segredo entra no
+repositório.
+
+1. **Release na `main`.** O Render e a Vercel leem a `main`, que precisa ter o código da Sprint 11:
+
+   ```bash
+   git switch main && git merge --ff-only develop && git push origin main
+   ```
+
+   Sem as variáveis do passo 5, a CI roda e o deploy só avisa que o piloto não está configurado.
+
+2. **Render.** Em <https://dashboard.render.com>, **New > Blueprint**, conecte o repositório
+   `Lionzio/ip-checker` e confirme o `render.yaml`. Ele cria o serviço `ip-checker-api` (Docker,
+   plano Free, região Virginia). Anote o endereço, por exemplo `https://ip-checker-api.onrender.com`.
+   Em **Settings > Deploy Hook**, copie a URL do hook.
+
+3. **Vercel.** Em <https://vercel.com/new>, importe o mesmo repositório com **Root Directory**
+   `frontend` e **Framework Preset** "Other" (o `vercel.json` define instalação e build). Em
+   **Environment Variables**, crie `VITE_API_BASE_URL` com o endereço do Render, para Production.
+   Depois do primeiro deploy, anote o endereço da página, por exemplo `https://ip-checker.vercel.app`.
+   Em **Settings > Git > Deploy Hooks**, crie um hook para a branch `main` e copie a URL.
+
+4. **CORS no Render.** No serviço do Render, em **Environment**, defina `IPC_CORS_ORIGINS` com o
+   endereço da página na Vercel (sem barra no fim) e salve. Sem isso, o navegador bloqueia as
+   chamadas da página à API.
+
+5. **GitHub.** Em **Settings > Secrets and variables > Actions** do repositório:
+   - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL`, com as URLs dos hooks;
+   - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel).
+
+   A partir daí, toda release na `main` faz o deploy e as verificações sozinha.
+
+6. **UptimeRobot.** Em <https://uptimerobot.com>, crie dois monitores HTTP(S) com intervalo de 5 min
+   e alerta por e-mail: `<endereço do Render>/ready` e `<endereço da Vercel>/`. O primeiro também
+   mantém o plano gratuito do Render acordado (ADR-03).
+
+### Para conferir à mão depois do deploy
+
+```bash
+curl -s https://ip-checker-api.onrender.com/ready
+```
+
+A resposta traz o commit implantado em `release`. A página publica o dela em `/version.json`.
+
+### Riscos do piloto
+
+- **Seccomp no Render.** Testado aqui com o perfil padrão do Docker. Se o Render não permitir o
+  filtro, o deploy fica vermelho (fail-closed). A saída, a decidir, é `IPC_SANDBOX=optional`, com o
+  risco das ameaças 2 e 6 subindo para Médio durante o piloto (blueprint, 5.4).
+- **IP do cliente.** O limite por IP supõe que a borda do Render acrescenta o IP do cliente ao fim do
+  `X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=1`, P-12). Conferir nos primeiros dias pelos campos
+  `rate_limit` do log.
+- **Plano gratuito.** 0,1 CPU e 512 MB. Se o P95 passar de 200 ms numa véspera de prazo, a
+  migração é para o Starter (ADR-03).
+
+## Uso (compose, Fases 0 e 2)
 
 Todos os comandos rodam na raiz do repositório.
 

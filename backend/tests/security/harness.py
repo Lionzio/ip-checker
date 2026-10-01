@@ -93,7 +93,15 @@ from concurrent.futures import ThreadPoolExecutor
 
 job = json.load(sys.stdin)
 
-KEPT_HEADERS = ("x-request-id", "retry-after", "content-type")
+KEPT_HEADERS = (
+    "x-request-id",
+    "retry-after",
+    "content-type",
+    "access-control-allow-origin",
+    "access-control-expose-headers",
+    "strict-transport-security",
+    "x-content-type-options",
+)
 
 def call(request):
     if request.get("raw") is not None:
@@ -134,7 +142,7 @@ class Answer:
     status: int
     body: Any
     elapsed_ms: float
-    #: Só X-Request-Id, Retry-After e Content-Type, com nomes em minúsculas.
+    #: Só os cabeçalhos de KEPT_HEADERS (no HTTP_PROBE), com nomes em minúsculas.
     headers: dict[str, str]
 
     @property
