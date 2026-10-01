@@ -35,11 +35,21 @@ test("for na Lista 1 mostra a R-34 na linha 2", async ({ page }) => {
   await verify(page, "n = int(input())\nfor i in range(n):\n    print(i)\n");
 
   const panel = result(page);
-  await expect(panel.getByRole("heading", { name: "2 violações encontradas" })).toBeVisible();
+  // R-34 e R-35 (for e range), mais a R-02: o código não tem if, o assunto da Lista 1.
+  await expect(panel.getByRole("heading", { name: "3 violações encontradas" })).toBeVisible();
   const r34 = panel.getByRole("listitem").filter({ hasText: "R-34" });
   await expect(r34).toContainText("Fora da lista");
   await expect(r34).toContainText("Linha 2, coluna 1");
   await expect(r34).toContainText("a partir da Lista 2");
+});
+
+test("código sem if na Lista 1 mostra a exigência do assunto da lista (R-02)", async ({ page }) => {
+  await verify(page, "n = int(input())\nprint(n * 2)\n");
+
+  const r02 = result(page).getByRole("listitem").filter({ hasText: "R-02" });
+  await expect(r02).toContainText("Exigência não atendida");
+  await expect(r02).toContainText("Solução inteira");
+  await expect(r02).toContainText("assunto da Lista 1");
 });
 
 test("erro de sintaxe mostra linha e coluna", async ({ page }) => {

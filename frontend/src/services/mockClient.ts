@@ -216,6 +216,21 @@ export function createMockClient({ latencyMs = 400 }: { latencyMs?: number } = {
       }
 
       const violations = findViolations(request.code);
+      // Exigência da Lista 1 (R-02): sem if nem ternário, a solução inteira é apontada.
+      if (!/\bif\b/.test(request.code.replace(/#.*$/gm, ""))) {
+        violations.unshift({
+          rule_id: "R-02",
+          category: "EXIGENCIA",
+          construct: "requirement:R-02",
+          allowed_from_list: null,
+          message:
+            "A solução não usa o assunto da Lista 1: é obrigatório um comando condicional (if, com ou sem elif/else) ou o operador ternário. Sem ele, a questão é anulada.",
+          line: 1,
+          col: 1,
+          end_line: 1,
+          end_col: 1,
+        });
+      }
       return {
         ...base,
         status: violations.length === 0 ? "valid" : "invalid",

@@ -5,6 +5,7 @@ Introdução à Programação respeita as regras de permissão da lista (e da qu
 ao Dikastis. O código é analisado só pela árvore sintática (AST), num serviço isolado.
 
 O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
+O guia para alunos e monitores do piloto está em [`docs/guia-do-piloto.md`](docs/guia-do-piloto.md).
 
 ## Estrutura do repositório
 
@@ -98,4 +99,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 9 | Marco 1 (MVP local): S9-01 logs sem código nem IP; S9-02 SPA na API real, borda Caddy e e2e; S9-03 segurança da API pública | Concluída |
 | 10 | Proteção para exposição pública: S10-01 limite de taxa por cliente e por IP e admissão; S10-02 mensagens e contagem de espera na página; S10-03 limite de taxa atacado pela borda | Concluída |
 | 11 | Deploy do piloto: S11-01 imagem do Render com isolamento por processo e seccomp; S11-02 CORS, HSTS e página para a Vercel; S11-03 deploy depois da CI e verificações do piloto no ar | Concluída (falta a configuração das contas, `deploy/README.md`) |
-| 12 | Liberação do piloto e apresentação (Marco 2) | Próxima |
+| 12 | Marco 2: S12-01 exigência R-02 da Lista 1 e aviso de regras de questão; S12-02 teste de carga (recomenda o Starter); S12-03 guia do piloto e apresentação | Concluída |
+| 13 | Lista 2 e validação com gabaritos | Próxima |

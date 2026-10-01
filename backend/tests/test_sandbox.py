@@ -161,7 +161,7 @@ def test_worker_cannot_open_sockets_or_run_programs(sandboxed_pool: AnalyzerPool
 def test_sandboxed_worker_still_analyzes(sandboxed_pool: AnalyzerPool) -> None:
     result = asyncio.run(sandboxed_pool.analyze("for i in range(3):\n    print(i)\n", 1))
 
-    assert [v.rule_id for v in result.violations] == ["R-34", "R-35"]
+    assert [v.rule_id for v in result.violations] == ["R-02", "R-34", "R-35"]
     with pytest.raises(AnalysisLimitError):
         asyncio.run(sandboxed_pool.analyze("(" * 1_000 + ")" * 1_000, 1))
 

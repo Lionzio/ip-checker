@@ -12,6 +12,14 @@ async function setup() {
 }
 
 describe("App", () => {
+  it("avisa antes da verificação que as regras de questão ainda não valem", async () => {
+    await setup();
+
+    expect(
+      screen.getByText(/As regras específicas de cada questão\s+ainda não são consideradas/),
+    ).toBeInTheDocument();
+  });
+
   it("avisa que as respostas são simuladas", async () => {
     await setup();
 

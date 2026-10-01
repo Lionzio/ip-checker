@@ -1,0 +1,100 @@
+# Corpus golden: exigências (R-02, Q-05). A solução precisa usar o assunto da lista; sem ele, a
+# solução inteira recebe EXIGENCIA (linha 1). Lista 1: if (com ou sem elif/else) ou ternário.
+# As exigências das Listas 2 a 6 entram nas Sprints 13 e 16.
+
+- id: R-02-without-conditional-L1
+  rule: R-02
+  list: 1
+  code: |
+    n = int(input())
+    print(n * 2)
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-if-satisfies-L1
+  rule: R-02
+  list: 1
+  code: |
+    n = int(input())
+    if n % 2 == 0:
+        print("par")
+  expect: []
+
+- id: R-02-if-elif-else-satisfies-L1
+  rule: R-02
+  list: 1
+  code: |
+    nota = float(input())
+    if nota >= 7:
+        print("Aprovado")
+    elif nota >= 3:
+        print("Final")
+    else:
+        print("Reprovado")
+  expect: []
+
+- id: R-02-ternary-satisfies-L1
+  rule: R-02
+  list: 1
+  code: |
+    n = int(input())
+    print("par" if n % 2 == 0 else "ímpar")
+  expect: []
+
+- id: R-02-if-deep-in-the-code-satisfies-L1
+  rule: R-02
+  list: 1
+  code: |
+    a = int(input())
+    b = int(input())
+    c = a + b
+    d = c * 2
+    resultado = "alto" if d > 10 else "baixo"
+    print(resultado)
+  expect: []
+
+- id: R-02-if-in-string-does-not-count-L1
+  rule: R-02
+  list: 1
+  code: |
+    print("if x > 0:")
+  # Um if dentro de texto não é um comando condicional.
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-if-in-comment-does-not-count-L1
+  rule: R-02
+  list: 1
+  code: |
+    # if x > 0:
+    print("oi")
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-if-does-not-hide-a-general-prohibition-L1
+  rule: R-02
+  list: 1
+  code: |
+    try:
+        x = int(input())
+        if x > 0:
+            print(x)
+    except ValueError:
+        print("inválido")
+  # A exigência está cumprida, mas o try anula a questão do mesmo jeito.
+  expect: [R-06 ANULACAO 1, R-04 NAO_CONSTA 5]
+
+- id: R-02-loop-without-if-L1
+  rule: R-02
+  list: 1
+  code: |
+    for i in range(3):
+        print(i)
+  # Fora da lista e sem o assunto da Lista 1.
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 1, R-35 FORA_DA_LISTA 1]
+
+- id: R-02-not-yet-required-in-L2
+  rule: R-02
+  list: 2
+  code: |
+    for i in range(3):
+        print(i)
+  # A exigência da Lista 2 (for/while) entra na Sprint 13; este código já a cumpriria.
+  expect: []

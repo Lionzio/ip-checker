@@ -111,8 +111,14 @@ def test_violation_end_to_end(api: TestClient) -> None:
     body = post(api, "x = 1\nfor i in range(3):\n    print(i)\n").json()
 
     assert body["status"] == "invalid"
-    assert [(v["rule_id"], v["line"]) for v in body["violations"]] == [("R-34", 2), ("R-35", 2)]
-    assert body["violations"][0]["construct"] == "node:For"
+    # Sem if, a Lista 1 também cobra o assunto da lista (R-02), sempre primeiro.
+    assert [(v["rule_id"], v["line"]) for v in body["violations"]] == [
+        ("R-02", 1),
+        ("R-34", 2),
+        ("R-35", 2),
+    ]
+    assert body["violations"][0]["category"] == "EXIGENCIA"
+    assert body["violations"][1]["construct"] == "node:For"
 
 
 def test_syntax_error_end_to_end(api: TestClient) -> None:
