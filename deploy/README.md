@@ -36,9 +36,10 @@ O analyzer não publica porta na máquina. Para falar direto com ele, entre na r
 docker compose -f deploy/compose.yaml exec analyzer python -c "import json, urllib.request; r = urllib.request.Request('http://127.0.0.1:8001/internal/analyze', data=json.dumps({'code': 'for i in range(3):\n    print(i)\n', 'list_number': 1}).encode(), headers={'Content-Type': 'application/json'}); print(urllib.request.urlopen(r).read().decode())"
 ```
 
-Rodar a suíte de segurança: isolamento e submissões maliciosas. Ela sobe só o analyzer num projeto
-próprio (`ipc-security-test`, sem porta nenhuma, então convive com o compose acima), cria um
-contêiner cliente na rede interna, ataca o analyzer e derruba tudo no final:
+Rodar a suíte de segurança (isolamento, submissões maliciosas e API pública). Ela sobe o compose
+inteiro num projeto próprio (`ipc-security-test`, com a borda na porta 18180, então convive com o
+compose acima), cria dois contêineres clientes, um na rede interna e outro na da borda, ataca e
+derruba tudo no final:
 
 ```bash
 cd backend && IPC_SECURITY_TESTS=1 uv run pytest tests/security --no-cov -v
@@ -110,8 +111,24 @@ rede interna.
 | 10 | 60 requisições concorrentes com marcadores distintos | Cada resposta traz só o próprio marcador |
 | 12 | Depois de tudo | Health 200, nenhum worker zumbi, 2 workers vivos, logs sem `Traceback` nem 500 |
 
-O item 11 é o isolamento da seção anterior. Os itens 1 e 13 a 15 dependem da API, do proxy e da
-telemetria e entram nas Sprints 9 a 14.
+O item 11 é o isolamento da seção anterior.
+
+## API pública sob ataque (S9-03)
+
+`backend/tests/security/test_api_limits.py` ataca pela borda, a partir de um contêiner só na
+`edge_net`, como um navegador: Caddy, depois `api`, depois `analyzer`.
+
+| Item | O que é enviado | O que se espera |
+|---|---|---|
+| 1 | Código de 51.200 e 51.201 bytes | 200 e 413 `PAYLOAD_TOO_LARGE`, respondido pela API |
+| 1 | Cabeçalhos de um corpo de 200 KB e só os primeiros bytes dele, com e sem `Content-Length` | 413 e 411 imediatos, da borda: ela responde sem esperar o resto, e a API não recebe nada |
+| 3 | 15 corpos malformados (nulo, controle, surrogate, UTF-8 inválido, JSON quebrado, tipos errados, campo extra…) | 422 `INVALID_INPUT` |
+| 4 | 1.000 níveis de `(`, `[` ou `not` | 422 `ANALYSIS_LIMIT` em ≤ 2,5 s |
+| 13 | Marcador canário no código, na URL, na query e em cabeçalhos; IP falso em `X-Forwarded-For` | 0 ocorrências do marcador, do IP falso e do IP real do cliente nos logs dos três serviços; `docker diff` vazio; nada nas áreas em memória |
+| Final | `/ready` pela borda | 200 |
+
+O item 13 ainda não cobre o banco, que entra na Sprint 14. O item 14 (Trivy, pip-audit, npm audit e
+gitleaks) ainda não tem sprint no roadmap, e o 15 (TLS, HSTS e CORS) vale a partir da Sprint 11.
 
 ### Por que `/tmp` e `/dev/shm` são graváveis
 

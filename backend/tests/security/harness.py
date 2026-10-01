@@ -1,9 +1,10 @@
 """Infraestrutura da suíte de segurança: Docker, cliente HTTP na rede interna e sondas.
 
-A suíte testa o que vai para produção: o ``deploy/compose.yaml`` real, sem nenhuma porta aberta.
-Por isso as requisições partem de um contêiner cliente ligado só à ``analyzer_net``, como a
-``api`` fará a partir da Sprint 8. Os pedidos seguem pela entrada padrão, sem limite de tamanho
-de linha de comando, e as respostas voltam em JSON com o tempo medido dentro da rede.
+A suíte testa o que vai para produção: o ``deploy/compose.yaml`` real (web, api e analyzer). As
+requisições partem de contêineres clientes: um só na ``analyzer_net``, no papel da ``api``, para
+atacar o analyzer; outro só na ``edge_net``, no papel do navegador, para atacar a borda pública.
+Os pedidos seguem pela entrada padrão, sem limite de tamanho de linha de comando, e as respostas
+voltam em JSON com o tempo medido dentro da rede.
 """
 
 from __future__ import annotations
@@ -23,9 +24,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 COMPOSE_FILE = REPO_ROOT / "deploy" / "compose.yaml"
 PROJECT = "ipc-security-test"
 NETWORK = f"{PROJECT}_analyzer_net"
+EDGE_NETWORK = f"{PROJECT}_edge_net"
 CLIENT = f"{PROJECT}-client"
+PUBLIC_CLIENT = f"{PROJECT}-public-client"
 IMAGE = "ip-checker-backend:local"
 ANALYZER_URL = "http://analyzer:8001"
+WEB_URL = "http://web:8080"
+#: Porta da borda nesta suíte, diferente da 8180 do compose de desenvolvimento.
+HTTP_PORT = "18180"
 #: UID e GID do usuário do serviço na imagem.
 UID_GID = 10001
 #: Workers do pool no compose (PoolConfig padrão).
@@ -52,6 +58,7 @@ def docker(*args: str, timeout: float = 60, input: str | None = None, check: boo
         input=input,
         timeout=timeout,
         check=False,
+        env={**os.environ, "IPC_HTTP_PORT": HTTP_PORT},
     )
     if check and result.returncode != 0:
         pytest.fail(f"docker {' '.join(args[:3])} falhou ({result.returncode}):\n{result.stderr}")
@@ -67,8 +74,12 @@ def probe(container: str, code: str, *args: str) -> Any:
     return json.loads(docker("exec", container, "python", "-c", code, *args))
 
 
+def service_logs(*services: str) -> str:
+    return compose("logs", "--no-color", *services)
+
+
 def analyzer_logs() -> str:
-    return compose("logs", "--no-color", "analyzer")
+    return service_logs("analyzer")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -81,6 +92,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 job = json.load(sys.stdin)
 
+KEPT_HEADERS = ("x-request-id", "retry-after", "content-type")
+
 def call(request):
     if request.get("raw") is not None:
         data = base64.b64decode(request["raw"])
@@ -88,24 +101,27 @@ def call(request):
         data = json.dumps(request["json"]).encode()
     else:
         data = None
+    if data is not None and request.get("chunked"):
+        data = iter([data])  # sem Content-Length: o urllib envia em partes (chunked)
     http = urllib.request.Request(
         job["base"] + request["path"],
         data=data,
         method=request["method"],
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **request.get("headers", {})},
     )
     start = time.perf_counter()
     try:
         with urllib.request.urlopen(http, timeout=30) as response:
-            status, raw = response.status, response.read()
+            status, raw, headers = response.status, response.read(), response.headers
     except urllib.error.HTTPError as error:
-        status, raw = error.code, error.read()
+        status, raw, headers = error.code, error.read(), error.headers
     elapsed_ms = (time.perf_counter() - start) * 1000
     try:
         body = json.loads(raw)
     except ValueError:
         body = raw.decode("utf-8", "replace")
-    return {"status": status, "body": body, "elapsed_ms": elapsed_ms}
+    kept = {name: headers[name] for name in KEPT_HEADERS if headers.get(name) is not None}
+    return {"status": status, "body": body, "elapsed_ms": elapsed_ms, "headers": kept}
 
 with ThreadPoolExecutor(max_workers=job["concurrency"]) as executor:
     print(json.dumps(list(executor.map(call, job["requests"]))))
@@ -117,6 +133,8 @@ class Answer:
     status: int
     body: Any
     elapsed_ms: float
+    #: Só X-Request-Id, Retry-After e Content-Type, com nomes em minúsculas.
+    headers: dict[str, str]
 
     @property
     def error_code(self) -> str | None:
@@ -139,8 +157,27 @@ def analyze_request(code: str, list_number: int = 1) -> dict[str, Any]:
     }
 
 
-def raw_request(body: bytes) -> dict[str, Any]:
-    return {"method": "POST", "path": "/internal/analyze", "raw": base64.b64encode(body).decode()}
+def validate_request(
+    code: str, list_number: int = 1, headers: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """Requisição à API pública, pela borda (5.2.2)."""
+    return {
+        "method": "POST",
+        "path": "/api/v1/validate",
+        "json": {"code": code, "list_number": list_number},
+        "headers": headers or {},
+    }
+
+
+def raw_request(
+    body: bytes, path: str = "/internal/analyze", *, chunked: bool = False
+) -> dict[str, Any]:
+    return {
+        "method": "POST",
+        "path": path,
+        "raw": base64.b64encode(body).decode(),
+        "chunked": chunked,
+    }
 
 
 HEALTH_REQUEST: dict[str, Any] = {"method": "GET", "path": "/internal/health"}
