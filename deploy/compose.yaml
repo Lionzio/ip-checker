@@ -1,8 +1,9 @@
 # Fase 0 (local) e Fase 2 (servidor do CIn): Docker Compose (ADR-03).
 #
-# Por enquanto só o analyzer (S6-01). A api entra na Sprint 8, ligada às redes analyzer_net (para
-# falar com o analyzer) e a uma rede pública; o analyzer nunca ganha porta publicada nem rota para
-# fora. Cada controle abaixo é conferido por backend/tests/test_container.py (NFR-07).
+# analyzer (S6-01): só na analyzer_net, sem porta publicada nem rota para fora. Cada controle é
+# conferido por backend/tests/security/test_isolation.py (NFR-07).
+# api (S8-01): fala com o analyzer pela analyzer_net e publica a porta 8100 só em 127.0.0.1. Na
+# Sprint 9, o Caddy passa a ficar na frente dela.
 #
 #     docker compose -f deploy/compose.yaml up --build -d --wait
 
@@ -13,7 +14,8 @@ services:
     build:
       context: ..
       dockerfile: backend/Dockerfile
-    image: ip-checker-analyzer:local
+    # A mesma imagem roda os dois serviços; cada um usa o seu comando.
+    image: ip-checker-backend:local
     user: "10001:10001"
     # Raiz do sistema de arquivos só leitura. O /tmp em memória existe porque o forkserver do pool
     # cria ali o socket pelo qual nascem os workers; noexec impede executar o que for gravado.
@@ -36,7 +38,54 @@ services:
     networks: [analyzer_net]
     restart: unless-stopped
 
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: ip-checker-backend:local
+    command:
+      - uvicorn
+      - ipc_api.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-server-header
+    environment:
+      IPC_ANALYZER_URL: http://analyzer:8001
+      IPC_ENABLED_LISTS: "1"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import sys, urllib.request; sys.exit(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status != 200)"
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 256m
+    memswap_limit: 256m
+    init: true
+    depends_on:
+      analyzer:
+        condition: service_healthy
+    # analyzer_net para chamar o analyzer; edge_net para publicar a porta (e, na Sprint 14, falar
+    # com o banco). A 8100 é a porta reservada do IP-Checker; só a própria máquina a alcança.
+    networks: [analyzer_net, edge_net]
+    ports:
+      - "127.0.0.1:${IPC_API_PORT:-8100}:8000"
+    restart: unless-stopped
+
 networks:
   # Sem gateway: os contêineres desta rede só falam entre si, nunca com a internet (NFR-07).
   analyzer_net:
     internal: true
+  edge_net: {}

@@ -1,0 +1,237 @@
+"""Contrato da API (S8-01, DoD: testes de contrato gerados do OpenAPI).
+
+1. O ``docs/openapi.json`` versionado é exatamente o que a aplicação gera.
+2. A API conversa com o analyzer de verdade (em memória, com o pool real): os fluxos principais
+   do 5.2.2 funcionam ponta a ponta.
+3. O schemathesis gera requisições a partir do ``docs/openapi.json`` e confere que cada resposta
+   está documentada, segue o esquema publicado e nunca é um 5xx.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Iterator
+from typing import Any
+
+import httpx2
+import pytest
+import schemathesis
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from hypothesis import HealthCheck, settings
+from schemathesis.checks import not_a_server_error
+from schemathesis.config import SchemathesisConfig
+
+from conftest import BASE_RULESET, REPO_ROOT
+from ipc_analyzer.runtime.pool import PoolConfig
+from ipc_analyzer.service.app import create_app as create_analyzer
+from ipc_analyzer.service.settings import AnalyzerSettings
+from ipc_api.app import create_app
+from ipc_api.openapi import build, render
+from ipc_api.settings import ApiSettings
+
+OPENAPI_FILE = REPO_ROOT / "docs" / "openapi.json"
+
+
+def test_openapi_contract_is_up_to_date() -> None:
+    committed = json.loads(OPENAPI_FILE.read_text(encoding="utf-8"))
+
+    assert committed == build(), (
+        "docs/openapi.json está desatualizado. Regenere a partir de backend/ com: "
+        "uv run python -m ipc_api.openapi ../docs/openapi.json"
+    )
+    assert OPENAPI_FILE.read_text(encoding="utf-8") == render()
+
+
+def test_every_documented_error_uses_the_error_envelope() -> None:
+    contract = build()
+    for path, operations in contract["paths"].items():
+        for method, operation in operations.items():
+            for status, response in operation["responses"].items():
+                if status.startswith(("4", "5")):
+                    schema = response["content"]["application/json"]["schema"]
+                    assert schema == {"$ref": "#/components/schemas/ErrorResponse"}, (method, path)
+
+
+# ---------------------------------------------------------------------------------------------
+# API + analyzer de verdade, em memória
+# ---------------------------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def analyzer() -> Iterator[TestClient]:
+    settings = AnalyzerSettings(ruleset_path=BASE_RULESET, pool=PoolConfig(workers=1))
+    with TestClient(create_analyzer(settings)) as client:
+        yield client
+
+
+@pytest.fixture(scope="module")
+def api_app(analyzer: TestClient) -> FastAPI:
+    """A API com a rede trocada por uma ponte direta para o analyzer em memória."""
+
+    def bridge(request: httpx2.Request) -> httpx2.Response:
+        answer = analyzer.request(
+            request.method,
+            request.url.path,
+            content=request.content,
+            headers={"Content-Type": "application/json"},
+        )
+        return httpx2.Response(
+            answer.status_code,
+            content=answer.content,
+            headers={"Content-Type": answer.headers["content-type"]},
+        )
+
+    return create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(bridge))
+
+
+@pytest.fixture(scope="module")
+def api(api_app: FastAPI) -> Iterator[TestClient]:
+    with TestClient(api_app) as client:
+        yield client
+
+
+def post(api: TestClient, code: str, list_number: int = 1) -> httpx2.Response:
+    return api.post("/api/v1/validate", json={"code": code, "list_number": list_number})
+
+
+def test_valid_code_end_to_end(api: TestClient) -> None:
+    response = post(api, "nota = float(input())\nif nota >= 7:\n    print('Aprovado')\n")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "valid"
+
+
+def test_violation_end_to_end(api: TestClient) -> None:
+    body = post(api, "x = 1\nfor i in range(3):\n    print(i)\n").json()
+
+    assert body["status"] == "invalid"
+    assert [(v["rule_id"], v["line"]) for v in body["violations"]] == [("R-34", 2), ("R-35", 2)]
+    assert body["violations"][0]["construct"] == "node:For"
+
+
+def test_syntax_error_end_to_end(api: TestClient) -> None:
+    body = post(api, "if x > 0\n    print(x)\n").json()
+
+    assert body["status"] == "syntax_error"
+    assert body["syntax_error"] == {"line": 1, "col": 9, "message": "faltou ':'"}
+
+
+def test_analysis_limit_end_to_end(api: TestClient) -> None:
+    response = post(api, "(" * 1_000 + ")" * 1_000)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "ANALYSIS_LIMIT"
+
+
+def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
+    # A API não conhece caracteres de controle; o analyzer recusa, e o aluno recebe o motivo.
+    response = post(api, "x = 1\x1b\n")
+
+    assert response.status_code == 422
+    assert response.json()["error"] == {
+        "code": "INVALID_INPUT",
+        "message": "O código contém um caractere de controle inválido (U+001B) na linha 1.",
+        "retry_after_s": None,
+    }
+
+
+def test_lists_and_ready_end_to_end(api: TestClient) -> None:
+    assert api.get("/api/v1/lists").json() == [{"number": 1, "title": "Comandos condicionais"}]
+    assert api.get("/ready").json() == {"status": "ready", "ruleset_version": "2026.2.0"}
+
+
+# ---------------------------------------------------------------------------------------------
+# Testes gerados do OpenAPI (schemathesis)
+# ---------------------------------------------------------------------------------------------
+
+#: Um corpo válido pelo esquema ainda pode ser recusado pelas regras do contrato (código vazio
+#: ou grande demais, lista não habilitada, questão não cadastrada, análise acima dos limites).
+CONTRACT_CONFIG = SchemathesisConfig.from_dict(
+    {"checks": {"positive_data_acceptance": {"expected-statuses": ["2xx", "413", "422"]}}}
+)
+
+
+@pytest.fixture(scope="module")
+def contract(api_app: FastAPI) -> Any:
+    schema = schemathesis.openapi.from_dict(
+        json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
+    )
+    schema.app = api_app
+    return schema
+
+
+schema = schemathesis.pytest.from_fixture("contract")
+
+
+@schema.parametrize()
+@settings(max_examples=60, deadline=None, suppress_health_check=list(HealthCheck))
+def test_responses_follow_the_published_contract(case: Any) -> None:
+    case.call_and_validate()
+
+
+# Cada status documentado do 5.2.2, provocado de propósito e validado contra o OpenAPI publicado.
+DOCUMENTED_CASES = {
+    "200-valid": ({"code": "x = 1\n", "list_number": 1}, 200, None),
+    "200-invalid": ({"code": "for i in range(3):\n    print(i)\n", "list_number": 1}, 200, None),
+    "200-syntax-error": ({"code": "if x\n    y = 1\n", "list_number": 1}, 200, None),
+    "413": ({"code": "#" + "a" * 51_200, "list_number": 1}, 413, "PAYLOAD_TOO_LARGE"),
+    "422-invalid-input": ({"code": "", "list_number": 1}, 422, "INVALID_INPUT"),
+    "422-list-not-enabled": ({"code": "x = 1\n", "list_number": 2}, 422, "LIST_NOT_ENABLED"),
+    "422-unknown-question": (
+        {"code": "x = 1\n", "list_number": 1, "question_id": "L1-Q1"},
+        422,
+        "UNKNOWN_QUESTION",
+    ),
+    "422-analysis-limit": (
+        {"code": "(" * 1_000 + ")" * 1_000, "list_number": 1},
+        422,
+        "ANALYSIS_LIMIT",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", DOCUMENTED_CASES, ids=list(DOCUMENTED_CASES))
+def test_every_documented_status_follows_the_contract(contract: Any, name: str) -> None:
+    body, status, error_code = DOCUMENTED_CASES[name]
+    case = contract["/api/v1/validate"]["POST"].Case(body=body, media_type="application/json")
+
+    response = case.call_and_validate()
+
+    assert response.status_code == status
+    if error_code is not None:
+        assert response.json()["error"]["code"] == error_code
+
+
+@pytest.fixture(scope="module")
+def contract_without_analyzer() -> Any:
+    def refuse(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ConnectError("analyzer parado", request=request)
+
+    schema = schemathesis.openapi.from_dict(
+        json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
+    )
+    schema.app = create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(refuse))
+    return schema
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "body"),
+    [
+        ("/api/v1/validate", "POST", {"code": "x = 1\n", "list_number": 1}),
+        ("/api/v1/lists", "GET", None),
+        ("/ready", "GET", None),
+    ],
+)
+def test_unavailable_analyzer_follows_the_contract(
+    contract_without_analyzer: Any, path: str, method: str, body: dict[str, Any] | None
+) -> None:
+    operation = contract_without_analyzer[path][method]
+    case = operation.Case(body=body, media_type="application/json") if body else operation.Case()
+
+    # O 503 ANALYZER_UNAVAILABLE é documentado; as demais checagens (status documentado, esquema
+    # do corpo, cabeçalhos) continuam valendo. 5xx genérico segue proibido no teste gerado acima.
+    response = case.call_and_validate(excluded_checks=[not_a_server_error])
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "ANALYZER_UNAVAILABLE"

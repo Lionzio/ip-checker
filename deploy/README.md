@@ -1,34 +1,50 @@
 # deploy
 
-Configuração de implantação do IP-Checker. Hoje contém o `analyzer` endurecido das Fases 0 (local)
-e 2 (servidor do CIn), entregue na S6-01. A `api` entra na Sprint 8 e o proxy na Sprint 9. O piloto
-no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por processo (ADR-03).
+Configuração de implantação do IP-Checker nas Fases 0 (local) e 2 (servidor do CIn): o `analyzer`
+endurecido (S6-01) e a `api` pública (S8-01), da mesma imagem. O proxy (Caddy) entra na Sprint 9.
+O piloto no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por processo
+(ADR-03).
+
+| Serviço | Redes | Porta na máquina | Endurecimento |
+|---|---|---|---|
+| `analyzer` | `analyzer_net` (interna, sem saída) | nenhuma | NFR-07 completo, testado (abaixo) |
+| `api` | `analyzer_net` e `edge_net` | `127.0.0.1:8100` | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
 
 ## Uso
 
 Todos os comandos rodam na raiz do repositório.
 
-Subir o analyzer e esperar o healthcheck:
+Subir tudo e esperar os healthchecks (a `api` só sobe depois que o `analyzer` está saudável):
 
 ```bash
 docker compose -f deploy/compose.yaml up --build -d --wait
 ```
 
-O analyzer não publica porta na máquina. Para mandar uma análise, entre na rede dele:
+A API responde em `http://127.0.0.1:8100`:
+
+```bash
+curl -s http://127.0.0.1:8100/ready
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:8100/api/v1/validate -H "Content-Type: application/json" -d '{"code": "for i in range(3):\n    print(i)\n", "list_number": 1}'
+```
+
+O analyzer não publica porta na máquina. Para falar direto com ele, entre na rede dele:
 
 ```bash
 docker compose -f deploy/compose.yaml exec analyzer python -c "import json, urllib.request; r = urllib.request.Request('http://127.0.0.1:8001/internal/analyze', data=json.dumps({'code': 'for i in range(3):\n    print(i)\n', 'list_number': 1}).encode(), headers={'Content-Type': 'application/json'}); print(urllib.request.urlopen(r).read().decode())"
 ```
 
-Rodar a suíte de segurança: isolamento e submissões maliciosas. Ela sobe um projeto próprio
-(`ipc-security-test`) e um contêiner cliente na rede interna, ataca o analyzer e derruba tudo no
-final:
+Rodar a suíte de segurança: isolamento e submissões maliciosas. Ela sobe só o analyzer num projeto
+próprio (`ipc-security-test`, sem porta nenhuma, então convive com o compose acima), cria um
+contêiner cliente na rede interna, ataca o analyzer e derruba tudo no final:
 
 ```bash
 cd backend && IPC_SECURITY_TESTS=1 uv run pytest tests/security --no-cov -v
 ```
 
-Derrubar o analyzer:
+Derrubar tudo:
 
 ```bash
 docker compose -f deploy/compose.yaml down

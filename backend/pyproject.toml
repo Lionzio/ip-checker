@@ -7,6 +7,7 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "fastapi>=0.142.2",
+  "httpx2>=2.13.1",
   "pebble>=5.2.2",
   "pydantic>=2.10,<3",
   "pyyaml>=6.0.2,<7",
@@ -15,11 +16,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "httpx2>=2.13.1",
+  "import-linter>=2.15",
   "mypy>=1.14",
   "pytest>=8.3",
   "pytest-cov>=6.0",
   "ruff>=0.9",
+  "schemathesis>=4.28.0",
   "types-pyyaml>=6.0.12",
 ]
 
@@ -28,7 +30,7 @@ requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ipc_analyzer"]
+packages = ["src/ipc_analyzer", "src/ipc_api"]
 
 [tool.ruff]
 line-length = 100
@@ -54,4 +56,26 @@ files = ["src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --cov=ipc_analyzer --cov-report=term-missing --cov-fail-under=90"
+addopts = "-ra --strict-markers --cov=ipc_analyzer --cov=ipc_api --cov-report=term-missing --cov-fail-under=90"
+
+# Fronteiras de arquitetura verificadas na CI (NFR-09, DoD): `uv run lint-imports`.
+[tool.importlinter]
+root_packages = ["ipc_api", "ipc_analyzer"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "A API nunca analisa código: ipc_api não importa ast"
+type = "forbidden"
+source_modules = ["ipc_api"]
+forbidden_modules = ["ast"]
+
+[[tool.importlinter.contracts]]
+name = "API e analyzer são serviços separados: só conversam por HTTP"
+type = "independence"
+modules = ["ipc_api", "ipc_analyzer"]
+
+[[tool.importlinter.contracts]]
+name = "O motor de regras é puro: não importa o serviço, o pool nem frameworks web"
+type = "forbidden"
+source_modules = ["ipc_analyzer.engine"]
+forbidden_modules = ["ipc_analyzer.service", "ipc_analyzer.runtime", "fastapi", "starlette", "uvicorn", "pebble", "httpx2"]

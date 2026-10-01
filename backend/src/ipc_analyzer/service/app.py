@@ -1,4 +1,5 @@
-"""Serviço interno do analisador (S5-01): ``POST /internal/analyze`` e ``GET /internal/health``.
+"""Serviço interno do analisador: ``POST /internal/analyze``, ``GET /internal/health`` (S5-01) e
+``GET /internal/ruleset/manifest`` (S8-01).
 
 Não tem documentação pública nem segredos e só deve ser alcançável pela API, numa rede interna
 sem saída para a internet (NFR-07). A análise sempre acontece num worker do pool, nunca aqui.
@@ -98,6 +99,21 @@ class AnalyzeResponse(BaseModel):
         )
 
 
+class ListOut(BaseModel):
+    number: int
+    title: str
+
+
+class ManifestResponse(BaseModel):
+    """O que a API precisa saber do ruleset ativo sem carregá-lo (ela nunca lê regras)."""
+
+    ruleset_version: str
+    ruleset_sha256: str
+    period: str
+    target_python: str
+    lists: list[ListOut]
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     ruleset_version: str
@@ -177,6 +193,19 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             )
         result = await pool.analyze(body.code, body.list_number)
         return AnalyzeResponse.from_result(result)
+
+    @app.get("/internal/ruleset/manifest")
+    async def manifest(
+        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
+    ) -> ManifestResponse:
+        data = ruleset.ruleset
+        return ManifestResponse(
+            ruleset_version=data.ruleset_version,
+            ruleset_sha256=ruleset.sha256,
+            period=data.period,
+            target_python=data.target_python,
+            lists=[ListOut(number=n, title=title) for n, title in sorted(data.lists.items())],
+        )
 
     @app.get("/internal/health", response_model=None)
     async def health(

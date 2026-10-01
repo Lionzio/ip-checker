@@ -24,7 +24,7 @@ COMPOSE_FILE = REPO_ROOT / "deploy" / "compose.yaml"
 PROJECT = "ipc-security-test"
 NETWORK = f"{PROJECT}_analyzer_net"
 CLIENT = f"{PROJECT}-client"
-IMAGE = "ip-checker-analyzer:local"
+IMAGE = "ip-checker-backend:local"
 ANALYZER_URL = "http://analyzer:8001"
 #: UID e GID do usuário do serviço na imagem.
 UID_GID = 10001

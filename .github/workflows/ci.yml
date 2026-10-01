@@ -35,7 +35,9 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy (strict)
         run: uv run mypy
-      - name: Pytest (ruleset, guardas e cobertura >= 90%)
+      - name: Fronteiras de arquitetura (import-linter)
+        run: uv run lint-imports
+      - name: Pytest (motor, API, contrato OpenAPI e cobertura >= 90%)
         run: uv run pytest
 
   security:

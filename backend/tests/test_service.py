@@ -36,6 +36,18 @@ def test_health_reports_the_loaded_ruleset(client: TestClient) -> None:
     assert len(body["ruleset_sha256"]) == 64
 
 
+def test_manifest_describes_the_active_ruleset(client: TestClient) -> None:
+    response = client.get("/internal/ruleset/manifest")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ruleset_version"] == "2026.2.0"
+    assert body["period"] == "2026.2"
+    assert len(body["ruleset_sha256"]) == 64
+    assert [item["number"] for item in body["lists"]] == [1, 2, 3, 4, 5, 6]
+    assert body["lists"][0] == {"number": 1, "title": "Comandos condicionais"}
+
+
 def test_valid_code(client: TestClient) -> None:
     response = client.post("/internal/analyze", json={"code": "x = 1\n", "list_number": 1})
 
