@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+html {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

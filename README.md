@@ -23,7 +23,7 @@ professores e é aplicado no Supabase independentemente do deploy do backend.
 
 ## Desenvolvimento
 
-Pré-requisito: [uv](https://docs.astral.sh/uv/) (instala o Python 3.13 sozinho).
+Pré-requisitos: [uv](https://docs.astral.sh/uv/) (instala o Python 3.13 sozinho) e Node.js 24.
 
 ```bash
 cd backend
@@ -31,8 +31,14 @@ uv sync
 uv run pytest
 ```
 
-A CI (`.github/workflows/ci.yml`) roda ruff, mypy strict e pytest em todo PR e em todo push na
-`develop` e na `main`.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
+ruff, mypy strict e pytest no backend; ESLint, TypeScript, Vitest e build no frontend.
 
 ## Fluxo de branches
 
@@ -60,4 +66,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | Sprint | Entrega | Estado |
 |---|---|---|
 | 1 | S1-01 monorepo e CI; S1-02 modelo do ruleset, loader imutável e R-03…R-36 | Concluída |
-| 2 | S2-01 parser seguro e limites; S2-02 esqueleto da SPA | Próxima |
+| 2 | S2-01 parser seguro e limites; S2-02 esqueleto da SPA com cliente simulado | Concluída |
+| 3 | S3-01 extrator de fatos e ligações de nomes | Próxima |
