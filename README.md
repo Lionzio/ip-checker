@@ -14,7 +14,7 @@ O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
 | `frontend/` | SPA React + Vite + TypeScript | Sprint 2 |
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint e matriz de mapeamento R-xx → fatos | Sprint 1 |
-| `deploy/` | Compose, Caddy, supervisord e configuração do Render | Sprint 6 |
+| `deploy/` | Compose do `analyzer` endurecido; depois `api`, proxy e configuração do Render | Sprint 6 |
 | `database/` | Migrações SQL da telemetria (Supabase) | Sprint 14 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
@@ -37,8 +37,28 @@ npm install
 npm run dev
 ```
 
+O `analyzer` endurecido em Docker, com os testes de isolamento, está em
+[`deploy/README.md`](deploy/README.md).
+
 A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
-ruff, mypy strict e pytest no backend; ESLint, TypeScript, Vitest e build no frontend.
+
+- backend: ruff, mypy strict e pytest;
+- contêiner: build da imagem e testes de isolamento do NFR-07;
+- frontend: ESLint, TypeScript, Vitest e build.
+
+### Portas locais
+
+O IP-Checker usa portas próprias, longe das padrão (5173 do Vite, 8000 do uvicorn, 5432 do
+PostgreSQL), que outros projetos já ocupam na máquina de desenvolvimento. O Vite usa `strictPort`:
+se a porta estiver ocupada, ele falha em vez de pular para outra.
+
+| Serviço | Porta | Observação |
+|---|---|---|
+| SPA (`npm run dev`) | 5180 | |
+| SPA (`npm run preview`) | 5181 | |
+| `analyzer` local, sem Docker | 8001 | Só em `127.0.0.1` |
+| `analyzer` em Docker | nenhuma | Só na rede interna `analyzer_net` |
+| API pública (Sprint 8) | 8100 | Reservada |
 
 ## Fluxo de branches
 
@@ -70,4 +90,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 3 | S3-01 extrator de fatos e ligações de nomes (resistente a evasão por sombreamento) | Concluída |
 | 4 | S4-01 avaliador de política v1; S4-02 corpus golden (120 casos, 34 de evasão) | Concluída |
 | 5 | S5-01 analisador isolado: pool de workers com limites calibrados e serviço interno | Concluída |
-| 6 | S6-01 contêiner endurecido do analisador e rede sem saída | Próxima |
+| 6 | S6-01 contêiner endurecido do analisador, rede sem saída e testes de isolamento na CI | Concluída |
+| 7 | S7-01 suíte de segurança contra o analisador | Próxima |

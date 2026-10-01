@@ -38,6 +38,28 @@ jobs:
       - name: Pytest (ruleset, guardas e cobertura >= 90%)
         run: uv run pytest
 
+  container:
+    name: Contêiner do analyzer (isolamento, NFR-07)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Instalar Python 3.13 e dependências de teste
+        working-directory: backend
+        run: |
+          uv python install 3.13
+          uv sync --locked
+      - name: Build da imagem
+        run: docker compose -f deploy/compose.yaml build
+      - name: Testes de isolamento (docker inspect e sondas de dentro do contêiner)
+        working-directory: backend
+        env:
+          IPC_CONTAINER_TESTS: "1"
+        run: uv run pytest tests/test_container.py --no-cov -v
+
   frontend:
     name: Frontend (lint, tipos, testes, build)
     runs-on: ubuntu-latest

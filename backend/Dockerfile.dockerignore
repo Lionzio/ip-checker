@@ -1,0 +1,10 @@
+# Contexto de build do backend/Dockerfile (a raiz do repositório). Lista de permissão: só entra o
+# que a imagem precisa. Gabaritos, .env, .git, testes e o frontend nunca chegam ao build.
+*
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/README.md
+!backend/src/
+!rulesets/
+**/__pycache__/
+**/*.py[cod]
