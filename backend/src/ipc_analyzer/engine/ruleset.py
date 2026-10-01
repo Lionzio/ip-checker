@@ -36,9 +36,8 @@ from pydantic import (
 # Vocabulário de fatos (5.2.3): "<tipo>:<nome>", por exemplo "node:For" ou "kwarg:print.end".
 # ---------------------------------------------------------------------------
 
-_FACT_RE = re.compile(
-    r"(?P<kind>[a-z]+):(?P<name>\*\*|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
-)
+# Nomes seguem as regras de identificador do Python, inclusive com acentos (ex.: method:média).
+_FACT_RE = re.compile(r"(?P<kind>[a-z]+):(?P<name>\*\*|[^\W\d]\w*(?:\.[^\W\d]\w*)?)")
 
 # Classes abstratas do módulo ast: nunca aparecem como nó concreto na árvore.
 _ABSTRACT_NODES = frozenset(
@@ -114,8 +113,8 @@ _FACT_CHECKS: Mapping[str, Callable[[str], bool]] = MappingProxyType(
         "method": lambda name: "." not in name and name != "**",
         "kwarg": lambda name: name == "**" or name.count(".") == 1,
         "const": lambda name: name in _CONST_TYPES,
-        "param": lambda name: name in {"vararg", "kwarg", "default"},
-        "call": lambda name: name in {"user", "star_args"},
+        "param": lambda name: name in {"vararg", "kwarg", "default", "kwonly", "posonly"},
+        "call": lambda name: name in {"user", "user_kwarg", "star_args"},
         "return": lambda name: name == "multi",
         "target": lambda name: name == "for_unpack",
         "derived": lambda name: name == "recursion",
@@ -134,6 +133,15 @@ def _validate_fact(value: str) -> str:
     if not check(match["name"]):
         raise ValueError(f"fato inexistente {value!r}")
     return value
+
+
+def is_valid_fact(value: str) -> bool:
+    """Indica se o fato pertence ao vocabulário que as regras podem casar."""
+    try:
+        _validate_fact(value)
+    except ValueError:
+        return False
+    return True
 
 
 _PLACEHOLDERS = frozenset({"allowed_from_list", "construct"})

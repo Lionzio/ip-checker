@@ -14,9 +14,26 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   `node:Constant` (decidido por `const:*`), `node:Attribute` (decidido por `method:*`),
   `node:arguments`, `node:arg`, `node:comprehension`, `node:alias` e `node:ExceptHandler`.
 - **Fatos contextuais substituem o fato genérico** do mesmo nó: `*x` numa chamada gera
-  `call:star_args` (e não `node:Starred`); `a, b` como alvo de `for` com `zip` gera
+  `call:star_args` (e não `node:Starred`); `a, b` como alvo de qualquer `for` gera
   `target:for_unpack` (e não `node:Tuple`).
+- **Fatos que acompanham o nó**: `call:user` (chamada de função do aluno), `call:user_kwarg`
+  (argumento nomeado nessa chamada, ex.: `f(x=1)`), `return:multi` (`return a, b`) e os de
+  parâmetro: `param:vararg`, `param:kwarg`, `param:default`, `param:kwonly` (`def f(*, k)`) e
+  `param:posonly` (`def f(a, /)`).
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
+- **Built-in ou nome do aluno** (`engine/symbols.py`): `len = 3` seguido de `print(len)` não gera
+  `builtin:len`. A resolução segue a ordem de execução, para impedir que o aluno esconda um
+  built-in proibido atribuindo o mesmo nome depois: `eval('1')` seguido de `eval = 2` ainda gera
+  `builtin:eval`, e em `len = len(x)` o `len(x)` é o built-in. Dentro de funções, um built-in que
+  não é local continua sendo o built-in.
+
+## Casos a observar (decidir antes da Sprint 15)
+
+| Caso | Hoje | Pergunta |
+|---|---|---|
+| `if __name__ == "__main__":` | Gera `builtin:__name__` → R-04 (não consta) | As listas usam esse padrão? Se sim, liberar a partir da L4. |
+| `f(x=1)` com função do aluno | `call:user_kwarg` → R-04 | A R-59 ("parâmetros") inclui argumentos nomeados na chamada? |
+| `for a, b in pares:` na L3 ou depois | `target:for_unpack` | A R-40 (tuplas) deve casar `target:for_unpack` a partir da L3, além da R-37 (zip, L2–L4). |
 
 ## Decisões aplicadas
 
