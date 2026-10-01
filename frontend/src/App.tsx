@@ -8,7 +8,7 @@ import type { ListInfo } from "./types/api";
 
 interface AppProps {
   client: ValidationClient;
-  /** Mostra o aviso de que as respostas são simuladas (cliente do MVP). */
+  /** Mostra o aviso de que as respostas são simuladas (cliente simulado). */
   demoMode?: boolean;
 }
 
@@ -54,8 +54,9 @@ export function App({ client, demoMode = false }: AppProps) {
             role="note"
             className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
           >
-            Modo demonstração: as respostas são simuladas, sem análise real. A integração com o
-            motor de regras entra na Sprint 9.
+            Modo demonstração: as respostas são simuladas, sem análise real. Use
+            <code className="mx-1"># simular: lento</code> (ou sobrecarga, limite, indisponivel,
+            rede) para ver os estados de erro.
           </p>
         )}
 

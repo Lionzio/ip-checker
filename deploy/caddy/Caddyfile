@@ -1,0 +1,85 @@
+# Borda do IP-Checker nas Fases 0 e 2 (5.2.1, C2; S9-02): serve a SPA e repassa a API na mesma
+# origem, então não há CORS. Na Fase 0 (local) responde em HTTP só para esta máquina; o TLS e o
+# HSTS entram com o domínio do servidor do CIn (Fase 2, NFR-10).
+{
+	admin off
+	auto_https off
+	persist_config off
+	# Os logs do Caddy não guardam IP, cabeçalhos nem URL (NFR-11). Não há log de acesso: a API
+	# já escreve uma linha por requisição, sem esses dados.
+	log default {
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				request>headers delete
+				request>uri delete
+			}
+		}
+	}
+}
+
+:8080 {
+	# Barreira anti-abuso de 128 KiB (DoD, item 1), igual à da API. O limite do contrato (50 KB de
+	# código) fica na API, que também recusa corpos grandes quando não há Caddy (Fase 1).
+	request_body {
+		max_size 128KiB
+	}
+
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Cross-Origin-Opener-Policy same-origin
+		-Server
+	}
+
+	# Um corpo grande nunca chega à API. Content-Length declarado acima do limite: 413 sem ler
+	# nada. Corpo sem Content-Length (em partes): recusado, porque o tamanho só seria conhecido
+	# depois de lido; o fetch do navegador sempre informa o tamanho.
+	@declared_too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 131072`
+	handle @declared_too_large {
+		error 413
+	}
+	@undeclared_length {
+		method POST PUT PATCH
+		not header Content-Length *
+	}
+	handle @undeclared_length {
+		error 411
+	}
+
+	# /ready também é o que o monitoramento externo consulta (C8).
+	@api path /api/* /health /ready
+	handle @api {
+		# Sem trusted_proxies, o Caddy descarta o X-Forwarded-For do cliente e escreve o IP real.
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Erros da borda no mesmo formato do contrato (5.2.2), para a SPA tratar como os da API.
+	handle_errors 411 {
+		header Content-Type application/json
+		respond `{"error":{"code":"INVALID_INPUT","message":"Envie o corpo da requisição com Content-Length.","retry_after_s":null}}` 411
+	}
+	handle_errors 413 {
+		header Content-Type application/json
+		respond `{"error":{"code":"PAYLOAD_TOO_LARGE","message":"O corpo da requisição passa de 128 KB.","retry_after_s":null}}` 413
+	}
+	handle_errors 502 503 504 {
+		header Content-Type application/json
+		header Retry-After 30
+		respond `{"error":{"code":"ANALYZER_UNAVAILABLE","message":"O serviço está indisponível no momento. Tente de novo em alguns segundos.","retry_after_s":30}}` 503
+	}
+}

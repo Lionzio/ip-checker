@@ -14,6 +14,7 @@ const RESPONSE: ValidateResponse = {
   notices: [],
   syntax_error: null,
   violations: [],
+  truncated: false,
 };
 
 function clientWith(validate: ValidationClient["validate"]): ValidationClient {

@@ -200,7 +200,7 @@ export function createMockClient({ latencyMs = 400 }: { latencyMs?: number } = {
         request_id: `simulado-${requests}`,
         ruleset_version: RULESET_VERSION,
         list_number: request.list_number,
-        question_id: request.question_id,
+        question_id: request.question_id ?? null,
         notices: request.question_id === null ? ["QUESTION_RULES_NOT_APPLIED" as const] : [],
       };
 
@@ -211,6 +211,7 @@ export function createMockClient({ latencyMs = 400 }: { latencyMs?: number } = {
           status: "syntax_error",
           syntax_error: { ...unclosed, message: "o '(' foi aberto e nunca fechado" },
           violations: [],
+          truncated: false,
         } satisfies ValidateResponse;
       }
 
@@ -220,6 +221,7 @@ export function createMockClient({ latencyMs = 400 }: { latencyMs?: number } = {
         status: violations.length === 0 ? "valid" : "invalid",
         syntax_error: null,
         violations,
+        truncated: false,
       } satisfies ValidateResponse;
     },
   };

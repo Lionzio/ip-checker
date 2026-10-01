@@ -13,6 +13,9 @@ class ErrorCode(StrEnum):
     LIST_NOT_ENABLED = "LIST_NOT_ENABLED"
     UNKNOWN_QUESTION = "UNKNOWN_QUESTION"
     ANALYSIS_LIMIT = "ANALYSIS_LIMIT"
+    # Documentados no 5.2.2 e usados pelo rate limit e pela admissão a partir da Sprint 10.
+    RATE_LIMITED = "RATE_LIMITED"
+    OVERLOADED = "OVERLOADED"
     ANALYZER_UNAVAILABLE = "ANALYZER_UNAVAILABLE"
 
 

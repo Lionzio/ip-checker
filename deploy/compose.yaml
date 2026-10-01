@@ -1,9 +1,10 @@
 # Fase 0 (local) e Fase 2 (servidor do CIn): Docker Compose (ADR-03).
 #
+# web (S9-02): o Caddy serve a SPA e repassa /api/* à api, na mesma origem. É a única porta
+# publicada: 8180, só em 127.0.0.1.
+# api (S8-01): fala com o analyzer pela analyzer_net e com o Caddy pela edge_net; sem porta própria.
 # analyzer (S6-01): só na analyzer_net, sem porta publicada nem rota para fora. Cada controle é
 # conferido por backend/tests/security/test_isolation.py (NFR-07).
-# api (S8-01): fala com o analyzer pela analyzer_net e publica a porta 8100 só em 127.0.0.1. Na
-# Sprint 9, o Caddy passa a ficar na frente dela.
 #
 #     docker compose -f deploy/compose.yaml up --build -d --wait
 
@@ -77,11 +78,36 @@ services:
     depends_on:
       analyzer:
         condition: service_healthy
-    # analyzer_net para chamar o analyzer; edge_net para publicar a porta (e, na Sprint 14, falar
-    # com o banco). A 8100 é a porta reservada do IP-Checker; só a própria máquina a alcança.
+    # analyzer_net para chamar o analyzer; edge_net para receber o Caddy (e, na Sprint 14, falar
+    # com o banco).
     networks: [analyzer_net, edge_net]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/caddy/Dockerfile
+    image: ip-checker-web:local
+    user: "10001:10001"
+    read_only: true
+    # O Caddy guarda estado em /data e /config; nada disso precisa sobreviver ao contêiner.
+    tmpfs:
+      - /data:size=1m,mode=1777,noexec,nosuid,nodev
+      - /config:size=1m,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    memswap_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge_net]
+    # A porta do IP-Checker nesta máquina (README, "Portas locais"). IPC_HTTP_PORT muda, por exemplo
+    # nos testes, para não disputar com o compose de desenvolvimento.
     ports:
-      - "127.0.0.1:${IPC_API_PORT:-8100}:8000"
+      - "127.0.0.1:${IPC_HTTP_PORT:-8180}:8080"
     restart: unless-stopped
 
 networks:
