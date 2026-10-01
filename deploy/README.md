@@ -88,6 +88,40 @@ curl -s https://ip-checker-api.onrender.com/ready
 
 A resposta traz o commit implantado em `release`. A página publica o dela em `/version.json`.
 
+### Teste de carga: plano gratuito ou Starter (S12-02)
+
+`deploy/load/run_load.py` sobe a imagem do piloto com a CPU e a memória de um plano do Render e roda
+o `deploy/load/pilot-load.js` (k6) contra ela: soluções reais da Lista 1, cada verificação de um
+aluno diferente, a uma taxa fixa. O limite por IP é aumentado só nesse contêiner, porque todo o
+tráfego sai do k6; o objetivo é medir capacidade.
+
+```bash
+python deploy/load/run_load.py --plan free --rate 500 --duration 3m
+```
+
+Medido em 01/10/2026, nesta máquina, emulando o Render com `--cpus` e `--memory` do Docker:
+
+| Plano | Taxa | Falhas (não 200) | P95 | P99 | O que falhou |
+|---|---|---|---|---|---|
+| Gratuito (0,1 CPU, 512 MB) | 500/min, 3 min | 12,8% a 41,6% (duas rodadas) | 3,0 s a 5,3 s | 3,9 s a 6,4 s | 503 `OVERLOADED` e `ANALYZER_UNAVAILABLE`; nenhum 500, 502 ou 504 |
+| Gratuito (0,1 CPU, 512 MB) | 150/min, 2 min | 0% | 213 ms | 408 ms | nada |
+| Starter (0,5 CPU, 512 MB) | 500/min, 3 min | 0% | 40 ms | 63 ms | nada |
+
+**Conclusão:** o plano gratuito atende um dia comum (até cerca de 150 verificações por minuto), mas não
+o pico de referência de uma véspera de prazo (500/min, P-01). Mesmo saturado, ele se degrada como o
+NFR-05 pede: recusa rápida com `Retry-After`, sem erro genérico. Pelo critério do ADR-03, o backend
+precisa do **Starter** (cerca de US$ 7 por mês) antes do primeiro prazo da Lista 1. A decisão de custo
+é do autor do projeto.
+
+Para confirmar no Render de verdade, com o piloto no ar, aumente por alguns minutos
+`IPC_RATE_LIMIT_IP_PER_MIN` no painel (o k6 sai de um único IP) e rode:
+
+```bash
+docker run --rm -v "$PWD/deploy/load:/scripts:ro" -e BASE_URL=https://ip-checker-api.onrender.com -e RATE=500 -e DURATION=3m grafana/k6 run /scripts/pilot-load.js
+```
+
+Depois, volte o `IPC_RATE_LIMIT_IP_PER_MIN` ao padrão (120).
+
 ### Riscos do piloto
 
 - **Seccomp no Render.** Testado aqui com o perfil padrão do Docker. Se o Render não permitir o
@@ -96,8 +130,8 @@ A resposta traz o commit implantado em `release`. A página publica o dela em `/
 - **IP do cliente.** O limite por IP supõe que a borda do Render acrescenta o IP do cliente ao fim do
   `X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=1`, P-12). Conferir nos primeiros dias pelos campos
   `rate_limit` do log.
-- **Plano gratuito.** 0,1 CPU e 512 MB. Se o P95 passar de 200 ms numa véspera de prazo, a
-  migração é para o Starter (ADR-03).
+- **Plano gratuito.** 0,1 CPU e 512 MB: não aguenta o pico de 500 verificações por minuto
+  (teste de carga acima). A recomendação é o Starter antes do primeiro prazo (ADR-03).
 
 ## Uso (compose, Fases 0 e 2)
 
