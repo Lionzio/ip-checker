@@ -69,4 +69,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 2 | S2-01 parser seguro e limites; S2-02 esqueleto da SPA com cliente simulado | Concluída |
 | 3 | S3-01 extrator de fatos e ligações de nomes (resistente a evasão por sombreamento) | Concluída |
 | 4 | S4-01 avaliador de política v1; S4-02 corpus golden (120 casos, 34 de evasão) | Concluída |
-| 5 | S5-01 analisador isolado: pool de workers com limites de tempo e memória | Próxima |
+| 5 | S5-01 analisador isolado: pool de workers com limites calibrados e serviço interno | Concluída |
+| 6 | S6-01 contêiner endurecido do analisador e rede sem saída | Próxima |

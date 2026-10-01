@@ -6,12 +6,16 @@ readme = "README.md"
 # A gramática do analisador acompanha a versão do Dikastis (Q-01, NFR-21).
 requires-python = ">=3.13,<3.14"
 dependencies = [
+  "fastapi>=0.142.2",
+  "pebble>=5.2.2",
   "pydantic>=2.10,<3",
   "pyyaml>=6.0.2,<7",
+  "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
+  "httpx2>=2.13.1",
   "mypy>=1.14",
   "pytest>=8.3",
   "pytest-cov>=6.0",
@@ -40,6 +44,8 @@ select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF", "N", "C4", "PT"]
 
 [tool.mypy]
 python_version = "3.13"
+# A produção roda em Linux; assim o mypy também confere o código que só existe lá (resource).
+platform = "linux"
 strict = true
 plugins = ["pydantic.mypy"]
 files = ["src", "tests"]
