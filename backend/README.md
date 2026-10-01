@@ -10,6 +10,7 @@ garante que um nunca importa o outro e que a API nunca importa `ast`.
 | `ipc_analyzer.runtime` | Pool de workers com timeout de 2 s, `RLIMIT_AS` de 256 MB, sem escrita em disco | 5 |
 | `ipc_analyzer.service` | Serviço interno: `POST /internal/analyze`, `GET /internal/health` e `GET /internal/ruleset/manifest` | 5, 8 |
 | `ipc_api` | API pública: `POST /api/v1/validate`, `GET /api/v1/lists`, `GET /health` e `GET /ready` | 8 |
+| `ipc_api.ratelimit`, `ipc_api.admission` | Limite de taxa por cliente e por IP (429) e controle de admissão (503) | 10 |
 
 Regras de segurança do código (NFR-09, verificadas por `tests/test_code_guards.py` e pelo ruff):
 nada de `eval`, `exec`, `compile`, `__import__`, `pickle` ou `subprocess`; `import ast` só dentro de
@@ -44,6 +45,38 @@ uv run uvicorn ipc_api.app:create_app --factory --port 8101
 
 Configuração: `IPC_ANALYZER_URL` (`http://127.0.0.1:8001`), `IPC_ENABLED_LISTS` (`1`; por exemplo,
 `1,2`), `IPC_ANALYZER_TIMEOUT_S` (3) e `IPC_MAX_BODY_BYTES` (131072, ou seja, 128 KB).
+
+## Limite de taxa e admissão
+
+Só `POST /api/v1/validate` é limitado (S10-01, FR-19). A ordem de cada requisição é: limite de
+corpo (413), limite de taxa (429, antes de ler o corpo), validação (413/422), admissão (503) e
+chamada ao analisador.
+
+| Limite | Padrão | Variável |
+|---|---|---|
+| Por cliente anônimo (`X-Client-Id`; sem identificador válido, o cliente é o IP) | 10/min | `IPC_RATE_LIMIT_CLIENT_PER_MIN` |
+| Por IP externo (IPv6 pelo prefixo /64) | 120/min | `IPC_RATE_LIMIT_IP_PER_MIN` |
+| Por IP das faixas do campus | 1.000/min | `IPC_RATE_LIMIT_CAMPUS_PER_MIN` |
+| Faixas do campus | `150.161.0.0/16` (UFPE) | `IPC_RATE_LIMIT_CAMPUS_CIDRS` |
+| Proxies confiáveis na frente da API | 0 | `IPC_TRUSTED_PROXY_HOPS` |
+| Chaves em memória | 50.000 | `IPC_RATE_LIMIT_MAX_KEYS` |
+| Análises simultâneas | 4 (2 por worker do analisador) | `IPC_ADMISSION_CAPACITY` |
+| Requisições em espera por uma vaga | 64 | `IPC_ADMISSION_MAX_WAITING` |
+| Espera máxima por uma vaga | 1 s | `IPC_ADMISSION_MAX_WAIT_S` |
+
+A janela é deslizante: nunca passam mais que o limite em quaisquer 60 s seguidos, e uma
+requisição recusada não gasta o limite de ninguém. As respostas 429 `RATE_LIMITED` e 503
+`OVERLOADED` trazem `retry_after_s` e o cabeçalho `Retry-After`.
+
+`IPC_TRUSTED_PROXY_HOPS` diz de onde vem o IP do cliente. Com 0, é o IP da conexão, e o
+`X-Forwarded-For` é ignorado. Com 1 (o Caddy no compose, o proxy do Render no piloto), é o último
+endereço do `X-Forwarded-For`, que o proxy escreve; o que o cliente manda nesse cabeçalho nunca é
+usado. Um valor maior que o número real de proxies deixaria o cliente escolher o próprio IP.
+
+IP e `X-Client-Id` existem só na memória do processo, como hash com sal sorteado na subida, e
+somem até 2 min depois da última requisição. No log entra só o campo `rate_limit`, com o limite
+que recusou a requisição (`client`, `ip` ou `capacity`). O estado é local ao processo, o que
+exige uma única instância da API (ADR-03).
 
 O contrato da API fica versionado em [`../docs/openapi.json`](../docs/openapi.json). O teste
 `tests/test_api_contract.py` falha quando ele fica desatualizado; para regenerá-lo:

@@ -34,6 +34,22 @@ npm run gen:api
 A CI falha se o arquivo gerado estiver diferente do OpenAPI. Como os tipos vêm do contrato, uma
 mudança na API que a página não acompanhou quebra a compilação.
 
+## Estados da verificação (FR-20)
+
+| Resposta | O que a página mostra |
+|---|---|
+| 200 | Sem violações, lista de violações ou erro de sintaxe com linha e coluna |
+| 413 | "O código excede 50 KB" e a explicação da API |
+| 422 | "O código não pôde ser verificado" e a explicação da API |
+| 429 | "Limite de verificações atingido", com contagem regressiva da espera |
+| 503 | "Serviço ocupado" ou "Serviço indisponível", com contagem regressiva da espera |
+| Sem resposta em 10 s ou falha de rede | "Sem resposta do servidor" e "Tentar novamente" |
+
+Nos estados 429 e 503, o botão "Tentar novamente" só é liberado quando a espera pedida pelo
+servidor termina. Cada aba gera um identificador aleatório (`X-Client-Id`), guardado só no
+`sessionStorage`: ele dá a cada aluno o próprio limite de 10 verificações por minuto, mesmo com
+o laboratório inteiro saindo pelo mesmo IP, e some quando a aba é fechada.
+
 ## Smoke e2e (Playwright)
 
 Os testes de `e2e/` usam o Chromium contra o compose completo (Caddy, API e analyzer):
@@ -58,6 +74,7 @@ npm run e2e
 | `src/types/api.ts` | Nomes curtos para os tipos do contrato |
 | `src/services/client.ts` | Interface `ValidationClient` e `ApiError` |
 | `src/services/api.ts` | Cliente HTTP real (mesma origem, `/api/v1/...`) |
+| `src/services/clientId.ts` | Identificador anônimo da sessão (`X-Client-Id`), só para o limite de taxa |
 | `src/services/mockClient.ts` | Cliente simulado do modo demonstração |
 | `src/hooks/useValidateCode.ts` | Envio com tempo limite de 10 s e cancelamento da requisição anterior |
 | `src/components/` | Área de código, seletor de lista e painel de resultado |
