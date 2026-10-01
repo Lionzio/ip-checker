@@ -38,6 +38,31 @@ jobs:
       - name: Pytest (ruleset, guardas e cobertura >= 90%)
         run: uv run pytest
 
+  frontend:
+    name: Frontend (lint, tipos, testes, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Vitest
+        run: npm test
+      - name: Build de produção
+        run: npm run build
+
   branch-policy:
     name: main nunca à frente da develop
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
