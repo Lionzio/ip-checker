@@ -117,6 +117,11 @@ export interface components {
             status: "ready";
             /** Ruleset Version */
             ruleset_version: string;
+            /**
+             * Release
+             * @description Commit implantado, quando informado pelo ambiente.
+             */
+            release?: string | null;
         };
         /** SyntaxErrorInfo */
         SyntaxErrorInfo: {

@@ -6,7 +6,13 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-  globalIgnores(["dist", "test-results", "playwright-report", "src/types/openapi.ts"]),
+  globalIgnores(["dist", ".vercel", "test-results", "playwright-report", "src/types/openapi.ts"]),
+  {
+    // Scripts de build, que rodam no Node.
+    files: ["scripts/**/*.mjs"],
+    extends: [js.configs.recommended],
+    languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: globals.node },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
