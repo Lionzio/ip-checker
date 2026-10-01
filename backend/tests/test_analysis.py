@@ -13,7 +13,9 @@ from ipc_analyzer.engine.ruleset import KNOWN_PREDICATES, CompiledRuleset, Condi
 
 
 def test_valid_code(base_ruleset: CompiledRuleset) -> None:
-    result = analyze_source("x = 1\nprint(x)\n", list_number=1, ruleset=base_ruleset)
+    # Lista 1: precisa de um if ou de um ternário (R-02).
+    source = "x = int(input())\nprint('par' if x % 2 == 0 else 'ímpar')\n"
+    result = analyze_source(source, list_number=1, ruleset=base_ruleset)
 
     assert result.status == "valid"
     assert result.violations == ()
@@ -26,7 +28,7 @@ def test_invalid_code(base_ruleset: CompiledRuleset) -> None:
     result = analyze_source("x = None\n", list_number=1, ruleset=base_ruleset)
 
     assert result.status == "invalid"
-    assert [v.rule_id for v in result.violations] == ["R-13"]
+    assert [v.rule_id for v in result.violations] == ["R-02", "R-13"]
 
 
 def test_syntax_error_skips_the_rules(base_ruleset: CompiledRuleset) -> None:

@@ -63,6 +63,10 @@ export function App({ client, demoMode = false }: AppProps) {
         <div className="grid gap-6 lg:grid-cols-2">
           <form onSubmit={submit} className="flex flex-col gap-4">
             <ListSelector lists={lists} value={listNumber} onChange={setListNumber} disabled={loading} />
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              A verificação usa as permissões da lista. As regras específicas de cada questão
+              ainda não são consideradas: em caso de divergência, vale o enunciado.
+            </p>
             {listsError !== null && (
               <p role="alert" className="text-sm text-red-700 dark:text-red-300">
                 {listsError}

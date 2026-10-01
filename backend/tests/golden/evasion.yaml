@@ -6,28 +6,28 @@
   list: 1
   code: |
     x = getattr("a", "upper")()
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E02-eval
   rule: R-04
   list: 1
   code: |
     x = eval("1 + 1")
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E03-exec
   rule: R-04
   list: 1
   code: |
     exec("x = 1")
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E04-dunder-import
   rule: R-04
   list: 1
   code: |
     sistema = __import__("os")
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E05-method-reference-without-call
   rule: R-04
@@ -35,7 +35,7 @@
   code: |
     s = input()
     f = s.split
-  expect: [R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2]
 
 - id: E06-eval-used-before-shadowing
   rule: R-04
@@ -43,7 +43,7 @@
   code: |
     x = eval("1")
     eval = 2
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E07-builtin-aliased-to-allowed-name
   rule: R-04
@@ -52,70 +52,70 @@
     print = eval
     print("1")
   # Linha 1: eval. Linha 2: print agora é variável do aluno (chamada de função ainda não consta).
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2]
 
 - id: E08-dunder-attribute
   rule: R-04
   list: 1
   code: |
     x = "".__class__
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E09-globals
   rule: R-04
   list: 1
   code: |
     x = globals()
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E10-vars
   rule: R-04
   list: 1
   code: |
     x = vars()
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E11-quit
   rule: R-04
   list: 1
   code: |
     sair = quit
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E12-bitwise-invert
   rule: R-04
   list: 1
   code: |
     x = ~5
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E13-matrix-multiplication
   rule: R-04
   list: 1
   code: |
     x = 5 @ 2
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E14-complex-number
   rule: R-04
   list: 1
   code: |
     x = 1j
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E15-bytes
   rule: R-04
   list: 1
   code: |
     x = b"abc"
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E16-ellipsis
   rule: R-04
   list: 1
   code: |
     x = ...
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E17-walrus
   rule: R-04
@@ -130,14 +130,14 @@
   list: 1
   code: |
     assert 1 == 1
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E19-raise
   rule: R-04
   list: 1
   code: |
     raise ValueError("x")
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
 
 - id: E20-with-open
   rule: R-04
@@ -145,7 +145,7 @@
   code: |
     with open("a") as arquivo:
         print(arquivo)
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
 
 - id: E21-async-def
   rule: R-04
@@ -153,35 +153,35 @@
   code: |
     async def f():
         x = 1
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E22-lambda
   rule: R-04
   list: 1
   code: |
     f = lambda: 1
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E23-list-literal
   rule: R-04
   list: 1
   code: |
     x = [1, 2]
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E24-tuple-literal
   rule: R-04
   list: 1
   code: |
     x = 1, 2
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E25-indexing
   rule: R-04
   list: 1
   code: |
     x = "abc"[0]
-  expect: [R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
 
 - id: E26-del
   rule: R-04
@@ -189,7 +189,7 @@
   code: |
     x = 1
     del x
-  expect: [R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
 
 - id: E27-dunder-name
   rule: R-04
@@ -234,7 +234,7 @@
   code: |
     conversor = int
     print(conversor("3"))
-  expect: [R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2]
 
 - id: E32-match
   rule: R-04
@@ -244,7 +244,7 @@
     match x:
         case 1:
             print(x)
-  expect: [R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
 
 - id: E33-infinite-loop-is-only-parsed
   rule: R-34
@@ -252,7 +252,7 @@
   code: |
     while True:
         x = 1
-  expect: [R-34 FORA_DA_LISTA 1]
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 1]
 
 - id: E34-shadowing-inside-condition
   rule: R-04
@@ -273,7 +273,7 @@
         return 1
   # Linha 1: o decorador (built-in e derived:decorator na mesma posição viram uma violação só).
   # Linhas 2 e 3: def e return, que só constam a partir da Lista 4 (Sprint 15).
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
 
 - id: E36-student-decorator
   rule: R-04
@@ -285,7 +285,7 @@
     def g():
         return 1
   # Mesmo com um decorador do próprio aluno, o '@d' da linha 3 gera violação.
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3, R-04 NAO_CONSTA 4, R-04 NAO_CONSTA 5]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3, R-04 NAO_CONSTA 4, R-04 NAO_CONSTA 5]
 
 - id: E37-dict-unpacking
   rule: R-04
@@ -294,4 +294,4 @@
     a = {1: 2}
     b = {**a}
   # O dicionário (R-61, Lista 5) e o '**' dentro dele, que não consta em nenhuma lista.
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]

@@ -17,7 +17,9 @@ from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, load_ruleset
 
 
 def violations(source: str, list_number: int, ruleset: CompiledRuleset) -> list[Violation]:
-    return list(analyze_source(source, list_number=list_number, ruleset=ruleset).violations)
+    """Violações dos fatos. As exigências (R-02) têm testes próprios, no fim do arquivo."""
+    result = analyze_source(source, list_number=list_number, ruleset=ruleset)
+    return [v for v in result.violations if v.category is not Category.EXIGENCIA]
 
 
 def summary(found: list[Violation]) -> list[tuple[str, str, int]]:
@@ -98,15 +100,16 @@ def test_same_rule_at_the_same_position_is_reported_once(base_ruleset: CompiledR
 
 
 def test_violations_are_sorted_and_truncated(base_ruleset: CompiledRuleset) -> None:
+    # Na Lista 2 não há exigência ativa: só as 5 violações R-13.
     parsed = parse_source("x = None\n" * 5, target=(3, 13))
     assert isinstance(parsed, ParsedSource)
     facts = extract_facts(parsed)
 
-    found, truncated = evaluate(facts, base_ruleset, 1, max_violations=3)
+    found, truncated = evaluate(facts, base_ruleset, 2, max_violations=3)
 
     assert [v.line for v in found] == [1, 2, 3]
     assert truncated
-    assert evaluate(facts, base_ruleset, 1)[1] is False
+    assert evaluate(facts, base_ruleset, 2)[1] is False
 
 
 def test_structural_facts_are_accepted(base_ruleset: CompiledRuleset) -> None:
@@ -190,3 +193,59 @@ def test_condition_message_is_used_when_the_condition_fails(zip_ruleset: Compile
 
     assert violation is not None
     assert violation.message == "zip() só com duas ou mais sequências."
+
+
+# --- Exigências (R-02, Q-05; Sprint 12) ------------------------------------------------------
+
+
+def all_violations(source: str, list_number: int, ruleset: CompiledRuleset) -> list[Violation]:
+    return list(analyze_source(source, list_number=list_number, ruleset=ruleset).violations)
+
+
+def test_missing_topic_of_the_list_is_a_requirement_violation(
+    base_ruleset: CompiledRuleset,
+) -> None:
+    found = all_violations("n = int(input())\nprint(n * 2)\n", 1, base_ruleset)
+
+    assert summary(found) == [("R-02", "EXIGENCIA", 1)]
+    (requirement,) = found
+    assert (requirement.line, requirement.col, requirement.end_line, requirement.end_col) == (
+        1,
+        1,
+        1,
+        1,
+    )
+    assert requirement.construct == "requirement:R-02"
+    assert requirement.allowed_from_list is None
+    assert requirement.message.startswith("A solução não usa o assunto da Lista 1")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "n = int(input())\nif n > 0:\n    print(n)\n",
+        "n = int(input())\nprint('par' if n % 2 == 0 else 'ímpar')\n",
+    ],
+    ids=["if", "ternario"],
+)
+def test_if_or_ternary_meets_the_requirement_of_list_1(
+    base_ruleset: CompiledRuleset, source: str
+) -> None:
+    assert all_violations(source, 1, base_ruleset) == []
+
+
+def test_requirement_comes_first_and_is_never_truncated(base_ruleset: CompiledRuleset) -> None:
+    parsed = parse_source("x = None\n" * 5, target=(3, 13))
+    assert isinstance(parsed, ParsedSource)
+
+    found, truncated = evaluate(extract_facts(parsed), base_ruleset, 1, max_violations=1)
+
+    assert [(v.rule_id, v.category) for v in found] == [("R-02", Category.EXIGENCIA)]
+    assert truncated
+
+
+def test_requirements_only_apply_to_their_list(base_ruleset: CompiledRuleset) -> None:
+    # A Lista 2 ainda não tem exigência ativa (Sprint 13).
+    assert all_violations("n = int(input())\nprint(n)\n", 2, base_ruleset) == []
+    assert [r.id for r in base_ruleset.requirements_for(1)] == ["R-02"]
+    assert base_ruleset.requirements_for(2) == ()

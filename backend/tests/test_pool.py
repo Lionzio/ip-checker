@@ -66,6 +66,10 @@ def _write_file(path: str) -> str:
     return "gravou"
 
 
+#: Código válido na Lista 1: usa o assunto da lista, um comando condicional (R-02).
+VALID_L1 = "x = int(input())\nif x > 0:\n    print(x)\n"
+
+
 def run(pool: AnalyzerPool, function: Any, *args: Any) -> Any:
     return asyncio.run(pool.run(function, *args))
 
@@ -81,7 +85,7 @@ def test_analysis_runs_in_another_process(pool: AnalyzerPool) -> None:
     result = asyncio.run(pool.analyze("x = None\n", 1))
 
     assert result.status == "invalid"
-    assert [v.rule_id for v in result.violations] == ["R-13"]
+    assert [v.rule_id for v in result.violations] == ["R-02", "R-13"]
     assert run(pool, _pid) != os.getpid()
 
 
@@ -99,7 +103,7 @@ def test_timeout_kills_and_replaces_the_worker(pool: AnalyzerPool) -> None:
 
     assert time.perf_counter() - start < 5
     assert run(pool, _pid) != before
-    assert asyncio.run(pool.analyze("x = 1\n", 1)).status == "valid"
+    assert asyncio.run(pool.analyze(VALID_L1, 1)).status == "valid"
 
 
 def test_memory_error_becomes_analysis_limit(pool: AnalyzerPool) -> None:
@@ -111,7 +115,7 @@ def test_dead_worker_becomes_analysis_limit(pool: AnalyzerPool) -> None:
     with pytest.raises(AnalysisLimitError, match="interrompida"):
         run(pool, _die)
 
-    assert asyncio.run(pool.analyze("x = 1\n", 1)).status == "valid"
+    assert asyncio.run(pool.analyze(VALID_L1, 1)).status == "valid"
 
 
 def test_workers_are_recycled_after_max_tasks() -> None:

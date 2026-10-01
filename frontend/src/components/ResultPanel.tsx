@@ -85,7 +85,10 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
                 {CATEGORY_LABELS[violation.category]}
               </span>
               <span className="font-mono text-slate-600 dark:text-slate-300">
-                Linha {violation.line}, coluna {violation.col}
+                {/* Uma exigência (R-02) fala da solução inteira, não de um trecho. */}
+                {violation.category === "EXIGENCIA"
+                  ? "Solução inteira"
+                  : `Linha ${violation.line}, coluna ${violation.col}`}
               </span>
               <span className="text-slate-500">{violation.rule_id}</span>
             </div>

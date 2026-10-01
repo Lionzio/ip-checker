@@ -49,7 +49,9 @@ def test_manifest_describes_the_active_ruleset(client: TestClient) -> None:
 
 
 def test_valid_code(client: TestClient) -> None:
-    response = client.post("/internal/analyze", json={"code": "x = 1\n", "list_number": 1})
+    code = "x = int(input())\nif x > 0:\n    print(x)\n"
+
+    response = client.post("/internal/analyze", json={"code": code, "list_number": 1})
 
     assert response.status_code == 200
     assert response.json() == {
@@ -63,7 +65,7 @@ def test_valid_code(client: TestClient) -> None:
 
 
 def test_violations_follow_the_contract(client: TestClient) -> None:
-    code = "x = 3\nwhile x > 0:\n    x -= 1\n"
+    code = "x = 3\nif x > 0:\n    print(x)\nwhile x > 0:\n    x -= 1\n"
 
     response = client.post("/internal/analyze", json={"code": code, "list_number": 1})
 
@@ -72,9 +74,9 @@ def test_violations_follow_the_contract(client: TestClient) -> None:
         {
             "rule_id": "R-34",
             "category": "FORA_DA_LISTA",
-            "line": 2,
+            "line": 4,
             "col": 1,
-            "end_line": 3,
+            "end_line": 5,
             "end_col": 11,
             "construct": "node:While",
             "allowed_from_list": 2,

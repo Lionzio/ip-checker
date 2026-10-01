@@ -32,6 +32,8 @@ from security.harness import (
 pytestmark = requires_docker
 
 LISTS = range(1, 7)
+#: Fecho que dá a um código da Lista 1 o assunto obrigatório da lista (R-02).
+IF_X = "if x:\n    print(x)\n"
 
 
 def _code(answer: Answer) -> tuple[int, str | None]:
@@ -135,10 +137,10 @@ def test_widest_input_within_50kb_is_analyzed_in_time(client: Client) -> None:
 @pytest.mark.parametrize(
     ("code", "expected_status"),
     [
-        ('x = "' + "a" * 51_180 + '"\n', "valid"),
-        ("x = " + "f'{" * 10 + "1" + "}'" * 10 + "\n", "valid"),
+        ('x = "' + "a" * 51_150 + '"\n' + IF_X, "valid"),
+        ("x = " + "f'{" * 10 + "1" + "}'" * 10 + "\n" + IF_X, "valid"),
         # A conversão !r faz parte da f-string (R-31); ver "Casos a observar" no mapeamento.
-        ('x = f"' + "{x!r:>{y}}" * 4_000 + '"\n', "valid"),
+        ('x = f"' + "{x!r:>{y}}" * 4_000 + '"\n' + IF_X, "valid"),
         ("x = " + 'f"{' * 200 + "1" + '}"' * 200 + "\n", "syntax_error"),
     ],
     ids=["literal-50kb", "f-string-10-niveis", "f-string-larga", "f-string-200-niveis"],
@@ -293,9 +295,9 @@ def test_evasion_attempts_are_caught(client: Client, evasion: str) -> None:
 @pytest.mark.parametrize(
     ("code", "list_number"),
     [
-        ("max = int(input())\nprint(max)\n", 1),
+        ("max = int(input())\nif max > 0:\n    print(max)\n", 1),
         ("len = 3\nfor i in range(len):\n    print(i)\n", 2),
-        ("input = 5\nprint(input + 1)\n", 1),
+        ("input = 5\nif input > 1:\n    print(input + 1)\n", 1),
     ],
     ids=["max-sombreado", "len-sombreado", "input-sombreado"],
 )
@@ -333,7 +335,8 @@ def test_concurrent_requests_never_mix_results(client: Client) -> None:
             assert markers == []
             continue
         assert answer.body["list_number"] == 1 + index % 2
-        (violation,) = answer.body["violations"]
+        # A exigência R-02 (sem if) também aparece na Lista 1; o marcador vem à parte.
+        (violation,) = [v for v in answer.body["violations"] if v["category"] != "EXIGENCIA"]
         assert violation["construct"] == f"method:marcador_{index}"
         assert violation["line"] == index % 7 + 1
         assert set(markers) == {f"marcador_{index}"}
@@ -347,7 +350,7 @@ def test_concurrent_requests_never_mix_results(client: Client) -> None:
 def test_service_is_healthy_after_the_attacks(client: Client, analyzer: str) -> None:
     """Tem de ser o último teste da sessão: confere o estado deixado por todos os anteriores."""
     health, quick = client.send(
-        [{"method": "GET", "path": "/internal/health"}, analyze_request("x = 1\n")]
+        [{"method": "GET", "path": "/internal/health"}, analyze_request("x = 1\n" + IF_X)]
     )
 
     assert health.status == 200

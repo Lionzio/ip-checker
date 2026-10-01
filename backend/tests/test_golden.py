@@ -49,9 +49,10 @@ def test_cases_are_well_formed() -> None:
 def test_every_rule_of_the_ruleset_has_at_least_three_cases(base_ruleset: CompiledRuleset) -> None:
     per_rule = Counter(case["rule"] for name, case in CASES if name != EVASION_FILE)
 
-    missing = {
-        rule.id: per_rule[rule.id] for rule in base_ruleset.ruleset.rules if per_rule[rule.id] < 3
-    }
+    # Regras e exigências (R-02, R-68): cada uma com pelo menos três casos (NFR-18).
+    ids = [rule.id for rule in base_ruleset.ruleset.rules]
+    ids += [requirement.id for requirement in base_ruleset.ruleset.requirements]
+    missing = {rule_id: per_rule[rule_id] for rule_id in ids if per_rule[rule_id] < 3}
 
     assert missing == {}
 

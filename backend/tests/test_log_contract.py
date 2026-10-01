@@ -189,7 +189,7 @@ def test_every_log_line_follows_the_schema(
     (analysis,) = [x for x in lines if x["service"] == "analyzer" and x["event"] == "analysis"]
     assert analysis["request_id"] == request_id
     assert analysis["outcome"] == "invalid"
-    assert analysis["violations"] == 2
+    assert analysis["violations"] == 3  # R-02 (sem if), R-34 e R-35
     assert analysis["payload_bytes"] == len(b"for i in range(3):\n    print(i)\n")
 
 

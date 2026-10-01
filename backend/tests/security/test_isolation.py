@@ -259,7 +259,8 @@ def test_peer_on_internal_network_reaches_the_analyzer(client: Client) -> None:
     answer = client.analyze("for i in range(3):\n    print(i)\n", 1)
 
     assert answer.status == 200
-    assert [v["rule_id"] for v in answer.body["violations"]] == ["R-34", "R-35"]
+    # Sem if, a Lista 1 também cobra o assunto da lista (R-02).
+    assert [v["rule_id"] for v in answer.body["violations"]] == ["R-02", "R-34", "R-35"]
 
 
 def test_image_contains_only_runtime_files(analyzer: str) -> None:

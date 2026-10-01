@@ -330,3 +330,15 @@ rules:
     match: ["cmp:In"]
     message: "O operador in com range() só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 2: \"in\" para range()"
+
+# -----------------------------------------------------------------------------
+# Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).
+# A falta vira uma violação EXIGENCIA da solução inteira. Os fatos que comprovam cada
+# assunto seguem a decisão Q-05. Listas 2 a 6 entram nas Sprints 13 e 16.
+# -----------------------------------------------------------------------------
+requirements:
+  - id: "R-02"
+    list: 1
+    require_any: ["node:If", "node:IfExp"]
+    message: "A solução não usa o assunto da Lista 1: é obrigatório um comando condicional (if, com ou sem elif/else) ou o operador ternário. Sem ele, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"

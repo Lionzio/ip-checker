@@ -23,6 +23,7 @@ describe("cliente simulado", () => {
 
     expect(response.status).toBe("invalid");
     expect(response.violations).toEqual([
+      expect.objectContaining({ rule_id: "R-02", category: "EXIGENCIA", line: 1, col: 1 }),
       expect.objectContaining({ rule_id: "R-34", category: "FORA_DA_LISTA", line: 2, col: 3, end_col: 6 }),
     ]);
   });
@@ -31,9 +32,18 @@ describe("cliente simulado", () => {
     const response = await client.validate(request("import math\ntry:\n    x = 1\n"));
 
     expect(response.violations.map((v) => [v.rule_id, v.category])).toEqual([
+      ["R-02", "EXIGENCIA"],
       ["R-05", "ANULACAO"],
       ["R-06", "ANULACAO"],
     ]);
+  });
+
+  it("simula a exigência da Lista 1 só quando falta o if", async () => {
+    const comIf = await client.validate(request("x = 1\nif x:\n    print(x)\n"));
+    const soComentario = await client.validate(request("# if x:\nprint(1)\n"));
+
+    expect(comIf.status).toBe("valid");
+    expect(soComentario.violations.map((v) => v.rule_id)).toEqual(["R-02"]);
   });
 
   it("simula erro de sintaxe para parêntese não fechado", async () => {

@@ -291,7 +291,8 @@ def test_worst_case_inputs_fit_in_160_mib(pilot: str) -> None:
 
     # Nenhuma vira ANALYSIS_LIMIT por falta de memória: todas são analisadas.
     assert [answer.status for answer in answers] == [200, 200, 200]
-    assert [answer.body["status"] for answer in answers] == ["invalid", "invalid", "valid"]
+    # Todas sem if: a Lista 1 também cobra a R-02. O que importa é que foram analisadas.
+    assert [answer.body["status"] for answer in answers] == ["invalid"] * 3
 
 
 def test_pilot_api_cors_headers_and_release(pilot: str) -> None:

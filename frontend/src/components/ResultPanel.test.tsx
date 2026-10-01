@@ -85,6 +85,33 @@ describe("ResultPanel", () => {
     expect(screen.queryByText(/primeiras violações/)).not.toBeInTheDocument();
   });
 
+  it("mostra a exigência da lista como algo da solução inteira (R-02)", () => {
+    renderState({
+      kind: "success",
+      response: {
+        ...BASE,
+        status: "invalid",
+        violations: [
+          {
+            rule_id: "R-02",
+            category: "EXIGENCIA",
+            line: 1,
+            col: 1,
+            end_line: 1,
+            end_col: 1,
+            construct: "requirement:R-02",
+            allowed_from_list: null,
+            message: "A solução não usa o assunto da Lista 1.",
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText("Exigência não atendida")).toBeInTheDocument();
+    expect(screen.getByText("Solução inteira")).toBeInTheDocument();
+    expect(screen.queryByText("Linha 1, coluna 1")).not.toBeInTheDocument();
+  });
+
   it("avisa quando o relatório foi cortado em 200 violações", () => {
     const violation = {
       rule_id: "R-04",

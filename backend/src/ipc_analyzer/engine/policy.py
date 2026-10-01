@@ -11,7 +11,10 @@ Para cada fato, na lista ``n``, vale a primeira situação verdadeira:
 5. casa uma permissão de lista posterior: ``FORA_DA_LISTA``, com a primeira lista que permite;
 6. nada casa: ``NAO_CONSTA`` pela R-04 (*default deny*).
 
-Overrides de questão (R-01) entram na Sprint 17; exigências (R-02, R-68), nas Sprints 12 a 16.
+Depois, cada exigência da lista (R-02, Q-05; R-68, C-03) pede pelo menos um dos seus fatos no
+código; se nenhum aparece, a solução inteira recebe uma violação ``EXIGENCIA`` (5.2.3, passo 6).
+
+Overrides de questão (R-01) entram na Sprint 17.
 """
 
 from __future__ import annotations
@@ -22,7 +25,17 @@ from ipc_analyzer.engine.conditions import holds
 from ipc_analyzer.engine.display import describe
 from ipc_analyzer.engine.facts import Fact
 from ipc_analyzer.engine.models import MAX_VIOLATIONS, Violation
-from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, Effect, Rule, RuleMatch
+from ipc_analyzer.engine.ruleset import (
+    Category,
+    CompiledRuleset,
+    Effect,
+    Requirement,
+    Rule,
+    RuleMatch,
+)
+
+#: Uma exigência fala da solução inteira, e não de um trecho: aponta para o início do código.
+REQUIREMENT_POSITION = (1, 1, 1, 1)
 
 
 def _violation(
@@ -93,6 +106,33 @@ def judge(fact: Fact, ruleset: CompiledRuleset, list_number: int) -> Violation |
     return _violation(fact, default_deny.id, Category.NAO_CONSTA, default_deny.message or "")
 
 
+def unmet_requirements(
+    facts: Iterable[Fact], ruleset: CompiledRuleset, list_number: int
+) -> tuple[Violation, ...]:
+    """Exigências da lista sem nenhum dos fatos que as comprovam no código."""
+    present = {fact.name for fact in facts}
+    return tuple(
+        _requirement_violation(requirement)
+        for requirement in ruleset.requirements_for(list_number)
+        if present.isdisjoint(requirement.require_any)
+    )
+
+
+def _requirement_violation(requirement: Requirement) -> Violation:
+    line, col, end_line, end_col = REQUIREMENT_POSITION
+    return Violation(
+        rule_id=requirement.id,
+        category=Category.EXIGENCIA,
+        line=line,
+        col=col,
+        end_line=end_line,
+        end_col=end_col,
+        construct=f"requirement:{requirement.id}",
+        allowed_from_list=None,
+        message=requirement.message,
+    )
+
+
 def evaluate(
     facts: Iterable[Fact],
     ruleset: CompiledRuleset,
@@ -100,8 +140,14 @@ def evaluate(
     *,
     max_violations: int = MAX_VIOLATIONS,
 ) -> tuple[tuple[Violation, ...], bool]:
-    """Violações ordenadas e sem repetição por (regra, linha, coluna); indica se houve corte."""
+    """Violações ordenadas e sem repetição por (regra, linha, coluna); indica se houve corte.
+
+    As exigências não cumpridas vêm primeiro (linha 1, coluna 1) e nunca são cortadas.
+    """
+    facts = tuple(facts)
     found: dict[tuple[str, int, int], Violation] = {}
+    for unmet in unmet_requirements(facts, ruleset, list_number):
+        found[(unmet.rule_id, unmet.line, unmet.col)] = unmet
     for fact in facts:
         violation = judge(fact, ruleset, list_number)
         if violation is not None:

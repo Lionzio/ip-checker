@@ -326,6 +326,10 @@ class Ruleset(_Frozen):
             raise ValueError(f"id de meta-regra repetido: {_duplicates(meta_ids)}")
         if clash := sorted(set(rule_ids) & set(meta_ids)):
             raise ValueError(f"id usado como regra e como meta-regra: {clash}")
+        if clash := sorted({req.id for req in self.requirements} & set(rule_ids)):
+            raise ValueError(f"id usado como regra e como exigência: {clash}")
+        if repeated := _duplicates((req.id, req.list_number) for req in self.requirements):
+            raise ValueError(f"exigência repetida na mesma lista: {repeated}")
         if _duplicates(meta.kind for meta in self.meta_rules):
             raise ValueError("cada tipo de meta-regra só pode aparecer uma vez")
         default_deny = [m for m in self.meta_rules if m.kind is MetaKind.DEFAULT_DENY]
@@ -401,6 +405,10 @@ class CompiledRuleset:
 
     def is_structural(self, fact: str) -> bool:
         return fact in self.structural_facts
+
+    def requirements_for(self, list_number: int) -> tuple[Requirement, ...]:
+        """Exigências da lista: R-02 (assunto da lista) e, na Lista 6, R-68 (recursão)."""
+        return tuple(req for req in self.ruleset.requirements if req.list_number == list_number)
 
 
 def compile_ruleset(ruleset: Ruleset, raw: bytes) -> CompiledRuleset:

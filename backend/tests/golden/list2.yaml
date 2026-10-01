@@ -15,7 +15,7 @@
     x = 3
     while x > 0:
         x -= 1
-  expect: [R-34 FORA_DA_LISTA 2]
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 2]
 
 - id: R-34-for-before-list-L1
   rule: R-34
@@ -23,7 +23,7 @@
   code: |
     for c in "abc":
         print(c)
-  expect: [R-34 FORA_DA_LISTA 1]
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 1]
 
 - id: R-34-while-L6
   rule: R-34
@@ -47,7 +47,7 @@
   list: 1
   code: |
     x = range(3)
-  expect: [R-35 FORA_DA_LISTA 1]
+  expect: [R-02 EXIGENCIA 1, R-35 FORA_DA_LISTA 1]
 
 - id: R-35-for-range-before-list-L1
   rule: R-35
@@ -55,7 +55,7 @@
   code: |
     for i in range(3):
         print(i)
-  expect: [R-34 FORA_DA_LISTA 1, R-35 FORA_DA_LISTA 1]
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 1, R-35 FORA_DA_LISTA 1]
 
 - id: R-36-in-range-L2
   rule: R-36
@@ -72,7 +72,7 @@
   code: |
     print(3 in range(5))
   # O in já é permitido na Lista 1 (R-30); o range() ainda não.
-  expect: [R-35 FORA_DA_LISTA 1]
+  expect: [R-02 EXIGENCIA 1, R-35 FORA_DA_LISTA 1]
 
 - id: R-36-not-in-range-L6
   rule: R-36
