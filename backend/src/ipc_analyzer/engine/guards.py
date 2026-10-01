@@ -16,7 +16,8 @@ class Limits:
     max_bytes: int = 51_200
     max_lines: int = 1_000
     max_depth: int = 200
-    max_nodes: int = 20_000
+    # Calibrado na S5-01: 50 KB geram no máximo ~53 mil nós (pior caso: 0,46 s e 74 MB).
+    max_nodes: int = 60_000
 
 
 DEFAULT_LIMITS = Limits()

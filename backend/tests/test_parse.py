@@ -109,9 +109,8 @@ def test_syntax_error_column_counts_characters_not_bytes() -> None:
         ("x = " + "[" * 250 + "]" * 250, "200 níveis"),
         ("x = " + "1+" * 25_000 + "1", "complexo demais|níveis de aninhamento"),
         ("x = " + "not " * 300 + "y", "níveis de aninhamento"),
-        ("a = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)\n" * 1_000, "elementos sintáticos"),
     ],
-    ids=["1000-parenteses", "250-colchetes", "cadeia-25k-somas", "300-not", "35k-nos"],
+    ids=["1000-parenteses", "250-colchetes", "cadeia-25k-somas", "300-not"],
 )
 def test_pathological_inputs_hit_analysis_limits(source: str, expected: str) -> None:
     start = time.perf_counter()
@@ -133,6 +132,21 @@ def test_parser_resource_errors_become_analysis_limit(
 
     with pytest.raises(AnalysisLimitError, match="complexo demais"):
         parse_source("x = 1\n", target=TARGET)
+
+
+def test_widest_input_within_50kb_fits_the_node_limit() -> None:
+    # Calibração da S5-01: 1 mil linhas com tuplas de 24 nomes somam ~53 mil nós em 50 KB.
+    source = "a = " + ",".join("bcdefghijklmnopqrstuvwxy") + "\n"
+    result = _parsed(source * 980)
+
+    assert 50_000 < result.node_count < 60_000
+
+
+def test_node_limit_still_applies_with_custom_limits() -> None:
+    source = "a = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)\n" * 1_000
+
+    with pytest.raises(AnalysisLimitError, match="elementos sintáticos"):
+        parse_source(source, target=TARGET, limits=Limits(max_nodes=20_000))
 
 
 def test_measure_tree_respects_custom_limits() -> None:
