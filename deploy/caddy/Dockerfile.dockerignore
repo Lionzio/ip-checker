@@ -1,0 +1,9 @@
+# Contexto de build do deploy/caddy/Dockerfile (a raiz do repositório). Lista de permissão: só o
+# frontend (sem dependências instaladas nem builds locais) e o Caddyfile.
+*
+!frontend/
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+!deploy/caddy/Caddyfile

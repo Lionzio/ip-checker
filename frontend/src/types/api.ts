@@ -1,63 +1,21 @@
-/** Contrato da API pública (blueprint, 5.2.2). */
+/**
+ * Contrato da API pública (5.2.2), derivado do `docs/openapi.json` versionado.
+ *
+ * `openapi.ts` é gerado por `npm run gen:api` e nunca é editado à mão; a CI falha se ele ficar
+ * diferente do OpenAPI. Assim, uma mudança no contrato do backend quebra a compilação aqui.
+ */
+import type { components } from "./openapi";
 
-export type Category =
-  | "ANULACAO"
-  | "PROIBIDO_NA_QUESTAO"
-  | "FORA_DA_LISTA"
-  | "NAO_CONSTA"
-  | "EXIGENCIA";
+type Schemas = components["schemas"];
 
-export interface Violation {
-  rule_id: string;
-  category: Category;
-  /** Linha e coluna começam em 1; a coluna é contada em caracteres. */
-  line: number;
-  col: number;
-  end_line: number;
-  end_col: number;
-  construct: string;
-  allowed_from_list: number | null;
-  message: string;
-}
+export type ValidateRequest = Schemas["ValidateRequest"];
+export type ValidateResponse = Schemas["ValidateResponse"];
+export type Violation = Schemas["Violation"];
+export type SyntaxErrorInfo = Schemas["SyntaxErrorInfo"];
+export type ListInfo = Schemas["ListInfo"];
+export type ErrorResponse = Schemas["ErrorResponse"];
 
-export interface SyntaxErrorInfo {
-  line: number;
-  col: number;
-  message: string;
-}
-
-export type ValidationStatus = "valid" | "invalid" | "syntax_error";
-
-export type Notice = "QUESTION_RULES_NOT_APPLIED";
-
-export interface ValidateRequest {
-  code: string;
-  list_number: number;
-  question_id: string | null;
-}
-
-export interface ValidateResponse {
-  request_id: string;
-  ruleset_version: string;
-  status: ValidationStatus;
-  list_number: number;
-  question_id: string | null;
-  notices: Notice[];
-  syntax_error: SyntaxErrorInfo | null;
-  violations: Violation[];
-}
-
-export interface ListInfo {
-  number: number;
-  title: string;
-}
-
-export type ApiErrorCode =
-  | "PAYLOAD_TOO_LARGE"
-  | "INVALID_INPUT"
-  | "LIST_NOT_ENABLED"
-  | "UNKNOWN_QUESTION"
-  | "ANALYSIS_LIMIT"
-  | "RATE_LIMITED"
-  | "OVERLOADED"
-  | "ANALYZER_UNAVAILABLE";
+export type Category = Violation["category"];
+export type ValidationStatus = ValidateResponse["status"];
+export type Notice = ValidateResponse["notices"][number];
+export type ApiErrorCode = Schemas["ErrorCode"];
