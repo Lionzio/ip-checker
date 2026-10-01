@@ -1,33 +1,33 @@
 # deploy
 
-Configuração de implantação do IP-Checker nas Fases 0 (local) e 2 (servidor do CIn): o `analyzer`
-endurecido (S6-01) e a `api` pública (S8-01), da mesma imagem. O proxy (Caddy) entra na Sprint 9.
-O piloto no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por processo
-(ADR-03).
+Configuração de implantação do IP-Checker nas Fases 0 (local) e 2 (servidor do CIn): a borda
+`web` (Caddy com a SPA, S9-02), a `api` pública (S8-01) e o `analyzer` endurecido (S6-01). O piloto
+no Render (Fase 1, Sprint 11) não usa este compose: lá o isolamento é por processo (ADR-03).
 
 | Serviço | Redes | Porta na máquina | Endurecimento |
 |---|---|---|---|
 | `analyzer` | `analyzer_net` (interna, sem saída) | nenhuma | NFR-07 completo, testado (abaixo) |
-| `api` | `analyzer_net` e `edge_net` | `127.0.0.1:8100` | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
+| `api` | `analyzer_net` e `edge_net` | nenhuma | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
+| `web` | `edge_net` | `127.0.0.1:8180` | UID 10001, só leitura, sem capabilities (nem a de portas baixas), `no-new-privileges`, 64 processos, 128 MB |
 
 ## Uso
 
 Todos os comandos rodam na raiz do repositório.
 
-Subir tudo e esperar os healthchecks (a `api` só sobe depois que o `analyzer` está saudável):
+Subir tudo e esperar os healthchecks (cada serviço só sobe depois que o anterior está saudável):
 
 ```bash
 docker compose -f deploy/compose.yaml up --build -d --wait
 ```
 
-A API responde em `http://127.0.0.1:8100`:
+A página fica em http://127.0.0.1:8180, e a API, na mesma origem:
 
 ```bash
-curl -s http://127.0.0.1:8100/ready
+curl -s http://127.0.0.1:8180/ready
 ```
 
 ```bash
-curl -s -X POST http://127.0.0.1:8100/api/v1/validate -H "Content-Type: application/json" -d '{"code": "for i in range(3):\n    print(i)\n", "list_number": 1}'
+curl -s -X POST http://127.0.0.1:8180/api/v1/validate -H "Content-Type: application/json" -d '{"code": "for i in range(3):\n    print(i)\n", "list_number": 1}'
 ```
 
 O analyzer não publica porta na máquina. Para falar direto com ele, entre na rede dele:
@@ -49,6 +49,24 @@ Derrubar tudo:
 ```bash
 docker compose -f deploy/compose.yaml down
 ```
+
+## Borda (Caddy)
+
+`deploy/caddy/` constrói a SPA e a serve com o Caddy, que repassa `/api/*`, `/health` e `/ready` à
+`api`. O que a borda garante:
+
+- **Corpo grande nunca chega à API** (DoD, item 1): um `Content-Length` acima de 128 KiB recebe 413
+  sem que o corpo seja lido, e um corpo sem `Content-Length` recebe 411. O fetch do navegador sempre
+  informa o tamanho.
+- **Cabeçalhos de segurança**: CSP sem `unsafe-inline`, `nosniff`, `Referrer-Policy: no-referrer`,
+  `Permissions-Policy` e `COOP`, sem o cabeçalho `Server`.
+- **Erros no formato do contrato**: 411, 413 e a API fora do ar (502 a 504 viram 503
+  `ANALYZER_UNAVAILABLE`) respondem com o envelope `{"error": ...}`.
+- **Logs sem IP nem URL**: não há log de acesso no Caddy, e o filtro apaga IP, cabeçalhos e URL dos
+  demais logs. A linha de cada requisição vem da API (S9-01).
+
+Na Fase 0, a borda responde em HTTP só para esta máquina. TLS e HSTS entram com o domínio do
+servidor do CIn (Fase 2, NFR-10).
 
 ## Controles do NFR-07
 

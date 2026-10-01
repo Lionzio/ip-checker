@@ -14,7 +14,7 @@ O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
 | `frontend/` | SPA React + Vite + TypeScript | Sprint 2 |
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
-| `deploy/` | Compose da `api` e do `analyzer` endurecido; depois o proxy e a configuração do Render | Sprint 6 |
+| `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; depois a configuração do Render | Sprint 6 |
 | `database/` | Migrações SQL da telemetria (Supabase) | Sprint 14 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
@@ -44,7 +44,8 @@ A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e 
 
 - backend: ruff, mypy strict, import-linter e pytest, com o contrato OpenAPI;
 - segurança: build da imagem, isolamento do NFR-07 e submissões maliciosas contra o contêiner;
-- frontend: ESLint, TypeScript, Vitest e build.
+- frontend: tipos gerados do OpenAPI em dia, ESLint, TypeScript, Vitest e build;
+- e2e: o compose completo e o smoke do Marco 1 no Playwright.
 
 ### Portas locais
 
@@ -58,7 +59,7 @@ se a porta estiver ocupada, ele falha em vez de pular para outra.
 | SPA (`npm run preview`) | 5181 | |
 | `analyzer` local, sem Docker | 8001 | Só em `127.0.0.1` |
 | `analyzer` em Docker | nenhuma | Só na rede interna `analyzer_net` |
-| API pública em Docker | 8100 | Só em `127.0.0.1` (`IPC_API_PORT` muda) |
+| Compose: página e API pelo Caddy | 8180 | Só em `127.0.0.1` (`IPC_HTTP_PORT` muda); a API não tem porta própria |
 | API pública local, sem Docker | 8101 | Só em `127.0.0.1` |
 
 ## Fluxo de branches

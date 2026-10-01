@@ -14,6 +14,7 @@ const BASE: ValidateResponse = {
   notices: ["QUESTION_RULES_NOT_APPLIED"],
   syntax_error: null,
   violations: [],
+  truncated: false,
 };
 
 function renderState(state: ValidationState, onRetry = vi.fn()) {
@@ -81,6 +82,28 @@ describe("ResultPanel", () => {
     expect(screen.getByText("Linha 3, coluna 1")).toBeInTheDocument();
     expect(screen.getByText("Fora da lista")).toBeInTheDocument();
     expect(screen.getByText(/a partir da Lista 2/)).toBeInTheDocument();
+    expect(screen.queryByText(/primeiras violações/)).not.toBeInTheDocument();
+  });
+
+  it("avisa quando o relatório foi cortado em 200 violações", () => {
+    const violation = {
+      rule_id: "R-04",
+      category: "NAO_CONSTA" as const,
+      col: 1,
+      end_col: 2,
+      construct: "node:Tuple",
+      allowed_from_list: null,
+      message: "Tuplas não constam no documento.",
+    };
+    const violations = Array.from({ length: 200 }, (_, index) => ({
+      ...violation,
+      line: index + 1,
+      end_line: index + 1,
+    }));
+
+    renderState({ kind: "success", response: { ...BASE, status: "invalid", violations, truncated: true } });
+
+    expect(screen.getByText("Mostrando as 200 primeiras violações. Corrija estas e verifique de novo.")).toBeInTheDocument();
   });
 
   it("mostra o erro de sintaxe com linha e coluna", () => {

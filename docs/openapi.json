@@ -165,6 +165,8 @@
           "LIST_NOT_ENABLED",
           "UNKNOWN_QUESTION",
           "ANALYSIS_LIMIT",
+          "RATE_LIMITED",
+          "OVERLOADED",
           "ANALYZER_UNAVAILABLE"
         ],
         "title": "ErrorCode"

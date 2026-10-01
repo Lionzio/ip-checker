@@ -78,6 +78,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Instalar dependências
         run: npm ci
+      - name: Tipos gerados do OpenAPI em dia (docs/openapi.json -> src/types/openapi.ts)
+        run: |
+          npm run gen:api
+          git diff --exit-code -- src/types/openapi.ts
       - name: ESLint
         run: npm run lint
       - name: TypeScript
@@ -86,6 +90,40 @@ jobs:
         run: npm test
       - name: Build de produção
         run: npm run build
+
+  e2e:
+    name: Smoke e2e (compose completo + Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Subir web (Caddy + SPA), api e analyzer
+        run: docker compose -f deploy/compose.yaml up --build -d --wait --wait-timeout 180
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependências e o Chromium do Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Playwright (Marco 1)
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8180
+        run: npm run e2e
+      - name: Logs do compose (só em falha)
+        if: failure()
+        run: docker compose -f deploy/compose.yaml logs --no-color
+      - name: Relatório do Playwright (só em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
 
   branch-policy:
     name: main nunca à frente da develop

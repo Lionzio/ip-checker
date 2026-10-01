@@ -91,6 +91,11 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
           </li>
         ))}
       </ul>
+      {response.truncated && (
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          Mostrando as {count} primeiras violações. Corrija estas e verifique de novo.
+        </p>
+      )}
       <Notices response={response} />
       <p className="mt-3 text-xs text-slate-500">Regras {response.ruleset_version}</p>
     </div>
