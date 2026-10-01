@@ -118,9 +118,26 @@ def test_rejected_inputs_use_the_error_contract(
     assert error["message"]
 
 
+@pytest.mark.parametrize(
+    "body",
+    [b'{"code": "x = \xff\xfe", "list_number": 1}', b'{"code": "x = 1"', b""],
+    ids=["utf8-invalido", "json-quebrado", "corpo-vazio"],
+)
+def test_malformed_bodies_are_invalid_input(client: TestClient, body: bytes) -> None:
+    response = client.post(
+        "/internal/analyze", content=body, headers={"Content-Type": "application/json"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_INPUT"
+
+
 @pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
 def test_internal_service_has_no_public_documentation(client: TestClient, path: str) -> None:
-    assert client.get(path).status_code == 404
+    response = client.get(path)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Not Found"}
 
 
 def test_invalid_ruleset_prevents_startup(tmp_path: Path) -> None:

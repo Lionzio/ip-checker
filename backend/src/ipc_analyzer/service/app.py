@@ -14,10 +14,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.exceptions import HTTPException
 
 from ipc_analyzer.engine.guards import (
     DEFAULT_LIMITS,
@@ -154,6 +156,13 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         return _error(
             422, "INVALID_INPUT", "Requisição inválida: envie code e list_number (1 a 6)."
         )
+
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException) -> Response:
+        # O FastAPI responde 400 genérico quando o corpo não é UTF-8 válido (DoD, item 3).
+        if exc.status_code == 400:
+            return _error(422, "INVALID_INPUT", "O corpo da requisição não é JSON em UTF-8 válido.")
+        return await http_exception_handler(request, exc)
 
     @app.post("/internal/analyze")
     async def analyze(

@@ -263,3 +263,35 @@
     print(len("a"))
   # eval é o built-in na linha 2; na linha 3, len já é variável do aluno (chamada de função).
   expect: [R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+
+- id: E35-decorator
+  rule: R-04
+  list: 1
+  code: |
+    @staticmethod
+    def f():
+        return 1
+  # Linha 1: o decorador (built-in e derived:decorator na mesma posição viram uma violação só).
+  # Linhas 2 e 3: def e return, que só constam a partir da Lista 4 (Sprint 15).
+  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+
+- id: E36-student-decorator
+  rule: R-04
+  list: 1
+  code: |
+    def d(f):
+        return f
+    @d
+    def g():
+        return 1
+  # Mesmo com um decorador do próprio aluno, o '@d' da linha 3 gera violação.
+  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3, R-04 NAO_CONSTA 4, R-04 NAO_CONSTA 5]
+
+- id: E37-dict-unpacking
+  rule: R-04
+  list: 1
+  code: |
+    a = {1: 2}
+    b = {**a}
+  # O dicionário (R-61, Lista 5) e o '**' dentro dele, que não consta em nenhuma lista.
+  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]

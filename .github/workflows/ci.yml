@@ -38,8 +38,8 @@ jobs:
       - name: Pytest (ruleset, guardas e cobertura >= 90%)
         run: uv run pytest
 
-  container:
-    name: Contêiner do analyzer (isolamento, NFR-07)
+  security:
+    name: Segurança (isolamento e submissões maliciosas contra o contêiner)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -54,11 +54,11 @@ jobs:
           uv sync --locked
       - name: Build da imagem
         run: docker compose -f deploy/compose.yaml build
-      - name: Testes de isolamento (docker inspect e sondas de dentro do contêiner)
+      - name: Suíte de segurança (DoD, seção 8, itens 2 a 12)
         working-directory: backend
         env:
-          IPC_CONTAINER_TESTS: "1"
-        run: uv run pytest tests/test_container.py --no-cov -v
+          IPC_SECURITY_TESTS: "1"
+        run: uv run pytest tests/security --no-cov -v
 
   frontend:
     name: Frontend (lint, tipos, testes, build)

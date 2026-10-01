@@ -46,6 +46,7 @@ from ipc_analyzer.engine.syntax_errors import translate_syntax_error
             "string de aspas triplas não terminada (detectada na linha 4)",
         ),
         ("unterminated f-string literal (detected at line 1)", "f-string não terminada"),
+        ("too many nested f-strings", "f-strings aninhadas demais"),
         ("invalid character '…' (U+2026)", "caractere inválido '…' (U+2026)"),
         ("invalid non-printable character U+00A0", "caractere invisível inválido (U+00A0)"),
         ("invalid hexadecimal literal", "número inválido"),

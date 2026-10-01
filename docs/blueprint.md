@@ -393,6 +393,7 @@ Códigos de erro: 413 `PAYLOAD_TOO_LARGE`, 422 `INVALID_INPUT` / `LIST_NOT_ENABL
 | `param:<tipo>` | `arguments` de `def`/`lambda` | `param:vararg`, `param:kwarg`, `param:default` |
 | `call:user`, `return:multi`, `target:for_unpack` | Contexto estrutural | Chamada de função do aluno; `return a, b`; `for a, b in ...` |
 | `derived:recursion` | Grafo de chamadas entre `FunctionDef` do aluno, com detecção de ciclo por Tarjan | Recursão direta ou mútua (C-03) |
+| `derived:loop_else`, `derived:decorator`, `derived:dict_unpack` | Sintaxe sem nó próprio na AST: o `else` de um laço, cada `@decorador` e cada `**d` num dicionário literal | Nenhuma regra os permite, então viram R-04 (Q-02 g; DoD, item 9) |
 
 Fatos estruturais sempre aceitos, porque sua presença já é controlada pelo nó pai: `node:Module`, `node:Expr`, `node:Name`, `node:Call`, `node:keyword`, `node:Load`, `node:Store`, `node:arguments`, `node:arg` e `node:comprehension`. Nomes ligados pelo aluno (alvos de atribuição, `for` e compreensões, parâmetros e nomes de `def`) são coletados antes, para distinguir `len` (built-in) de uma variável do aluno chamada `len`. Assim, `getattr`, `eval`, `exec`, `__import__`, `globals` e atributos *dunder* caem no *default deny*, o que fecha a evasão por acesso dinâmico.
 

@@ -174,6 +174,16 @@ class _Extractor:
             ):
                 # O 'else' do laço não é nó na AST; o fato aponta para o 1º comando dele (Q-02 g).
                 self.emit("derived:loop_else", first)
+            case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                # '@d' é uma chamada implícita sem nó próprio; sem este fato, um decorador do
+                # aluno passaria despercebido quando funções forem permitidas (DoD, item 9).
+                for decorator in node.decorator_list:
+                    self.emit("derived:decorator", decorator)
+            case ast.Dict():
+                # '{**d}' aparece só como chave None; o fato aponta para a expressão desempacotada.
+                for key, value in zip(node.keys, node.values, strict=True):
+                    if key is None:
+                        self.emit("derived:dict_unpack", value)
             case ast.arguments():
                 self._parameter_facts(node)
 
