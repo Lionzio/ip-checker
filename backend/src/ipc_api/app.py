@@ -2,9 +2,10 @@
 
 Para rodar localmente, com o analyzer em http://127.0.0.1:8001::
 
-    uv run uvicorn ipc_api.app:create_app --factory --port 8100
+    uv run uvicorn ipc_api.app:create_app --factory --port 8101
 
-Rate limit e admissão entram na Sprint 10, antes de qualquer exposição à internet.
+Ordem de cada requisição (5.2.2): identificador e limite de corpo, limite de taxa (429),
+validação (413/422), admissão (503) e chamada ao analyzer.
 """
 
 from __future__ import annotations
@@ -19,10 +20,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from ipc_api.admission import Admission
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.logging import configure_logging
 from ipc_api.middleware import RequestContextMiddleware
+from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
 from ipc_api.routes import meta, validate
 from ipc_api.settings import ApiSettings
 
@@ -33,7 +36,7 @@ Confere, **sem executar o código**, se a solução em Python de um aluno de Int
 Programação respeita as permissões da lista antes do envio ao Dikastis.
 
 Todo erro segue o formato `{"error": {"code", "message", "retry_after_s"}}`. Toda resposta traz
-o cabeçalho `X-Request-Id`.
+o cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.
 """
 
 
@@ -53,6 +56,8 @@ def create_app(
             config.analyzer_url, config.analyzer_timeout_s, transport=analyzer_transport
         )
         app.state.analyzer = client
+        # O semáforo pertence ao laço de eventos que atende as requisições.
+        app.state.admission = Admission(config.admission)
         try:
             yield
         finally:
@@ -69,6 +74,12 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = config
+    app.state.rate_limiter = SlidingWindowLimiter(max_keys=config.rate_limit.max_keys)
+    # O último middleware adicionado é o mais externo: o contexto (identificador, limite de
+    # corpo e log) envolve o limite de taxa, e assim o 429 também aparece no log.
+    app.add_middleware(
+        RateLimitMiddleware, config=config.rate_limit, limiter=app.state.rate_limiter
+    )
     app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
 
     @app.exception_handler(ApiError)

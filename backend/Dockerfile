@@ -66,4 +66,4 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import sys, urllib.request; sys.exit(urllib.request.urlopen('http://127.0.0.1:8001/internal/health', timeout=2).status != 200)"]
 
-CMD ["uvicorn", "ipc_analyzer.service.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8001", "--no-server-header"]
+CMD ["uvicorn", "ipc_analyzer.service.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8001", "--no-server-header", "--no-proxy-headers"]

@@ -14,6 +14,7 @@ import json
 import os
 import shutil
 import subprocess
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -157,15 +158,24 @@ def analyze_request(code: str, list_number: int = 1) -> dict[str, Any]:
     }
 
 
+def new_client_id() -> str:
+    """Identificador de sessão como o que a página gera (``crypto.randomUUID()``)."""
+    return str(uuid.uuid4())
+
+
 def validate_request(
     code: str, list_number: int = 1, headers: dict[str, str] | None = None
 ) -> dict[str, Any]:
-    """Requisição à API pública, pela borda (5.2.2)."""
+    """Requisição à API pública, pela borda (5.2.2).
+
+    Cada requisição leva um ``X-Client-Id`` novo, como se viesse de um aluno diferente: o
+    limite de 10 por minuto por cliente tem os próprios testes (``test_api_rate_limit_edge``).
+    """
     return {
         "method": "POST",
         "path": "/api/v1/validate",
         "json": {"code": code, "list_number": list_number},
-        "headers": headers or {},
+        "headers": {"X-Client-Id": new_client_id(), **(headers or {})},
     }
 
 
@@ -177,6 +187,7 @@ def raw_request(
         "path": path,
         "raw": base64.b64encode(body).decode(),
         "chunked": chunked,
+        "headers": {"X-Client-Id": new_client_id()},
     }
 
 

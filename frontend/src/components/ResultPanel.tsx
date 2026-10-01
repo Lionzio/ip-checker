@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import type { ValidationState } from "../hooks/useValidateCode";
-import { CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
+import { BUSY_TITLES, CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
 import type { ValidateResponse, Violation } from "../types/api";
 
 interface ResultPanelProps {
@@ -15,12 +16,13 @@ const CATEGORY_STYLES: Record<Violation["category"], string> = {
   EXIGENCIA: "bg-purple-100 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100",
 };
 
-function RetryButton({ onRetry }: { onRetry: () => void }) {
+function RetryButton({ onRetry, disabled = false }: { onRetry: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onRetry}
-      className="mt-3 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+      disabled={disabled}
+      className="mt-3 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
     >
       Tentar novamente
     </button>
@@ -102,6 +104,40 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
   );
 }
 
+type BusyState = Extract<ValidationState, { kind: "busy" }>;
+
+/** Limite de taxa ou sobrecarga (US-18): mostra a espera pedida pelo servidor, em contagem regressiva. */
+function BusyResult({ state, onRetry }: { state: BusyState; onRetry: () => void }) {
+  const deadline = state.retryAfterS === null ? null : state.receivedAt + state.retryAfterS * 1000;
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (deadline === null) return;
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= deadline) clearInterval(timer);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [deadline]);
+
+  const remaining = deadline === null ? 0 : Math.max(0, Math.ceil((deadline - now) / 1000));
+  return (
+    <div>
+      <h2 className="text-lg font-semibold">{BUSY_TITLES[state.code] ?? "Serviço ocupado"}</h2>
+      <p className="mt-1">{state.message}</p>
+      {deadline !== null && (
+        // Sem aria-live: um leitor de tela não deve anunciar cada segundo da contagem.
+        <p className="mt-1 text-sm" aria-live="off">
+          {remaining > 0
+            ? `Tente novamente em ${remaining} ${remaining === 1 ? "segundo" : "segundos"}.`
+            : "Já pode tentar novamente."}
+        </p>
+      )}
+      <RetryButton onRetry={onRetry} disabled={remaining > 0} />
+    </div>
+  );
+}
+
 function Content({ state, onRetry }: ResultPanelProps) {
   switch (state.kind) {
     case "idle":
@@ -117,21 +153,15 @@ function Content({ state, onRetry }: ResultPanelProps) {
     case "rejected":
       return (
         <div>
-          <h2 className="text-lg font-semibold">O código não pôde ser verificado</h2>
+          <h2 className="text-lg font-semibold">
+            {state.code === "PAYLOAD_TOO_LARGE" ? "O código excede 50 KB" : "O código não pôde ser verificado"}
+          </h2>
           <p className="mt-1">{state.message}</p>
         </div>
       );
     case "busy":
-      return (
-        <div>
-          <h2 className="text-lg font-semibold">Serviço ocupado</h2>
-          <p className="mt-1">{state.message}</p>
-          {state.retryAfterS !== null && (
-            <p className="mt-1 text-sm">Tente novamente em {state.retryAfterS} segundos.</p>
-          )}
-          <RetryButton onRetry={onRetry} />
-        </div>
-      );
+      // A chave recria a contagem a cada nova resposta 429 ou 503.
+      return <BusyResult key={state.receivedAt} state={state} onRetry={onRetry} />;
     case "network":
     case "timeout":
       return (

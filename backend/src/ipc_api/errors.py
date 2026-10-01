@@ -13,7 +13,6 @@ class ErrorCode(StrEnum):
     LIST_NOT_ENABLED = "LIST_NOT_ENABLED"
     UNKNOWN_QUESTION = "UNKNOWN_QUESTION"
     ANALYSIS_LIMIT = "ANALYSIS_LIMIT"
-    # Documentados no 5.2.2 e usados pelo rate limit e pela admissão a partir da Sprint 10.
     RATE_LIMITED = "RATE_LIMITED"
     OVERLOADED = "OVERLOADED"
     ANALYZER_UNAVAILABLE = "ANALYZER_UNAVAILABLE"
@@ -21,6 +20,8 @@ class ErrorCode(StrEnum):
 
 #: Espera sugerida ao cliente quando o analyzer não responde.
 UNAVAILABLE_RETRY_S = 30
+#: Espera sugerida quando não há vaga para a análise (admissão).
+OVERLOADED_RETRY_S = 10
 
 
 class ApiError(Exception):
@@ -54,4 +55,13 @@ def analyzer_unavailable() -> ApiError:
         ErrorCode.ANALYZER_UNAVAILABLE,
         "O analisador está indisponível no momento. Tente de novo em alguns segundos.",
         retry_after_s=UNAVAILABLE_RETRY_S,
+    )
+
+
+def overloaded() -> ApiError:
+    return ApiError(
+        503,
+        ErrorCode.OVERLOADED,
+        "O serviço está sobrecarregado no momento. Tente de novo em alguns segundos.",
+        retry_after_s=OVERLOADED_RETRY_S,
     )

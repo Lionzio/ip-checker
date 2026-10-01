@@ -127,6 +127,23 @@ O item 11 é o isolamento da seção anterior.
 | 13 | Marcador canário no código, na URL, na query e em cabeçalhos; IP falso em `X-Forwarded-For` | 0 ocorrências do marcador, do IP falso e do IP real do cliente nos logs dos três serviços; `docker diff` vazio; nada nas áreas em memória |
 | Final | `/ready` pela borda | 200 |
 
+## Limite de taxa pela borda (S10-03)
+
+`backend/tests/security/test_api_rate_limit_edge.py` repete, com a pilha real, os critérios da
+US-17. Todos os pedidos saem de um único contêiner, ou seja, de um único IP externo.
+
+| O que é enviado | O que se espera |
+|---|---|
+| 11 verificações com o mesmo `X-Client-Id` | 10 aceitas e a 11ª com 429 `RATE_LIMITED`; o `Retry-After` atravessa a borda; outro aluno do mesmo IP segue atendido |
+| 11 verificações sem identificador, cada uma com um `X-Forwarded-For` forjado diferente | A 11ª recebe 429: a borda descarta o cabeçalho do cliente, e forjá-lo não cria identidades novas |
+| 150 verificações de 150 "alunos", todos fingindo estar na faixa da UFPE | No máximo 120 aceitas no minuto; as demais com 429 (limite do IP externo, não o do campus) |
+| Com o limite do IP esgotado: `/api/v1/lists`, `/ready` e `/health` | 200: a página ainda carrega e o monitoramento ainda enxerga o serviço |
+| Logs dos três serviços | `rate_limit` com `client` e `ip`; nenhum identificador de sessão nem endereço forjado |
+
+No compose, a `api` roda com `IPC_TRUSTED_PROXY_HOPS=1`: o IP do cliente é o que o Caddy escreve
+no `X-Forwarded-For`. De um único IP externo (120 verificações por minuto), não dá para saturar a
+admissão: o limite de taxa age antes.
+
 O item 13 ainda não cobre o banco, que entra na Sprint 14. O item 14 (Trivy, pip-audit, npm audit e
 gitleaks) ainda não tem sprint no roadmap, e o 15 (TLS, HSTS e CORS) vale a partir da Sprint 11.
 

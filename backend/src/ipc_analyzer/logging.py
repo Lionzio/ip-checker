@@ -39,6 +39,8 @@ LOG_FIELDS = frozenset(
         "ruleset_version",
         "outcome",
         "violations",
+        # Qual limite recusou a requisição: "client", "ip" ou "capacity". Nunca o IP.
+        "rate_limit",
         "error_type",
         "dropped_fields",
     }

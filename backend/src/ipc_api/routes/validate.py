@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 
+from ipc_api.admission import Admission, Overloaded
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
-from ipc_api.deps import get_analyzer, get_request_id, get_settings
-from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable
+from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings
+from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.routes import error_docs
 from ipc_api.schemas import ValidateRequest, ValidateResponse
 from ipc_api.settings import ApiSettings
@@ -31,7 +32,14 @@ router = APIRouter(prefix="/api/v1", tags=["validação"])
                 "UNKNOWN_QUESTION (questão não cadastrada) ou ANALYSIS_LIMIT (código complexo "
                 "demais)."
             ),
-            503: "ANALYZER_UNAVAILABLE: o analisador não respondeu. Veja retry_after_s.",
+            429: (
+                "RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma "
+                "rede em 1 minuto. Veja retry_after_s."
+            ),
+            503: (
+                "OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não "
+                "respondeu). Veja retry_after_s."
+            ),
         }
     ),
 )
@@ -40,8 +48,18 @@ async def validate(
     request: Request,
     response: Response,
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    admission: Annotated[Admission, Depends(get_admission)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
     request_id: Annotated[str, Depends(get_request_id)],
+    x_client_id: Annotated[
+        str | None,
+        Header(
+            description=(
+                "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao "
+                "limite de taxa por cliente (lido pelo middleware) e nunca é gravado."
+            )
+        ),
+    ] = None,
 ) -> ValidateResponse:
     # O resultado diz respeito ao código de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
@@ -62,7 +80,11 @@ async def validate(
         )
 
     try:
-        result = await analyzer.analyze(body.code, body.list_number, request_id=request_id)
+        # A vaga só é ocupada durante a análise, com a entrada já lida e validada.
+        async with admission.slot():
+            result = await analyzer.analyze(body.code, body.list_number, request_id=request_id)
+    except Overloaded:
+        raise overloaded() from None
     except AnalyzerRejected as exc:
         raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
     except AnalyzerUnavailable as exc:

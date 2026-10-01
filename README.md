@@ -96,4 +96,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 7 | S7-01 suíte de segurança: 70 ataques e 13 testes de isolamento contra o contêiner, na CI | Concluída |
 | 8 | S8-01 API pública: validação, listas, health e ready, contrato OpenAPI e import-linter | Concluída |
 | 9 | Marco 1 (MVP local): S9-01 logs sem código nem IP; S9-02 SPA na API real, borda Caddy e e2e; S9-03 segurança da API pública | Concluída |
-| 10 | Proteção para exposição pública: rate limit e admissão | Próxima |
+| 10 | Proteção para exposição pública: S10-01 limite de taxa por cliente e por IP e admissão; S10-02 mensagens e contagem de espera na página; S10-03 limite de taxa atacado pela borda | Concluída |
+| 11 | Deploy do piloto: isolamento por processo no Render e SPA na Vercel | Próxima |

@@ -26,11 +26,16 @@ from conftest import BASE_RULESET, REPO_ROOT
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
+from ipc_api.admission import AdmissionConfig
 from ipc_api.app import create_app
 from ipc_api.openapi import build, render
+from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
 
 OPENAPI_FILE = REPO_ROOT / "docs" / "openapi.json"
+#: Os testes daqui mandam centenas de requisições de um mesmo cliente; o limite de taxa tem
+#: os próprios testes (test_api_rate_limit.py).
+UNLIMITED = ApiSettings(rate_limit=RateLimitConfig(client_per_min=1_000_000, ip_per_min=1_000_000))
 
 
 def test_openapi_contract_is_up_to_date() -> None:
@@ -82,7 +87,7 @@ def api_app(analyzer: TestClient) -> FastAPI:
             headers={"Content-Type": answer.headers["content-type"]},
         )
 
-    return create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(bridge))
+    return create_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge))
 
 
 @pytest.fixture(scope="module")
@@ -235,3 +240,54 @@ def test_unavailable_analyzer_follows_the_contract(
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "ANALYZER_UNAVAILABLE"
+
+
+def _contract_for(settings: ApiSettings) -> Any:
+    def valid(_request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json={
+                "ruleset_version": "2026.2.0",
+                "status": "valid",
+                "list_number": 1,
+                "syntax_error": None,
+                "violations": [],
+                "truncated": False,
+            },
+        )
+
+    schema = schemathesis.openapi.from_dict(
+        json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
+    )
+    schema.app = create_app(settings, analyzer_transport=httpx2.MockTransport(valid))
+    return schema
+
+
+def test_rate_limited_follows_the_contract() -> None:
+    contract = _contract_for(ApiSettings(rate_limit=RateLimitConfig(client_per_min=1)))
+    operation = contract["/api/v1/validate"]["POST"]
+    body = {"code": "x = 1\n", "list_number": 1}
+    headers = {"X-Client-Id": "0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c5d"}
+
+    first = operation.Case(body=body, media_type="application/json", headers=headers)
+    second = operation.Case(body=body, media_type="application/json", headers=headers)
+
+    assert first.call_and_validate().status_code == 200
+    response = second.call_and_validate()
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "RATE_LIMITED"
+    assert response.headers["retry-after"] == [str(response.json()["error"]["retry_after_s"])]
+
+
+def test_overloaded_follows_the_contract() -> None:
+    # Sem nenhuma vaga de admissão, toda análise é recusada com 503 OVERLOADED.
+    contract = _contract_for(ApiSettings(admission=AdmissionConfig(capacity=0, max_waiting=0)))
+    case = contract["/api/v1/validate"]["POST"].Case(
+        body={"code": "x = 1\n", "list_number": 1}, media_type="application/json"
+    )
+
+    response = case.call_and_validate(excluded_checks=[not_a_server_error])
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "OVERLOADED"
+    assert response.headers["retry-after"] == ["10"]
