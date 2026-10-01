@@ -331,6 +331,12 @@ class CompiledRuleset:
         return self.ruleset.ruleset_version
 
     @property
+    def target_version(self) -> tuple[int, int]:
+        """Versão do Python cuja gramática o parser usa, ex.: (3, 13) (NFR-21)."""
+        major, minor = self.ruleset.target_python.split(".")
+        return int(major), int(minor)
+
+    @property
     def default_deny(self) -> MetaRule:
         return next(m for m in self.ruleset.meta_rules if m.kind is MetaKind.DEFAULT_DENY)
 
