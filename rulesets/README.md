@@ -60,6 +60,10 @@ cd backend
 uv run pytest
 ```
 
+Toda regra criada ou alterada precisa de casos em `backend/tests/golden/` (pelo menos 3 por
+regra: permitido na lista certa, proibido antes dela e evasão quando couber). Cada caso traz o
+código, a lista e as violações esperadas, comparadas de forma exata.
+
 O teste falha, com o caminho do campo, se o arquivo tiver ID repetido, fato inexistente (ex.:
 `node:Fro`), marcador desconhecido na mensagem, fato permitido e proibido ao mesmo tempo, entre
 outros. A CLI `ipc-rules validate` entra na Sprint 17.

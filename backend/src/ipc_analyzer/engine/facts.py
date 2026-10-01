@@ -167,6 +167,13 @@ class _Extractor:
                 self.emit("call:user", node)
             case ast.Return(value=ast.Tuple()):
                 self.emit("return:multi", node)
+            case (
+                ast.For(orelse=[first, *_])
+                | ast.AsyncFor(orelse=[first, *_])
+                | ast.While(orelse=[first, *_])
+            ):
+                # O 'else' do laço não é nó na AST; o fato aponta para o 1º comando dele (Q-02 g).
+                self.emit("derived:loop_else", first)
             case ast.arguments():
                 self._parameter_facts(node)
 

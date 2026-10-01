@@ -93,6 +93,7 @@ _OTHERS = {
     "return:multi": "retorno de vários valores",
     "target:for_unpack": "desempacotamento no for",
     "derived:recursion": "recursão",
+    "derived:loop_else": "else em laço",
 }
 
 

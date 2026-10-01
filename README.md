@@ -68,4 +68,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 1 | S1-01 monorepo e CI; S1-02 modelo do ruleset, loader imutável e R-03…R-36 | Concluída |
 | 2 | S2-01 parser seguro e limites; S2-02 esqueleto da SPA com cliente simulado | Concluída |
 | 3 | S3-01 extrator de fatos e ligações de nomes (resistente a evasão por sombreamento) | Concluída |
-| 4 | S4-01 avaliador de política v1; S4-02 corpus golden e de evasão | Próxima |
+| 4 | S4-01 avaliador de política v1; S4-02 corpus golden (120 casos, 34 de evasão) | Concluída |
+| 5 | S5-01 analisador isolado: pool de workers com limites de tempo e memória | Próxima |
