@@ -8,8 +8,11 @@ export type ValidationState =
   | { kind: "success"; response: ValidateResponse }
   /** Entrada recusada (413/422): o aluno precisa mudar o código ou a lista. */
   | { kind: "rejected"; code: ApiErrorCode; message: string }
-  /** Limite de taxa ou sobrecarga (429/503): basta esperar e tentar de novo. */
-  | { kind: "busy"; code: ApiErrorCode; message: string; retryAfterS: number | null }
+  /**
+   * Limite de taxa ou sobrecarga (429/503): basta esperar e tentar de novo. `receivedAt` é o
+   * instante (Date.now()) em que a resposta chegou, de onde a contagem da espera parte.
+   */
+  | { kind: "busy"; code: ApiErrorCode; message: string; retryAfterS: number | null; receivedAt: number }
   | { kind: "network"; message: string }
   | { kind: "timeout"; message: string };
 
@@ -24,7 +27,13 @@ function toErrorState(error: unknown, timedOut: boolean, timeoutMs: number): Val
   }
   if (error instanceof ApiError) {
     if (error.status === 429 || error.status === 503) {
-      return { kind: "busy", code: error.code, message: error.message, retryAfterS: error.retryAfterS };
+      return {
+        kind: "busy",
+        code: error.code,
+        message: error.message,
+        retryAfterS: error.retryAfterS,
+        receivedAt: Date.now(),
+      };
     }
     return { kind: "rejected", code: error.code, message: error.message };
   }

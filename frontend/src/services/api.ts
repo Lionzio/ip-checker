@@ -4,6 +4,7 @@
  */
 import type { ApiErrorCode, ErrorResponse, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
 import { ApiError, type ValidationClient } from "./client";
+import { getClientId } from "./clientId";
 
 const UNAVAILABLE_MESSAGE = "O serviço está indisponível no momento. Tente de novo em alguns segundos.";
 
@@ -16,6 +17,11 @@ function isErrorResponse(body: unknown): body is ErrorResponse {
     typeof (error as { code?: unknown }).code === "string" &&
     typeof (error as { message?: unknown }).message === "string"
   );
+}
+
+function retryAfterHeader(response: Response): number | null {
+  const value = response.headers.get("Retry-After");
+  return value !== null && /^\d+$/.test(value) ? Number(value) : null;
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -39,7 +45,8 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Va
     if (response.ok) return body as T;
     if (isErrorResponse(body)) {
       const { code, message, retry_after_s: retryAfterS } = body.error;
-      throw new ApiError(response.status, code, message, retryAfterS ?? null);
+      // O tempo de espera vem no corpo e no cabeçalho Retry-After; vale o que estiver presente.
+      throw new ApiError(response.status, code, message, retryAfterS ?? retryAfterHeader(response));
     }
     // Resposta fora do contrato (por exemplo, um proxy sem a API atrás): trata como indisponível.
     const code: ApiErrorCode = "ANALYZER_UNAVAILABLE";
@@ -55,7 +62,7 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Va
         "/api/v1/validate",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Client-Id": getClientId() },
           body: JSON.stringify(request),
         },
         signal,

@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ValidationState } from "../hooks/useValidateCode";
 import type { ValidateResponse } from "../types/api";
 import { ResultPanel } from "./ResultPanel";
@@ -121,18 +121,90 @@ describe("ResultPanel", () => {
   });
 
   it("explica a entrada recusada sem oferecer nova tentativa", () => {
-    renderState({ kind: "rejected", code: "PAYLOAD_TOO_LARGE", message: "O código excede 50 KB." });
+    renderState({ kind: "rejected", code: "INVALID_INPUT", message: "O código está vazio." });
 
-    expect(screen.getByText("O código excede 50 KB.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "O código não pôde ser verificado" })).toBeInTheDocument();
+    expect(screen.getByText("O código está vazio.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
   });
 
-  it("mostra o tempo de espera quando o serviço está ocupado", async () => {
-    const onRetry = renderState({ kind: "busy", code: "RATE_LIMITED", message: "Muitas verificações.", retryAfterS: 30 });
+  it("diz que o código excede 50 KB quando a API responde 413 (US-18)", () => {
+    renderState({
+      kind: "rejected",
+      code: "PAYLOAD_TOO_LARGE",
+      message: "O código tem 51.201 bytes; o limite é 51.200 bytes (50 KB).",
+    });
 
-    expect(screen.getByText("Tente novamente em 30 segundos.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    expect(onRetry).toHaveBeenCalledOnce();
+    expect(screen.getByRole("heading", { name: "O código excede 50 KB" })).toBeInTheDocument();
+    expect(screen.getByText("O código tem 51.201 bytes; o limite é 51.200 bytes (50 KB).")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["RATE_LIMITED", "Limite de verificações atingido"],
+    ["OVERLOADED", "Serviço ocupado"],
+    ["ANALYZER_UNAVAILABLE", "Serviço indisponível"],
+  ] as const)("dá um título próprio ao estado %s", (code, title) => {
+    renderState({ kind: "busy", code, message: "Explicação.", retryAfterS: null, receivedAt: Date.now() });
+
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    // Sem tempo de espera informado, a nova tentativa fica liberada.
+    expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeEnabled();
+  });
+
+  describe("tempo de espera (US-18)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function renderBusy(retryAfterS: number) {
+      return renderState({
+        kind: "busy",
+        code: "RATE_LIMITED",
+        message: "Você fez muitas verificações em pouco tempo.",
+        retryAfterS,
+        receivedAt: Date.now(),
+      });
+    }
+
+    it("conta o tempo de espera e só então libera a nova tentativa", () => {
+      const onRetry = renderBusy(30);
+      const retry = screen.getByRole("button", { name: "Tentar novamente" });
+
+      expect(screen.getByText("Tente novamente em 30 segundos.")).toBeInTheDocument();
+      expect(retry).toBeDisabled();
+
+      act(() => void vi.advanceTimersByTime(29_000));
+      expect(screen.getByText("Tente novamente em 1 segundo.")).toBeInTheDocument();
+      expect(retry).toBeDisabled();
+
+      act(() => void vi.advanceTimersByTime(1_000));
+      expect(screen.getByText("Já pode tentar novamente.")).toBeInTheDocument();
+      expect(retry).toBeEnabled();
+
+      fireEvent.click(retry);
+      expect(onRetry).toHaveBeenCalledOnce();
+    });
+
+    it("recomeça a contagem quando chega uma nova resposta de limite", () => {
+      const first = { kind: "busy", code: "RATE_LIMITED", message: "Calma.", retryAfterS: 10, receivedAt: Date.now() } as const;
+      const { rerender } = render(<ResultPanel state={first} onRetry={vi.fn()} />);
+      act(() => void vi.advanceTimersByTime(10_000));
+      expect(screen.getByText("Já pode tentar novamente.")).toBeInTheDocument();
+
+      rerender(<ResultPanel state={{ ...first, retryAfterS: 20, receivedAt: Date.now() }} onRetry={vi.fn()} />);
+
+      expect(screen.getByText("Tente novamente em 20 segundos.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeDisabled();
+    });
+
+    it("não anuncia cada segundo da contagem a leitores de tela", () => {
+      renderBusy(30);
+
+      expect(screen.getByText("Tente novamente em 30 segundos.")).toHaveAttribute("aria-live", "off");
+    });
   });
 
   it.each([

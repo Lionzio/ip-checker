@@ -85,6 +85,61 @@ describe("createApiClient", () => {
     expect(error.retryAfterS).toBe(30);
   });
 
+  it("identifica a sessão com o mesmo X-Client-Id em todas as verificações", async () => {
+    const fetchMock = respond(200, RESPONSE);
+    const client = createApiClient();
+
+    await client.validate({ code: "x = 1", list_number: 1, question_id: null });
+    fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify(RESPONSE))));
+    await client.validate({ code: "y = 2", list_number: 1, question_id: null });
+
+    const ids = fetchMock.mock.calls.map((call) => {
+      const [, init] = call as unknown as [string, RequestInit];
+      return (init.headers as Record<string, string>)["X-Client-Id"];
+    });
+    expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(ids[1]).toBe(ids[0]);
+  });
+
+  it("não manda o X-Client-Id ao buscar as listas", async () => {
+    const fetchMock = respond(200, []);
+
+    await createApiClient().listLists();
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.headers).not.toHaveProperty("X-Client-Id");
+  });
+
+  it("lê o tempo de espera do limite de taxa", async () => {
+    respond(429, {
+      error: { code: "RATE_LIMITED", message: "Você fez muitas verificações em pouco tempo.", retry_after_s: 42 },
+    });
+
+    const error = await rejection(createApiClient().validate({ code: "x", list_number: 1, question_id: null }));
+
+    expect(error.status).toBe(429);
+    expect(error.code).toBe("RATE_LIMITED");
+    expect(error.retryAfterS).toBe(42);
+  });
+
+  it("usa o cabeçalho Retry-After quando o corpo não traz a espera", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error: { code: "OVERLOADED", message: "Ocupado.", retry_after_s: null } }), {
+            status: 503,
+            headers: { "Content-Type": "application/json", "Retry-After": "7" },
+          }),
+        ),
+      ),
+    );
+
+    const error = await rejection(createApiClient().listLists());
+
+    expect(error.retryAfterS).toBe(7);
+  });
+
   it.each([
     [502, "<html>Bad Gateway</html>", "text/html"],
     [500, "", "text/plain"],

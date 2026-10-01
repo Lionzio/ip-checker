@@ -268,12 +268,12 @@ class RateLimitMiddleware:
         state["rate_limit"] = rejection.scope
         # A recusa acontece antes do roteamento; o caminho é um dos de LIMITED_ROUTES.
         state["route_path"] = scope["path"]
-        seconds = rejection.retry_after_s
-        unit = "segundo" if seconds == 1 else "segundos"
+        # O tempo de espera vai só em retry_after_s e no Retry-After: a página mostra uma
+        # contagem regressiva, e um número fixo no texto ficaria desatualizado.
         response = error_response(
             429,
             ErrorCode.RATE_LIMITED,
-            f"{_MESSAGES[rejection.scope]} Aguarde {seconds} {unit} e tente de novo.",
-            retry_after_s=seconds,
+            _MESSAGES[rejection.scope],
+            retry_after_s=rejection.retry_after_s,
         )
         await response(scope, receive, send)

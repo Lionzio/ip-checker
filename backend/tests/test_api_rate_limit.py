@@ -112,10 +112,7 @@ def test_eleventh_request_of_a_client_in_a_minute_is_rate_limited(
     error = limited.json()["error"]
     assert 1 <= error["retry_after_s"] <= 60
     assert limited.headers["Retry-After"] == str(error["retry_after_s"])
-    assert error["message"] == (
-        f"Você fez muitas verificações em pouco tempo. Aguarde {error['retry_after_s']} segundos "
-        "e tente de novo."
-    )
+    assert error["message"] == "Você fez muitas verificações em pouco tempo."
     assert limited.headers["X-Request-Id"]
     assert analyzer.calls == 10  # a requisição recusada não chega ao analyzer
 
@@ -159,16 +156,12 @@ def test_sixty_clients_behind_one_campus_ip_are_never_rate_limited(
 
 
 def test_external_ip_is_limited_to_120_per_minute(proxied: TestClient, analyzer: Analyzer) -> None:
-    responses = [
-        validate(proxied, new_client_id(), EXTERNAL_IP) for _ in range(130)
-    ]  # 130 "clientes" de um mesmo IP externo, cada um com 1 verificação
+    # 130 "clientes" de um mesmo IP externo, cada um com 1 verificação.
+    responses = [validate(proxied, new_client_id(), EXTERNAL_IP) for _ in range(130)]
 
     assert [r.status_code for r in responses] == [200] * 120 + [429] * 10
-    assert (
-        responses[-1]
-        .json()["error"]["message"]
-        .startswith("Muitas verificações vieram da sua rede em pouco tempo.")
-    )
+    message = responses[-1].json()["error"]["message"]
+    assert message == "Muitas verificações vieram da sua rede em pouco tempo."
     assert analyzer.calls == 120
     assert validate(proxied, new_client_id(), "198.51.100.20").status_code == 200
 
