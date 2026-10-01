@@ -13,7 +13,10 @@ from security.harness import CLIENT, IMAGE, NETWORK, Client, compose, docker
 def analyzer() -> Iterator[str]:
     """Sobe o ``deploy/compose.yaml`` real num projeto próprio e devolve o id do contêiner."""
     try:
-        compose("up", "--build", "--detach", "--wait", "--wait-timeout", "120", timeout=600)
+        # Só o analyzer: a suíte ataca o serviço interno (a API pública entra na S9-03).
+        compose(
+            "up", "--build", "--detach", "--wait", "--wait-timeout", "120", "analyzer", timeout=600
+        )
         yield compose("ps", "--quiet", "analyzer").strip()
     finally:
         compose("down", "--volumes", "--remove-orphans", timeout=120)

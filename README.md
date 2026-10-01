@@ -10,11 +10,11 @@ O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
 
 | Pasta | Conteúdo | Desde |
 |---|---|---|
-| `backend/` | Projeto Python 3.13: motor de regras (`ipc_analyzer`) e, depois, a API (`ipc_api`) | Sprint 1 |
+| `backend/` | Projeto Python 3.13: motor de regras e analisador isolado (`ipc_analyzer`) e API pública (`ipc_api`) | Sprint 1 |
 | `frontend/` | SPA React + Vite + TypeScript | Sprint 2 |
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
-| `docs/` | Blueprint e matriz de mapeamento R-xx → fatos | Sprint 1 |
-| `deploy/` | Compose do `analyzer` endurecido; depois `api`, proxy e configuração do Render | Sprint 6 |
+| `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
+| `deploy/` | Compose da `api` e do `analyzer` endurecido; depois o proxy e a configuração do Render | Sprint 6 |
 | `database/` | Migrações SQL da telemetria (Supabase) | Sprint 14 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
@@ -42,7 +42,7 @@ O `analyzer` endurecido em Docker, com os testes de isolamento, está em
 
 A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
 
-- backend: ruff, mypy strict e pytest;
+- backend: ruff, mypy strict, import-linter e pytest, com o contrato OpenAPI;
 - segurança: build da imagem, isolamento do NFR-07 e submissões maliciosas contra o contêiner;
 - frontend: ESLint, TypeScript, Vitest e build.
 
@@ -58,7 +58,8 @@ se a porta estiver ocupada, ele falha em vez de pular para outra.
 | SPA (`npm run preview`) | 5181 | |
 | `analyzer` local, sem Docker | 8001 | Só em `127.0.0.1` |
 | `analyzer` em Docker | nenhuma | Só na rede interna `analyzer_net` |
-| API pública (Sprint 8) | 8100 | Reservada |
+| API pública em Docker | 8100 | Só em `127.0.0.1` (`IPC_API_PORT` muda) |
+| API pública local, sem Docker | 8101 | Só em `127.0.0.1` |
 
 ## Fluxo de branches
 
@@ -92,4 +93,5 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 5 | S5-01 analisador isolado: pool de workers com limites calibrados e serviço interno | Concluída |
 | 6 | S6-01 contêiner endurecido do analisador, rede sem saída e testes de isolamento na CI | Concluída |
 | 7 | S7-01 suíte de segurança: 70 ataques e 13 testes de isolamento contra o contêiner, na CI | Concluída |
-| 8 | S8-01 API pública: endpoint de validação, listas, health e readiness | Próxima |
+| 8 | S8-01 API pública: validação, listas, health e ready, contrato OpenAPI e import-linter | Concluída |
+| 9 | Marco 1: logs estruturados, SPA ligada à API real e suíte de segurança na API | Próxima |
