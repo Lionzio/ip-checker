@@ -33,6 +33,9 @@ class Fact:
     col: int
     end_line: int
     end_col: int
+    #: Número de argumentos da chamada quando o fato é a função chamada (``type('C', (), {})``
+    #: -> 3); ``None`` quando não é chamada. Usado pelos predicados (``engine/conditions.py``).
+    call_args: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +47,8 @@ class _Visit:
     role: str = ""
     callee: str = ""
     callee_is_student: bool = False
+    #: Preenchido só para o nó que é a função de uma chamada.
+    call_args: int | None = None
 
 
 class _SourceMap:
@@ -62,8 +67,8 @@ class _SourceMap:
             self._encoded[line] = encoded
         return len(encoded[:byte_offset].decode("utf-8", errors="ignore")) + 1
 
-    def fact(self, name: str, start: Position, end: Position) -> Fact:
-        return Fact(name, start[0], self.column(*start), end[0], self.column(*end))
+    def fact(self, name: str, start: Position, end: Position, call_args: int | None = None) -> Fact:
+        return Fact(name, start[0], self.column(*start), end[0], self.column(*end), call_args)
 
 
 def _const_kind(value: object) -> str:
@@ -96,8 +101,16 @@ class _Extractor:
         self._map = _SourceMap(parsed.source)
         self.facts: list[Fact] = []
 
-    def emit(self, name: str, anchor: ast.AST, start: Position | None = None) -> None:
-        self.facts.append(self._map.fact(name, start or start_of(anchor), end_of(anchor)))
+    def emit(
+        self,
+        name: str,
+        anchor: ast.AST,
+        start: Position | None = None,
+        call_args: int | None = None,
+    ) -> None:
+        self.facts.append(
+            self._map.fact(name, start or start_of(anchor), end_of(anchor), call_args)
+        )
 
     def is_student(self, name: str, visit: _Visit, node: ast.AST) -> bool:
         return self._bindings.is_student_name(name, visit.scopes, start_of(node))
@@ -113,7 +126,9 @@ class _Extractor:
         )
 
     def _visit(self, visit: _Visit) -> None:
-        node, anchor = visit.node, visit.anchor
+        node = visit.node
+        # Nós sem posição (operadores, contextos, ``arguments``) herdam a do pai.
+        anchor = node if hasattr(node, "lineno") else visit.anchor
         if isinstance(node, _OPERATORS):
             self.emit(f"op:{type(node).__name__}", anchor)
         elif isinstance(node, ast.cmpop):
@@ -131,9 +146,14 @@ class _Extractor:
         match node:
             case ast.Name(ctx=ast.Load()):
                 if is_builtin_name(node.id) and not self.is_student(node.id, visit, node):
-                    self.emit(f"builtin:{node.id}", node)
+                    self.emit(f"builtin:{node.id}", node, call_args=visit.call_args)
             case ast.Attribute():
-                self.emit(f"method:{node.attr}", node, start=_attribute_name_start(node))
+                self.emit(
+                    f"method:{node.attr}",
+                    node,
+                    start=_attribute_name_start(node),
+                    call_args=visit.call_args,
+                )
             case ast.Constant():
                 self.emit(f"const:{_const_kind(node.value)}", node)
             case ast.keyword():
@@ -169,8 +189,10 @@ class _Extractor:
         anchor = node if hasattr(node, "lineno") else visit.anchor
         star_args: set[int] = set()
         for_target = -1
+        func, call_args = -1, 0
         callee, callee_is_student = "", False
         if isinstance(node, ast.Call):
+            func, call_args = id(node.func), len(node.args) + len(node.keywords)
             star_args = {id(arg) for arg in node.args if isinstance(arg, ast.Starred)}
             callee = _callee_name(node.func)
             callee_is_student = isinstance(node.func, ast.Name) and self.is_student(
@@ -198,6 +220,7 @@ class _Extractor:
                     role=role,
                     callee=callee,
                     callee_is_student=callee_is_student,
+                    call_args=call_args if id(child) == func else None,
                 )
             )
         return children

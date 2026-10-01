@@ -62,6 +62,34 @@ def _second_rule(data: dict[str, Any]) -> dict[str, Any]:
     return rule
 
 
+def _conditional(
+    fact: str, predicate: str = "call_args", params: dict[str, int] | None = None
+) -> dict[str, Any]:
+    when: dict[str, Any] = {"predicate": predicate}
+    if params is not None:
+        when["params"] = params
+    return {"fact": fact, "when": when}
+
+
+def test_conditional_facts_may_share_a_fact_between_allow_and_deny(
+    minimal_data: dict[str, Any], write_ruleset: Writer
+) -> None:
+    _first_rule(minimal_data)["match"] = [
+        "node:Try",
+        _conditional("builtin:type", params={"min": 3}),
+    ]
+    _second_rule(minimal_data)["match"] = [_conditional("builtin:type", params={"max": 1})]
+
+    compiled = load_ruleset(write_ruleset(minimal_data))
+
+    matches = compiled.matches_for("builtin:type")
+    assert [(m.rule.id, m.condition.params if m.condition else None) for m in matches] == [
+        ("R-06", {"min": 3}),
+        ("R-34", {"max": 1}),
+    ]
+    assert compiled.rules_for("node:Try")[0].unconditional_facts() == {"node:Try"}
+
+
 INVALID_CASES: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
     ("id repetido", lambda d: _second_rule(d).update(id="R-06"), "id de regra repetido"),
     ("deny com since_list", lambda d: _first_rule(d).update(since_list=1), "não aceita since"),
@@ -86,8 +114,30 @@ INVALID_CASES: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
     ("fato repetido", lambda d: _second_rule(d).update(match=["node:For", "node:For"]), "repetido"),
     (
         "predicado desconhecido",
-        lambda d: _second_rule(d).update(when={"predicate": "zip_in_for_header"}),
+        lambda d: _second_rule(d).update(match=[_conditional("builtin:zip", "zip_in_for_header")]),
         "predicado desconhecido",
+    ),
+    (
+        "parâmetro desconhecido",
+        lambda d: _second_rule(d).update(match=[_conditional("builtin:type", params={"n": 1})]),
+        "parâmetro desconhecido",
+    ),
+    (
+        "call_args sem limites",
+        lambda d: _second_rule(d).update(match=[_conditional("builtin:type")]),
+        "min ou max",
+    ),
+    (
+        "call_args com min maior que max",
+        lambda d: _second_rule(d).update(
+            match=[_conditional("builtin:type", params={"min": 3, "max": 1})]
+        ),
+        "maior que max",
+    ),
+    (
+        "condição no nível da regra",
+        lambda d: _second_rule(d).update(when={"predicate": "call_args"}),
+        "Extra inputs",
     ),
     ("marcador desconhecido", lambda d: _second_rule(d).update(message="Lista {x}"), "marcador"),
     ("mensagem vazia", lambda d: _second_rule(d).update(message="  "), "message"),

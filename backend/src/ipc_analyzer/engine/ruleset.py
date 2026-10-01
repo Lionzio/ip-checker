@@ -157,8 +157,12 @@ def _validate_message(value: str) -> str:
     return value
 
 
-#: Predicados contextuais implementados pelo motor. Um predicado novo exige código e ADR (5.2.3).
-KNOWN_PREDICATES: frozenset[str] = frozenset()
+#: Predicados contextuais implementados pelo motor (``engine/conditions.py``) e os parâmetros
+#: que cada um aceita. Um predicado novo exige código e ADR (5.2.3).
+_PREDICATE_PARAMS: Mapping[str, frozenset[str]] = MappingProxyType(
+    {"call_args": frozenset({"min", "max"})}
+)
+KNOWN_PREDICATES: frozenset[str] = frozenset(_PREDICATE_PARAMS)
 
 Fact = Annotated[str, AfterValidator(_validate_fact)]
 RuleId = Annotated[str, StringConstraints(pattern=r"^R-\d{2}$")]
@@ -196,10 +200,12 @@ class _Frozen(BaseModel):
 
 
 class Condition(_Frozen):
-    """Predicado contextual de uma regra (ex.: ``zip`` só no cabeçalho do ``for``, R-37)."""
+    """Predicado contextual de um fato (ex.: ``type()`` com 3 argumentos cria classe, R-09)."""
 
     predicate: str
     params: dict[str, int] = Field(default_factory=dict)
+    #: Mensagem mostrada quando a regra vale na lista, mas a condição não é atendida.
+    message: Message | None = None
 
     @field_validator("predicate")
     @classmethod
@@ -207,6 +213,25 @@ class Condition(_Frozen):
         if value not in KNOWN_PREDICATES:
             raise ValueError(f"predicado desconhecido {value!r}")
         return value
+
+    @model_validator(mode="after")
+    def _check_params(self) -> Self:
+        if unknown := sorted(set(self.params) - _PREDICATE_PARAMS[self.predicate]):
+            raise ValueError(f"parâmetro desconhecido para {self.predicate}: {unknown}")
+        if self.predicate == "call_args":
+            low, high = self.params.get("min"), self.params.get("max")
+            if low is None and high is None:
+                raise ValueError("call_args precisa de min ou max")
+            if low is not None and high is not None and low > high:
+                raise ValueError("call_args: min não pode ser maior que max")
+        return self
+
+
+class ConditionalFact(_Frozen):
+    """Fato que só casa com a regra quando a condição é verdadeira."""
+
+    fact: Fact
+    when: Condition
 
 
 class Rule(_Frozen):
@@ -218,10 +243,23 @@ class Rule(_Frozen):
     category: Category | None = None
     since_list: ListNumber | None = None
     until_list: ListNumber | None = None
-    match: tuple[Fact, ...] = Field(min_length=1)
-    when: Condition | None = None
+    match: tuple[Fact | ConditionalFact, ...] = Field(min_length=1)
     message: Message
     source: Text
+
+    def matches(self) -> tuple[tuple[str, Condition | None], ...]:
+        """Pares (fato, condição); a condição é ``None`` quando o fato casa sempre."""
+        return tuple(
+            (item.fact, item.when) if isinstance(item, ConditionalFact) else (item, None)
+            for item in self.match
+        )
+
+    @property
+    def facts(self) -> tuple[str, ...]:
+        return tuple(fact for fact, _ in self.matches())
+
+    def unconditional_facts(self) -> set[str]:
+        return {fact for fact, condition in self.matches() if condition is None}
 
     @model_validator(mode="after")
     def _check_consistency(self) -> Self:
@@ -239,8 +277,8 @@ class Rule(_Frozen):
                 raise ValueError("regra 'allow' precisa de since_list")
             if self.until_list is not None and self.until_list < self.since_list:
                 raise ValueError("until_list não pode ser menor que since_list")
-        if _duplicates(self.match):
-            raise ValueError(f"fato repetido em match: {_duplicates(self.match)}")
+        if _duplicates(self.facts):
+            raise ValueError(f"fato repetido em match: {_duplicates(self.facts)}")
         return self
 
 
@@ -298,15 +336,14 @@ class Ruleset(_Frozen):
             raise ValueError(f"fato estrutural repetido: {_duplicates(self.structural_facts)}")
         structural = set(self.structural_facts)
         for rule in self.rules:
-            if overlap := sorted(structural.intersection(rule.match)):
+            if overlap := sorted(structural.intersection(rule.facts)):
                 raise ValueError(f"{rule.id}: fato estrutural não pode estar numa regra: {overlap}")
 
-        allowed = {
-            f for r in self.rules if r.effect is Effect.ALLOW and r.when is None for f in r.match
-        }
-        denied = {
-            f for r in self.rules if r.effect is Effect.DENY and r.when is None for f in r.match
-        }
+        allowed: set[str] = set()
+        denied: set[str] = set()
+        for rule in self.rules:
+            target = allowed if rule.effect is Effect.ALLOW else denied
+            target.update(rule.unconditional_facts())
         if conflict := sorted(allowed & denied):
             raise ValueError(
                 f"fatos permitidos e proibidos ao mesmo tempo, sem condição: {conflict}"
@@ -328,10 +365,18 @@ class RulesetError(Exception):
 
 
 @dataclass(frozen=True, slots=True)
+class RuleMatch:
+    """Uma regra que casa um fato, com a condição daquele fato (``None`` = casa sempre)."""
+
+    rule: Rule
+    condition: Condition | None
+
+
+@dataclass(frozen=True, slots=True)
 class CompiledRuleset:
     ruleset: Ruleset
     sha256: str
-    by_fact: Mapping[str, tuple[Rule, ...]]
+    by_fact: Mapping[str, tuple[RuleMatch, ...]]
     structural_facts: frozenset[str]
 
     @property
@@ -348,22 +393,25 @@ class CompiledRuleset:
     def default_deny(self) -> MetaRule:
         return next(m for m in self.ruleset.meta_rules if m.kind is MetaKind.DEFAULT_DENY)
 
-    def rules_for(self, fact: str) -> tuple[Rule, ...]:
+    def matches_for(self, fact: str) -> tuple[RuleMatch, ...]:
         return self.by_fact.get(fact, ())
+
+    def rules_for(self, fact: str) -> tuple[Rule, ...]:
+        return tuple(match.rule for match in self.matches_for(fact))
 
     def is_structural(self, fact: str) -> bool:
         return fact in self.structural_facts
 
 
 def compile_ruleset(ruleset: Ruleset, raw: bytes) -> CompiledRuleset:
-    index: dict[str, list[Rule]] = {}
+    index: dict[str, list[RuleMatch]] = {}
     for rule in ruleset.rules:
-        for fact in rule.match:
-            index.setdefault(fact, []).append(rule)
+        for fact, condition in rule.matches():
+            index.setdefault(fact, []).append(RuleMatch(rule=rule, condition=condition))
     return CompiledRuleset(
         ruleset=ruleset,
         sha256=hashlib.sha256(raw).hexdigest(),
-        by_fact=MappingProxyType({fact: tuple(rules) for fact, rules in index.items()}),
+        by_fact=MappingProxyType({fact: tuple(matches) for fact, matches in index.items()}),
         structural_facts=frozenset(ruleset.structural_facts),
     )
 
