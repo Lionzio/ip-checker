@@ -31,7 +31,29 @@ uv sync
 uv run pytest
 ```
 
-A CI (`.github/workflows/ci.yml`) roda ruff, mypy strict e pytest em todo PR e push na `main`.
+A CI (`.github/workflows/ci.yml`) roda ruff, mypy strict e pytest em todo PR e em todo push na
+`develop` e na `main`.
+
+## Fluxo de branches
+
+| Branch | Papel | Como recebe código |
+|---|---|---|
+| `develop` | Branch principal e padrão no GitHub | PR de uma branch de task, com a CI verde |
+| `feature/<task>-<descrição>` | Uma por task (ex.: `feature/S2-01-parser`) | Criada a partir da `develop` |
+| `main` | Branch de release (o deploy do piloto sai dela, Sprint 11) | Só por *fast-forward* da `develop` |
+
+A `main` fica sempre igual ou atrás da `develop`. Por isso ela nunca recebe commit direto nem
+merge de PR pelo GitHub: o botão de merge cria um commit que não existe na `develop`. Uma release
+é feita assim:
+
+```bash
+git switch main
+git merge --ff-only develop
+git push origin main
+```
+
+O job `branch-policy` da CI falha se a `main` tiver algum commit que não esteja na `develop`.
+Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avançam a `main`.
 
 ## Situação
 

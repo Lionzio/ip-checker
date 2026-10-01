@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   pull_request:
 
 permissions:
@@ -37,3 +37,20 @@ jobs:
         run: uv run mypy
       - name: Pytest (ruleset, guardas e cobertura >= 90%)
         run: uv run pytest
+
+  branch-policy:
+    name: main nunca à frente da develop
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar que a main é ancestral da develop
+        run: |
+          git fetch origin develop
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop; then
+            echo "::error::A main tem commits que não estão na develop. Releases são fast-forward da develop."
+            exit 1
+          fi
