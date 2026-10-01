@@ -1,0 +1,120 @@
+name: Deploy do piloto
+
+# Piloto (Fase 1, 2027.1; S11-03, ADR-03). O deploy sai da main, só depois que a CI passa nela:
+# nunca manualmente e nunca a cada push (o Render e a Vercel estão com o deploy automático
+# desligado). Depois do deploy, o pipeline espera a versão nova entrar no ar e confere o piloto
+# de fora: cabeçalhos, CORS, TLS e o smoke e2e no navegador.
+#
+# Configuração no GitHub (Settings > Secrets and variables > Actions), passo a passo em
+# deploy/README.md, seção "Piloto":
+#   secrets:   RENDER_DEPLOY_HOOK_URL, VERCEL_DEPLOY_HOOK_URL
+#   variables: PILOT_API_URL (Render), PILOT_WEB_URL (Vercel)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-piloto
+  cancel-in-progress: false
+
+jobs:
+  not-configured:
+    name: Piloto ainda não configurado
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      (vars.PILOT_API_URL == '' || vars.PILOT_WEB_URL == '')
+    runs-on: ubuntu-latest
+    steps:
+      - run: >-
+          echo "::warning::Deploy pulado: defina as variáveis PILOT_API_URL e PILOT_WEB_URL e os
+          secrets RENDER_DEPLOY_HOOK_URL e VERCEL_DEPLOY_HOOK_URL (deploy/README.md, Piloto)."
+
+  deploy:
+    name: Deploy no Render e na Vercel
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      vars.PILOT_API_URL != '' && vars.PILOT_WEB_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      RELEASE: ${{ github.event.workflow_run.head_sha }}
+      PILOT_API_URL: ${{ vars.PILOT_API_URL }}
+      PILOT_WEB_URL: ${{ vars.PILOT_WEB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Disparar os deploy hooks
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ] || [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Faltam os secrets RENDER_DEPLOY_HOOK_URL e VERCEL_DEPLOY_HOOK_URL."
+            exit 1
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" -o /dev/null
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL" -o /dev/null
+          echo "Deploy do commit $RELEASE pedido ao Render e à Vercel."
+
+      - name: Esperar a versão nova entrar no ar
+        run: |
+          # O build gratuito do Render leva alguns minutos; o /ready só muda quando a nova versão
+          # responde (health check do render.yaml). A página publica o commit em /version.json.
+          release_of() { curl -fsS --max-time 20 "$1" | python3 -c "import json, sys; print(json.load(sys.stdin).get('release'))" 2>/dev/null; }
+          for attempt in $(seq 1 120); do
+            api=$(release_of "$PILOT_API_URL/ready")
+            web=$(release_of "$PILOT_WEB_URL/version.json")
+            if [ "$api" = "$RELEASE" ] && [ "$web" = "$RELEASE" ]; then
+              echo "Versão $RELEASE no ar na API e na página."
+              exit 0
+            fi
+            echo "Tentativa $attempt: API em ${api:-?}, página em ${web:-?}. Aguardando 15 s..."
+            sleep 15
+          done
+          echo "::error::A versão $RELEASE não entrou no ar em 30 minutos."
+          exit 1
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Conferir o piloto (cabeçalhos, CORS, TLS e versão)
+        working-directory: backend
+        env:
+          PILOT_RELEASE: ${{ env.RELEASE }}
+        run: |
+          uv python install 3.13
+          uv sync --locked
+          uv run pytest tests/pilot --no-cov -v
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Smoke e2e no piloto (Playwright)
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: ${{ env.PILOT_WEB_URL }}
+          E2E_API_ORIGIN: ${{ env.PILOT_API_URL }}
+          E2E_TARGET: pilot
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run e2e
+      - name: Relatório do Playwright (só em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-piloto
+          path: frontend/playwright-report
+          retention-days: 7
