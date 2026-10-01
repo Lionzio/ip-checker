@@ -1,0 +1,49 @@
+[project]
+name = "ipc-backend"
+version = "0.1.0"
+description = "IP-Checker: verificação estática das regras de permissão das listas de Introdução à Programação"
+readme = "README.md"
+# A gramática do analisador acompanha a versão do Dikastis (Q-01, NFR-21).
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "pydantic>=2.10,<3",
+  "pyyaml>=6.0.2,<7",
+]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.14",
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "ruff>=0.9",
+  "types-pyyaml>=6.0.12",
+]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ipc_analyzer"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# S = regras de segurança (bandit): bloqueiam eval, exec, pickle, subprocess etc. (NFR-09)
+select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF", "N", "C4", "PT"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --cov=ipc_analyzer --cov-report=term-missing --cov-fail-under=90"

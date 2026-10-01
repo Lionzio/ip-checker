@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, tipos, testes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Instalar Python 3.13 e dependências
+        run: |
+          uv python install 3.13
+          uv sync --locked
+      - name: Ruff (lint e segurança)
+        run: uv run ruff check .
+      - name: Ruff (formatação)
+        run: uv run ruff format --check .
+      - name: Mypy (strict)
+        run: uv run mypy
+      - name: Pytest (ruleset, guardas e cobertura >= 90%)
+        run: uv run pytest

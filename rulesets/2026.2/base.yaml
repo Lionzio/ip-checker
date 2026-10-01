@@ -1,0 +1,324 @@
+# Ruleset base do período 2026.2: regras de permissão das listas de Introdução à Programação.
+#
+# Fonte: "Permissões das listas de Introdução à Programação" (.docx/.pdf, 3 páginas).
+# Cada regra cita a página e a seção de onde veio. Não invente nem altere regras aqui:
+# este arquivo só traduz o documento para o vocabulário de fatos do motor
+# (ver docs/mapping-R-xx.md e o guia em rulesets/README.md).
+#
+# Situação na Sprint 1: R-03 a R-36 (proibições gerais, Lista 1 e Lista 2 sem o zip).
+# O zip condicional (R-37) depende de predicado e entra na Sprint 13;
+# as Listas 3 a 6 entram nas Sprints 15 e 16.
+
+schema_version: 2
+ruleset_version: "2026.2.0"
+period: "2026.2"
+source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
+target_python: "3.13"
+
+lists:
+  1: "Comandos condicionais"
+  2: "Laços de repetição"
+  3: "Listas e tuplas"
+  4: "Funções e escopo de variável"
+  5: "Dicionários"
+  6: "Recursão"
+
+# Fatos sempre aceitos: sua presença já é controlada pelo nó pai ou por um fato mais específico
+# (ex.: node:Attribute é decidido pelo fato method:<nome>; node:alias só existe dentro de import).
+structural_facts:
+  - "node:Module"
+  - "node:Expr"
+  - "node:Name"
+  - "node:Call"
+  - "node:keyword"
+  - "node:Load"
+  - "node:Store"
+  - "node:Constant"
+  - "node:Attribute"
+  - "node:arguments"
+  - "node:arg"
+  - "node:comprehension"
+  - "node:alias"
+  - "node:ExceptHandler"
+
+meta_rules:
+  - id: "R-03"
+    kind: cumulative
+    source: "Permissões, p.1, Obs. (as permissões de cada lista são cumulativas)"
+  - id: "R-04"
+    kind: default_deny
+    message: "'{construct}' não consta no documento de permissões nem no enunciado da questão, por isso é proibido."
+    source: "Permissões, p.1 (tudo que não está presente no documento e nas questões é proibido)"
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Proibições gerais: valem em todas as listas e anulam a questão (R-05 a R-14).
+  # ---------------------------------------------------------------------------
+  - id: "R-05"
+    name: "Bibliotecas (import)"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Import", "node:ImportFrom"]
+    message: "O uso de bibliotecas (import) é proibido em todas as listas e anula a questão, inclusive bibliotecas padrão como math."
+    source: "Permissões, p.1, Proibições gerais: Bibliotecas externas (decisão Q-06)"
+  - id: "R-06"
+    name: "try/except"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Try", "node:TryStar"]
+    message: "try/except é proibido em todas as listas e anula a questão."
+    source: "Permissões, p.1, Proibições gerais: try/except"
+  - id: "R-07"
+    name: "Sets"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Set", "node:SetComp", "builtin:set", "builtin:frozenset"]
+    # Chaves literais na mensagem são escritas duplicadas ({{ e }}), porque { } marca campos como {construct}.
+    message: "Sets (set(), frozenset(), {{a, b}} e set comprehension) são proibidos em todas as listas e anulam a questão."
+    source: "Permissões, p.1, Proibições gerais: Sets"
+  - id: "R-08"
+    name: "exit()"
+    effect: deny
+    category: ANULACAO
+    match: ["builtin:exit", "method:exit"]
+    message: "exit() é proibido em todas as listas e anula a questão."
+    source: "Permissões, p.1, Proibições gerais: exit()"
+  - id: "R-09"
+    name: "Classes"
+    effect: deny
+    category: ANULACAO
+    # type() com 3 argumentos também cria classe (decisão Q-07): entra com predicado na Sprint 4.
+    match: ["node:ClassDef"]
+    message: "Classes são proibidas em todas as listas e anulam a questão."
+    source: "Permissões, p.1, Proibições gerais: Classes (decisão Q-07)"
+  - id: "R-10"
+    name: "Args e Kwargs"
+    effect: deny
+    category: ANULACAO
+    match: ["param:vararg", "param:kwarg", "call:star_args", "kwarg:**"]
+    message: "*args, **kwargs e o desempacotamento com * ou ** em chamadas são proibidos em todas as listas e anulam a questão."
+    source: "Permissões, p.1, Proibições gerais: Args e Kwargs (decisão Q-02, item h)"
+  - id: "R-11"
+    name: "break e continue"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Break", "node:Continue"]
+    message: "break e continue são proibidos em todas as listas e anulam a questão."
+    source: "Permissões, p.1, Proibições gerais: break, continue"
+  - id: "R-12"
+    name: "pass"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Pass"]
+    message: "pass é proibido em todas as listas e anula a questão."
+    source: "Permissões, p.1, Proibições gerais: Pass"
+  - id: "R-13"
+    name: "None"
+    effect: deny
+    category: ANULACAO
+    match: ["const:None"]
+    message: "None é proibido em todas as listas e anula a questão."
+    source: "Permissões, p.1, Proibições gerais: None"
+  - id: "R-14"
+    name: "Variáveis globais (global)"
+    effect: deny
+    category: ANULACAO
+    match: ["node:Global"]
+    message: "A instrução global é proibida em todas as listas e anula a questão."
+    source: "Permissões, p.1, Proibições gerais: Variáveis globais (decisão Q-03)"
+
+  # ---------------------------------------------------------------------------
+  # Lista 1 - Comandos condicionais (R-15 a R-33).
+  # ---------------------------------------------------------------------------
+  - id: "R-15"
+    name: "Comandos condicionais (if, elif, else)"
+    effect: allow
+    since_list: 1
+    match: ["node:If"]
+    message: "Comandos condicionais (if, elif, else) só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Comandos condicionais"
+  - id: "R-16"
+    name: "Variáveis e atribuições"
+    effect: allow
+    since_list: 1
+    match: ["node:Assign", "const:int", "const:float", "const:str"]
+    message: "Variáveis e atribuições só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Variáveis e atribuições"
+  - id: "R-17"
+    name: "Operador is"
+    effect: allow
+    since_list: 1
+    match: ["cmp:Is", "cmp:IsNot"]
+    message: "O operador is só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: \"is\" (is not pela decisão Q-02, item b)"
+  - id: "R-18"
+    name: "Operações matemáticas e abreviações"
+    effect: allow
+    since_list: 1
+    match:
+      - "node:BinOp"
+      - "node:UnaryOp"
+      - "node:AugAssign"
+      - "op:Add"
+      - "op:Sub"
+      - "op:Mult"
+      - "op:Div"
+      - "op:FloorDiv"
+      - "op:Mod"
+      - "op:Pow"
+      - "op:UAdd"
+      - "op:USub"
+    message: "Operações matemáticas e abreviações (+=, *= etc.) só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Operações matemáticas e abreviações"
+  - id: "R-19"
+    name: "Operadores lógicos, relacionais e booleanos"
+    effect: allow
+    since_list: 1
+    match:
+      - "node:BoolOp"
+      - "node:Compare"
+      - "op:And"
+      - "op:Or"
+      - "op:Not"
+      - "cmp:Eq"
+      - "cmp:NotEq"
+      - "cmp:Lt"
+      - "cmp:LtE"
+      - "cmp:Gt"
+      - "cmp:GtE"
+      - "const:bool"
+    message: "Operadores lógicos, relacionais e booleanos só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Operadores lógicos, operadores relacionais e booleanos"
+  - id: "R-20"
+    name: "Operador ternário"
+    effect: allow
+    since_list: 1
+    match: ["node:IfExp"]
+    message: "O operador ternário só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Operador ternário"
+  - id: "R-21"
+    name: "Concatenação"
+    effect: allow
+    since_list: 1
+    # Concatenação de strings usa o mesmo operador + da R-18: não há como distinguir sem tipos.
+    match: ["op:Add"]
+    message: "A concatenação só é permitida a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: Concatenação"
+  - id: "R-22"
+    name: "print() e input()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:print", "builtin:input"]
+    message: "print() e input() só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: print(), input()"
+  - id: "R-23"
+    name: "abs()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:abs"]
+    message: "abs() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.1, Lista 1: abs()"
+  - id: "R-24"
+    name: "int(), float() e str()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:int", "builtin:float", "builtin:str"]
+    message: "int(), float() e str() só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: int(), float(), str()"
+  - id: "R-25"
+    name: "max() e min()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:max", "builtin:min"]
+    message: "max() e min() só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: max(), min()"
+  - id: "R-26"
+    name: "round()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:round"]
+    message: "round() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: round()"
+  - id: "R-27"
+    name: "len()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:len"]
+    message: "len() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: len()"
+  - id: "R-28"
+    name: "format()"
+    effect: allow
+    since_list: 1
+    match: ["builtin:format", "method:format"]
+    message: "format() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: format() (função e método, decisão Q-02, item a)"
+  - id: "R-29"
+    name: "Métodos de string da Lista 1"
+    effect: allow
+    since_list: 1
+    match:
+      - "method:capitalize"
+      - "method:upper"
+      - "method:lower"
+      - "method:isupper"
+      - "method:islower"
+      - "method:isnumeric"
+    message: "Os métodos capitalize(), upper(), lower(), isupper(), islower() e isnumeric() só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: capitalize(), upper(), lower(), isupper(), islower(), isnumeric()"
+  - id: "R-30"
+    name: "Operador in para strings"
+    effect: allow
+    since_list: 1
+    match: ["cmp:In", "cmp:NotIn"]
+    message: "O operador in só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: \"in\" para strings (not in pela decisão Q-02, item b)"
+  - id: "R-31"
+    name: "f-strings"
+    effect: allow
+    since_list: 1
+    match: ["node:JoinedStr", "node:FormattedValue"]
+    message: "f-strings só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: f-strings (formatação)"
+  - id: "R-32"
+    name: "end= no print()"
+    effect: allow
+    since_list: 1
+    # O \n faz parte do texto da string e não gera fato. sep=, key= e reverse= não constam (Q-02, item c).
+    match: ["kwarg:print.end"]
+    message: "O parâmetro end= do print() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: \\n, end = (no print())"
+  - id: "R-33"
+    name: "type()"
+    effect: allow
+    since_list: 1
+    # Com 3 argumentos, type() cria classe e cai na R-09 (decisão Q-07, predicado na Sprint 4).
+    match: ["builtin:type"]
+    message: "type() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 1: type()"
+
+  # ---------------------------------------------------------------------------
+  # Lista 2 - Laços de repetição (R-34 a R-36; R-37, zip, entra na Sprint 13).
+  # ---------------------------------------------------------------------------
+  - id: "R-34"
+    name: "Laços de repetição (for, while)"
+    effect: allow
+    since_list: 2
+    match: ["node:For", "node:While"]
+    message: "Laços de repetição (for, while) só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 2: Laços de repetição (for, while)"
+  - id: "R-35"
+    name: "range()"
+    effect: allow
+    since_list: 2
+    match: ["builtin:range"]
+    message: "range() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 2: range()"
+  - id: "R-36"
+    name: "in para range()"
+    effect: allow
+    since_list: 2
+    # Sintaticamente igual ao in da R-30: o tipo do operando não é inferido (5.4, ameaça 8).
+    match: ["cmp:In"]
+    message: "O operador in com range() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 2: \"in\" para range()"

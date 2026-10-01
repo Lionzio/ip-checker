@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Gabaritos nunca entram neste repositório (Q-14): ficam num repositório privado separado
+gabaritos/
+
+# Editor e sistema operacional
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
