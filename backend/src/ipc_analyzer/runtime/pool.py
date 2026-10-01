@@ -27,6 +27,7 @@ from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
 from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits
+from ipc_analyzer.runtime.sandbox import SandboxMode, enforce
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class PoolConfig:
     #: Tempo de parede máximo de uma análise, em segundos.
     timeout_s: float = 2.0
     limits: ResourceLimits = field(default_factory=ResourceLimits)
+    #: Filtro seccomp do worker (S11-01). As imagens usam REQUIRED.
+    sandbox: SandboxMode = SandboxMode.OPTIONAL
 
 
 # ---------------------------------------------------------------------------
@@ -48,12 +51,19 @@ class PoolConfig:
 _RULESET: CompiledRuleset | None = None
 
 
-def _init_worker(ruleset_path: str, limits: ResourceLimits) -> None:
-    """Carrega o ruleset e só então aplica os limites (depois deles, abrir arquivos falha)."""
+def _init_worker(ruleset_path: str, limits: ResourceLimits, sandbox: SandboxMode) -> None:
+    """Carrega o ruleset e só então se fecha: limites de recursos e, por fim, o seccomp.
+
+    A ordem importa: depois dos limites, abrir arquivos falha; depois do seccomp, criar
+    sockets e executar programas falha. Com ``SandboxMode.REQUIRED``, um sistema que não
+    permite o filtro impede o worker de nascer, e o serviço não fica pronto.
+    """
     global _RULESET
     _RULESET = load_ruleset(Path(ruleset_path))
     if not apply_limits(limits):
         logger.warning("limites de recursos indisponíveis neste sistema; use Linux em produção")
+    if not enforce(sandbox) and sandbox is SandboxMode.OPTIONAL:
+        logger.warning("filtro seccomp indisponível neste sistema; use Linux em produção")
 
 
 def _analyze_in_worker(source: str, list_number: int) -> AnalysisResult:
@@ -78,7 +88,7 @@ class AnalyzerPool:
             max_workers=self.config.workers,
             max_tasks=self.config.max_tasks,
             initializer=_init_worker,
-            initargs=(str(ruleset_path), self.config.limits),
+            initargs=(str(ruleset_path), self.config.limits, self.config.sandbox),
             # O Pebble anota o contexto como módulo, mas aceita um contexto de multiprocessing.
             context=multiprocessing.get_context(_start_method()),  # type: ignore[arg-type]
         )

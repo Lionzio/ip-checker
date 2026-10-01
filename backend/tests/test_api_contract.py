@@ -143,7 +143,11 @@ def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
 
 def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [{"number": 1, "title": "Comandos condicionais"}]
-    assert api.get("/ready").json() == {"status": "ready", "ruleset_version": "2026.2.0"}
+    assert api.get("/ready").json() == {
+        "status": "ready",
+        "ruleset_version": "2026.2.0",
+        "release": None,
+    }
 
 
 # ---------------------------------------------------------------------------------------------

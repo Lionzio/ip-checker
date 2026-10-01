@@ -293,6 +293,18 @@
             "type": "string",
             "pattern": "^\\d{4}\\.[12]\\.\\d+$",
             "title": "Ruleset Version"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release",
+            "description": "Commit implantado, quando informado pelo ambiente."
           }
         },
         "additionalProperties": false,

@@ -100,6 +100,9 @@ class HealthResponse(_Strict):
 class ReadyResponse(_Strict):
     status: Literal["ready"]
     ruleset_version: RulesetVersion
+    release: str | None = Field(
+        default=None, description="Commit implantado, quando informado pelo ambiente."
+    )
 
 
 # ---------------------------------------------------------------------------------------------

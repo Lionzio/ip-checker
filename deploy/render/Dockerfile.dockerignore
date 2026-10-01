@@ -1,0 +1,11 @@
+# Contexto de build do deploy/render/Dockerfile (a raiz do repositório). Lista de permissão: só o
+# que a imagem do piloto precisa. Gabaritos, .env, .git, testes e o frontend nunca chegam ao build.
+*
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/README.md
+!backend/src/
+!rulesets/
+!deploy/render/supervisord.conf
+**/__pycache__/
+**/*.py[cod]

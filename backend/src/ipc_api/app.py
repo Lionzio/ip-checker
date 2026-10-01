@@ -17,11 +17,13 @@ import httpx2
 from fastapi import FastAPI, Request, Response
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from ipc_api.admission import Admission
 from ipc_api.clients.analyzer import AnalyzerClient
+from ipc_api.edge import SecurityHeadersMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.logging import configure_logging
 from ipc_api.middleware import RequestContextMiddleware
@@ -81,6 +83,19 @@ def create_app(
         RateLimitMiddleware, config=config.rate_limit, limiter=app.state.rate_limiter
     )
     app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
+    app.add_middleware(SecurityHeadersMiddleware, hsts=config.hsts)
+    if config.cors_origins:
+        # O mais externo: até um 413 ou um 429 precisa dos cabeçalhos CORS, ou o navegador
+        # esconde a resposta da página e o aluno vê "falha de rede" no lugar do motivo.
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(config.cors_origins),
+            allow_methods=["GET", "POST"],
+            allow_headers=["Content-Type", "X-Client-Id"],
+            expose_headers=["Retry-After", "X-Request-Id"],
+            allow_credentials=False,
+            max_age=600,
+        )
 
     @app.exception_handler(ApiError)
     async def api_error(request: Request, exc: ApiError) -> JSONResponse:
