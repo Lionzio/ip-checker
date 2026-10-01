@@ -30,6 +30,8 @@ class ApiSettings:
     #: Corpo máximo aceito antes de ler a requisição. Nas Fases 0 e 2 o Caddy também aplica esse
     #: limite; na Fase 1 (Render) não há Caddy, e a API é a primeira barreira (DoD, item 1).
     max_body_bytes: int = 128 * KIB
+    #: Logs JSON no stdout (S9-01). Ligado por padrão; desligar só para depurar localmente.
+    json_logs: bool = True
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -43,4 +45,5 @@ class ApiSettings:
                 env.get("IPC_ANALYZER_TIMEOUT_S", defaults.analyzer_timeout_s)
             ),
             max_body_bytes=int(env.get("IPC_MAX_BODY_BYTES", defaults.max_body_bytes)),
+            json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
         )

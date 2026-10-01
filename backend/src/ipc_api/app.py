@@ -4,8 +4,7 @@ Para rodar localmente, com o analyzer em http://127.0.0.1:8001::
 
     uv run uvicorn ipc_api.app:create_app --factory --port 8100
 
-Rate limit e admissão entram na Sprint 10, antes de qualquer exposição à internet; os logs
-estruturados, na Sprint 9.
+Rate limit e admissão entram na Sprint 10, antes de qualquer exposição à internet.
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ from starlette.exceptions import HTTPException
 
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.errors import ApiError, ErrorCode, error_response
+from ipc_api.logging import configure_logging
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.routes import meta, validate
 from ipc_api.settings import ApiSettings
@@ -44,6 +44,8 @@ def create_app(
 ) -> FastAPI:
     """``analyzer_transport`` só existe para os testes trocarem a rede pelo analyzer em memória."""
     config = settings or ApiSettings.from_env()
+    if config.json_logs:
+        configure_logging()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -70,11 +72,13 @@ def create_app(
     app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
 
     @app.exception_handler(ApiError)
-    async def api_error(_request: Request, exc: ApiError) -> JSONResponse:
+    async def api_error(request: Request, exc: ApiError) -> JSONResponse:
+        request.state.outcome = exc.code
         return exc.response()
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error(_request: Request, _exc: RequestValidationError) -> JSONResponse:
+    async def validation_error(request: Request, _exc: RequestValidationError) -> JSONResponse:
+        request.state.outcome = ErrorCode.INVALID_INPUT
         return error_response(
             422,
             ErrorCode.INVALID_INPUT,
@@ -85,9 +89,11 @@ def create_app(
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> Response:
         if exc.status_code == 413:
+            request.state.outcome = ErrorCode.PAYLOAD_TOO_LARGE
             return error_response(413, ErrorCode.PAYLOAD_TOO_LARGE, str(exc.detail))
         # O FastAPI responde 400 genérico quando o corpo não é UTF-8 válido.
         if exc.status_code == 400:
+            request.state.outcome = ErrorCode.INVALID_INPUT
             return error_response(
                 422, ErrorCode.INVALID_INPUT, "O corpo da requisição não é JSON em UTF-8 válido."
             )

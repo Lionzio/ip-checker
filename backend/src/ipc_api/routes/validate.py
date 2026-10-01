@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
 from ipc_api.deps import get_analyzer, get_request_id, get_settings
@@ -37,6 +37,7 @@ router = APIRouter(prefix="/api/v1", tags=["validação"])
 )
 async def validate(
     body: ValidateRequest,
+    request: Request,
     response: Response,
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
@@ -44,6 +45,7 @@ async def validate(
 ) -> ValidateResponse:
     # O resultado diz respeito ao código de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
+    request.state.list_number = body.list_number
     check_code(body.code)
     if body.list_number not in settings.enabled_lists:
         raise ApiError(
@@ -60,13 +62,15 @@ async def validate(
         )
 
     try:
-        result = await analyzer.analyze(body.code, body.list_number)
+        result = await analyzer.analyze(body.code, body.list_number, request_id=request_id)
     except AnalyzerRejected as exc:
         raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
         raise analyzer_unavailable() from None
 
+    request.state.ruleset_version = result.ruleset_version
+    request.state.outcome = result.status
     return ValidateResponse(
         request_id=request_id,
         ruleset_version=result.ruleset_version,
