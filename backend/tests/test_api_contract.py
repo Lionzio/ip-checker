@@ -221,6 +221,8 @@ schema = (
             "/api/v1/auth/logout",
             "/api/v1/auth/register",
             "/api/v1/profile/password",
+            # O feedback gasta a cota diária da conta: os casos gerados a esgotariam (429).
+            "/api/v1/feedback",
         ]
     )
     .exclude(path_regex=r"^/api/v1/(admin|auth/google)/")
@@ -541,3 +543,27 @@ def test_google_statuses_follow_the_contract() -> None:
             run("/api/v1/auth/google/complete", "POST", body=body, media_type="application/json")
             == 422
         )
+
+
+def test_feedback_statuses_follow_the_contract(
+    api_bundle: tuple[FastAPI, MemoryAccountStore],
+) -> None:
+    app, store = api_bundle
+    contract = _schema()
+    contract.app = app
+    refusals = [positive_data_acceptance, not_a_server_error]
+    session = {COOKIE: open_session(store, member(store))}
+    operation = contract["/api/v1/feedback"]["POST"]
+
+    def run(body: dict[str, Any], cookies: dict[str, str] | None = session) -> Any:
+        case = operation.Case(body=body, media_type="application/json")
+        return case.call_and_validate(cookies=cookies, excluded_checks=refusals)
+
+    base = {"code": "x = 1\nif x:\n    print(x)\n", "list_number": 1, "student_name": "Ana"}
+    # Sem IA configurada, o texto é montado por modelos: 200 mesmo assim.
+    ok = run(base)
+    assert (ok.status_code, ok.json()["source"], ok.json()["provider"]) == (200, "template", None)
+    assert run({**base, "code": "if x\n    y = 1\n"}).status_code == 422
+    assert run({**base, "code": "#" + "a" * 51_200}).status_code == 413
+    assert run({**base, "list_number": 2}).status_code == 422
+    assert run(base, cookies=None).status_code == 401

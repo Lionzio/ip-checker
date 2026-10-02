@@ -237,3 +237,54 @@ def test_similarity_body_is_strict(client: TestClient) -> None:
     response = client.post("/internal/similarity", json={"first": "x = 1\n"})
 
     assert (response.status_code, response.json()["error"]["code"]) == (422, "INVALID_INPUT")
+
+
+# --- Feedback (S18-02) ---------------------------------------------------------------------------
+
+
+def test_feedback_input_names_what_the_engine_found_and_strips_comments(client: TestClient) -> None:
+    code = (
+        "# Isabella Schultz, 20261234\nx = int(input())  # lê\nfor i in range(x):\n    print(i)\n"
+    )
+
+    response = client.post("/internal/feedback-input", json={"code": code, "list_number": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "invalid"
+    assert body["items"] == [
+        {"kind": "falta", "label": "if ou operador ternário"},
+        {"kind": "uso", "label": "for"},
+        {"kind": "uso", "label": "range()"},
+    ]
+    assert body["code"] == "x = int(input())\nfor i in range(x):\n    print(i)\n"
+    assert "Isabella" not in body["code"]
+    assert body["syntax_error"] is None
+
+
+def test_feedback_input_of_valid_code_and_of_a_syntax_error(client: TestClient) -> None:
+    valid = client.post(
+        "/internal/feedback-input", json={"code": "x = 1\nif x:\n    print(x)\n", "list_number": 1}
+    ).json()
+    broken = client.post(
+        "/internal/feedback-input", json={"code": "if x\n    y = 2\n", "list_number": 1}
+    ).json()
+
+    assert (valid["status"], valid["items"]) == ("valid", [])
+    assert (broken["status"], broken["code"], broken["syntax_error"]["line"]) == (
+        "syntax_error",
+        "",
+        1,
+    )
+
+
+def test_feedback_input_refuses_inputs_like_the_analysis(client: TestClient) -> None:
+    big = client.post(
+        "/internal/feedback-input", json={"code": "#" + "a" * 51_200, "list_number": 1}
+    )
+    nested = client.post(
+        "/internal/feedback-input", json={"code": "(" * 1_000 + ")" * 1_000, "list_number": 1}
+    )
+
+    assert (big.status_code, big.json()["error"]["code"]) == (413, "PAYLOAD_TOO_LARGE")
+    assert (nested.status_code, nested.json()["error"]["code"]) == (422, "ANALYSIS_LIMIT")

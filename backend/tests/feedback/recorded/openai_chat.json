@@ -1,0 +1,19 @@
+{
+  "id": "chatcmpl-AbC123",
+  "object": "chat.completion",
+  "created": 1790000000,
+  "model": "llama-3.3-70b-versatile",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Gostei bastante de como você organizou as condições. Como dica, teste também com valores negativos."
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {"prompt_tokens": 412, "completion_tokens": 29, "total_tokens": 441},
+  "system_fingerprint": "fp_test"
+}

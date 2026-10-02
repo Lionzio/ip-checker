@@ -15,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from ipc_api.schemas import (
     AnalyzerErrorResponse,
+    AnalyzerFeedbackInput,
     AnalyzerHealth,
     AnalyzerManifest,
     AnalyzerResult,
@@ -101,6 +102,22 @@ class AnalyzerClient:
             if result.list_number != list_number:
                 raise AnalyzerUnavailable("o analyzer respondeu sobre outra lista")
             return result
+        if status in (413, 422):
+            error = _parse(AnalyzerErrorResponse, body).error
+            raise AnalyzerRejected(status, error.code, error.message)
+        raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
+
+    async def feedback_input(
+        self, code: str, list_number: int, request_id: str | None = None
+    ) -> AnalyzerFeedbackInput:
+        status, body = await self._request(
+            "POST",
+            "/internal/feedback-input",
+            {"code": code, "list_number": list_number},
+            request_id,
+        )
+        if status == 200:
+            return _parse(AnalyzerFeedbackInput, body)
         if status in (413, 422):
             error = _parse(AnalyzerErrorResponse, body).error
             raise AnalyzerRejected(status, error.code, error.message)

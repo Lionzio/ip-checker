@@ -1,5 +1,6 @@
 """Serviço interno do analisador: ``POST /internal/analyze``, ``GET /internal/health`` (S5-01),
-``GET /internal/ruleset/manifest`` (S8-01) e ``POST /internal/similarity`` (S17-02).
+``GET /internal/ruleset/manifest`` (S8-01), ``POST /internal/similarity`` (S17-02) e
+``POST /internal/feedback-input`` (S18-02).
 
 Não tem documentação pública nem segredos e só deve ser alcançável pela API, numa rede interna
 sem saída para a internet (NFR-07). A análise sempre acontece num worker do pool, nunca aqui.
@@ -22,6 +23,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
+from ipc_analyzer.engine.feedback import FeedbackInput
 from ipc_analyzer.engine.guards import (
     DEFAULT_LIMITS,
     InputError,
@@ -140,6 +142,35 @@ class SimilarityResponse(BaseModel):
         )
 
 
+class FeedbackItemOut(BaseModel):
+    kind: Literal["uso", "falta"]
+    label: str
+
+
+class FeedbackInputResponse(BaseModel):
+    """Feedback (S18-02): o que o motor encontrou, pelos nomes legíveis, e o código sem
+    comentários, que é o único texto do aluno que pode ir ao provedor de LLM."""
+
+    status: Literal["valid", "invalid", "syntax_error"]
+    items: list[FeedbackItemOut]
+    code: str
+    syntax_error: SyntaxErrorOut | None
+
+    @classmethod
+    def from_input(cls, data: FeedbackInput) -> FeedbackInputResponse:
+        problem = data.syntax_error
+        return cls(
+            status=data.status,
+            items=[FeedbackItemOut(kind=item.kind, label=item.label) for item in data.items],
+            code=data.code,
+            syntax_error=(
+                SyntaxErrorOut(line=problem.line, col=problem.col, message=problem.message)
+                if problem is not None
+                else None
+            ),
+        )
+
+
 class ListOut(BaseModel):
     number: int
     title: str
@@ -249,6 +280,24 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
         return AnalyzeResponse.from_result(result)
+
+    @app.post("/internal/feedback-input")
+    async def feedback_input(
+        body: AnalyzeRequest,
+        request: Request,
+        pool: Annotated[AnalyzerPool, Depends(_pool)],
+    ) -> FeedbackInputResponse:
+        size = len(body.code.encode("utf-8", errors="surrogatepass"))
+        request.state.payload_bytes = size
+        request.state.list_number = body.list_number
+        if size > DEFAULT_LIMITS.max_bytes:
+            raise PayloadTooLargeError(
+                f"O código tem {thousands(size)} bytes; o limite é "
+                f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
+            )
+        data = await pool.feedback_input(body.code, body.list_number)
+        request.state.outcome = data.status
+        return FeedbackInputResponse.from_input(data)
 
     @app.post("/internal/similarity")
     async def similarity(
