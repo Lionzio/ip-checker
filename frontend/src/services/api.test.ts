@@ -197,8 +197,8 @@ describe("createApiClient", () => {
   });
 
   it("pergunta as formas de entrar e cuida do cadastro pelo Google", async () => {
-    const fetchMock = respond(200, { google: true });
-    await expect(createApiClient().options()).resolves.toEqual({ google: true });
+    const fetchMock = respond(200, { google: true, feedback_ai: false });
+    await expect(createApiClient().options()).resolves.toEqual({ google: true, feedback_ai: false });
     respond(200, { email: "g@cin.ufpe.br", name: "G" });
     await expect(createApiClient().googlePending()).resolves.toEqual({ email: "g@cin.ufpe.br", name: "G" });
     const complete = respond(201, { status: "aguardando_aprovacao", email: "g@cin.ufpe.br" });

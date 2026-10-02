@@ -374,7 +374,7 @@ export function createMockClient({
 
     async options(signal) {
       await wait(latencyMs, signal);
-      return { google };
+      return { google, feedback_ai: false };
     },
 
     async googlePending(signal) {
