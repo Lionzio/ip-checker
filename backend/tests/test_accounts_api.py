@@ -550,6 +550,7 @@ def test_developer_seed_uses_the_author_data(api: TestClient) -> None:
         "role": "desenvolvedor",
         "role_label": "Monitor e desenvolvedor",
         "has_password": True,
+        "can_manage": True,
     }
 
 

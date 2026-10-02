@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Collection
 from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Protocol
@@ -68,6 +69,27 @@ class AccountStore(Protocol):
 
     async def set_password(self, account_id: UUID, password_hash: str) -> None: ...
 
+    async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
+        """Contas nesses status, da mais antiga para a mais nova (gerenciamento, S15-02)."""
+
+    async def transition(
+        self,
+        account_id: UUID,
+        *,
+        expected: tuple[Status, Role | None],
+        status: Status,
+        role: Role | None,
+        decided_by: UUID | None,
+        now: datetime,
+        end_sessions: bool,
+    ) -> Account | None:
+        """Muda status e cargo só se a conta ainda estiver como ``expected`` (status, cargo).
+
+        Devolve ``None`` se outra pessoa agiu antes. ``decided_by`` registra quem decidiu o
+        pedido; ``end_sessions`` encerra as sessões da conta na mesma transação. Receber o cargo
+        de monitor-chefe liga ``ja_foi_monitor_chefe`` para sempre (FR-27).
+        """
+
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
         """Encerra as sessões da conta, menos a de hash ``keep``."""
 
@@ -112,6 +134,8 @@ class MemoryAccountStore:
         self.accounts: dict[UUID, Account] = {}
         self.sessions: dict[bytes, _Session] = {}
         self.email_tokens: dict[bytes, _EmailToken] = {}
+        #: Quem decidiu cada pedido e quando (``decided_by`` e ``decided_at`` no banco).
+        self.decisions: dict[UUID, tuple[UUID, datetime]] = {}
         self.available = True
         self._lock = asyncio.Lock()
 
@@ -262,6 +286,41 @@ class MemoryAccountStore:
     async def set_password(self, account_id: UUID, password_hash: str) -> None:
         self._check()
         self.accounts[account_id] = replace(self.accounts[account_id], password_hash=password_hash)
+
+    async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
+        self._check()
+        wanted = set(statuses)
+        found = [a for a in self.accounts.values() if a.status in wanted]
+        return sorted(found, key=lambda a: (a.created_at, a.name.lower()))
+
+    async def transition(
+        self,
+        account_id: UUID,
+        *,
+        expected: tuple[Status, Role | None],
+        status: Status,
+        role: Role | None,
+        decided_by: UUID | None,
+        now: datetime,
+        end_sessions: bool,
+    ) -> Account | None:
+        self._check()
+        async with self._lock:
+            current = self.accounts.get(account_id)
+            if current is None or (current.status, current.role) != expected:
+                return None
+            updated = replace(
+                current,
+                status=status,
+                role=role,
+                ja_foi_monitor_chefe=current.ja_foi_monitor_chefe or role is Role.MONITOR_CHEFE,
+            )
+            self.accounts[account_id] = updated
+            if decided_by is not None:
+                self.decisions[account_id] = (decided_by, now)
+            if end_sessions:
+                await self.delete_sessions(account_id)
+            return updated
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
         self._check()

@@ -140,6 +140,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fila de pedidos de cadastro com o e-mail confirmado */
+        get: operations["list_requests_api_v1_admin_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/requests/{account_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aprova o pedido com um cargo que quem aprova pode atribuir */
+        post: operations["approve_api_v1_admin_requests__account_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/requests/{account_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recusa o pedido */
+        post: operations["reject_api_v1_admin_requests__account_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Membros ativos e contas removidas (ex-monitores, conselheiros e inativos) */
+        get: operations["list_members_api_v1_admin_members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/members/{account_id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Altera o cargo de um membro ativo; as sessões dele são encerradas */
+        patch: operations["change_role_api_v1_admin_members__account_id__role_patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/members/{account_id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove o membro da equipe sem apagar a conta (Ex-monitor, Conselheiro ou inativo) */
+        post: operations["remove_api_v1_admin_members__account_id__remove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/members/{account_id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reativa uma conta removida com um cargo que quem reativa pode atribuir */
+        post: operations["reactivate_api_v1_admin_members__account_id__reactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate": {
         parameters: {
             query?: never;
@@ -246,12 +365,17 @@ export interface components {
              * @description Falso numa conta criada pelo Google que ainda não definiu uma senha.
              */
             has_password: boolean;
+            /**
+             * Can Manage
+             * @description Verdadeiro para quem acessa o gerenciamento da equipe (FR-28).
+             */
+            can_manage: boolean;
         };
         /**
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -291,6 +415,76 @@ export interface components {
              * @description Senha da conta. Nunca é registrada.
              */
             password: string;
+        };
+        /**
+         * ManagedAccount
+         * @description Uma conta vista no gerenciamento (FR-28). Nunca traz o tratamento (FR-26).
+         */
+        ManagedAccount: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * @description E-mail principal.
+             */
+            email: string;
+            /** Course */
+            course: string;
+            /**
+             * Signup Method
+             * @enum {string}
+             */
+            signup_method: "senha" | "google" | "seed";
+            /**
+             * Requested At
+             * Format: date-time
+             * @description Data do pedido de cadastro.
+             */
+            requested_at: string;
+            /**
+             * Role
+             * @description Vazio num pedido; numa conta removida, o último.
+             */
+            role: ("desenvolvedor" | "professor" | "monitor_chefe" | "monitor") | null;
+            /** Role Label */
+            role_label: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "aguardando_verificacao" | "aguardando_aprovacao" | "ativo" | "recusado" | "ex_monitor" | "conselheiro" | "inativo";
+            /** Status Label */
+            status_label: string;
+            /**
+             * Actions
+             * @description O que quem consulta pode fazer com a conta.
+             */
+            actions: ("aprovar" | "recusar" | "alterar_cargo" | "remover" | "reativar")[];
+            /**
+             * Roles
+             * @description Os cargos que quem consulta pode escolher ao aprovar, alterar ou reativar.
+             */
+            roles: ("desenvolvedor" | "professor" | "monitor_chefe" | "monitor")[];
+            /**
+             * Removal Status
+             * @description O status que a conta recebe se for removida (ex_monitor, conselheiro ou inativo); vazio se quem consulta não pode removê-la.
+             */
+            removal_status: ("aguardando_verificacao" | "aguardando_aprovacao" | "ativo" | "recusado" | "ex_monitor" | "conselheiro" | "inativo") | null;
+        };
+        /** MembersResponse */
+        MembersResponse: {
+            /** Active */
+            active: components["schemas"]["ManagedAccount"][];
+            /**
+             * Removed
+             * @description Ex-monitores, conselheiros e inativos.
+             */
+            removed: components["schemas"]["ManagedAccount"][];
         };
         /** PasswordChange */
         PasswordChange: {
@@ -365,10 +559,23 @@ export interface components {
              */
             email: string;
         };
+        /** RequestsResponse */
+        RequestsResponse: {
+            /** Items */
+            items: components["schemas"]["ManagedAccount"][];
+        };
         /** ResendRequest */
         ResendRequest: {
             /** Email */
             email: string;
+        };
+        /** RoleChoice */
+        RoleChoice: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "desenvolvedor" | "professor" | "monitor_chefe" | "monitor";
         };
         /** SyntaxErrorInfo */
         SyntaxErrorInfo: {
@@ -923,6 +1130,482 @@ export interface operations {
             };
             /** @description RATE_LIMITED: muitas tentativas com a senha atual errada. Veja retry_after_s. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_requests_api_v1_admin_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestsResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approve_api_v1_admin_requests__account_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleChoice"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: não há conta com esse identificador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: identificador ou cargo inválido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reject_api_v1_admin_requests__account_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: não há conta com esse identificador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: identificador ou cargo inválido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_members_api_v1_admin_members_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembersResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    change_role_api_v1_admin_members__account_id__role_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleChoice"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: não há conta com esse identificador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: identificador ou cargo inválido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    remove_api_v1_admin_members__account_id__remove_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: não há conta com esse identificador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: identificador ou cargo inválido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reactivate_api_v1_admin_members__account_id__reactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleChoice"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: não há conta com esse identificador. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: identificador ou cargo inválido. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

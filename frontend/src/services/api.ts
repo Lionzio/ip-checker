@@ -10,6 +10,8 @@ import type {
   ApiErrorCode,
   ErrorResponse,
   ListInfo,
+  ManagedAccount,
+  MembersResponse,
   ProfileUpdate,
   RegisterRequest,
   ValidateRequest,
@@ -116,6 +118,29 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
         "/api/v1/profile/password",
         json("POST", { current_password: currentPassword, new_password: newPassword }),
       );
+    },
+    async listRequests(signal) {
+      const body = await call<{ items: ManagedAccount[] }>("/api/v1/admin/requests", { method: "GET" }, signal);
+      return body.items;
+    },
+    listMembers(signal) {
+      return call<MembersResponse>("/api/v1/admin/members", { method: "GET" }, signal);
+    },
+    async approve(id, role) {
+      await call<null>(`/api/v1/admin/requests/${encodeURIComponent(id)}/approve`, json("POST", { role }));
+    },
+    async reject(id) {
+      // Corpo vazio, mas presente: a borda recusa POST sem Content-Length (S10).
+      await call<null>(`/api/v1/admin/requests/${encodeURIComponent(id)}/reject`, { method: "POST", body: "" });
+    },
+    async changeRole(id, role) {
+      await call<null>(`/api/v1/admin/members/${encodeURIComponent(id)}/role`, json("PATCH", { role }));
+    },
+    async remove(id) {
+      await call<null>(`/api/v1/admin/members/${encodeURIComponent(id)}/remove`, { method: "POST", body: "" });
+    },
+    async reactivate(id, role) {
+      await call<null>(`/api/v1/admin/members/${encodeURIComponent(id)}/reactivate`, json("POST", { role }));
     },
   };
 }

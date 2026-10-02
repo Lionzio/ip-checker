@@ -44,6 +44,17 @@ class Status(StrEnum):
 #: Status de quem foi removido da equipe (FR-27): a conta continua, sem acesso.
 REMOVED = frozenset({Status.EX_MONITOR, Status.CONSELHEIRO, Status.INATIVO})
 
+#: Como cada status aparece na tela de gerenciamento (FR-28).
+STATUS_LABELS = {
+    Status.AGUARDANDO_VERIFICACAO: "E-mail não confirmado",
+    Status.AGUARDANDO_APROVACAO: "Pendente",
+    Status.ATIVO: "Ativo",
+    Status.RECUSADO: "Recusado",
+    Status.EX_MONITOR: "Ex-monitor",
+    Status.CONSELHEIRO: "Conselheiro",
+    Status.INATIVO: "Inativo",
+}
+
 
 class Treatment(StrEnum):
     """Como a pessoa quer ser tratada no feedback (FR-26). Só o titular vê."""

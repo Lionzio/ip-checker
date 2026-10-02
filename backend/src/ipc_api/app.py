@@ -29,6 +29,7 @@ from ipc_api.accounts.passwords import Passwords, password_problems
 from ipc_api.accounts.store import AccountStore
 from ipc_api.admission import Admission
 from ipc_api.auth.accounts import AccountService
+from ipc_api.auth.management import Management
 from ipc_api.auth.middleware import OriginCheckMiddleware, SessionMiddleware
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.auth.throttle import LoginThrottle
@@ -39,7 +40,7 @@ from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
-from ipc_api.routes import auth, meta, profile, validate
+from ipc_api.routes import admin, auth, meta, profile, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,11 @@ VALIDATION_MESSAGES = {
         "feminino ou neutro)."
     ),
 }
+
+ADMIN_VALIDATION_MESSAGE = (
+    "Requisição inválida: use o identificador de uma conta e, ao aprovar, alterar ou reativar, "
+    "envie role (professor, monitor_chefe ou monitor)."
+)
 
 
 async def _connect_store(settings: ApiSettings) -> AccountStore:
@@ -140,6 +146,7 @@ def create_app(
                 throttle=LoginThrottle(max_keys=config.login_throttle.max_keys),
                 clock=clock,
             )
+            app.state.management = Management(store, clock=clock)
             app.state.analyzer = client
             # O semáforo pertence ao laço de eventos que atende as requisições.
             app.state.admission = Admission(config.admission)
@@ -194,8 +201,11 @@ def create_app(
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, _exc: RequestValidationError) -> JSONResponse:
         request.state.outcome = ErrorCode.INVALID_INPUT
-        message = VALIDATION_MESSAGES.get(
-            request.url.path, "Requisição inválida: confira os campos enviados."
+        path = request.url.path
+        message = (
+            ADMIN_VALIDATION_MESSAGE
+            if path.startswith("/api/v1/admin/")
+            else VALIDATION_MESSAGES.get(path, "Requisição inválida: confira os campos enviados.")
         )
         return error_response(422, ErrorCode.INVALID_INPUT, message)
 
@@ -214,6 +224,7 @@ def create_app(
 
     app.include_router(auth.router)
     app.include_router(profile.router)
+    app.include_router(admin.router)
     app.include_router(validate.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)

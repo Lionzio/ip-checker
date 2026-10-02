@@ -13,6 +13,7 @@ cada status das rotas de autenticação é provocado de propósito no fim do arq
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -39,7 +40,7 @@ from conftest import BASE_RULESET, REPO_ROOT
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
-from ipc_api.accounts.models import Status
+from ipc_api.accounts.models import Role, Status
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.admission import AdmissionConfig
 from ipc_api.openapi import build, render
@@ -208,15 +209,20 @@ def contract(api_app: FastAPI) -> Any:
 
 
 # Login, logout, registro e troca de senha gerados ao acaso recusariam credenciais, encerrariam a
-# sessão dos demais casos ou esbarrariam em nomes já usados; os status deles são provocados um a
-# um nos testes de acesso restrito abaixo.
-schema = schemathesis.pytest.from_fixture("contract").exclude(
-    path=[
-        "/api/v1/auth/login",
-        "/api/v1/auth/logout",
-        "/api/v1/auth/register",
-        "/api/v1/profile/password",
-    ]
+# sessão dos demais casos ou esbarrariam em nomes já usados; o gerenciamento recusa a sessão de
+# monitora dos casos gerados (403) e contas sorteadas (404). Os status de todos eles são provocados
+# um a um nos testes de acesso restrito abaixo.
+schema = (
+    schemathesis.pytest.from_fixture("contract")
+    .exclude(
+        path=[
+            "/api/v1/auth/login",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/register",
+            "/api/v1/profile/password",
+        ]
+    )
+    .exclude(path_regex=r"^/api/v1/admin/")
 )
 
 
@@ -422,3 +428,89 @@ def test_routes_without_session_follow_the_contract(
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "UNAUTHENTICATED"
+
+
+def test_management_statuses_follow_the_contract() -> None:
+    app, store = make_app(ApiSettings())
+    contract = _schema()
+    contract.app = app
+    refusals = [positive_data_acceptance, not_a_server_error]
+    monitor = {COOKIE: open_session(store, member(store))}
+    chefe = {COOKIE: open_session(store, member(store, role=Role.MONITOR_CHEFE))}
+    waiting = member(store, role=None, status=Status.AGUARDANDO_APROVACAO)
+    target = member(store)
+
+    def run(path: str, method: str, cookies: dict[str, str] | None, **case: Any) -> int:
+        operation = contract[path][method]
+        response = operation.Case(**case).call_and_validate(
+            cookies=cookies, excluded_checks=refusals
+        )
+        return int(response.status_code)
+
+    approve = "/api/v1/admin/requests/{account_id}/approve"
+    role = {"media_type": "application/json"}
+    with TestClient(app):
+        assert run("/api/v1/admin/requests", "GET", chefe) == 200
+        assert run("/api/v1/admin/members", "GET", chefe) == 200
+        assert run("/api/v1/admin/members", "GET", monitor) == 403
+        assert run("/api/v1/admin/members", "GET", None) == 401
+        ids = {"account_id": str(waiting.id)}
+        assert (
+            run(approve, "POST", chefe, path_parameters=ids, body={"role": "professor"}, **role)
+            == 403
+        )
+        assert (
+            run(approve, "POST", chefe, path_parameters=ids, body={"role": "monitor"}, **role)
+            == 204
+        )
+        assert (
+            run(approve, "POST", chefe, path_parameters=ids, body={"role": "monitor"}, **role)
+            == 409
+        )
+        unknown = {"account_id": str(uuid.uuid4())}
+        assert (
+            run(approve, "POST", chefe, path_parameters=unknown, body={"role": "monitor"}, **role)
+            == 404
+        )
+        assert run(approve, "POST", chefe, path_parameters=ids, body={"role": "rei"}, **role) == 422
+        member_ids = {"account_id": str(target.id)}
+        assert (
+            run(
+                "/api/v1/admin/members/{account_id}/role",
+                "PATCH",
+                chefe,
+                path_parameters=member_ids,
+                body={"role": "monitor_chefe"},
+                **role,
+            )
+            == 204
+        )
+        assert (
+            run(
+                "/api/v1/admin/members/{account_id}/remove",
+                "POST",
+                chefe,
+                path_parameters=member_ids,
+            )
+            == 204
+        )
+        assert (
+            run(
+                "/api/v1/admin/members/{account_id}/reactivate",
+                "POST",
+                chefe,
+                path_parameters=member_ids,
+                body={"role": "monitor"},
+                **role,
+            )
+            == 204
+        )
+        assert (
+            run(
+                "/api/v1/admin/requests/{account_id}/reject",
+                "POST",
+                chefe,
+                path_parameters=member_ids,
+            )
+            == 409
+        )

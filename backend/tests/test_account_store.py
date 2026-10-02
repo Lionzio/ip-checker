@@ -330,3 +330,123 @@ async def test_deleting_the_other_sessions_keeps_one(store: AccountStore) -> Non
     assert await store.get_session(b"\x0c" * 32) is None
     await store.delete_sessions(account.id)
     assert await store.get_session(b"\x0b" * 32) is None
+
+
+# --- Gerenciamento (S15-02) ---------------------------------------------------------------------
+
+
+async def decision_of(store: AccountStore, account_id: uuid.UUID) -> tuple[Any, Any]:
+    if isinstance(store, MemoryAccountStore):
+        return store.decisions.get(account_id, (None, None))
+    assert isinstance(store, PostgresAccountStore)
+    row = await store._pool.fetchrow(
+        "SELECT decided_by, decided_at FROM app.account WHERE id = $1", account_id
+    )
+    return row["decided_by"], row["decided_at"]
+
+
+async def test_accounts_are_listed_by_status_oldest_first(store: AccountStore) -> None:
+    developer = await store.ensure_developer(DEV, NOW)
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    bia = await insert(store, "Bia", "bia@cin.ufpe.br", Status.AGUARDANDO_APROVACAO)
+    caio = await insert(store, "Caio", "caio@cin.ufpe.br", Status.AGUARDANDO_APROVACAO)
+    await insert(store, "Duda", "duda@cin.ufpe.br", Status.AGUARDANDO_VERIFICACAO)
+
+    pending = await store.list_accounts({Status.AGUARDANDO_APROVACAO})
+    active = await store.list_accounts([Status.ATIVO])
+
+    assert [a.id for a in pending] == [bia.id, caio.id]
+    assert {a.id for a in active} == {developer.id, ana.id}
+    assert await store.list_accounts({Status.CONSELHEIRO}) == []
+
+
+async def test_transition_is_conditional_and_records_the_decision(store: AccountStore) -> None:
+    developer = await store.ensure_developer(DEV, NOW)
+    bia = await insert(store, "Bia", "bia@cin.ufpe.br", Status.AGUARDANDO_APROVACAO)
+    approve: dict[str, Any] = {
+        "expected": (Status.AGUARDANDO_APROVACAO, None),
+        "status": Status.ATIVO,
+        "role": Role.MONITOR,
+        "decided_by": developer.id,
+        "now": NOW,
+        "end_sessions": False,
+    }
+
+    approved = await store.transition(bia.id, **approve)
+    again = await store.transition(bia.id, **approve)
+
+    assert approved is not None
+    assert (approved.status, approved.role) == (Status.ATIVO, Role.MONITOR)
+    assert again is None
+    assert await decision_of(store, bia.id) == (developer.id, NOW)
+    assert await store.transition(uuid.uuid4(), **approve) is None
+
+
+async def test_role_changes_keep_the_first_decision(store: AccountStore) -> None:
+    developer = await store.ensure_developer(DEV, NOW)
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+
+    changed = await store.transition(
+        ana.id,
+        expected=(Status.ATIVO, Role.MONITOR),
+        status=Status.ATIVO,
+        role=Role.PROFESSOR,
+        decided_by=None,
+        now=NOW,
+        end_sessions=False,
+    )
+
+    assert changed is not None
+    assert changed.role is Role.PROFESSOR
+    assert await decision_of(store, ana.id) == (None, None)
+    assert developer.role is Role.DESENVOLVEDOR
+
+
+async def test_having_been_head_monitor_is_permanent(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+
+    async def move(old: tuple[Status, Role | None], status: Status, role: Role | None) -> Account:
+        account = await store.transition(
+            ana.id,
+            expected=old,
+            status=status,
+            role=role,
+            decided_by=None,
+            now=NOW,
+            end_sessions=False,
+        )
+        assert account is not None
+        return account
+
+    chefe = await move((Status.ATIVO, Role.MONITOR), Status.ATIVO, Role.MONITOR_CHEFE)
+    back = await move((Status.ATIVO, Role.MONITOR_CHEFE), Status.ATIVO, Role.MONITOR)
+    removed = await move((Status.ATIVO, Role.MONITOR), Status.CONSELHEIRO, Role.MONITOR)
+
+    assert not ana.ja_foi_monitor_chefe
+    assert chefe.ja_foi_monitor_chefe
+    assert back.ja_foi_monitor_chefe
+    assert (removed.status, removed.role, removed.ja_foi_monitor_chefe) == (
+        Status.CONSELHEIRO,
+        Role.MONITOR,
+        True,
+    )
+
+
+@pytest.mark.parametrize("end_sessions", [True, False])
+async def test_transition_can_end_the_sessions_of_the_account(
+    store: AccountStore, end_sessions: bool
+) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    await store.create_session(b"\x0d" * 32, ana.id, NOW, NOW + timedelta(days=1))
+
+    await store.transition(
+        ana.id,
+        expected=(Status.ATIVO, Role.MONITOR),
+        status=Status.EX_MONITOR,
+        role=Role.MONITOR,
+        decided_by=None,
+        now=NOW,
+        end_sessions=end_sessions,
+    )
+
+    assert (await store.get_session(b"\x0d" * 32) is None) is end_sessions

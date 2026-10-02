@@ -32,6 +32,10 @@ class ErrorCode(StrEnum):
     WEAK_PASSWORD = "WEAK_PASSWORD"  # noqa: S105 - código de erro, não um segredo
     INVALID_TOKEN = "INVALID_TOKEN"  # noqa: S105 - código de erro, não um segredo
     EMAIL_UNAVAILABLE = "EMAIL_UNAVAILABLE"
+    # Sprint 15: gerenciamento da equipe (FR-27).
+    FORBIDDEN = "FORBIDDEN"
+    ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND"
+    ACCOUNT_STATE_CHANGED = "ACCOUNT_STATE_CHANGED"
 
 
 #: Espera sugerida ao cliente quando o analyzer não responde.

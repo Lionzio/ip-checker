@@ -11,6 +11,7 @@ const ACCOUNT: Account = {
   role: "desenvolvedor",
   role_label: "Monitor e desenvolvedor",
   has_password: true,
+  can_manage: true,
 };
 
 const RESPONSE: ValidateResponse = {
@@ -193,6 +194,35 @@ describe("createApiClient", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
 
     await expect(createApiClient().listLists()).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it("lê a fila e os membros do gerenciamento", async () => {
+    const fetchMock = respond(200, { items: [] });
+
+    await expect(createApiClient().listRequests()).resolves.toEqual([]);
+    respond(200, { active: [], removed: [] });
+    await expect(createApiClient().listMembers()).resolves.toEqual({ active: [], removed: [] });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect([url, init.method]).toEqual(["/api/v1/admin/requests", "GET"]);
+  });
+
+  it.each([
+    ["approve", ["a b", "monitor"], "POST", "/api/v1/admin/requests/a%20b/approve", { role: "monitor" }],
+    ["reject", ["id-1"], "POST", "/api/v1/admin/requests/id-1/reject", ""],
+    ["changeRole", ["id-1", "professor"], "PATCH", "/api/v1/admin/members/id-1/role", { role: "professor" }],
+    ["remove", ["id-1"], "POST", "/api/v1/admin/members/id-1/remove", ""],
+    ["reactivate", ["id-1", "monitor_chefe"], "POST", "/api/v1/admin/members/id-1/reactivate", { role: "monitor_chefe" }],
+  ] as const)("%s chama a rota do gerenciamento", async (method, args, verb, path, body) => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createApiClient() as unknown as Record<string, (...values: string[]) => Promise<void>>;
+
+    await client[method]?.(...args);
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect([url, init.method]).toEqual([path, verb]);
+    // Sem cargo, o corpo vai vazio, mas presente: a borda recusa POST sem Content-Length (S10).
+    expect(body === "" ? init.body : JSON.parse(init.body as string)).toEqual(body);
   });
 
   it("aceita uma URL base", async () => {

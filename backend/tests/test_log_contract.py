@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -196,7 +197,14 @@ def test_account_routes_never_log_passwords_tokens_or_personal_data(
             ),
         ]
 
-    assert statuses == [201, 422, 422, 422, 202, 200, 422, 422, 200, 204, 403]
+        # Gerenciamento (S15): o identificador da conta e o cargo também nunca vão para o log.
+        statuses += [
+            post(f"/api/v1/admin/members/{CANARY}/remove", {}),
+            post(f"/api/v1/admin/requests/{uuid.uuid4()}/approve", {"role": CANARY}),
+            api.get(f"/api/v1/admin/members?{CANARY}=1", headers=headers).status_code,
+        ]
+
+    assert statuses == [201, 422, 422, 422, 202, 200, 422, 422, 200, 204, 403, 403, 403, 403]
     out, err = capfd.readouterr()
     written = out + err + caplog.text
     assert json_lines(out)

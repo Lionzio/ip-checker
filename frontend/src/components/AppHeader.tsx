@@ -25,6 +25,11 @@ export function AppHeader({ account, onSignOut }: AppHeaderProps) {
               <span className="font-medium">{account.name}</span>
               <span className="text-slate-600 dark:text-slate-300"> · {account.role_label}</span>
             </span>
+            {account.can_manage && (
+              <Link to="/gerenciar" className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800">
+                Gerenciar
+              </Link>
+            )}
             <Link to="/perfil" className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800">
               Perfil
             </Link>

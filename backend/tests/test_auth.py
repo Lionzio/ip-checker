@@ -182,6 +182,7 @@ def test_developer_enters_with_either_email_or_the_name(api: TestClient) -> None
             # Pedido do autor (02/10/2026); no feedback, a linha "Monitor" do FR-30.
             "role_label": "Monitor e desenvolvedor",
             "has_password": True,
+            "can_manage": True,
         }
 
 
@@ -496,6 +497,8 @@ def test_me_shows_the_treatment_only_to_its_owner(
         "role": "monitor",
         "role_label": "Monitor",
         "has_password": False,
+        # Monitor não gerencia a equipe (FR-27).
+        "can_manage": False,
     }
     assert response.headers["Cache-Control"] == "no-store"
 

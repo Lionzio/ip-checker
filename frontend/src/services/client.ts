@@ -2,8 +2,11 @@ import type {
   Account,
   ApiErrorCode,
   ListInfo,
+  ManagedAccount,
+  MembersResponse,
   ProfileUpdate,
   RegisterRequest,
+  Role,
   ValidateRequest,
   ValidateResponse,
 } from "../types/api";
@@ -31,7 +34,21 @@ export interface AuthClient {
   changePassword(currentPassword: string | null, newPassword: string): Promise<void>;
 }
 
-export type ApiClient = ValidationClient & AuthClient;
+/**
+ * Gerenciamento da equipe (Sprint 15): só desenvolvedor, professor e monitor-chefe. Cada item
+ * já traz as ações permitidas; o backend confere de novo a cada chamada.
+ */
+export interface AdminClient {
+  listRequests(signal?: AbortSignal): Promise<ManagedAccount[]>;
+  listMembers(signal?: AbortSignal): Promise<MembersResponse>;
+  approve(id: string, role: Role): Promise<void>;
+  reject(id: string): Promise<void>;
+  changeRole(id: string, role: Role): Promise<void>;
+  remove(id: string): Promise<void>;
+  reactivate(id: string, role: Role): Promise<void>;
+}
+
+export type ApiClient = ValidationClient & AuthClient & AdminClient;
 
 /** Erro no formato `{ error: { code, message, retry_after_s } }` do contrato (5.2.2). */
 export class ApiError extends Error {

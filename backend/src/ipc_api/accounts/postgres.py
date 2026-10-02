@@ -6,7 +6,7 @@ Toda falha de conexão ou do servidor vira ``StoreUnavailable``, que a API trans
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
@@ -45,6 +45,18 @@ _BY_EMAIL = _SELECT_ACCOUNT + (  # noqa: S608
 )
 _BY_NAME = _SELECT_ACCOUNT + "WHERE lower(a.name) = lower($1)"
 _BY_ID = _SELECT_ACCOUNT + "WHERE a.id = $1"
+_BY_STATUS = _SELECT_ACCOUNT + (
+    "WHERE a.status = ANY($1::app.status[]) ORDER BY a.created_at, lower(a.name)"
+)
+_TRANSITION = """
+UPDATE app.account SET
+    status = $2::app.status,
+    role = $3::app.role,
+    decided_by = CASE WHEN $4::uuid IS NULL THEN decided_by ELSE $4::uuid END,
+    decided_at = CASE WHEN $4::uuid IS NULL THEN decided_at ELSE $5 END
+WHERE id = $1 AND status = $6::app.status AND role IS NOT DISTINCT FROM $7::app.role
+RETURNING id
+"""
 _SESSION = """
 SELECT s.account_id, s.created_at, s.last_seen_at, s.expires_at
 FROM app.session s WHERE s.token_hash = $1
@@ -267,6 +279,43 @@ class PostgresAccountStore:
             await self._pool.execute(
                 "UPDATE app.account SET password_hash = $2 WHERE id = $1", account_id, password_hash
             )
+
+    async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
+        async with _guard():
+            rows = await self._pool.fetch(_BY_STATUS, [s.value for s in statuses])
+        return [_account(row) for row in rows]
+
+    async def transition(
+        self,
+        account_id: UUID,
+        *,
+        expected: tuple[Status, Role | None],
+        status: Status,
+        role: Role | None,
+        decided_by: UUID | None,
+        now: datetime,
+        end_sessions: bool,
+    ) -> Account | None:
+        old_status, old_role = expected
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            changed = await connection.fetchval(
+                _TRANSITION,
+                account_id,
+                status.value,
+                role.value if role is not None else None,
+                decided_by,
+                now,
+                old_status.value,
+                old_role.value if old_role is not None else None,
+            )
+            if changed is None:
+                return None
+            if end_sessions:
+                await connection.execute(
+                    "DELETE FROM app.session WHERE account_id = $1", account_id
+                )
+            row = await connection.fetchrow(_BY_ID, account_id)
+        return _account(row)
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
         async with _guard():

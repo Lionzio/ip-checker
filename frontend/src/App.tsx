@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useNavigate } from "react-router";
 import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
+import { Admin } from "./pages/Admin";
 import { Checker } from "./pages/Checker";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
@@ -98,6 +99,16 @@ function Shell({ client, demoMode }: Required<AppProps>) {
                   <Profile client={client} account={state.account} onUpdated={setAccount} />
                 ) : (
                   <Navigate to="/entrar" replace />
+                )
+              }
+            />
+            <Route
+              path="/gerenciar"
+              element={
+                state.status === "signed-in" && state.account.can_manage ? (
+                  <Admin client={client} />
+                ) : (
+                  <Navigate to={state.status === "signed-in" ? "/" : "/entrar"} replace />
                 )
               }
             />
