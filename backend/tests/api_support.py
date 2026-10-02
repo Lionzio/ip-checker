@@ -71,6 +71,7 @@ def member(
     status: Status = Status.ATIVO,
     password_hash: str | None = None,
     treatment: Treatment = Treatment.FEMININO,
+    ja_foi_monitor_chefe: bool = False,
 ) -> Account:
     """Uma conta pronta no repositório (por padrão, uma monitora ativa)."""
     suffix = uuid.uuid4().hex[:10]
@@ -82,7 +83,7 @@ def member(
             treatment=treatment,
             role=role,
             status=status,
-            ja_foi_monitor_chefe=False,
+            ja_foi_monitor_chefe=ja_foi_monitor_chefe or role is Role.MONITOR_CHEFE,
             password_hash=password_hash,
             signup_method=SignupMethod.SENHA,
             emails=(email or f"m{suffix}@cin.ufpe.br",),

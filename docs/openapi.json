@@ -548,6 +548,603 @@
         ]
       }
     },
+    "/api/v1/admin/requests": {
+      "get": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Fila de pedidos de cadastro com o e-mail confirmado",
+        "operationId": "list_requests_api_v1_admin_requests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/requests/{account_id}/approve": {
+      "post": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Aprova o pedido com um cargo que quem aprova pode atribuir",
+        "operationId": "approve_api_v1_admin_requests__account_id__approve_post",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: não há conta com esse identificador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: identificador ou cargo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/requests/{account_id}/reject": {
+      "post": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Recusa o pedido",
+        "operationId": "reject_api_v1_admin_requests__account_id__reject_post",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: não há conta com esse identificador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: identificador ou cargo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/members": {
+      "get": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Membros ativos e contas removidas (ex-monitores, conselheiros e inativos)",
+        "operationId": "list_members_api_v1_admin_members_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/members/{account_id}/role": {
+      "patch": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Altera o cargo de um membro ativo; as sessões dele são encerradas",
+        "operationId": "change_role_api_v1_admin_members__account_id__role_patch",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: não há conta com esse identificador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: identificador ou cargo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/members/{account_id}/remove": {
+      "post": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Remove o membro da equipe sem apagar a conta (Ex-monitor, Conselheiro ou inativo)",
+        "operationId": "remove_api_v1_admin_members__account_id__remove_post",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: não há conta com esse identificador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: identificador ou cargo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/members/{account_id}/reactivate": {
+      "post": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Reativa uma conta removida com um cargo que quem reativa pode atribuir",
+        "operationId": "reactivate_api_v1_admin_members__account_id__reactivate_post",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoleChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: não há conta com esse identificador.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ACCOUNT_STATE_CHANGED: a conta mudou desde que a lista foi carregada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: identificador ou cargo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/validate": {
       "post": {
         "tags": [
@@ -792,6 +1389,11 @@
             "type": "boolean",
             "title": "Has Password",
             "description": "Falso numa conta criada pelo Google que ainda não definiu uma senha."
+          },
+          "can_manage": {
+            "type": "boolean",
+            "title": "Can Manage",
+            "description": "Verdadeiro para quem acessa o gerenciamento da equipe (FR-28)."
           }
         },
         "additionalProperties": false,
@@ -803,7 +1405,8 @@
           "treatment",
           "role",
           "role_label",
-          "has_password"
+          "has_password",
+          "can_manage"
         ],
         "title": "AccountResponse",
         "description": "A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."
@@ -832,7 +1435,10 @@
           "EMAIL_TAKEN",
           "WEAK_PASSWORD",
           "INVALID_TOKEN",
-          "EMAIL_UNAVAILABLE"
+          "EMAIL_UNAVAILABLE",
+          "FORBIDDEN",
+          "ACCOUNT_NOT_FOUND",
+          "ACCOUNT_STATE_CHANGED"
         ],
         "title": "ErrorCode"
       },
@@ -941,6 +1547,184 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "ManagedAccount": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "E-mail principal."
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          },
+          "signup_method": {
+            "type": "string",
+            "enum": [
+              "senha",
+              "google",
+              "seed"
+            ],
+            "title": "Signup Method"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Requested At",
+            "description": "Data do pedido de cadastro."
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "desenvolvedor",
+                  "professor",
+                  "monitor_chefe",
+                  "monitor"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "Vazio num pedido; numa conta removida, o último."
+          },
+          "role_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Label"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "aguardando_verificacao",
+              "aguardando_aprovacao",
+              "ativo",
+              "recusado",
+              "ex_monitor",
+              "conselheiro",
+              "inativo"
+            ],
+            "title": "Status"
+          },
+          "status_label": {
+            "type": "string",
+            "title": "Status Label"
+          },
+          "actions": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "aprovar",
+                "recusar",
+                "alterar_cargo",
+                "remover",
+                "reativar"
+              ]
+            },
+            "type": "array",
+            "title": "Actions",
+            "description": "O que quem consulta pode fazer com a conta."
+          },
+          "roles": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "desenvolvedor",
+                "professor",
+                "monitor_chefe",
+                "monitor"
+              ]
+            },
+            "type": "array",
+            "title": "Roles",
+            "description": "Os cargos que quem consulta pode escolher ao aprovar, alterar ou reativar."
+          },
+          "removal_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "aguardando_verificacao",
+                  "aguardando_aprovacao",
+                  "ativo",
+                  "recusado",
+                  "ex_monitor",
+                  "conselheiro",
+                  "inativo"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removal Status",
+            "description": "O status que a conta recebe se for removida (ex_monitor, conselheiro ou inativo); vazio se quem consulta não pode removê-la."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "course",
+          "signup_method",
+          "requested_at",
+          "role",
+          "role_label",
+          "status",
+          "status_label",
+          "actions",
+          "roles",
+          "removal_status"
+        ],
+        "title": "ManagedAccount",
+        "description": "Uma conta vista no gerenciamento (FR-28). Nunca traz o tratamento (FR-26)."
+      },
+      "MembersResponse": {
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedAccount"
+            },
+            "type": "array",
+            "title": "Active"
+          },
+          "removed": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedAccount"
+            },
+            "type": "array",
+            "title": "Removed",
+            "description": "Ex-monitores, conselheiros e inativos."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "active",
+          "removed"
+        ],
+        "title": "MembersResponse"
       },
       "PasswordChange": {
         "properties": {
@@ -1126,6 +1910,23 @@
         ],
         "title": "RegisterResponse"
       },
+      "RequestsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagedAccount"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "RequestsResponse"
+      },
       "ResendRequest": {
         "properties": {
           "email": {
@@ -1141,6 +1942,26 @@
           "email"
         ],
         "title": "ResendRequest"
+      },
+      "RoleChoice": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "desenvolvedor",
+              "professor",
+              "monitor_chefe",
+              "monitor"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "RoleChoice"
       },
       "SyntaxErrorInfo": {
         "properties": {

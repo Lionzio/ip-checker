@@ -10,6 +10,7 @@ from ipc_api.accounts.models import ROLE_LABELS, Account, StoreUnavailable, Trea
 from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.deps import get_accounts, get_authenticator, require_active_account
 from ipc_api.auth.middleware import session_token
+from ipc_api.auth.policy import can_manage
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
@@ -41,6 +42,7 @@ def account_response(account: Account) -> AccountResponse:
         role=role.value,
         role_label=ROLE_LABELS[role],
         has_password=account.password_hash is not None,
+        can_manage=can_manage(account),
     )
 
 

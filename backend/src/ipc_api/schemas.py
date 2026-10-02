@@ -7,7 +7,9 @@ pode ter sido comprometido por uma submissão (TB-3, ameaça 2).
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal, Self
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -111,6 +113,16 @@ class ReadyResponse(_Strict):
 
 RoleName = Literal["desenvolvedor", "professor", "monitor_chefe", "monitor"]
 TreatmentName = Literal["masculino", "feminino", "neutro"]
+StatusName = Literal[
+    "aguardando_verificacao",
+    "aguardando_aprovacao",
+    "ativo",
+    "recusado",
+    "ex_monitor",
+    "conselheiro",
+    "inativo",
+]
+ActionName = Literal["aprovar", "recusar", "alterar_cargo", "remover", "reativar"]
 
 
 class LoginRequest(_Strict):
@@ -185,6 +197,45 @@ class AccountResponse(_Strict):
     has_password: bool = Field(
         description="Falso numa conta criada pelo Google que ainda não definiu uma senha."
     )
+    can_manage: bool = Field(
+        description="Verdadeiro para quem acessa o gerenciamento da equipe (FR-28)."
+    )
+
+
+class ManagedAccount(_Strict):
+    """Uma conta vista no gerenciamento (FR-28). Nunca traz o tratamento (FR-26)."""
+
+    id: UUID
+    name: str
+    email: str = Field(description="E-mail principal.")
+    course: str
+    signup_method: Literal["senha", "google", "seed"]
+    requested_at: datetime = Field(description="Data do pedido de cadastro.")
+    role: RoleName | None = Field(description="Vazio num pedido; numa conta removida, o último.")
+    role_label: str | None
+    status: StatusName
+    status_label: str
+    actions: list[ActionName] = Field(description="O que quem consulta pode fazer com a conta.")
+    roles: list[RoleName] = Field(
+        description="Os cargos que quem consulta pode escolher ao aprovar, alterar ou reativar."
+    )
+    removal_status: StatusName | None = Field(
+        description="O status que a conta recebe se for removida (ex_monitor, conselheiro ou "
+        "inativo); vazio se quem consulta não pode removê-la."
+    )
+
+
+class RequestsResponse(_Strict):
+    items: list[ManagedAccount]
+
+
+class MembersResponse(_Strict):
+    active: list[ManagedAccount]
+    removed: list[ManagedAccount] = Field(description="Ex-monitores, conselheiros e inativos.")
+
+
+class RoleChoice(_Strict):
+    role: RoleName
 
 
 # ---------------------------------------------------------------------------------------------
