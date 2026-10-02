@@ -10,6 +10,9 @@ type Schemas = components["schemas"];
 
 export type ValidateRequest = Schemas["ValidateRequest"];
 export type ValidateResponse = Schemas["ValidateResponse"];
+/** Feedback para o aluno (Sprints 18 e 19). */
+export type FeedbackRequest = Schemas["FeedbackRequest"];
+export type FeedbackResponse = Schemas["FeedbackResponse"];
 /** Painel de plágio (Sprint 17). */
 export type SimilarityResponse = Schemas["SimilarityResponse"];
 export type SimilarityBand = Schemas["SimilarityBand"];

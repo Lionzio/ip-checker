@@ -77,6 +77,21 @@ function teamMember(
   };
 }
 
+/** A apresentação do FR-30, só para a simulação; a de verdade é montada pela API. */
+const SIMULATED_PRESENTATIONS: Record<Exclude<Role, "desenvolvedor">, Record<Account["treatment"], string>> = {
+  monitor: { masculino: "sou o monitor {nome}", feminino: "sou a monitora {nome}", neutro: "aqui é {nome}, da monitoria" },
+  monitor_chefe: {
+    masculino: "sou o monitor-chefe {nome}",
+    feminino: "sou a monitora-chefe {nome}",
+    neutro: "aqui é {nome}, da chefia da monitoria",
+  },
+  professor: {
+    masculino: "sou o professor {nome}",
+    feminino: "sou a professora {nome}",
+    neutro: "aqui é {nome}, docente da disciplina",
+  },
+};
+
 /** As faixas do FR-29, só para a simulação; as de verdade vêm da API. */
 const SIMULATED_BANDS: SimilarityBand[] = [
   { id: "plagio", label: "Plágio", minimum: 99 },
@@ -289,7 +304,7 @@ export function createMockClient({
     }
   }
 
-  return {
+  const client: ApiClient = {
     async me(signal) {
       await wait(latencyMs, signal);
       if (account === null) {
@@ -515,5 +530,40 @@ export function createMockClient({
         truncated: false,
       } satisfies ValidateResponse;
     },
+
+    async feedback(request, signal) {
+      await wait(latencyMs, signal);
+      const checked = await client.validate(
+        { code: request.code, list_number: request.list_number, question_id: null },
+        signal,
+      );
+      if (checked.status === "syntax_error") {
+        throw new ApiError(
+          422,
+          "INVALID_INPUT",
+          "O código tem um erro de sintaxe: as permissões não foram verificadas, então não há feedback.",
+        );
+      }
+      const who = account ?? DEMO_ACCOUNT;
+      const row = who.role === "desenvolvedor" ? "monitor" : who.role;
+      const presentation = SIMULATED_PRESENTATIONS[row][who.treatment].replace("{nome}", who.name);
+      const valid = checked.status === "valid";
+      const joint = who.treatment === "neutro" ? ", e" : " e";
+      const opening = `Olá, ${request.student_name.trim()}, ${presentation}${joint} seu código ${
+        valid ? "estava muito bom" : "precisa de ajustes"
+      }.`;
+      const used = [...new Set(checked.violations.map((violation) => violation.construct.split(":").pop() ?? ""))];
+      const sentence = valid
+        ? "Sua questão está ótima, não houve nenhuma violação de regras."
+        : `Sua questão apresenta problemas, como o uso de ${used.join(", ")}, portanto ela foi anulada.`;
+      return {
+        request_id: `simulado-${(requests += 1)}`,
+        status: valid ? "valid" : "invalid",
+        text: `${opening} ${sentence} Texto simulado: no servidor, uma IA ou os modelos de texto escrevem esta parte.`,
+        source: "template",
+        provider: null,
+      };
+    },
   };
+  return client;
 }

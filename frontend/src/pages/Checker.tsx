@@ -1,13 +1,14 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { CodeEditor } from "../components/CodeEditor";
+import { type FeedbackForm, FeedbackPanel } from "../components/FeedbackPanel";
 import { ListSelector } from "../components/ListSelector";
 import { ResultPanel } from "../components/ResultPanel";
 import { useValidateCode } from "../hooks/useValidateCode";
-import { ApiError, type ValidationClient } from "../services/client";
-import type { ListInfo } from "../types/api";
+import { ApiError, type FeedbackClient, type ValidationClient } from "../services/client";
+import type { ListInfo, ValidateRequest } from "../types/api";
 
 interface CheckerProps {
-  client: ValidationClient;
+  client: ValidationClient & FeedbackClient;
   /** A API respondeu 401: a sessão venceu ou foi encerrada. */
   onUnauthenticated: () => void;
 }
@@ -19,6 +20,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const [lists, setLists] = useState<ListInfo[]>([]);
   const [listsError, setListsError] = useState<string | null>(null);
   const { state, validate, retry } = useValidateCode(client);
+  // O pedido enviado: é o que o resultado descreve, mesmo que o editor mude depois.
+  const [verified, setVerified] = useState<ValidateRequest | null>(null);
+  const [feedbackForm, setFeedbackForm] = useState<FeedbackForm>({ student: "", annotation: "" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,7 +44,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (listNumber === null) return;
-    void validate({ code, list_number: listNumber, question_id: null });
+    const request = { code, list_number: listNumber, question_id: null };
+    setVerified(request);
+    void validate(request);
   }
 
   return (
@@ -66,7 +72,20 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
         </button>
       </form>
 
-      <ResultPanel state={state} onRetry={() => void retry()} />
+      <div className="flex flex-col gap-6">
+        <ResultPanel state={state} onRetry={() => void retry()} />
+        {state.kind === "success" && verified !== null && (
+          <FeedbackPanel
+            client={client}
+            request={verified}
+            verificationId={state.response.request_id}
+            status={state.response.status}
+            onUnauthenticated={onUnauthenticated}
+            form={feedbackForm}
+            onFormChange={setFeedbackForm}
+          />
+        )}
+      </div>
     </div>
   );
 }

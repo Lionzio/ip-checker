@@ -9,6 +9,7 @@ import type {
   Account,
   ApiErrorCode,
   AuthOptions,
+  FeedbackResponse,
   ErrorResponse,
   GooglePending,
   ListInfo,
@@ -121,6 +122,9 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
         "/api/v1/profile/password",
         json("POST", { current_password: currentPassword, new_password: newPassword }),
       );
+    },
+    feedback(request, signal) {
+      return call<FeedbackResponse>("/api/v1/feedback", json("POST", request), signal);
     },
     compare(codeA, codeB, signal) {
       return call<SimilarityResponse>(
