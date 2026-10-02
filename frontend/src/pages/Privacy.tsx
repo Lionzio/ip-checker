@@ -39,6 +39,14 @@ export function Privacy() {
         descartado: não vai para o banco, para o disco nem para os logs, e nunca é executado.
       </p>
 
+      <h3 className="text-lg font-semibold">Estatísticas de uso</h3>
+      <p>
+        Cada verificação gera um registro anônimo: período, lista, versão das regras, resultado, as
+        regras apontadas e o tempo de análise. Ele não guarda o código, a conta, o nome de ninguém nem
+        o IP. Os professores consultam só contagens agregadas (regras mais apontadas, erros de sintaxe e
+        volume por semana), e os registros são apagados depois de 12 meses.
+      </p>
+
       <h3 className="text-lg font-semibold">Feedback</h3>
       <p>
         Quando há uma IA configurada, vão ao provedor dela só o código sem os comentários, a anotação
