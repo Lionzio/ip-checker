@@ -295,7 +295,7 @@ def test_google_stays_off_without_configuration(fresh_client: Client) -> None:
         [_request("GET", "/api/v1/auth/options"), _request("GET", "/api/v1/auth/google/start")]
     )
 
-    assert options.body == {"google": False}
+    assert options.body == {"google": False, "feedback_ai": False}
     assert start.status == 303
     assert start.headers["location"] == "/entrar?google=indisponivel"
 
