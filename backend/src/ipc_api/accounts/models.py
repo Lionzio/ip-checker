@@ -94,6 +94,8 @@ class Account:
     #: O primeiro é o principal.
     emails: tuple[str, ...]
     created_at: datetime
+    #: Identificador da conta Google ligada (``sub`` do ID token), se houver (FR-24).
+    google_sub: str | None = None
 
     @property
     def primary_email(self) -> str:
@@ -120,6 +122,17 @@ class DeveloperSeed:
 
 
 @dataclass(frozen=True, slots=True)
+class NewGoogleAccount:
+    """Um registro pelo Google (FR-24): e-mail já verificado pelo Google, sem senha."""
+
+    name: str
+    email: str
+    course: str
+    treatment: Treatment
+    google_sub: str
+
+
+@dataclass(frozen=True, slots=True)
 class NewAccount:
     """Um pedido de registro por e-mail e senha (FR-23), já validado."""
 
@@ -131,7 +144,7 @@ class NewAccount:
 
 
 class AccountConflict(Exception):  # noqa: N818 - é um estado, não um erro de programação
-    """Nome ou e-mail já pertence a outra conta. ``field`` diz qual dos dois."""
+    """Nome, e-mail ou conta Google já pertence a outra conta. ``field``: nome, email ou google."""
 
     def __init__(self, message: str, field: str = "nome") -> None:
         super().__init__(message)

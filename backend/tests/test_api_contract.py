@@ -43,6 +43,7 @@ from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api.accounts.models import Role, Status
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.admission import AdmissionConfig
+from ipc_api.auth.google import GoogleConfig
 from ipc_api.openapi import build, render
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
@@ -210,8 +211,8 @@ def contract(api_app: FastAPI) -> Any:
 
 # Login, logout, registro e troca de senha gerados ao acaso recusariam credenciais, encerrariam a
 # sessão dos demais casos ou esbarrariam em nomes já usados; o gerenciamento recusa a sessão de
-# monitora dos casos gerados (403) e contas sorteadas (404). Os status de todos eles são provocados
-# um a um nos testes de acesso restrito abaixo.
+# monitora dos casos gerados (403) e contas sorteadas (404); o Google redireciona para a página.
+# Os status de todos eles são provocados um a um nos testes de acesso restrito abaixo.
 schema = (
     schemathesis.pytest.from_fixture("contract")
     .exclude(
@@ -222,7 +223,7 @@ schema = (
             "/api/v1/profile/password",
         ]
     )
-    .exclude(path_regex=r"^/api/v1/admin/")
+    .exclude(path_regex=r"^/api/v1/(admin|auth/google)/")
 )
 
 
@@ -513,4 +514,30 @@ def test_management_statuses_follow_the_contract() -> None:
                 path_parameters=member_ids,
             )
             == 409
+        )
+
+
+def test_google_statuses_follow_the_contract() -> None:
+    app, _ = make_app(ApiSettings(google=GoogleConfig(client_id="c", client_secret="s")))
+    contract = _schema()
+    contract.app = app
+    refusals = [positive_data_acceptance, not_a_server_error]
+
+    def run(path: str, method: str, **case: Any) -> int:
+        operation = contract[path][method]
+        response = operation.Case(**case).call_and_validate(
+            excluded_checks=refusals, allow_redirects=False
+        )
+        return int(response.status_code)
+
+    with TestClient(app):
+        assert run("/api/v1/auth/options", "GET") == 200
+        assert run("/api/v1/auth/google/start", "GET") == 303
+        assert run("/api/v1/auth/google/callback", "GET", query={"error": "access_denied"}) == 303
+        assert run("/api/v1/auth/google/callback", "GET", query={"state": "x" * 300}) == 422
+        assert run("/api/v1/auth/google/pending", "GET") == 422
+        body = {"name": "Gabi", "course": "CC", "treatment": "neutro"}
+        assert (
+            run("/api/v1/auth/google/complete", "POST", body=body, media_type="application/json")
+            == 422
         )

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from ipc_api.accounts.models import email_domain_allowed, normalize_email
 from ipc_api.admission import AdmissionConfig
 from ipc_api.auth.accounts import AccountsConfig
+from ipc_api.auth.google import GoogleConfig
 from ipc_api.auth.sessions import SessionConfig
 from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
@@ -89,6 +90,8 @@ class ApiSettings:
     developer: DeveloperSettings = field(default_factory=DeveloperSettings)
     #: Envio de e-mail (S14-02, Q-17): SMTP do provedor ou, no compose, o Mailpit.
     email: EmailConfig = field(default_factory=EmailConfig)
+    #: Entrada pelo Google (S16-01); desligada sem IPC_GOOGLE_CLIENT_ID e IPC_GOOGLE_CLIENT_SECRET.
+    google: GoogleConfig = field(default_factory=GoogleConfig)
     #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
 
@@ -117,6 +120,7 @@ class ApiSettings:
             allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),
             developer=_developer_from_env(env),
             email=EmailConfig.from_env(env),
+            google=GoogleConfig.from_env(env),
             accounts=AccountsConfig(
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
             ),

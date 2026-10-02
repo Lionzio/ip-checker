@@ -20,6 +20,7 @@ from ipc_api.accounts.models import (
     AccountConflict,
     DeveloperSeed,
     NewAccount,
+    NewGoogleAccount,
     Role,
     SignupMethod,
     Status,
@@ -450,3 +451,82 @@ async def test_transition_can_end_the_sessions_of_the_account(
     )
 
     assert (await store.get_session(b"\x0d" * 32) is None) is end_sessions
+
+
+# --- Google (S16-01) ------------------------------------------------------------------------------
+
+GOOGLE = NewGoogleAccount(
+    name="Gabi Google",
+    email="gabi@cin.ufpe.br",
+    course="Ciência da Computação",
+    treatment=Treatment.FEMININO,
+    google_sub="1234567890",
+)
+
+
+async def test_google_registration_waits_for_approval_without_password(store: AccountStore) -> None:
+    account = await store.register_google(GOOGLE, NOW)
+
+    assert (account.status, account.role, account.password_hash) == (
+        Status.AGUARDANDO_APROVACAO,
+        None,
+        None,
+    )
+    assert (account.signup_method, account.google_sub) == (SignupMethod.GOOGLE, "1234567890")
+    found = await store.find_by_google_sub("1234567890")
+    assert found is not None
+    assert found.id == account.id
+    assert await store.find_by_google_sub("outro") is None
+
+
+async def test_google_takes_over_an_email_that_was_never_verified(store: AccountStore) -> None:
+    squatter = await store.register(replace(NEW, name="Impostor", email="gabi@cin.ufpe.br"), NOW)
+    await store.add_email_token(
+        b"\x06" * 32, squatter.id, VERIFICATION, NOW, NOW + timedelta(days=1)
+    )
+
+    account = await store.register_google(GOOGLE, LATER)
+
+    assert account.id == squatter.id
+    assert (account.name, account.password_hash, account.status) == (
+        "Gabi Google",
+        None,
+        Status.AGUARDANDO_APROVACAO,
+    )
+    # O link pedido por quem não provou ser dono do e-mail morreu.
+    assert await store.verify_email(b"\x06" * 32, LATER) is None
+
+
+async def test_google_registration_conflicts(store: AccountStore) -> None:
+    await store.ensure_developer(DEV, NOW)
+    await insert(store, "Ativa", "ativa@ufpe.br")
+    await store.register_google(GOOGLE, NOW)
+
+    with pytest.raises(AccountConflict) as email:
+        await store.register_google(replace(GOOGLE, email="ativa@ufpe.br", google_sub="2"), NOW)
+    with pytest.raises(AccountConflict) as name:
+        await store.register_google(
+            replace(GOOGLE, name="vinícius leôncio", email="v@ufpe.br", google_sub="3"), NOW
+        )
+    with pytest.raises(AccountConflict) as sub:
+        await store.register_google(replace(GOOGLE, name="Outra", email="o@ufpe.br"), NOW)
+
+    assert (email.value.field, name.value.field, sub.value.field) == ("email", "nome", "google")
+
+
+async def test_linking_google_to_a_verified_account(store: AccountStore) -> None:
+    developer = await store.ensure_developer(DEV, NOW)
+    other = await insert(store, "Ativa", "ativa@ufpe.br")
+
+    linked = await store.link_google(developer.id, "sub-dev")
+    again = await store.link_google(developer.id, "sub-dev")
+
+    assert (linked.google_sub, again.google_sub) == ("sub-dev", "sub-dev")
+    with pytest.raises(AccountConflict) as different:
+        await store.link_google(developer.id, "sub-outro")
+    with pytest.raises(AccountConflict) as taken:
+        await store.link_google(other.id, "sub-dev")
+    assert (different.value.field, taken.value.field) == ("google", "google")
+    reread = await store.find_by_login(DEV.emails[1])
+    assert reread is not None
+    assert reread.google_sub == "sub-dev"
