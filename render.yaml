@@ -48,5 +48,22 @@ services:
         sync: false
       - key: IPC_GOOGLE_CLIENT_SECRET
         sync: false
+      # Feedback por IA (S18): a principal e a de reserva. Vazias, o feedback é montado sem IA.
+      - key: IPC_LLM_PROVIDER
+        sync: false
+      - key: IPC_LLM_BASE_URL
+        sync: false
+      - key: IPC_LLM_MODEL
+        sync: false
+      - key: IPC_LLM_API_KEY
+        sync: false
+      - key: IPC_LLM_FALLBACK_PROVIDER
+        sync: false
+      - key: IPC_LLM_FALLBACK_BASE_URL
+        sync: false
+      - key: IPC_LLM_FALLBACK_MODEL
+        sync: false
+      - key: IPC_LLM_FALLBACK_API_KEY
+        sync: false
       - key: IPC_RATE_LIMIT_CAMPUS_CIDRS
         value: 150.161.0.0/16

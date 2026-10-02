@@ -134,6 +134,16 @@ services:
       IPC_EMAIL_FROM: IP-Checker <nao-responda@ip-checker.local>
       # De onde sai o link do e-mail; nunca do Host da requisição (ameaça 21).
       IPC_PUBLIC_BASE_URL: http://127.0.0.1:${IPC_HTTP_PORT:-8180}
+      # Feedback (S18): IA principal e de reserva, do deploy/.env. Vazias, o feedback é montado
+      # por modelos de texto, sem IA. Só a api recebe as chaves; o analyzer nunca.
+      IPC_LLM_PROVIDER: ${IPC_LLM_PROVIDER:-}
+      IPC_LLM_BASE_URL: ${IPC_LLM_BASE_URL:-}
+      IPC_LLM_MODEL: ${IPC_LLM_MODEL:-}
+      IPC_LLM_API_KEY: ${IPC_LLM_API_KEY:-}
+      IPC_LLM_FALLBACK_PROVIDER: ${IPC_LLM_FALLBACK_PROVIDER:-}
+      IPC_LLM_FALLBACK_BASE_URL: ${IPC_LLM_FALLBACK_BASE_URL:-}
+      IPC_LLM_FALLBACK_MODEL: ${IPC_LLM_FALLBACK_MODEL:-}
+      IPC_LLM_FALLBACK_API_KEY: ${IPC_LLM_FALLBACK_API_KEY:-}
     healthcheck:
       test:
         - CMD

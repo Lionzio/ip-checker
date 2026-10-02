@@ -116,6 +116,7 @@ repositório.
    | `IPC_DEV_INITIAL_PASSWORD` | Senha inicial da conta do desenvolvedor (9+ caracteres, 1 maiúscula, 1 especial); só vale na criação |
    | `IPC_EMAIL_API_KEY` e `IPC_EMAIL_FROM` | Chave do Brevo e remetente verificado (passo 3) |
    | `IPC_GOOGLE_CLIENT_ID` e `IPC_GOOGLE_CLIENT_SECRET` | Do passo 6, ou vazias |
+   | `IPC_LLM_*` e `IPC_LLM_FALLBACK_*` | As IAs do feedback (seção "Feedback por IA"), ou vazias: sem elas, o feedback é montado sem IA |
 
 8. **GitHub.** Em **Settings > Secrets and variables > Actions** do repositório:
    - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` (URLs dos hooks);
@@ -241,6 +242,40 @@ piloto, use o transporte `brevo` ou outro serviço por HTTPS. O provedor e o rem
 a questão Q-17 do blueprint: com um remetente `@cin.ufpe.br` enviado por terceiros, confira com o
 NTI se a política de e-mail do CIn (SPF, DKIM e DMARC) aceita o envio, para os e-mails não caírem
 no spam.
+
+### Feedback por IA (S18): onde ficam as chaves
+
+O botão **Gerar feedback** funciona sempre. A ordem é: a **IA principal**; se ela falhar, demorar
+ou responder algo que não passa na validação, a **IA de reserva**; se nenhuma responder a tempo
+(prazo total de 28 s), ou se nenhuma estiver configurada, o texto é **montado por modelos**, sem
+IA e sem enviar nada para fora. A abertura e a frase obrigatória são as mesmas nos três casos.
+
+As chaves ficam só em variáveis de ambiente da `api`, nunca no Git nem na página:
+
+- **No compose (local ou Fase 2):** no `deploy/.env`, que o Git ignora. O `deploy/.env.example`
+  traz o bloco pronto; depois de preencher, suba de novo com
+  `docker compose -f deploy/compose.yaml up -d api`.
+- **No piloto (Render):** no serviço `ip-checker-api`, em **Environment**, as mesmas variáveis
+  (o `render.yaml` já as declara, vazias).
+
+| Variável | IA principal | IA de reserva |
+|---|---|---|
+| Provedor: `openai_compat` (OpenAI, Groq, DeepSeek e outros compatíveis) ou `gemini` | `IPC_LLM_PROVIDER` | `IPC_LLM_FALLBACK_PROVIDER` |
+| URL da API, só no `openai_compat` fora da OpenAI (Groq: `https://api.groq.com/openai/v1`; DeepSeek: `https://api.deepseek.com`) | `IPC_LLM_BASE_URL` | `IPC_LLM_FALLBACK_BASE_URL` |
+| Modelo disponível na sua conta do provedor | `IPC_LLM_MODEL` | `IPC_LLM_FALLBACK_MODEL` |
+| Chave da API | `IPC_LLM_API_KEY` | `IPC_LLM_FALLBACK_API_KEY` |
+| Tempo de cada tentativa (padrão: 12 s) | `IPC_LLM_TIMEOUT_S` | `IPC_LLM_FALLBACK_TIMEOUT_S` |
+
+Use provedores diferentes na principal e na reserva, para as duas não caírem juntas. Uma
+configuração incompleta (provedor sem modelo ou sem chave, URL sem HTTPS, reserva sem principal)
+impede a API de subir, com a mensagem dizendo o que falta. `GET /api/v1/auth/options` diz à página
+se há IA (`feedback_ai`). Cada conta tem até 60 feedbacks por dia e o servidor até 1.000
+(`IPC_FEEDBACK_PER_ACCOUNT_DAY` e `IPC_FEEDBACK_DAILY_CAP`), para limitar o custo.
+
+O que vai ao provedor: só o código sem comentários, a anotação e o resultado do motor, com o nome
+do aluno trocado por `[ALUNO]`; o nome e o cargo de quem avalia não vão. Antes de usar dados reais
+de alunos, confira os termos do plano (retenção e uso dos dados para treinar modelos) e a
+política da UFPE (Q-16).
 
 O banco não publica porta na máquina, então não disputa a 5432 nem a 6432 de outros projetos. Para
 consultá-lo, entre no contêiner:
