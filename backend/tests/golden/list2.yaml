@@ -1,4 +1,5 @@
-# Corpus golden: permissões da Lista 2 (R-34 a R-36). O zip condicional (R-37) entra na Sprint 20.
+# Corpus golden: permissões da Lista 2 (R-34 a R-37). O zip só vale como o iterável do for, com
+# 2 ou mais sequências, e só ele permite vários nomes no for (R-37, Q-02 d, Q-04, US-07).
 
 - id: R-34-for-L2
   rule: R-34
@@ -64,7 +65,7 @@
     x = int(input())
     if x in range(1, 11):
         print("entre 1 e 10")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-36-in-range-before-list-L1
   rule: R-36
@@ -80,3 +81,84 @@
   code: |
     print(7 not in range(5))
   expect: []
+
+- id: R-37-zip-in-for-header-L2
+  rule: R-37
+  list: 2
+  code: |
+    nomes = input()
+    notas = input()
+    for a, b in zip(nomes, notas):
+        print(a, b)
+  expect: []
+
+- id: R-37-zip-three-sequences-L2
+  rule: R-37
+  list: 2
+  code: |
+    x = input()
+    y = input()
+    w = input()
+    for a, b, c in zip(x, y, w):
+        print(a, b, c)
+  expect: []
+
+- id: R-37-zip-outside-for-L2
+  rule: R-37
+  list: 2
+  code: |
+    a = input()
+    b = input()
+    z = zip(a, b)
+    for par in z:
+        print(par)
+  expect: [R-37 NAO_CONSTA 3]
+
+- id: R-37-zip-one-sequence-L2
+  rule: R-37
+  list: 2
+  code: |
+    texto = input()
+    for a, b in zip(texto):
+        print(a, b)
+  expect: [R-37 NAO_CONSTA 2, R-37 NAO_CONSTA 2]
+
+- id: R-37-unpack-without-zip-L2
+  rule: R-37
+  list: 2
+  code: |
+    texto = input()
+    for a, b in texto:
+        print(a, b)
+  expect: [R-37 NAO_CONSTA 2]
+
+- id: R-37-zip-nested-in-header-L2
+  rule: R-37
+  list: 2
+  code: |
+    x = input()
+    y = input()
+    for a, b in zip(zip(x, y), y):
+        print(a, b)
+  expect: [R-37 NAO_CONSTA 3]
+
+- id: R-37-zip-before-list-L1
+  rule: R-37
+  list: 1
+  code: |
+    x = input()
+    y = input()
+    for a, b in zip(x, y):
+        print(a, b)
+  expect: [R-02 EXIGENCIA 1, R-34 FORA_DA_LISTA 3, R-37 FORA_DA_LISTA 3, R-37 FORA_DA_LISTA 3]
+
+- id: R-37-zip-outside-for-L4
+  rule: R-37
+  list: 4
+  code: |
+    a = input()
+    b = input()
+    z = zip(a, b)
+    for par in z:
+        print(par)
+  expect: [R-37 NAO_CONSTA 3]

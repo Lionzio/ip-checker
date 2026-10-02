@@ -54,6 +54,38 @@ jobs:
           IPC_TEST_DATABASE_URL: postgresql://postgres:ci-descartavel@127.0.0.1:5432/ipc_test
         run: uv run pytest
 
+  gabaritos:
+    # Gabaritos de períodos anteriores com zero violação (Q-14, S20). Eles são respostas oficiais e
+    # ficam num repositório privado separado: o job só roda quando a variável GABARITOS_REPO
+    # (dono/repositório) e o segredo GABARITOS_TOKEN (token só de leitura) estão definidos. A pasta
+    # gabaritos/ é ignorada pelo Git, e os testes mostram só arquivo, regra e linha, nunca o código.
+    name: Gabaritos (zero violação, Q-14)
+    if: vars.GABARITOS_REPO != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar os gabaritos (repositório privado, só leitura)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GABARITOS_REPO }}
+          token: ${{ secrets.GABARITOS_TOKEN }}
+          path: gabaritos
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Instalar Python 3.13 e dependências
+        working-directory: backend
+        run: |
+          uv python install 3.13
+          uv sync --locked
+      - name: Cada gabarito sem violação na sua lista
+        working-directory: backend
+        env:
+          IPC_GABARITOS_DIR: ${{ github.workspace }}/gabaritos
+        run: uv run pytest tests/official_answers --no-cov -q
+
   security:
     name: Segurança (isolamento, submissões maliciosas e imagem do piloto)
     runs-on: ubuntu-latest

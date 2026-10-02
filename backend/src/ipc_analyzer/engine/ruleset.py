@@ -160,7 +160,7 @@ def _validate_message(value: str) -> str:
 #: Predicados contextuais implementados pelo motor (``engine/conditions.py``) e os parâmetros
 #: que cada um aceita. Um predicado novo exige código e ADR (5.2.3).
 _PREDICATE_PARAMS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {"call_args": frozenset({"min", "max"})}
+    {"call_args": frozenset({"min", "max"}), "zip_in_for_header": frozenset({"min"})}
 )
 KNOWN_PREDICATES: frozenset[str] = frozenset(_PREDICATE_PARAMS)
 
@@ -224,6 +224,8 @@ class Condition(_Frozen):
                 raise ValueError("call_args precisa de min ou max")
             if low is not None and high is not None and low > high:
                 raise ValueError("call_args: min não pode ser maior que max")
+        if self.predicate == "zip_in_for_header" and self.params.get("min", 0) < 1:
+            raise ValueError("zip_in_for_header precisa de min maior ou igual a 1")
         return self
 
 

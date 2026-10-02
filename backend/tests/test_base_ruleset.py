@@ -19,10 +19,10 @@ def test_base_ruleset_metadata(base_ruleset: CompiledRuleset) -> None:
     assert len(base_ruleset.sha256) == 64
 
 
-def test_sprint_1_scope_is_r03_to_r36(base_ruleset: CompiledRuleset) -> None:
+def test_sprint_20_scope_is_r03_to_r37(base_ruleset: CompiledRuleset) -> None:
     ruleset = base_ruleset.ruleset
 
-    assert {rule.id for rule in ruleset.rules} == _ids(5, 36)
+    assert {rule.id for rule in ruleset.rules} == _ids(5, 37)
     assert {meta.id for meta in ruleset.meta_rules} == {"R-03", "R-04"}
     assert {meta.kind for meta in ruleset.meta_rules} == {
         MetaKind.CUMULATIVE,
@@ -66,6 +66,8 @@ def test_permissions_start_at_their_list(
         ("op:Add", {"R-18", "R-21"}),
         ("kwarg:print.end", {"R-32"}),
         ("node:For", {"R-34"}),
+        ("builtin:zip", {"R-37"}),  # Q-04: até a Lista 4; a R-64 libera da Lista 5 em diante
+        ("target:for_unpack", {"R-37"}),  # Q-02 (d): só com zip no for
     ],
 )
 def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: set[str]) -> None:
@@ -83,7 +85,7 @@ def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: s
         "builtin:getattr",
         "builtin:__import__",
         "node:Lambda",  # só a partir da Lista 5
-        "builtin:zip",  # R-37 entra na Sprint 20
+        "builtin:enumerate",  # só a partir da Lista 5 (R-63)
     ],
 )
 def test_not_yet_permitted_facts_fall_to_default_deny(
@@ -100,7 +102,7 @@ def test_every_rule_cites_the_permissions_document(base_ruleset: CompiledRuleset
         assert meta.source.startswith("Permissões, p."), meta.id
 
 
-def test_only_type_has_conditions_so_far(base_ruleset: CompiledRuleset) -> None:
+def test_conditions_of_the_ruleset(base_ruleset: CompiledRuleset) -> None:
     conditional = {
         (rule.id, fact, condition.predicate)
         for rule in base_ruleset.ruleset.rules
@@ -111,4 +113,23 @@ def test_only_type_has_conditions_so_far(base_ruleset: CompiledRuleset) -> None:
     assert conditional == {
         ("R-09", "builtin:type", "call_args"),  # Q-07: type() com 3 argumentos cria classe
         ("R-33", "builtin:type", "call_args"),
+        ("R-37", "builtin:zip", "zip_in_for_header"),  # Q-04
+        ("R-37", "target:for_unpack", "zip_in_for_header"),  # Q-02 (d)
     }
+
+
+def test_zip_condition_holds_from_list_2_to_4(base_ruleset: CompiledRuleset) -> None:
+    (rule,) = base_ruleset.rules_for("builtin:zip")
+
+    assert (rule.since_list, rule.until_list) == (2, 4)
+    assert all(condition is not None for _, condition in rule.matches())
+    assert all(condition.params == {"min": 2} for _, condition in rule.matches() if condition)
+
+
+def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:
+    requirements = {
+        requirement.list_number: set(requirement.require_any)
+        for requirement in base_ruleset.ruleset.requirements
+    }
+
+    assert requirements == {1: {"node:If", "node:IfExp"}, 2: {"node:For", "node:While"}}

@@ -177,6 +177,43 @@ def test_tuple_target_of_for_is_for_unpack() -> None:
     assert "node:Tuple" in assignment
 
 
+def zip_marks(source: str) -> list[tuple[str, int, int | None]]:
+    return [
+        (fact.name, fact.col, fact.zip_header_args)
+        for fact in facts(source)
+        if fact.name in {"builtin:zip", "target:for_unpack"}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        # zip() como o iterável do for: o zip e o alvo levam o número de sequências (R-37).
+        (
+            "for a, b in zip('ab', 'cd'):\n    print(a, b)\n",
+            [("target:for_unpack", 5, 2), ("builtin:zip", 13, 2)],
+        ),
+        ("for a in zip('ab'):\n    print(a)\n", [("builtin:zip", 10, 1)]),
+        # Fora do cabeçalho, ou dentro de outra chamada no cabeçalho, não há marca.
+        ("z = zip('ab', 'cd')\n", [("builtin:zip", 5, None)]),
+        (
+            "for a, b in zip(zip('a', 'b'), 'c'):\n    print(a)\n",
+            [("target:for_unpack", 5, 2), ("builtin:zip", 13, 2), ("builtin:zip", 17, None)],
+        ),
+        # Numa compreensão não é o comando for, e o alvo é um node:Tuple comum.
+        ("x = [a for a, b in zip('ab', 'cd')]\n", [("builtin:zip", 20, None)]),
+        # Um zip do aluno não é o built-in: o alvo fica sem marca.
+        ("zip = 3\nfor a, b in zip:\n    print(a)\n", [("target:for_unpack", 5, None)]),
+        ("for a, b in 'ab':\n    print(a)\n", [("target:for_unpack", 5, None)]),
+    ],
+    ids=["header", "one-sequence", "outside", "nested", "comprehension", "shadowed", "no-zip"],
+)
+def test_zip_in_the_for_header_is_marked(
+    source: str, expected: list[tuple[str, int, int | None]]
+) -> None:
+    assert zip_marks(source) == expected
+
+
 @pytest.mark.parametrize(
     ("source", "fact"),
     [

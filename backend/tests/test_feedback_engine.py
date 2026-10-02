@@ -34,3 +34,21 @@ def test_items_keep_the_order_and_are_not_repeated(base_ruleset: CompiledRuleset
         ("uso", "range()"),
         ("uso", "pass"),
     ]
+
+
+def test_the_missing_topic_is_named_by_the_list(base_ruleset: CompiledRuleset) -> None:
+    code = "x = int(input())\nprint(x)\n"
+
+    first = feedback_input(code, list_number=1, ruleset=base_ruleset).items
+    second = feedback_input(code, list_number=2, ruleset=base_ruleset).items
+
+    assert [(item.kind, item.label) for item in first] == [("falta", "if ou operador ternário")]
+    assert [(item.kind, item.label) for item in second] == [("falta", "for ou while")]
+
+
+def test_zip_outside_the_for_is_named_in_the_feedback(base_ruleset: CompiledRuleset) -> None:
+    code = "a = input()\nb = input()\nz = zip(a, b)\nfor par in z:\n    print(par)\n"
+
+    result = feedback_input(code, list_number=2, ruleset=base_ruleset)
+
+    assert [(item.kind, item.label) for item in result.items] == [("uso", "zip()")]

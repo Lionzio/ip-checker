@@ -161,19 +161,19 @@ def test_each_request_has_its_own_id(client: TestClient) -> None:
 
 
 def test_list_not_enabled(client: TestClient, analyzer: FakeAnalyzer) -> None:
-    response = validate(client, list_number=2)
+    response = validate(client, list_number=3)
 
     assert error_of(response) == (422, "LIST_NOT_ENABLED")
-    assert "Lista 2" in response.json()["error"]["message"]
+    assert "Lista 3" in response.json()["error"]["message"]
     assert analyzer.calls == []
 
 
 def test_enabled_lists_come_from_settings(analyzer: FakeAnalyzer) -> None:
-    analyzer.routes["/internal/analyze"] = reply(200, {**VALID, "list_number": 2})
-    settings = ApiSettings(analyzer_url="http://analyzer.test", enabled_lists=frozenset({1, 2}))
+    analyzer.routes["/internal/analyze"] = reply(200, {**VALID, "list_number": 3})
+    settings = ApiSettings(analyzer_url="http://analyzer.test", enabled_lists=frozenset({1, 3}))
 
     with make_client(analyzer, settings) as client:
-        assert validate(client, list_number=2).status_code == 200
+        assert validate(client, list_number=3).status_code == 200
 
 
 def test_unknown_question(client: TestClient, analyzer: FakeAnalyzer) -> None:
@@ -397,16 +397,16 @@ def test_lists_show_only_enabled_lists(client: TestClient) -> None:
     response = client.get("/api/v1/lists")
 
     assert response.status_code == 200
-    assert response.json() == [{"number": 1, "title": "Lista 1"}]
+    assert response.json() == [{"number": 1, "title": "Lista 1"}, {"number": 2, "title": "Lista 2"}]
 
 
 def test_lists_follow_enabled_lists_setting(analyzer: FakeAnalyzer) -> None:
-    settings = ApiSettings(analyzer_url="http://analyzer.test", enabled_lists=frozenset({1, 2}))
+    settings = ApiSettings(analyzer_url="http://analyzer.test", enabled_lists=frozenset({1, 3}))
 
     with make_client(analyzer, settings) as client:
         numbers = [item["number"] for item in client.get("/api/v1/lists").json()]
 
-    assert numbers == [1, 2]
+    assert numbers == [1, 3]
 
 
 def test_manifest_is_cached(client: TestClient, analyzer: FakeAnalyzer) -> None:

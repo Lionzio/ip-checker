@@ -21,7 +21,7 @@
     if x > 0:
         if x % 2 == 0:
             print("par")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-15-if-L6
   rule: R-15
@@ -47,7 +47,7 @@
   code: |
     a = b = 0
     print(a, b)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-16-shadowing-builtin-name-L1
   rule: R-16
@@ -80,7 +80,7 @@
   list: 2
   code: |
     print(1 is 1)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-18-arithmetic-L1
   rule: R-18
@@ -134,7 +134,7 @@
   code: |
     x = 5
     print(0 < x < 10)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-20-ternary-L1
   rule: R-20
@@ -158,7 +158,7 @@
   list: 2
   code: |
     print("a" if True else "b")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-21-concatenation-L1
   rule: R-21
@@ -181,7 +181,7 @@
   code: |
     texto = "a" + "b"
     print(texto)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-22-print-input-L1
   rule: R-22
@@ -203,7 +203,7 @@
   list: 2
   code: |
     print(input())
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-23-abs-L1
   rule: R-23
@@ -225,7 +225,7 @@
   list: 2
   code: |
     print(abs(2 - 5))
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-24-conversions-L1
   rule: R-24
@@ -250,7 +250,7 @@
   list: 2
   code: |
     print(int(float("1.5")))
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-25-max-min-L1
   rule: R-25
@@ -273,7 +273,7 @@
   list: 2
   code: |
     print(min(4, 2))
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-26-round-L1
   rule: R-26
@@ -295,7 +295,7 @@
   code: |
     x = round(10 / 3, 1)
     print(x)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-27-len-L1
   rule: R-27
@@ -319,7 +319,7 @@
   list: 2
   code: |
     print(len("abc"))
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-28-format-function-L1
   rule: R-28
@@ -341,7 +341,7 @@
   list: 2
   code: |
     print("{} e {}".format(1, 2))
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-29-string-methods-L1
   rule: R-29
@@ -388,7 +388,7 @@
   list: 2
   code: |
     print("b" in "abc")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-31-fstring-L1
   rule: R-31
@@ -412,7 +412,7 @@
   list: 2
   code: |
     print(f"{1 + 1}")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-32-end-L1
   rule: R-32
@@ -434,7 +434,7 @@
   list: 2
   code: |
     print("x", end=" ")
-  expect: []
+  expect: [R-02 EXIGENCIA 1]
 
 - id: R-33-type-L1
   rule: R-33
@@ -455,4 +455,4 @@
   list: 2
   code: |
     print(type("a") == str)
-  expect: []
+  expect: [R-02 EXIGENCIA 1]

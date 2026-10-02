@@ -18,11 +18,16 @@ e descarta tudo depois. O acesso é só da equipe; alunos não têm conta.
 | Aponta construções proibidas em todas as listas (`import`, `try`, `break`, `None`, sets, classes...) | Não testa se a resposta está certa: isso continua com o Dikastis |
 | Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Não considera ainda as regras específicas de cada questão: **se o enunciado liberar algo, vale o enunciado** |
 | Aponta o que não consta no documento de permissões (por exemplo, `eval`) | Não decide se houve plágio: a porcentagem é um indício, e a decisão é da equipe |
-| Exige o assunto da lista (na Lista 1, pelo menos um `if` ou um operador ternário) | Não guarda nem registra o código de ninguém |
+| Exige o assunto da lista (na Lista 1, um `if` ou um operador ternário; na Lista 2, um `for` ou um `while`) | Não guarda nem registra o código de ninguém |
 | Mostra erros de sintaxe com linha e coluna, em português | Não substitui a leitura do documento de permissões |
 
-Por enquanto, só a **Lista 1 (comandos condicionais)** está liberada. As demais entram ao longo do
-período.
+Por enquanto, estão liberadas a **Lista 1 (comandos condicionais)** e a **Lista 2 (laços de
+repetição)**. As demais entram ao longo do período.
+
+Na Lista 2, o `zip()` segue a condição do documento: só serve para variar mais de um índice no
+comando `for`. Então `for a, b in zip(nomes, notas):` passa, e o `zip()` em qualquer outro lugar
+(`z = zip(a, b)`, com uma sequência só ou dentro de outra chamada) aparece com a R-37. Vários nomes
+no `for` (`for a, b in ...`) só passam junto com esse `zip()`.
 
 ## Entrar na equipe
 
@@ -63,7 +68,7 @@ Cada violação mostra a categoria, a linha e a coluna, a regra do catálogo (R-
 |---|---|
 | **Anulação imediata** | Proibido em todas as listas. Enviado assim, a questão é anulada. |
 | **Fora da lista** | Permitido só a partir de uma lista posterior, que a mensagem informa. |
-| **Não consta no documento** | Não aparece no documento de permissões; por isso é proibido (R-04). |
+| **Não consta no documento** | Não aparece no documento de permissões; por isso é proibido (R-04). Também aparece quando o documento só permite a construção com uma condição que o código não cumpre, com a regra dessa condição (por exemplo, `zip()` fora do `for`, R-37). |
 | **Exigência não atendida** | A solução não usa o assunto obrigatório da lista. Aparece como "Solução inteira". |
 
 Um **erro de sintaxe** aparece no lugar das violações: as permissões só são verificadas quando o
@@ -162,9 +167,10 @@ professor.
 **O código passou no IP-Checker. Então está certo?**
 Ele respeita as permissões da lista. Se a resposta está certa, só o Dikastis diz.
 
-**Por que `print("oi")` sozinho dá "Exigência não atendida" na Lista 1?**
-Toda questão da Lista 1 precisa usar o assunto da lista: um comando condicional (`if`, com ou sem
-`elif`/`else`) ou o operador ternário. Um `if` dentro de um texto ou de um comentário não conta.
+**Por que `print("oi")` sozinho dá "Exigência não atendida"?**
+Toda questão precisa usar o assunto da lista: na Lista 1, um comando condicional (`if`, com ou sem
+`elif`/`else`) ou o operador ternário; na Lista 2, um laço (`for` ou `while`). Um `if` ou um `for`
+dentro de um texto ou de um comentário não conta.
 
 **O enunciado da questão libera algo que o IP-Checker aponta. E agora?**
 Vale o enunciado. Nesse caso, a violação pode ser ignorada, inclusive no feedback, que você pode

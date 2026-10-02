@@ -9,9 +9,9 @@ import { expect, type Page, test } from "@playwright/test";
 /** No piloto (pipeline de deploy), a página está na Vercel, que repassa /api/* ao Render. */
 const PILOT = process.env.E2E_TARGET === "pilot";
 
-async function verify(page: Page, code: string) {
+async function verify(page: Page, code: string, list = "1") {
   await page.goto("/");
-  await page.getByLabel("Lista").selectOption("1");
+  await page.getByLabel("Lista").selectOption(list);
   await page.getByLabel("Código Python").fill(code);
   await page.getByRole("button", { name: "Verificar" }).click();
 }
@@ -22,14 +22,30 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   await page.goto("/");
 
   await expect(page.getByRole("option", { name: "Lista 1: Comandos condicionais" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "Lista 2: Laços de repetição" })).toBeAttached();
   await expect(page.getByRole("note")).toHaveCount(0);
+});
+
+test("Lista 2: zip no cabeçalho do for passa (US-07)", async ({ page }) => {
+  await verify(page, "x = input()\ny = input()\nfor a, b in zip(x, y):\n    print(a, b)\n", "2");
+
+  await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
+});
+
+test("Lista 2: zip fora do for mostra a R-37 com a condição (US-07)", async ({ page }) => {
+  await verify(page, "a = input()\nb = input()\nz = zip(a, b)\nfor par in z:\n    print(par)\n", "2");
+
+  const r37 = result(page).getByRole("listitem").filter({ hasText: "R-37" });
+  await expect(r37).toHaveCount(1);
+  await expect(r37).toContainText("Linha 3, coluna 5");
+  await expect(r37).toContainText("iterável do for");
 });
 
 test("código válido na Lista 1 mostra sucesso", async ({ page }) => {
   await verify(page, "nota = float(input())\nif nota >= 7:\n    print('Aprovado')\nelse:\n    print('Reprovado')\n");
 
   await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
-  await expect(result(page)).toContainText("Regras 2026.2.0");
+  await expect(result(page)).toContainText(/Regras 2026\.2\.\d+/);
 });
 
 test("for na Lista 1 mostra a R-34 na linha 2", async ({ page }) => {

@@ -6,8 +6,20 @@ const client = createMockClient({ latencyMs: 0 });
 const request = (code: string, list_number = 1) => ({ code, list_number, question_id: null });
 
 describe("cliente simulado", () => {
-  it("lista só a Lista 1 no MVP", async () => {
-    await expect(client.listLists()).resolves.toEqual([{ number: 1, title: "Comandos condicionais" }]);
+  it("lista as Listas 1 e 2 (Sprint 20)", async () => {
+    await expect(client.listLists()).resolves.toEqual([
+      { number: 1, title: "Comandos condicionais" },
+      { number: 2, title: "Laços de repetição" },
+    ]);
+  });
+
+  it("na Lista 2, o for é permitido e o assunto exigido é um laço", async () => {
+    const loop = await client.validate(request("for i in range(3):\n    print(i)\n", 2));
+    const withoutLoop = await client.validate(request("x = int(input())\nif x > 0:\n    print(x)\n", 2));
+
+    expect(loop.status).toBe("valid");
+    expect(withoutLoop.violations.map((v) => v.rule_id)).toEqual(["R-02"]);
+    expect(withoutLoop.violations[0]?.message).toContain("assunto da Lista 2");
   });
 
   it("aceita código sem os padrões simulados", async () => {
@@ -61,7 +73,7 @@ describe("cliente simulado", () => {
   });
 
   it("recusa lista ainda não habilitada", async () => {
-    await expect(client.validate(request("x = 1", 2))).rejects.toMatchObject({
+    await expect(client.validate(request("x = 1", 3))).rejects.toMatchObject({
       status: 422,
       code: "LIST_NOT_ENABLED",
     });

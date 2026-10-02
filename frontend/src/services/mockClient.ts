@@ -21,8 +21,11 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.0";
-const ENABLED_LISTS: ListInfo[] = [{ number: 1, title: "Comandos condicionais" }];
+const RULESET_VERSION = "2026.2.1";
+const ENABLED_LISTS: ListInfo[] = [
+  { number: 1, title: "Comandos condicionais" },
+  { number: 2, title: "Laços de repetição" },
+];
 export const DEMO_ACCOUNT: Account = {
   name: "Monitora de Demonstração",
   email: "demonstracao@cin.ufpe.br",
@@ -257,16 +260,33 @@ function simulateScenario(code: string): Promise<never> | null {
   }
 }
 
-function findViolations(code: string): Violation[] {
+/** A exigência do assunto de cada lista (R-02, Q-05), só para a simulação. */
+const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string }> = {
+  1: {
+    pattern: /\bif\b/,
+    message:
+      "A solução não usa o assunto da Lista 1: é obrigatório um comando condicional (if, com ou sem elif/else) ou o operador ternário. Sem ele, a questão é anulada.",
+  },
+  2: {
+    pattern: /\b(for|while)\b/,
+    message:
+      "A solução não usa o assunto da Lista 2: é obrigatório um laço de repetição (for ou while). Sem ele, a questão é anulada.",
+  },
+};
+
+function findViolations(code: string, listNumber: number): Violation[] {
   const violations: Violation[] = [];
   code.split("\n").forEach((text, index) => {
     for (const rule of SIMULATED_RULES) {
       const match = rule.pattern.exec(text);
       const keyword = match?.[1];
       if (match === null || keyword === undefined) continue;
+      const finding = rule.finding(keyword);
+      // Cumulatividade (R-03): o que é liberado numa lista vale dali em diante.
+      if (finding.allowed_from_list !== null && finding.allowed_from_list <= listNumber) continue;
       const col = match.index + match[0].indexOf(keyword) + 1;
       violations.push({
-        ...rule.finding(keyword),
+        ...finding,
         line: index + 1,
         col,
         end_line: index + 1,
@@ -506,16 +526,16 @@ export function createMockClient({
         } satisfies ValidateResponse;
       }
 
-      const violations = findViolations(request.code);
-      // Exigência da Lista 1 (R-02): sem if nem ternário, a solução inteira é apontada.
-      if (!/\bif\b/.test(request.code.replace(/#.*$/gm, ""))) {
+      const violations = findViolations(request.code, request.list_number);
+      // Exigência do assunto da lista (R-02): sem ele, a solução inteira é apontada.
+      const requirement = SIMULATED_REQUIREMENTS[request.list_number];
+      if (requirement !== undefined && !requirement.pattern.test(request.code.replace(/#.*$/gm, ""))) {
         violations.unshift({
           rule_id: "R-02",
           category: "EXIGENCIA",
           construct: "requirement:R-02",
           allowed_from_list: null,
-          message:
-            "A solução não usa o assunto da Lista 1: é obrigatório um comando condicional (if, com ou sem elif/else) ou o operador ternário. Sem ele, a questão é anulada.",
+          message: requirement.message,
           line: 1,
           col: 1,
           end_line: 1,

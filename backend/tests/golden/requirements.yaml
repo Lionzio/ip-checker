@@ -1,6 +1,6 @@
 # Corpus golden: exigências (R-02, Q-05). A solução precisa usar o assunto da lista; sem ele, a
-# solução inteira recebe EXIGENCIA (linha 1). Lista 1: if (com ou sem elif/else) ou ternário.
-# As exigências das Listas 2 a 6 entram nas Sprints 20 e 23.
+# solução inteira recebe EXIGENCIA (linha 1). Lista 1: if (com ou sem elif/else) ou ternário;
+# Lista 2: for ou while. As exigências das Listas 3 a 6 entram nas Sprints 22 e 23.
 
 - id: R-02-without-conditional-L1
   rule: R-02
@@ -98,3 +98,45 @@
         print(i)
   # A exigência da Lista 2 (for/while) entra na Sprint 20; este código já a cumpriria.
   expect: []
+
+- id: R-02-without-loop-L2
+  rule: R-02
+  list: 2
+  code: |
+    n = int(input())
+    print(n * 2)
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-for-satisfies-L2
+  rule: R-02
+  list: 2
+  code: |
+    for i in range(3):
+        print(i)
+  expect: []
+
+- id: R-02-while-satisfies-L2
+  rule: R-02
+  list: 2
+  code: |
+    n = int(input())
+    while n > 0:
+        n -= 1
+  expect: []
+
+- id: R-02-if-does-not-satisfy-L2
+  rule: R-02
+  list: 2
+  code: |
+    n = int(input())
+    if n > 0:
+        print(n)
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-loop-in-text-does-not-count-L2
+  rule: R-02
+  list: 2
+  code: |
+    # for i in range(3)
+    print("while True")
+  expect: [R-02 EXIGENCIA 1]
