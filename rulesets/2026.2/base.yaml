@@ -6,8 +6,8 @@
 # (ver docs/mapping-R-xx.md e o guia em rulesets/README.md).
 #
 # Situação na Sprint 1: R-03 a R-36 (proibições gerais, Lista 1 e Lista 2 sem o zip).
-# O zip condicional (R-37) depende de predicado e entra na Sprint 13;
-# as Listas 3 a 6 entram nas Sprints 15 e 16.
+# O zip condicional (R-37) depende de predicado e entra na Sprint 20;
+# as Listas 3 a 6 entram nas Sprints 22 e 23.
 
 schema_version: 2
 ruleset_version: "2026.2.0"
@@ -306,7 +306,7 @@ rules:
     source: "Permissões, p.2, Lista 1: type()"
 
   # ---------------------------------------------------------------------------
-  # Lista 2 - Laços de repetição (R-34 a R-36; R-37, zip, entra na Sprint 13).
+  # Lista 2 - Laços de repetição (R-34 a R-36; R-37, zip, entra na Sprint 20).
   # ---------------------------------------------------------------------------
   - id: "R-34"
     name: "Laços de repetição (for, while)"
@@ -334,7 +334,7 @@ rules:
 # -----------------------------------------------------------------------------
 # Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).
 # A falta vira uma violação EXIGENCIA da solução inteira. Os fatos que comprovam cada
-# assunto seguem a decisão Q-05. Listas 2 a 6 entram nas Sprints 13 e 16.
+# assunto seguem a decisão Q-05. Listas 2 a 6 entram nas Sprints 20 e 23.
 # -----------------------------------------------------------------------------
 requirements:
   - id: "R-02"

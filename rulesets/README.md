@@ -9,7 +9,7 @@ lê e valida estes arquivos: mudar uma regra nunca exige mudar código (ADR-02, 
 rulesets/
 └── <período>/            ex.: 2026.2 — a numeração das questões reinicia a cada período (P-07)
     ├── base.yaml         regras das listas, traduzidas do documento de permissões
-    └── questions/        (Sprint 17) permissões e proibições explícitas de cada questão
+    └── questions/        (Sprint 24) permissões e proibições explícitas de cada questão
 ```
 
 Gabaritos **nunca** entram aqui nem em nenhuma pasta deste repositório: ficam num repositório
@@ -66,4 +66,4 @@ código, a lista e as violações esperadas, comparadas de forma exata.
 
 O teste falha, com o caminho do campo, se o arquivo tiver ID repetido, fato inexistente (ex.:
 `node:Fro`), marcador desconhecido na mensagem, fato permitido e proibido ao mesmo tempo, entre
-outros. A CLI `ipc-rules validate` entra na Sprint 17.
+outros. A CLI `ipc-rules validate` entra na Sprint 24.

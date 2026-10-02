@@ -1,5 +1,9 @@
 # Guia do piloto (2027.1) para alunos e monitores
 
+> **Atenção (02/10/2026):** este guia foi escrito para um piloto aberto a alunos. Com a decisão
+> de restringir o acesso à equipe da disciplina (P-13 do blueprint), ele será substituído pelo
+> guia da equipe na Sprint 19.
+
 O **IP-Checker** confere, antes do envio ao Dikastis, se a sua solução em Python respeita as
 permissões da lista de Introdução à Programação. Ele **não executa o seu código**: lê o texto como
 o Python o entenderia e compara cada construção com o documento "Permissões das listas".
@@ -66,7 +70,7 @@ de novo.
   confirmado vira um teste novo, e a meta do piloto é corrigir falsos positivos em até 2 dias úteis
   (critério de eficácia 1, P-09).
 - Lembre o aluno de que as regras específicas de cada questão ainda não são consideradas: em caso de
-  divergência, vale o enunciado. Elas entram na Sprint 17, cadastradas pelos monitores e aprovadas
+  divergência, vale o enunciado. Elas entram na Sprint 24, cadastradas pelos monitores e aprovadas
   por monitor-chefe ou professor.
 
 ## Perguntas frequentes

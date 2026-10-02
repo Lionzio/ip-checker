@@ -1,5 +1,5 @@
 # Corpus de evasão (5.4, ameaça 8): construções indiretas, dinâmicas ou fora do documento.
-# Várias dessas violações viram FORA_DA_LISTA quando as Listas 3 a 6 entrarem (Sprints 15 e 16).
+# Várias dessas violações viram FORA_DA_LISTA quando as Listas 3 a 6 entrarem (Sprints 22 e 23).
 
 - id: E01-getattr
   rule: R-04
@@ -272,7 +272,7 @@
     def f():
         return 1
   # Linha 1: o decorador (built-in e derived:decorator na mesma posição viram uma violação só).
-  # Linhas 2 e 3: def e return, que só constam a partir da Lista 4 (Sprint 15).
+  # Linhas 2 e 3: def e return, que só constam a partir da Lista 4 (Sprint 22).
   expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
 
 - id: E36-student-decorator

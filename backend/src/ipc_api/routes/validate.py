@@ -72,7 +72,7 @@ async def validate(
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
     if body.question_id is not None:
-        # As regras por questão (R-01) entram na Sprint 17; até lá, nenhuma está cadastrada.
+        # As regras por questão (R-01) entram na Sprint 24; até lá, nenhuma está cadastrada.
         raise ApiError(
             422,
             ErrorCode.UNKNOWN_QUESTION,

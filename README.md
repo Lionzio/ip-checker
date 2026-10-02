@@ -3,9 +3,13 @@
 Verificador web que confere, **sem executar o código**, se a solução em Python de um aluno de
 Introdução à Programação respeita as regras de permissão da lista (e da questão) antes do envio
 ao Dikastis. O código é analisado só pela árvore sintática (AST), num serviço isolado.
+Nas Sprints 13 a 19, o acesso passa a ser restrito à equipe da disciplina (login com aprovação
+manual e cargos), com painel de plágio e feedback por LLM (P-13 do blueprint).
 
 O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
-O guia para alunos e monitores do piloto está em [`docs/guia-do-piloto.md`](docs/guia-do-piloto.md).
+O guia do piloto, escrito para alunos e monitores, está em
+[`docs/guia-do-piloto.md`](docs/guia-do-piloto.md); com o acesso restrito à equipe, ele será
+substituído pelo guia da equipe na Sprint 19.
 
 ## Estrutura do repositório
 
@@ -16,7 +20,7 @@ O guia para alunos e monitores do piloto está em [`docs/guia-do-piloto.md`](doc
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
 | `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; imagem do piloto no Render (`deploy/render/`) | Sprint 6 |
-| `database/` | Migrações SQL da telemetria (Supabase) | Sprint 14 |
+| `database/` | Migrações SQL das contas e sessões e, depois, da telemetria (PostgreSQL/Supabase) | Sprint 13 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
 (NFR-17). `database/` também é separada: o esquema é usado pela API e pelas consultas dos
@@ -100,4 +104,16 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 10 | Proteção para exposição pública: S10-01 limite de taxa por cliente e por IP e admissão; S10-02 mensagens e contagem de espera na página; S10-03 limite de taxa atacado pela borda | Concluída |
 | 11 | Deploy do piloto: S11-01 imagem do Render com isolamento por processo e seccomp; S11-02 CORS, HSTS e página para a Vercel; S11-03 deploy depois da CI e verificações do piloto no ar | Concluída (falta a configuração das contas, `deploy/README.md`) |
 | 12 | Marco 2: S12-01 exigência R-02 da Lista 1 e aviso de regras de questão; S12-02 teste de carga (recomenda o Starter); S12-03 guia do piloto e apresentação | Concluída |
-| 13 | Lista 2 e validação com gabaritos | Próxima |
+| 13 | Contas, sessão e login por senha | Próxima |
+| 14 | Registro por e-mail, verificação e perfil | Planejada |
+| 15 | Cargos, aprovação e gerenciamento | Planejada |
+| 16 | Google, mesma origem e segurança da autenticação | Planejada |
+| 17 | Painel de plágio | Planejada |
+| 18 | Feedback por LLM: provedores e montagem | Planejada |
+| 19 | Marco 2: feedback na página e liberação para a equipe | Planejada |
+| 20 | Lista 2 e validação com gabaritos | Planejada |
+| 21 | Telemetria mínima e alertas | Planejada |
+| 22 | Listas 3 e 4 | Planejada |
+| 23 | Listas 5 e 6 e recursão obrigatória | Planejada |
+| 24 | Regras por questão e governança | Planejada |
+| 25 | Carga, eficácia e passagem de bastão | Planejada |

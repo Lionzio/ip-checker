@@ -85,8 +85,8 @@ services:
     depends_on:
       analyzer:
         condition: service_healthy
-    # analyzer_net para chamar o analyzer; edge_net para receber o Caddy (e, na Sprint 14, falar
-    # com o banco).
+    # analyzer_net para chamar o analyzer; edge_net para receber o Caddy (e, a partir da Sprint 13,
+    # falar com o banco).
     networks: [analyzer_net, edge_net]
     restart: unless-stopped
 

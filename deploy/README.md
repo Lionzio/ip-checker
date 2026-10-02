@@ -267,7 +267,7 @@ No compose, a `api` roda com `IPC_TRUSTED_PROXY_HOPS=1`: o IP do cliente é o qu
 no `X-Forwarded-For`. De um único IP externo (120 verificações por minuto), não dá para saturar a
 admissão: o limite de taxa age antes.
 
-O item 13 ainda não cobre o banco, que entra na Sprint 14. O item 14 (Trivy, pip-audit, npm audit e
+O item 13 ainda não cobre o banco, que entra na Sprint 13. O item 14 (Trivy, pip-audit, npm audit e
 gitleaks) ainda não tem sprint no roadmap, e o 15 (TLS, HSTS e CORS) vale a partir da Sprint 11.
 
 ### Por que `/tmp` e `/dev/shm` são graváveis
