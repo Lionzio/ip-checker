@@ -23,6 +23,7 @@ from typing import Any
 from pebble import ProcessExpired, ProcessPool
 
 from ipc_analyzer.engine.analysis import analyze_source
+from ipc_analyzer.engine.feedback import FeedbackInput, feedback_input
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
@@ -71,6 +72,12 @@ def _analyze_in_worker(source: str, list_number: int) -> AnalysisResult:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
     return analyze_source(source, list_number=list_number, ruleset=_RULESET)
+
+
+def _feedback_in_worker(source: str, list_number: int) -> FeedbackInput:
+    if _RULESET is None:
+        raise RuntimeError("worker sem ruleset carregado")
+    return feedback_input(source, list_number=list_number, ruleset=_RULESET)
 
 
 def _compare_in_worker(first: str, second: str) -> Similarity | InvalidSide:
@@ -125,6 +132,10 @@ class AnalyzerPool:
 
     async def analyze(self, source: str, list_number: int) -> AnalysisResult:
         return await self.run(_analyze_in_worker, source, list_number)
+
+    async def feedback_input(self, source: str, list_number: int) -> FeedbackInput:
+        """Feedback (S18-02): o resultado com os nomes legíveis e o código sem comentários."""
+        return await self.run(_feedback_in_worker, source, list_number)
 
     async def compare(self, first: str, second: str) -> Similarity | InvalidSide:
         """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento."""

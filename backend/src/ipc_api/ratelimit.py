@@ -234,6 +234,8 @@ LIMITED_ROUTES = frozenset(
         ("POST", "/api/v1/validate"),
         # Plágio (S17-02): também ocupa um worker do analisador, e divide o limite da conta.
         ("POST", "/api/v1/similarity"),
+        # Feedback (S18-02): além deste limite, uma cota diária por conta e um teto do servidor.
+        ("POST", "/api/v1/feedback"),
         ("POST", "/api/v1/auth/login"),
         ("POST", "/api/v1/auth/register"),
         ("POST", "/api/v1/auth/verify"),

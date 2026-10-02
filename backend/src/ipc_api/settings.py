@@ -14,6 +14,8 @@ from ipc_api.auth.google import GoogleConfig
 from ipc_api.auth.sessions import SessionConfig
 from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
+from ipc_api.feedback.providers import LlmSettings
+from ipc_api.feedback.service import FeedbackLimits
 from ipc_api.mail import EmailConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 
@@ -93,6 +95,9 @@ class ApiSettings:
     email: EmailConfig = field(default_factory=EmailConfig)
     #: Entrada pelo Google (S16-01); desligada sem IPC_GOOGLE_CLIENT_ID e IPC_GOOGLE_CLIENT_SECRET.
     google: GoogleConfig = field(default_factory=GoogleConfig)
+    #: Feedback por LLM (S18): IA principal e de reserva; sem nenhuma, só modelos de texto.
+    llm: LlmSettings = field(default_factory=LlmSettings)
+    feedback_limits: FeedbackLimits = field(default_factory=FeedbackLimits)
     #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
 
@@ -132,6 +137,8 @@ class ApiSettings:
             developer=_developer_from_env(env),
             email=EmailConfig.from_env(env),
             google=GoogleConfig.from_env(env),
+            llm=LlmSettings.from_env(env),
+            feedback_limits=FeedbackLimits.from_env(env),
             accounts=AccountsConfig(
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
             ),

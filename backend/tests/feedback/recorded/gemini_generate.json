@@ -1,0 +1,20 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {"text": "Notei que você usou bem o elif. "},
+          {"text": "Vale revisar os nomes das variáveis para deixar o código mais claro."}
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": [
+        {"category": "HARM_CATEGORY_HARASSMENT", "probability": "NEGLIGIBLE"}
+      ]
+    }
+  ],
+  "usageMetadata": {"promptTokenCount": 398, "candidatesTokenCount": 31, "totalTokenCount": 429},
+  "modelVersion": "gemini-2.5-flash"
+}

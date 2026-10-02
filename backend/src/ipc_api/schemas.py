@@ -45,6 +45,32 @@ class ValidateRequest(_Strict):
     )
 
 
+class FeedbackRequest(_Strict):
+    code: str = Field(description="Código do aluno. Nunca é executado.")
+    list_number: ListNumber
+    student_name: Annotated[str, StringConstraints(min_length=1, max_length=120)] = Field(
+        description="Nome do aluno, digitado por quem avalia. Nunca vai ao provedor de LLM."
+    )
+    annotation: Annotated[str, StringConstraints(max_length=1_000)] | None = Field(
+        default=None, description="Anotação para o aluno (opcional)."
+    )
+
+
+class FeedbackResponse(_Strict):
+    request_id: str
+    status: Literal["valid", "invalid"]
+    text: str = Field(description="O texto para o aluno; a página o mostra como texto puro.")
+    source: Literal["llm", "template"] = Field(
+        description=(
+            "llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de "
+            "texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo)."
+        )
+    )
+    provider: Literal["primary", "fallback"] | None = Field(
+        description="Qual IA escreveu o trecho livre: a principal ou a de reserva."
+    )
+
+
 class SimilarityRequest(_Strict):
     code_a: str = Field(description="Código de um aluno. Nunca é executado.")
     code_b: str = Field(description="Código do outro aluno. Nunca é executado.")
@@ -202,6 +228,9 @@ class VerifyResponse(_Strict):
 
 class AuthOptions(_Strict):
     google: bool = Field(description="A entrada pelo Google está configurada (FR-24).")
+    feedback_ai: bool = Field(
+        description="Há IA configurada para o feedback; sem ela, o texto é montado por modelos."
+    )
 
 
 class GooglePending(_Strict):
@@ -298,6 +327,27 @@ class RoleChoice(_Strict):
 # ---------------------------------------------------------------------------------------------
 # Respostas do analyzer (rede interna)
 # ---------------------------------------------------------------------------------------------
+
+
+class AnalyzerFeedbackItem(_Strict):
+    kind: Literal["uso", "falta"]
+    label: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+
+
+class AnalyzerFeedbackInput(_Strict):
+    status: Literal["valid", "invalid", "syntax_error"]
+    items: list[AnalyzerFeedbackItem] = Field(max_length=MAX_VIOLATIONS)
+    code: Annotated[str, StringConstraints(max_length=60_000)]
+    syntax_error: SyntaxErrorInfo | None
+
+    @model_validator(mode="after")
+    def _status_matches_content(self) -> Self:
+        broken = self.status == "syntax_error"
+        if broken != (self.syntax_error is not None) or (
+            (self.status == "valid") == bool(self.items) and not broken
+        ):
+            raise ValueError(f"status {self.status!r} incoerente com o conteúdo da resposta")
+        return self
 
 
 class AnalyzerSimilarity(_Strict):

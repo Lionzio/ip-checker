@@ -100,7 +100,10 @@ async def login(
 @router.get("/options", summary="Formas de entrar disponíveis neste servidor")
 async def options(request: Request, response: Response) -> AuthOptions:
     _no_store(response)
-    return AuthOptions(google=request.app.state.google.oidc.config.enabled)
+    return AuthOptions(
+        google=request.app.state.google.oidc.config.enabled,
+        feedback_ai=request.app.state.feedback.ai_enabled,
+    )
 
 
 @router.post(

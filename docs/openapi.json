@@ -1581,6 +1581,102 @@
         ]
       }
     },
+    "/api/v1/feedback": {
+      "post": {
+        "tags": [
+          "feedback"
+        ],
+        "summary": "Redige o feedback para o aluno a partir do resultado do motor (FR-30)",
+        "operationId": "feedback_api_v1_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT (entrada inválida ou código com erro de sintaxe), LIST_NOT_ENABLED ou ANALYSIS_LIMIT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições em 1 minuto ou a cota de feedbacks do dia. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/lists": {
       "get": {
         "tags": [
@@ -1757,12 +1853,18 @@
             "type": "boolean",
             "title": "Google",
             "description": "A entrada pelo Google está configurada (FR-24)."
+          },
+          "feedback_ai": {
+            "type": "boolean",
+            "title": "Feedback Ai",
+            "description": "Há IA configurada para o feedback; sem ela, o texto é montado por modelos."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "google"
+          "google",
+          "feedback_ai"
         ],
         "title": "AuthOptions"
       },
@@ -1839,6 +1941,105 @@
           "error"
         ],
         "title": "ErrorResponse"
+      },
+      "FeedbackRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Código do aluno. Nunca é executado."
+          },
+          "list_number": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "List Number"
+          },
+          "student_name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Student Name",
+            "description": "Nome do aluno, digitado por quem avalia. Nunca vai ao provedor de LLM."
+          },
+          "annotation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotation",
+            "description": "Anotação para o aluno (opcional)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "list_number",
+          "student_name"
+        ],
+        "title": "FeedbackRequest"
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid"
+            ],
+            "title": "Status"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "O texto para o aluno; a página o mostra como texto puro."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "template"
+            ],
+            "title": "Source",
+            "description": "llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo)."
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "primary",
+                  "fallback"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider",
+            "description": "Qual IA escreveu o trecho livre: a principal ou a de reserva."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "status",
+          "text",
+          "source",
+          "provider"
+        ],
+        "title": "FeedbackResponse"
       },
       "GooglePending": {
         "properties": {

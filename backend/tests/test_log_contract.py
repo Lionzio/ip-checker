@@ -112,6 +112,17 @@ def send_everything(api: TestClient) -> list[httpx2.Response]:
             content=b'{"code": "' + CANARY.encode() + b'", "x": "' + b"a" * 140_000 + b'"}',
             headers={**headers, "Content-Type": "application/json"},
         ),
+        # Feedback (S18-02): o nome do aluno, a anotação e o código também nunca vão para o log.
+        api.post(
+            "/api/v1/feedback",
+            json={
+                "code": f"# {CANARY}\nx = 1\nif x:\n    print('{CANARY}')\n",
+                "list_number": 1,
+                "student_name": f"Aluna {CANARY}",
+                "annotation": f"Nota {CANARY}",
+            },
+            headers=headers,
+        ),
         # Plágio (S17-02): os dois códigos também nunca vão para o log.
         api.post(
             "/api/v1/similarity",

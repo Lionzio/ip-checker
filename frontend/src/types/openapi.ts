@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redige o feedback para o aluno a partir do resultado do motor (FR-30) */
+        post: operations["feedback_api_v1_feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lists": {
         parameters: {
             query?: never;
@@ -480,6 +497,11 @@ export interface components {
              * @description A entrada pelo Google está configurada (FR-24).
              */
             google: boolean;
+            /**
+             * Feedback Ai
+             * @description Há IA configurada para o feedback; sem ela, o texto é montado por modelos.
+             */
+            feedback_ai: boolean;
         };
         /**
          * ErrorCode
@@ -497,6 +519,52 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /** FeedbackRequest */
+        FeedbackRequest: {
+            /**
+             * Code
+             * @description Código do aluno. Nunca é executado.
+             */
+            code: string;
+            /** List Number */
+            list_number: number;
+            /**
+             * Student Name
+             * @description Nome do aluno, digitado por quem avalia. Nunca vai ao provedor de LLM.
+             */
+            student_name: string;
+            /**
+             * Annotation
+             * @description Anotação para o aluno (opcional).
+             */
+            annotation?: string | null;
+        };
+        /** FeedbackResponse */
+        FeedbackResponse: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "valid" | "invalid";
+            /**
+             * Text
+             * @description O texto para o aluno; a página o mostra como texto puro.
+             */
+            text: string;
+            /**
+             * Source
+             * @description llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo).
+             * @enum {string}
+             */
+            source: "llm" | "template";
+            /**
+             * Provider
+             * @description Qual IA escreveu o trecho livre: a principal ou a de reserva.
+             */
+            provider: ("primary" | "fallback") | null;
         };
         /** GooglePending */
         GooglePending: {
@@ -2165,6 +2233,84 @@ export interface operations {
                 };
             };
             /** @description RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    feedback_api_v1_feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT (entrada inválida ou código com erro de sintaxe), LIST_NOT_ENABLED ou ANALYSIS_LIMIT. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições em 1 minuto ou a cota de feedbacks do dia. Veja retry_after_s. */
             429: {
                 headers: {
                     [name: string]: unknown;

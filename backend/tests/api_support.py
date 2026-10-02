@@ -8,7 +8,7 @@ Toda rota da equipe exige sessão, então os clientes de teste já nascem com o 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
@@ -21,6 +21,7 @@ from ipc_api.accounts.passwords import Passwords
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.app import create_app
 from ipc_api.auth.sessions import SECURE_COOKIE, new_token, token_hash
+from ipc_api.feedback.providers import Provider
 from ipc_api.mail import MemorySender
 from ipc_api.settings import ApiSettings
 
@@ -49,6 +50,7 @@ def make_app(
     clock: Callable[[], datetime] | None = None,
     sender: MemorySender | None = None,
     google_transport: httpx2.AsyncBaseTransport | None = None,
+    llm_providers: Sequence[Provider] | None = None,
 ) -> tuple[FastAPI, MemoryAccountStore]:
     """A API com repositório e e-mail em memória (as mensagens ficam em ``outbox(app)``)."""
     store = store if store is not None else MemoryAccountStore()
@@ -59,6 +61,7 @@ def make_app(
         passwords=FAST_PASSWORDS,
         email_sender=sender if sender is not None else MemorySender(),
         google_transport=google_transport,
+        llm_providers=llm_providers,
         clock=clock if clock is not None else (lambda: datetime.now(UTC)),
     )
     return app, store

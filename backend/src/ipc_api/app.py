@@ -12,7 +12,7 @@ ao analyzer. O banco de contas vem de ``IPC_DATABASE_URL`` (S13-01).
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
@@ -38,11 +38,13 @@ from ipc_api.auth.throttle import LoginThrottle
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.edge import SecurityHeadersMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
+from ipc_api.feedback.providers import LlmConfig, Provider, Slot, build_provider
+from ipc_api.feedback.service import Ai, FeedbackService
 from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
-from ipc_api.routes import admin, auth, google, meta, profile, similarity, validate
+from ipc_api.routes import admin, auth, feedback, google, meta, profile, similarity, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 
 logger = logging.getLogger(__name__)
@@ -68,6 +70,10 @@ VALIDATION_MESSAGES = {
     ),
     "/api/v1/auth/login": "Requisição inválida: envie login (nome ou e-mail) e password (senha).",
     "/api/v1/similarity": "Requisição inválida: envie code_a e code_b, os dois códigos a comparar.",
+    "/api/v1/feedback": (
+        "Requisição inválida: envie code, list_number, student_name (até 120 caracteres) e, se "
+        "quiser, annotation (até 1.000 caracteres)."
+    ),
     "/api/v1/auth/register": (
         "Requisição inválida: envie name, email, password, course e treatment (masculino, "
         "feminino ou neutro)."
@@ -78,6 +84,27 @@ ADMIN_VALIDATION_MESSAGE = (
     "Requisição inválida: use o identificador de uma conta e, ao aprovar, alterar ou reativar, "
     "envie role (professor, monitor_chefe ou monitor)."
 )
+
+
+def _ais(config: ApiSettings, injected: Sequence[Provider] | None) -> list[Ai]:
+    """A IA principal e a de reserva configuradas; nos testes, os provedores falsos dados."""
+    configured = config.llm.configured
+    if injected is not None:
+        slots: tuple[Slot, ...] = ("primary", "fallback")
+        return [
+            Ai(
+                slots[index],
+                provider,
+                configured[index][1] if index < len(configured) else LlmConfig(),
+            )
+            for index, provider in enumerate(injected[:2])
+        ]
+    ais = []
+    for slot, llm in configured:
+        provider = build_provider(llm)
+        if provider is not None:
+            ais.append(Ai(slot, provider, llm))
+    return ais
 
 
 async def _connect_store(settings: ApiSettings) -> AccountStore:
@@ -114,6 +141,7 @@ def create_app(
     passwords: Passwords | None = None,
     email_sender: EmailSender | None = None,
     google_transport: httpx2.AsyncBaseTransport | None = None,
+    llm_providers: Sequence[Provider] | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
@@ -151,6 +179,9 @@ def create_app(
                 clock=clock,
             )
             app.state.management = Management(store, clock=clock)
+            app.state.feedback = FeedbackService(
+                _ais(config, llm_providers), config.llm, config.feedback_limits, now=clock
+            )
             google_config = config.google
             app.state.google = google.GoogleLogin(
                 oidc=GoogleOidc(google_config, transport=google_transport),
@@ -241,6 +272,7 @@ def create_app(
     app.include_router(admin.router)
     app.include_router(validate.router)
     app.include_router(similarity.router)
+    app.include_router(feedback.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)
     return app
