@@ -6,6 +6,7 @@
 !backend/README.md
 !backend/src/
 !rulesets/
+!database/migrations/
 !deploy/render/supervisord.conf
 **/__pycache__/
 **/*.py[cod]

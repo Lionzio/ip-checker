@@ -50,6 +50,8 @@ RUN groupadd --system --gid 10001 analyzer \
 
 COPY --from=build /opt/venv /opt/venv
 COPY rulesets /opt/ip-checker/rulesets
+# Migrações do banco de contas (S13-01), aplicadas pelo serviço migrate do compose.
+COPY database/migrations /opt/ip-checker/database/migrations
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
