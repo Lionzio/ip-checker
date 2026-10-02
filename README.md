@@ -119,8 +119,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 17 | Painel de plágio: S17-01 motor de similaridade (*winnowing* em tokens e na AST, corpus de pares); S17-02 comparação no analisador isolado e `POST /api/v1/similarity` com as faixas do FR-29; S17-03 painel com as duas áreas, a faixa escrita e o aviso de indício | Concluída |
 | 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
 | 19 | Marco 2: S19-01 painel de feedback na página (nome do aluno, anotação, texto editável e Copiar); S19-02 aviso de privacidade, guia da equipe, passo a passo das contas externas e apresentação revista | Concluída (falta o primeiro deploy com login, `deploy/README.md`) |
-| 20 | Lista 2 e validação com gabaritos | Próxima |
-| 21 | Telemetria mínima e alertas | Planejada |
+| 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (falta o repositório privado dos gabaritos, `rulesets/README.md`) |
+| 21 | Telemetria mínima e alertas | Próxima |
 | 22 | Listas 3 e 4 | Planejada |
 | 23 | Listas 5 e 6 e recursão obrigatória | Planejada |
 | 24 | Regras por questão e governança | Planejada |
