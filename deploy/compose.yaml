@@ -144,6 +144,10 @@ services:
       IPC_LLM_FALLBACK_BASE_URL: ${IPC_LLM_FALLBACK_BASE_URL:-}
       IPC_LLM_FALLBACK_MODEL: ${IPC_LLM_FALLBACK_MODEL:-}
       IPC_LLM_FALLBACK_API_KEY: ${IPC_LLM_FALLBACK_API_KEY:-}
+      # Alertas em /health/slo (S21-02): P95 da verificação e taxa de 5xx nos últimos 5 minutos.
+      # Mudar só no exercício de falha (deploy/README.md, "Telemetria e alertas").
+      IPC_SLO_P95_MS: ${IPC_SLO_P95_MS:-200}
+      IPC_SLO_MIN_REQUESTS: ${IPC_SLO_MIN_REQUESTS:-20}
     healthcheck:
       test:
         - CMD

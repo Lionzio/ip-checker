@@ -170,6 +170,26 @@ class ReadyResponse(_Strict):
     )
 
 
+class SloTelemetry(_Strict):
+    written: int = Field(ge=0, description="Eventos gravados desde que a API subiu.")
+    dropped: int = Field(ge=0, description="Eventos descartados (fila cheia ou banco fora).")
+    failed_batches: int = Field(ge=0)
+    queued: int = Field(ge=0)
+
+
+class SloResponse(_Strict):
+    """Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém."""
+
+    status: Literal["ok", "degraded"]
+    window_s: int
+    requests: int = Field(ge=0)
+    validations: int = Field(ge=0, description="Verificações com latência medida na janela.")
+    p95_ms: float | None = Field(description="P95 do POST /api/v1/validate; nulo sem amostras.")
+    error_rate_pct: float = Field(ge=0)
+    reasons: list[Literal["latencia", "erros"]]
+    telemetry: SloTelemetry
+
+
 # ---------------------------------------------------------------------------------------------
 # Acesso restrito à equipe (Sprint 13)
 # ---------------------------------------------------------------------------------------------

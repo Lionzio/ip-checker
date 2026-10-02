@@ -446,6 +446,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/slo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latência e erros dos últimos 5 minutos: 503 quando o P95 da verificação passa de 200 ms ou mais de 1% das respostas são 5xx (alerta do UptimeRobot) */
+        get: operations["slo_health_slo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -863,6 +880,53 @@ export interface components {
             col: number;
             /** Message */
             message: string;
+        };
+        /**
+         * SloResponse
+         * @description Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém.
+         */
+        SloResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded";
+            /** Window S */
+            window_s: number;
+            /** Requests */
+            requests: number;
+            /**
+             * Validations
+             * @description Verificações com latência medida na janela.
+             */
+            validations: number;
+            /**
+             * P95 Ms
+             * @description P95 do POST /api/v1/validate; nulo sem amostras.
+             */
+            p95_ms: number | null;
+            /** Error Rate Pct */
+            error_rate_pct: number;
+            /** Reasons */
+            reasons: ("latencia" | "erros")[];
+            telemetry: components["schemas"]["SloTelemetry"];
+        };
+        /** SloTelemetry */
+        SloTelemetry: {
+            /**
+             * Written
+             * @description Eventos gravados desde que a API subiu.
+             */
+            written: number;
+            /**
+             * Dropped
+             * @description Eventos descartados (fila cheia ou banco fora).
+             */
+            dropped: number;
+            /** Failed Batches */
+            failed_batches: number;
+            /** Queued */
+            queued: number;
         };
         /** SyntaxErrorInfo */
         SyntaxErrorInfo: {
@@ -2413,6 +2477,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    slo_health_slo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SloResponse"];
+                };
+            };
+            /** @description Fora da meta do NFR-15. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SloResponse"];
                 };
             };
         };

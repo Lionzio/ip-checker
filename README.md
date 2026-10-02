@@ -18,7 +18,7 @@ O guia de uso, para a equipe da disciplina, está em [`docs/guia-da-equipe.md`](
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
 | `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; imagem do piloto no Render (`deploy/render/`) | Sprint 6 |
-| `database/` | Migrações SQL das contas e sessões e, depois, da telemetria (PostgreSQL/Supabase) | Sprint 13 |
+| `database/` | Migrações SQL das contas e sessões e da telemetria (PostgreSQL/Supabase) | Sprints 13 e 21 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
 (NFR-17). `database/` também é separada: o esquema é usado pela API e pelas consultas dos
@@ -120,8 +120,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
 | 19 | Marco 2: S19-01 painel de feedback na página (nome do aluno, anotação, texto editável e Copiar); S19-02 aviso de privacidade, guia da equipe, passo a passo das contas externas e apresentação revista | Concluída (falta o primeiro deploy com login, `deploy/README.md`) |
 | 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (falta o repositório privado dos gabaritos, `rulesets/README.md`) |
-| 21 | Telemetria mínima e alertas | Próxima |
-| 22 | Listas 3 e 4 | Planejada |
+| 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (falta o terceiro monitor do UptimeRobot, `deploy/README.md`) |
+| 22 | Listas 3 e 4 | Próxima |
 | 23 | Listas 5 e 6 e recursão obrigatória | Planejada |
 | 24 | Regras por questão e governança | Planejada |
 | 25 | Carga, eficácia e passagem de bastão | Planejada |

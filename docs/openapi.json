@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IP-Checker",
-    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nO acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready` e as de\nautenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
+    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nO acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready`, `/health/slo`\ne as de autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
     "version": "1.0.0"
   },
   "paths": {
@@ -1778,6 +1778,37 @@
           }
         }
       }
+    },
+    "/health/slo": {
+      "get": {
+        "tags": [
+          "operação"
+        ],
+        "summary": "Latência e erros dos últimos 5 minutos: 503 quando o P95 da verificação passa de 200 ms ou mais de 1% das respostas são 5xx (alerta do UptimeRobot)",
+        "operationId": "slo_health_slo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SloResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Fora da meta do NFR-15.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SloResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2759,6 +2790,113 @@
           "message"
         ],
         "title": "SimilaritySyntaxError"
+      },
+      "SloResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "window_s": {
+            "type": "integer",
+            "title": "Window S"
+          },
+          "requests": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Requests"
+          },
+          "validations": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Validations",
+            "description": "Verificações com latência medida na janela."
+          },
+          "p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95 Ms",
+            "description": "P95 do POST /api/v1/validate; nulo sem amostras."
+          },
+          "error_rate_pct": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Error Rate Pct"
+          },
+          "reasons": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "latencia",
+                "erros"
+              ]
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "telemetry": {
+            "$ref": "#/components/schemas/SloTelemetry"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "window_s",
+          "requests",
+          "validations",
+          "p95_ms",
+          "error_rate_pct",
+          "reasons",
+          "telemetry"
+        ],
+        "title": "SloResponse",
+        "description": "Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém."
+      },
+      "SloTelemetry": {
+        "properties": {
+          "written": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Written",
+            "description": "Eventos gravados desde que a API subiu."
+          },
+          "dropped": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Dropped",
+            "description": "Eventos descartados (fila cheia ou banco fora)."
+          },
+          "failed_batches": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failed Batches"
+          },
+          "queued": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Queued"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "written",
+          "dropped",
+          "failed_batches",
+          "queued"
+        ],
+        "title": "SloTelemetry"
       },
       "SyntaxErrorInfo": {
         "properties": {

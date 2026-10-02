@@ -35,7 +35,7 @@ from ipc_api.auth.management import Management
 from ipc_api.auth.middleware import OriginCheckMiddleware, SessionMiddleware
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.auth.throttle import LoginThrottle
-from ipc_api.clients.analyzer import AnalyzerClient
+from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
 from ipc_api.edge import SecurityHeadersMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.feedback.providers import LlmConfig, Provider, Slot, build_provider
@@ -46,6 +46,8 @@ from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
 from ipc_api.routes import admin, auth, feedback, google, meta, profile, similarity, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
+from ipc_api.slo import SloMonitor
+from ipc_api.telemetry import PostgresTelemetrySink, Telemetry, TelemetrySink
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +57,8 @@ DESCRIPTION = """\
 Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à
 Programação respeita as permissões da lista antes do envio ao Dikastis.
 
-O acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready` e as de
-autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.
+O acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready`, `/health/slo`
+e as de autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.
 
 Todo erro segue o formato `{"error": {"code", "message", "retry_after_s"}}`. Toda resposta traz
 o cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.
@@ -133,6 +135,27 @@ async def seed_developer(
         logger.warning("a conta do desenvolvedor não tem senha: defina IPC_DEV_INITIAL_PASSWORD")
 
 
+async def _start_telemetry(
+    config: ApiSettings,
+    sink: TelemetrySink | None,
+    analyzer: AnalyzerClient,
+    *,
+    production: bool,
+) -> Telemetry:
+    """Liga a telemetria (S21-01) quando há banco; nos testes, só com um ``sink`` injetado."""
+    if sink is None and production and config.telemetry.enabled and config.database_url:
+        sink = await PostgresTelemetrySink.connect(config.database_url)
+    telemetry = Telemetry(sink, config.telemetry)
+    telemetry.start()
+    if telemetry.active:
+        # A versão do ruleset também marca as recusas que acontecem antes de qualquer análise.
+        try:
+            telemetry.ruleset_version = (await analyzer.manifest()).ruleset_version
+        except AnalyzerUnavailable:
+            logger.info("telemetria: versão do ruleset fica para a primeira análise")
+    return telemetry
+
+
 def create_app(
     settings: ApiSettings | None = None,
     *,
@@ -142,6 +165,7 @@ def create_app(
     email_sender: EmailSender | None = None,
     google_transport: httpx2.AsyncBaseTransport | None = None,
     llm_providers: Sequence[Provider] | None = None,
+    telemetry_sink: TelemetrySink | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
@@ -193,8 +217,14 @@ def create_app(
             app.state.analyzer = client
             # O semáforo pertence ao laço de eventos que atende as requisições.
             app.state.admission = Admission(config.admission)
+            app.state.telemetry = await _start_telemetry(
+                config, telemetry_sink, client, production=account_store is None
+            )
             yield
         finally:
+            telemetry = getattr(app.state, "telemetry", None)
+            if telemetry is not None:
+                await telemetry.stop()
             await client.aclose()
             if account_store is None:
                 await store.close()
@@ -211,6 +241,7 @@ def create_app(
     )
     app.state.settings = config
     app.state.rate_limiter = SlidingWindowLimiter(max_keys=config.rate_limit.max_keys)
+    app.state.slo = SloMonitor(config.slo)
     # O último middleware adicionado é o mais externo: o contexto (identificador, limite de
     # corpo e log) envolve os demais, e assim o 403 e o 429 também aparecem no log. A sessão vem
     # antes do limite de taxa, que conta por conta.
@@ -222,7 +253,9 @@ def create_app(
         OriginCheckMiddleware,
         allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),
     )
-    app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
+    app.add_middleware(
+        RequestContextMiddleware, max_body_bytes=config.max_body_bytes, slo=app.state.slo
+    )
     app.add_middleware(SecurityHeadersMiddleware, hsts=config.hsts)
     if config.cors_origins:
         # O mais externo: até um 413 ou um 429 precisa dos cabeçalhos CORS, ou o navegador

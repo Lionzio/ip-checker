@@ -24,6 +24,9 @@ describe("Aviso de privacidade (S19-02, Q-19 d)", () => {
     expect(await screen.findByRole("heading", { name: "Aviso de privacidade" })).toBeInTheDocument();
     expect(screen.getByText(/não vai para o banco, para o disco nem para os logs/)).toBeInTheDocument();
     expect(screen.getByText(/O nome do aluno é trocado por \[ALUNO\]/)).toBeInTheDocument();
+    // Telemetria (S21-01): anônima, agregada e apagada em 12 meses.
+    expect(screen.getByText(/não guarda o código, a conta, o nome de ninguém nem\s+o IP/)).toBeInTheDocument();
+    expect(screen.getByText(/apagados depois de 12 meses/)).toBeInTheDocument();
   });
 
   it("também abre com sessão", async () => {

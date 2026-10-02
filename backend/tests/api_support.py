@@ -24,6 +24,7 @@ from ipc_api.auth.sessions import SECURE_COOKIE, new_token, token_hash
 from ipc_api.feedback.providers import Provider
 from ipc_api.mail import MemorySender
 from ipc_api.settings import ApiSettings
+from ipc_api.telemetry import TelemetrySink
 
 #: Senha inicial da conta do desenvolvedor nos testes.
 PASSWORD = "Senha-de-teste-1"
@@ -51,6 +52,7 @@ def make_app(
     sender: MemorySender | None = None,
     google_transport: httpx2.AsyncBaseTransport | None = None,
     llm_providers: Sequence[Provider] | None = None,
+    telemetry_sink: TelemetrySink | None = None,
 ) -> tuple[FastAPI, MemoryAccountStore]:
     """A API com repositório e e-mail em memória (as mensagens ficam em ``outbox(app)``)."""
     store = store if store is not None else MemoryAccountStore()
@@ -62,6 +64,7 @@ def make_app(
         email_sender=sender if sender is not None else MemorySender(),
         google_transport=google_transport,
         llm_providers=llm_providers,
+        telemetry_sink=telemetry_sink,
         clock=clock if clock is not None else (lambda: datetime.now(UTC)),
     )
     return app, store

@@ -129,9 +129,10 @@ repositório.
 
    A partir daí, toda release na `main` migra o banco, faz o deploy e as verificações sozinha.
 
-9. **UptimeRobot.** Em <https://uptimerobot.com>, crie dois monitores HTTP(S) com intervalo de 5 min
-   e alerta por e-mail: `<endereço do Render>/ready` e `<endereço da Vercel>/`. O primeiro também
-   mantém o plano gratuito do Render acordado (ADR-03).
+9. **UptimeRobot.** Em <https://uptimerobot.com>, crie três monitores HTTP(S) com intervalo de 5 min
+   e alerta por e-mail: `<endereço do Render>/ready`, `<endereço do Render>/health/slo` e
+   `<endereço da Vercel>/`. O primeiro também mantém o plano gratuito do Render acordado (ADR-03);
+   o segundo é o alerta de latência e de erro (seção "Telemetria e alertas").
 
 ### Para conferir à mão depois do deploy
 
@@ -284,6 +285,60 @@ O que vai ao provedor: só o código sem comentários, a anotação e o resultad
 do aluno trocado por `[ALUNO]`; o nome e o cargo de quem avalia não vão. Antes de usar dados reais
 de alunos, confira os termos do plano (retenção e uso dos dados para treinar modelos) e a
 política da UFPE (Q-16).
+
+### Telemetria e alertas (S21)
+
+**Telemetria.** Cada verificação vira um evento anônimo no esquema `telemetry` do mesmo banco:
+período, lista, questão, versão do ruleset, resultado, regras violadas e tempo de análise. Nada de
+código, conta, nome ou IP (FR-16). A API grava em lote, fora do caminho da resposta, com o usuário
+dela (membro de `ipc_writer`, que só insere); se o banco cair, os eventos são descartados e a
+verificação segue normal. A migração `0002` cria o esquema; no piloto, o pipeline a aplica sozinho.
+A própria API apaga o que passa de 12 meses ao subir e uma vez por dia (P-06), sem `pg_cron`.
+
+**Consultas para os professores (FR-17).** Só por views, com o papel `ipc_reader`, que não lê as
+tabelas nem as contas:
+
+| View | O que mostra |
+|---|---|
+| `telemetry.v_top_rules_by_list` | Regras mais violadas por período, lista e questão (eventos e ocorrências) |
+| `telemetry.v_syntax_error_rate` | Taxa de erro de sintaxe por período, lista e questão |
+| `telemetry.v_weekly_volume` | Verificações por semana e lista, com o resultado |
+
+Para dar acesso a alguém da coordenação, rode no banco, com o administrador (no Supabase, em **SQL
+Editor**), escolhendo você a senha:
+
+```sql
+CREATE ROLE coordenacao LOGIN PASSWORD 'escolha-uma-senha' IN ROLE ipc_reader;
+```
+
+Exemplo de consulta:
+
+```sql
+SELECT rule_id, events, occurrences FROM telemetry.v_top_rules_by_list
+WHERE semester = '2026.2' AND list_number = 2 ORDER BY occurrences DESC;
+```
+
+`GET /health/slo` mostra também quantos eventos foram gravados, descartados e estão na fila desde
+que a API subiu.
+
+**Alertas (US-19, NFR-15).** `GET /health/slo` responde 503 quando, nos últimos 5 minutos, o P95
+de `POST /api/v1/validate` passa de 200 ms ou mais de 1% das respostas são 5xx. Com menos de 20
+requisições na janela, ele nunca alerta, para um caso isolado não virar e-mail. O monitor do
+UptimeRobot nessa rota (passo 9) manda o e-mail; o do `/ready` cobre a indisponibilidade. Os
+limites mudam por `IPC_SLO_P95_MS`, `IPC_SLO_ERROR_RATE_PCT`, `IPC_SLO_MIN_REQUESTS` e
+`IPC_SLO_WINDOW_S`.
+
+**Exercício de falha (a cada release, NFR-15).** Confira que os dois e-mails chegam:
+
+1. **Latência:** no Render, em **Environment**, defina `IPC_SLO_P95_MS=1` e
+   `IPC_SLO_MIN_REQUESTS=1` e salve (o serviço reinicia). Faça uma verificação pela página. Em até
+   10 minutos, o UptimeRobot avisa que `/health/slo` caiu. Apague as duas variáveis e salve de novo;
+   o aviso de volta chega no próximo ciclo. No compose, o mesmo vale com
+   `IPC_SLO_P95_MS=1 IPC_SLO_MIN_REQUESTS=1 docker compose -f deploy/compose.yaml up -d api`.
+2. **Indisponibilidade:** no UptimeRobot, edite o monitor do `/ready` para `/ready-exercicio` (que
+   responde 404). Em até 10 minutos chega o alerta; volte o endereço para `/ready`.
+
+Anote a data e o resultado do exercício na descrição da release.
 
 O banco não publica porta na máquina, então não disputa a 5432 nem a 6432 de outros projetos. Para
 consultá-lo, entre no contêiner:

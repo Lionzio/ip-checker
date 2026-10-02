@@ -121,6 +121,8 @@ def hashed(password: str = PASSWORD) -> str:
 OPEN_ROUTES = {
     ("GET", "/health"),
     ("GET", "/ready"),
+    # Sprint 21: o alerta de latência e erro do UptimeRobot, que não traz dado de ninguém.
+    ("GET", "/health/slo"),
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/auth/logout"),
     ("POST", "/api/v1/auth/register"),

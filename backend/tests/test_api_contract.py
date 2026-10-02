@@ -64,6 +64,10 @@ def test_openapi_contract_is_up_to_date() -> None:
     assert OPENAPI_FILE.read_text(encoding="utf-8") == render()
 
 
+#: O 503 de /health/slo não é um erro da requisição: é o próprio relatório, fora da meta (S21-02).
+REPORT_ON_503 = {("get", "/health/slo", "503"): "#/components/schemas/SloResponse"}
+
+
 def test_every_documented_error_uses_the_error_envelope() -> None:
     contract = build()
     for path, operations in contract["paths"].items():
@@ -71,7 +75,10 @@ def test_every_documented_error_uses_the_error_envelope() -> None:
             for status, response in operation["responses"].items():
                 if status.startswith(("4", "5")):
                     schema = response["content"]["application/json"]["schema"]
-                    assert schema == {"$ref": "#/components/schemas/ErrorResponse"}, (method, path)
+                    expected = REPORT_ON_503.get(
+                        (method, path, status), "#/components/schemas/ErrorResponse"
+                    )
+                    assert schema == {"$ref": expected}, (method, path)
 
 
 # ---------------------------------------------------------------------------------------------
