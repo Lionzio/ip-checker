@@ -1,42 +1,11 @@
-import { expect, type APIRequestContext, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { verificationLink } from "./mailpit";
 
 /**
  * Registro por e-mail e senha (S14-01, S14-02, FR-23): o formulário, o e-mail que chega ao Mailpit
  * do compose, a confirmação pelo botão da página do link e o cadastro parado na aprovação.
  */
 test.use({ storageState: { cookies: [], origins: [] } });
-
-const MAILPIT = process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:8125";
-
-interface MailpitSummary {
-  ID: string;
-}
-
-/** O link do e-mail de verificação mandado para `to`, esperando a mensagem chegar. */
-async function verificationLink(request: APIRequestContext, to: string): Promise<URL> {
-  let id: string | undefined;
-  await expect
-    .poll(
-      async () => {
-        const search = await request.get(`${MAILPIT}/api/v1/search`, { params: { query: `to:"${to}"` } });
-        const body = (await search.json()) as { messages: MailpitSummary[] };
-        id = body.messages[0]?.ID;
-        return id;
-      },
-      { message: `o e-mail para ${to} não chegou ao Mailpit`, timeout: 15_000 },
-    )
-    .toBeTruthy();
-  const message = (await (await request.get(`${MAILPIT}/api/v1/message/${id}`)).json()) as {
-    Subject: string;
-    HTML: string;
-    Text: string;
-  };
-  expect(message.Subject).toBe("Confirme o seu cadastro no IP-Checker");
-  expect(message.HTML).toContain("Clique aqui para verificar seu acesso.");
-  const href = /href="([^"]+\/verificar\?token=[A-Za-z0-9_-]{43})"/.exec(message.HTML)?.[1];
-  expect(href, "o HTML do e-mail traz o link de verificação").toBeTruthy();
-  return new URL((href ?? "").replaceAll("&amp;", "&"));
-}
 
 test("registra, confirma o e-mail pelo link e espera a aprovação", async ({ page, request }) => {
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
