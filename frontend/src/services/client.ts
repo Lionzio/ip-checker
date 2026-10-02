@@ -10,6 +10,7 @@ import type {
   ProfileUpdate,
   RegisterRequest,
   Role,
+  SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
 } from "../types/api";
@@ -57,7 +58,12 @@ export interface AdminClient {
   reactivate(id: string, role: Role): Promise<void>;
 }
 
-export type ApiClient = ValidationClient & AuthClient & AdminClient;
+/** Painel de plágio (Sprint 17): compara duas soluções no analisador isolado. */
+export interface PlagiarismClient {
+  compare(codeA: string, codeB: string, signal?: AbortSignal): Promise<SimilarityResponse>;
+}
+
+export type ApiClient = ValidationClient & AuthClient & AdminClient & PlagiarismClient;
 
 /** Erro no formato `{ error: { code, message, retry_after_s } }` do contrato (5.2.2). */
 export class ApiError extends Error {

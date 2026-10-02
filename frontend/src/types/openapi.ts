@@ -361,6 +361,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/similarity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compara duas soluções e classifica a similaridade (indício de plágio) */
+        post: operations["similarity_api_v1_similarity_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lists": {
         parameters: {
             query?: never;
@@ -705,6 +722,79 @@ export interface components {
              * @enum {string}
              */
             role: "desenvolvedor" | "professor" | "monitor_chefe" | "monitor";
+        };
+        /** SimilarityBand */
+        SimilarityBand: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "plagio" | "altas_chances" | "requer_atencao" | "ligeiramente_suspeito" | "sem_suspeitas";
+            /**
+             * Label
+             * @description O nome da faixa, sempre escrito junto da cor (NFR-19).
+             */
+            label: string;
+            /**
+             * Minimum
+             * @description A faixa começa neste valor, inclusive (FR-29).
+             */
+            minimum: number;
+        };
+        /** SimilarityRequest */
+        SimilarityRequest: {
+            /**
+             * Code A
+             * @description Código de um aluno. Nunca é executado.
+             */
+            code_a: string;
+            /**
+             * Code B
+             * @description Código do outro aluno. Nunca é executado.
+             */
+            code_b: string;
+        };
+        /** SimilarityResponse */
+        SimilarityResponse: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "compared" | "syntax_error";
+            /**
+             * Similarity
+             * @description Porcentagem com uma casa decimal; vazia com erro de sintaxe.
+             */
+            similarity: number | null;
+            band: components["schemas"]["SimilarityBand"] | null;
+            /**
+             * Short Code
+             * @description Um dos códigos é curto: soluções independentes tendem a se parecer.
+             */
+            short_code: boolean;
+            syntax_error: components["schemas"]["SimilaritySyntaxError"] | null;
+            /**
+             * Notice
+             * @description O aviso de que o resultado é um indício (FR-29).
+             */
+            notice: string;
+        };
+        /** SimilaritySyntaxError */
+        SimilaritySyntaxError: {
+            /**
+             * Code
+             * @description Qual dos dois códigos tem o erro.
+             * @enum {string}
+             */
+            code: "a" | "b";
+            /** Line */
+            line: number;
+            /** Col */
+            col: number;
+            /** Message */
+            message: string;
         };
         /** SyntaxErrorInfo */
         SyntaxErrorInfo: {
@@ -2006,6 +2096,84 @@ export interface operations {
                 };
             };
             /** @description OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    similarity_api_v1_similarity_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimilarityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarityResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: um código acima de 51.200 bytes, ou corpo acima de 128 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (código complexo demais). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s. */
             503: {
                 headers: {
                     [name: string]: unknown;

@@ -16,6 +16,7 @@ import type {
   MembersResponse,
   ProfileUpdate,
   RegisterRequest,
+  SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
 } from "../types/api";
@@ -119,6 +120,13 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
       await call<null>(
         "/api/v1/profile/password",
         json("POST", { current_password: currentPassword, new_password: newPassword }),
+      );
+    },
+    compare(codeA, codeB, signal) {
+      return call<SimilarityResponse>(
+        "/api/v1/similarity",
+        json("POST", { code_a: codeA, code_b: codeB }),
+        signal,
       );
     },
     options(signal) {

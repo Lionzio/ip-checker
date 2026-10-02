@@ -210,6 +210,19 @@ describe("createApiClient", () => {
     expect([url, init.method, JSON.parse(init.body as string)]).toEqual(["/api/v1/auth/google/complete", "POST", request]);
   });
 
+  it("compara dois códigos no painel de plágio", async () => {
+    const fetchMock = respond(200, { status: "compared" });
+
+    await createApiClient().compare("a = 1", "b = 2");
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect([url, init.method, JSON.parse(init.body as string)]).toEqual([
+      "/api/v1/similarity",
+      "POST",
+      { code_a: "a = 1", code_b: "b = 2" },
+    ]);
+  });
+
   it("lê a fila e os membros do gerenciamento", async () => {
     const fetchMock = respond(200, { items: [] });
 
