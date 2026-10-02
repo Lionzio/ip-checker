@@ -42,7 +42,7 @@ from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
-from ipc_api.routes import admin, auth, google, meta, profile, validate
+from ipc_api.routes import admin, auth, google, meta, profile, similarity, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ VALIDATION_MESSAGES = {
         "Requisição inválida: envie code (texto), list_number (1 a 6) e, se houver, question_id."
     ),
     "/api/v1/auth/login": "Requisição inválida: envie login (nome ou e-mail) e password (senha).",
+    "/api/v1/similarity": "Requisição inválida: envie code_a e code_b, os dois códigos a comparar.",
     "/api/v1/auth/register": (
         "Requisição inválida: envie name, email, password, course e treatment (masculino, "
         "feminino ou neutro)."
@@ -239,6 +240,7 @@ def create_app(
     app.include_router(profile.router)
     app.include_router(admin.router)
     app.include_router(validate.router)
+    app.include_router(similarity.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)
     return app

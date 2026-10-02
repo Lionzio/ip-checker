@@ -112,6 +112,15 @@ def send_everything(api: TestClient) -> list[httpx2.Response]:
             content=b'{"code": "' + CANARY.encode() + b'", "x": "' + b"a" * 140_000 + b'"}',
             headers={**headers, "Content-Type": "application/json"},
         ),
+        # Plágio (S17-02): os dois códigos também nunca vão para o log.
+        api.post(
+            "/api/v1/similarity",
+            json={"code_a": f"x = '{CANARY}'\n", "code_b": f"# {CANARY}\n{CANARY} = 1\n"},
+            headers=headers,
+        ),
+        api.post(
+            "/api/v1/similarity", json={"code_a": f"{CANARY} = (\n", "code_b": "x"}, headers=headers
+        ),
         api.get(f"/api/v1/{CANARY}", headers=headers),
         api.get(f"/api/v1/lists?q={CANARY}", headers=headers),
         api.post(

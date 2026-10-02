@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -85,8 +85,9 @@ describe("Gerenciamento da equipe (S15-03, FR-28)", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent("Ana Pereira foi aprovado(a) como Monitor-chefe.");
     expect(approve).toHaveBeenCalledWith("ana", "monitor_chefe");
+    // As listas são recarregadas depois da ação.
+    await waitFor(() => expect(row(section(/Membros ativos/), "Ana Pereira")).toHaveTextContent("Monitor-chefe"));
     expect(within(section(/Pedidos pendentes/)).getByText("Nenhum pedido aguardando aprovação.")).toBeInTheDocument();
-    expect(row(section(/Membros ativos/), "Ana Pereira")).toHaveTextContent("Monitor-chefe");
   });
 
   it("pede confirmação antes de recusar e não recusa se a pessoa desistir", async () => {
@@ -112,7 +113,9 @@ describe("Gerenciamento da equipe (S15-03, FR-28)", () => {
       "Remover Bruno Lima da equipe? A conta passa a Ex-monitor, perde o acesso e as sessões abertas são encerradas.",
     );
     expect(await screen.findByRole("status")).toHaveTextContent("Bruno Lima foi removido(a) da equipe (Ex-monitor).");
-    expect(row(section(/Ex-monitores, conselheiros e inativos/), "Bruno Lima")).toHaveTextContent("Ex-monitor");
+    await waitFor(() =>
+      expect(row(section(/Ex-monitores, conselheiros e inativos/), "Bruno Lima")).toHaveTextContent("Ex-monitor"),
+    );
   });
 
   it("altera o cargo e reativa com os cargos permitidos", async () => {

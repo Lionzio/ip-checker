@@ -1485,6 +1485,102 @@
         ]
       }
     },
+    "/api/v1/similarity": {
+      "post": {
+        "tags": [
+          "plágio"
+        ],
+        "summary": "Compara duas soluções e classifica a similaridade (indício de plágio)",
+        "operationId": "similarity_api_v1_similarity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimilarityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarityResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: um código acima de 51.200 bytes, ou corpo acima de 128 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (código complexo demais).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/lists": {
       "get": {
         "tags": [
@@ -2296,6 +2392,172 @@
           "role"
         ],
         "title": "RoleChoice"
+      },
+      "SimilarityBand": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "plagio",
+              "altas_chances",
+              "requer_atencao",
+              "ligeiramente_suspeito",
+              "sem_suspeitas"
+            ],
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "O nome da faixa, sempre escrito junto da cor (NFR-19)."
+          },
+          "minimum": {
+            "type": "number",
+            "title": "Minimum",
+            "description": "A faixa começa neste valor, inclusive (FR-29)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "minimum"
+        ],
+        "title": "SimilarityBand"
+      },
+      "SimilarityRequest": {
+        "properties": {
+          "code_a": {
+            "type": "string",
+            "title": "Code A",
+            "description": "Código de um aluno. Nunca é executado."
+          },
+          "code_b": {
+            "type": "string",
+            "title": "Code B",
+            "description": "Código do outro aluno. Nunca é executado."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code_a",
+          "code_b"
+        ],
+        "title": "SimilarityRequest"
+      },
+      "SimilarityResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "syntax_error"
+            ],
+            "title": "Status"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity",
+            "description": "Porcentagem com uma casa decimal; vazia com erro de sintaxe."
+          },
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityBand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "short_code": {
+            "type": "boolean",
+            "title": "Short Code",
+            "description": "Um dos códigos é curto: soluções independentes tendem a se parecer."
+          },
+          "syntax_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilaritySyntaxError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice",
+            "description": "O aviso de que o resultado é um indício (FR-29)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "status",
+          "similarity",
+          "band",
+          "short_code",
+          "syntax_error",
+          "notice"
+        ],
+        "title": "SimilarityResponse"
+      },
+      "SimilaritySyntaxError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "a",
+              "b"
+            ],
+            "title": "Code",
+            "description": "Qual dos dois códigos tem o erro."
+          },
+          "line": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Line"
+          },
+          "col": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Col"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "line",
+          "col",
+          "message"
+        ],
+        "title": "SimilaritySyntaxError"
       },
       "SyntaxErrorInfo": {
         "properties": {

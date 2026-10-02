@@ -13,6 +13,7 @@ import type {
   ListInfo,
   ManagedAccount,
   Role,
+  SimilarityBand,
   ValidateRequest,
   ValidateResponse,
   Violation,
@@ -75,6 +76,15 @@ function teamMember(
     wasHeadMonitor,
   };
 }
+
+/** As faixas do FR-29, só para a simulação; as de verdade vêm da API. */
+const SIMULATED_BANDS: SimilarityBand[] = [
+  { id: "plagio", label: "Plágio", minimum: 99 },
+  { id: "altas_chances", label: "Altas chances de plágio", minimum: 95 },
+  { id: "requer_atencao", label: "Requer atenção", minimum: 90 },
+  { id: "ligeiramente_suspeito", label: "Ligeiramente suspeito", minimum: 80 },
+  { id: "sem_suspeitas", label: "Sem suspeitas", minimum: 0 },
+];
 
 const STATUS_LABELS: Record<ManagedAccount["status"], string> = {
   aguardando_verificacao: "E-mail não confirmado",
@@ -332,6 +342,34 @@ export function createMockClient({
 
     async changePassword() {
       await wait(latencyMs);
+    },
+
+    async compare(codeA, codeB, signal) {
+      await wait(latencyMs, signal);
+      // Simulação grosseira: compara as linhas sem espaços. O detector de verdade é o do analisador.
+      const lines = (code: string) =>
+        new Set(code.split("\n").map((line) => line.replace(/\s+/g, "")).filter(Boolean));
+      const a = lines(codeA);
+      const b = lines(codeB);
+      if (a.size === 0 || b.size === 0) {
+        throw new ApiError(422, "INVALID_INPUT", "Cole os dois códigos para comparar.");
+      }
+      const shared = [...a].filter((line) => b.has(line)).length;
+      const similarity = Math.round((2000 * shared) / (a.size + b.size)) / 10;
+      const band = SIMULATED_BANDS.find((candidate) => similarity >= candidate.minimum) ?? {
+        id: "sem_suspeitas" as const,
+        label: "Sem suspeitas",
+        minimum: 0,
+      };
+      return {
+        request_id: `simulado-${(requests += 1)}`,
+        status: "compared",
+        similarity,
+        band,
+        short_code: Math.min(a.size, b.size) < 6,
+        syntax_error: null,
+        notice: "A similaridade é um indício, não uma prova: a decisão final sobre plágio é sempre da equipe.",
+      };
     },
 
     async options(signal) {

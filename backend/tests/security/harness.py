@@ -30,9 +30,9 @@ NETWORK = f"{PROJECT}_analyzer_net"
 EDGE_NETWORK = f"{PROJECT}_edge_net"
 CLIENT = f"{PROJECT}-client"
 PUBLIC_CLIENT = f"{PROJECT}-public-client"
-#: Outro cliente da borda, com outro IP, só para os ataques à autenticação (S16-03): assim eles não
+#: Clientes da borda criados por teste, cada um com outro IP (S16-03, S17-02): assim não
 #: dividem o limite por IP que ``test_api_rate_limit_edge`` esgota de propósito.
-AUTH_CLIENT = f"{PROJECT}-auth-client"
+FRESH_CLIENT = f"{PROJECT}-fresh-client"
 IMAGE = "ip-checker-backend:local"
 ANALYZER_URL = "http://analyzer:8001"
 WEB_URL = "http://web:8080"

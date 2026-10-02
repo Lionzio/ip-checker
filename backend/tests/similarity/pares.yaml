@@ -1,0 +1,219 @@
+# Corpus de pares do detector de plágio (S17-01, NFR-25, ADR-05).
+#
+# Cada par tem dois códigos (a e b) e a faixa esperada de similaridade, em porcentagem:
+#   minimo / maximo: limites inclusivos; exato: valor exato.
+# Os pesos, o k e a janela do winnowing (engine/similarity.py) só mudam junto com este corpus.
+# Os códigos imitam soluções reais das listas; nenhum deles é de um aluno.
+
+pares:
+  - nome: variaveis_renomeadas
+    descricao: Cópia em que só os nomes do aluno mudaram (NFR-25, ≥ 99%).
+    minimo: 99.0
+    a: |
+      lado1 = float(input())
+      lado2 = float(input())
+      lado3 = float(input())
+      if lado1 + lado2 > lado3 and lado1 + lado3 > lado2 and lado2 + lado3 > lado1:
+          if lado1 == lado2 == lado3:
+              tipo = "equilatero"
+          elif lado1 == lado2 or lado1 == lado3 or lado2 == lado3:
+              tipo = "isosceles"
+          else:
+              tipo = "escaleno"
+          print(f"Triangulo {tipo}")
+      else:
+          print("Nao forma triangulo")
+    b: |
+      x = float(input())
+      y = float(input())
+      z = float(input())
+      if x + y > z and x + z > y and y + z > x:
+          if x == y == z:
+              classe = "equilatero"
+          elif x == y or x == z or y == z:
+              classe = "isosceles"
+          else:
+              classe = "escaleno"
+          print(f"Triangulo {classe}")
+      else:
+          print("Nao forma triangulo")
+
+  - nome: espacos_e_comentarios
+    descricao: Mesma solução com espaços, linhas em branco e comentários alterados (= 100%).
+    exato: 100.0
+    a: |
+      ano = int(input())
+      if (ano % 4 == 0 and ano % 100 != 0) or ano % 400 == 0:
+          print("bissexto")
+      else:
+          print("nao bissexto")
+    b: |
+      # Questão 3: ano bissexto
+
+
+      ano=int( input() )   # lê o ano
+      if (ano%4==0 and ano%100!=0) or ano%400==0 :
+          # divisível por 4 e não por 100, ou por 400
+          print( "bissexto" )
+
+      else:
+          print("nao bissexto")  # comum
+
+  - nome: textos_trocados
+    descricao: O conteúdo das strings muda, a lógica não (as strings viram STR).
+    exato: 100.0
+    a: |
+      nota = float(input())
+      if nota >= 7:
+          print("Aprovado")
+      elif nota >= 3:
+          print("Final")
+      else:
+          print("Reprovado")
+    b: |
+      nota = float(input())
+      if nota >= 7:
+          print("Passou direto!")
+      elif nota >= 3:
+          print("Vai para a prova final")
+      else:
+          print("Não passou")
+
+  - nome: funcoes_reordenadas
+    descricao: Funções independentes em outra ordem (NFR-25, ≥ 90%).
+    minimo: 90.0
+    a: |
+      def soma(valores):
+          total = 0
+          for valor in valores:
+              total += valor
+          return total
+
+      def media(valores):
+          return soma(valores) / len(valores)
+
+      def maior(valores):
+          resultado = valores[0]
+          for valor in valores:
+              if valor > resultado:
+                  resultado = valor
+          return resultado
+
+      numeros = [int(item) for item in input().split()]
+      print(soma(numeros), media(numeros), maior(numeros))
+    b: |
+      def maior(valores):
+          resultado = valores[0]
+          for valor in valores:
+              if valor > resultado:
+                  resultado = valor
+          return resultado
+
+      def soma(valores):
+          total = 0
+          for valor in valores:
+              total += valor
+          return total
+
+      def media(valores):
+          return soma(valores) / len(valores)
+
+      numeros = [int(item) for item in input().split()]
+      print(soma(numeros), media(numeros), maior(numeros))
+
+  - nome: reordenadas_e_renomeadas
+    descricao: Funções reordenadas e nomes trocados ao mesmo tempo (≥ 90%).
+    minimo: 90.0
+    a: |
+      def fatorial(n):
+          resultado = 1
+          for i in range(2, n + 1):
+              resultado *= i
+          return resultado
+
+      def combinacao(n, k):
+          return fatorial(n) // (fatorial(k) * fatorial(n - k))
+
+      n, k = map(int, input().split())
+      print(combinacao(n, k))
+    b: |
+      def comb(total, escolhidos):
+          return fat(total) // (fat(escolhidos) * fat(total - escolhidos))
+
+      def fat(numero):
+          produto = 1
+          for atual in range(2, numero + 1):
+              produto *= atual
+          return produto
+
+      total, escolhidos = map(int, input().split())
+      print(comb(total, escolhidos))
+
+  - nome: blocos_independentes_reordenados
+    descricao: Leituras e comandos independentes do nível do módulo em outra ordem (≥ 90%).
+    minimo: 90.0
+    a: |
+      salario = float(input())
+      horas = int(input())
+      if horas > 40:
+          extra = (horas - 40) * salario / 160 * 1.5
+      else:
+          extra = 0
+      if salario > 5000:
+          imposto = salario * 0.275
+      else:
+          imposto = salario * 0.075
+      print(salario + extra - imposto)
+    b: |
+      salario = float(input())
+      horas = int(input())
+      if salario > 5000:
+          imposto = salario * 0.275
+      else:
+          imposto = salario * 0.075
+      if horas > 40:
+          extra = (horas - 40) * salario / 160 * 1.5
+      else:
+          extra = 0
+      print(salario + extra - imposto)
+
+  - nome: solucoes_independentes
+    descricao: O mesmo exercício resolvido de dois jeitos diferentes; não pode parecer plágio.
+    maximo: 79.9
+    a: |
+      a = int(input())
+      b = int(input())
+      c = int(input())
+      if a >= b and a >= c:
+          maior = a
+      elif b >= a and b >= c:
+          maior = b
+      else:
+          maior = c
+      print(maior)
+    b: |
+      numeros = input().split()
+      maior = None
+      for texto in numeros:
+          valor = int(texto)
+          if maior is None or valor > maior:
+              maior = valor
+      print("O maior valor lido foi", maior)
+
+  - nome: exercicios_diferentes
+    descricao: Exercícios diferentes da mesma lista.
+    maximo: 50.0
+    a: |
+      temperatura = float(input())
+      if temperatura < 0:
+          print("congelando")
+      elif temperatura < 20:
+          print("frio")
+      else:
+          print("quente")
+    b: |
+      peso = float(input())
+      altura = float(input())
+      imc = peso / altura ** 2
+      categoria = "normal" if 18.5 <= imc < 25 else "fora da faixa"
+      print(round(imc, 2), categoria)

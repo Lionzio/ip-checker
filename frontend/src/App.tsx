@@ -6,6 +6,7 @@ import { Checker } from "./pages/Checker";
 import { GoogleComplete } from "./pages/GoogleComplete";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
+import { Plagiarism } from "./pages/Plagiarism";
 import { Profile } from "./pages/Profile";
 import { Register } from "./pages/Register";
 import { Verify } from "./pages/Verify";
@@ -104,6 +105,16 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               element={
                 state.status === "signed-in" ? (
                   <Profile client={client} account={state.account} onUpdated={setAccount} />
+                ) : (
+                  <Navigate to="/entrar" replace />
+                )
+              }
+            />
+            <Route
+              path="/plagio"
+              element={
+                state.status === "signed-in" ? (
+                  <Plagiarism client={client} onUnauthenticated={expire} />
                 ) : (
                   <Navigate to="/entrar" replace />
                 )
