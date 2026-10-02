@@ -2,10 +2,171 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IP-Checker",
-    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
+    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nO acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready` e as de\nautenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
     "version": "1.0.0"
   },
   "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Entra com nome ou e-mail institucional e senha; abre a sessão no cookie",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "INVALID_CREDENTIALS: nome, e-mail ou senha incorretos (mensagem única).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ACCOUNT_PENDING_VERIFICATION, ACCOUNT_PENDING_APPROVAL, ACCOUNT_REJECTED ou ACCOUNT_REMOVED (só com a senha correta), ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DOMAIN_NOT_ALLOWED (e-mail fora de @cin.ufpe.br e @ufpe.br) ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas tentativas. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Sai: encerra a sessão no servidor e apaga o cookie",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "A conta logada (o tratamento só aparece aqui, para o próprio titular)",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/validate": {
       "post": {
         "tags": [
@@ -13,35 +174,15 @@
         ],
         "summary": "Confere se o código respeita as permissões da lista, sem executá-lo",
         "operationId": "validate_api_v1_validate_post",
-        "parameters": [
-          {
-            "name": "x-client-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado.",
-              "title": "X-Client-Id"
-            },
-            "description": "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado."
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ValidateRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -50,6 +191,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -75,7 +236,7 @@
             }
           },
           "429": {
-            "description": "RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma rede em 1 minuto. Veja retry_after_s.",
+            "description": "RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s.",
             "content": {
               "application/json": {
                 "schema": {
@@ -85,7 +246,7 @@
             }
           },
           "503": {
-            "description": "OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não respondeu). Veja retry_after_s.",
+            "description": "OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja retry_after_s.",
             "content": {
               "application/json": {
                 "schema": {
@@ -94,7 +255,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
       }
     },
     "/api/v1/lists": {
@@ -119,8 +285,18 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "503": {
-            "description": "ANALYZER_UNAVAILABLE: o analisador não respondeu.",
+            "description": "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu).",
             "content": {
               "application/json": {
                 "schema": {
@@ -129,7 +305,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
       }
     },
     "/health": {
@@ -158,7 +339,7 @@
         "tags": [
           "operação"
         ],
-        "summary": "A API consegue validar código: o analisador responde (monitorado pelo UptimeRobot)",
+        "summary": "A API consegue atender: o analisador e o banco de contas respondem (monitorado pelo UptimeRobot)",
         "operationId": "ready_ready_get",
         "responses": {
           "200": {
@@ -172,7 +353,7 @@
             }
           },
           "503": {
-            "description": "ANALYZER_UNAVAILABLE: o analisador não respondeu.",
+            "description": "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu).",
             "content": {
               "application/json": {
                 "schema": {
@@ -187,6 +368,59 @@
   },
   "components": {
     "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "E-mail principal."
+          },
+          "course": {
+            "type": "string",
+            "title": "Course"
+          },
+          "treatment": {
+            "type": "string",
+            "enum": [
+              "masculino",
+              "feminino",
+              "neutro"
+            ],
+            "title": "Treatment"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "desenvolvedor",
+              "professor",
+              "monitor_chefe",
+              "monitor"
+            ],
+            "title": "Role"
+          },
+          "role_label": {
+            "type": "string",
+            "title": "Role Label",
+            "description": "Como o cargo aparece na interface; o desenvolvedor aparece como \"Monitor\"."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "course",
+          "treatment",
+          "role",
+          "role_label"
+        ],
+        "title": "AccountResponse",
+        "description": "A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -197,7 +431,16 @@
           "ANALYSIS_LIMIT",
           "RATE_LIMITED",
           "OVERLOADED",
-          "ANALYZER_UNAVAILABLE"
+          "ANALYZER_UNAVAILABLE",
+          "UNAUTHENTICATED",
+          "INVALID_CREDENTIALS",
+          "DOMAIN_NOT_ALLOWED",
+          "ACCOUNT_PENDING_VERIFICATION",
+          "ACCOUNT_PENDING_APPROVAL",
+          "ACCOUNT_REJECTED",
+          "ACCOUNT_REMOVED",
+          "ORIGIN_MISMATCH",
+          "DATABASE_UNAVAILABLE"
         ],
         "title": "ErrorCode"
       },
@@ -281,6 +524,31 @@
           "title"
         ],
         "title": "ListInfo"
+      },
+      "LoginRequest": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 1,
+            "title": "Login",
+            "description": "Nome ou e-mail institucional (@cin.ufpe.br ou @ufpe.br)."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "description": "Senha da conta. Nunca é registrada."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "login",
+          "password"
+        ],
+        "title": "LoginRequest"
       },
       "ReadyResponse": {
         "properties": {
@@ -547,6 +815,14 @@
           "message"
         ],
         "title": "Violation"
+      }
+    },
+    "securitySchemes": {
+      "sessao": {
+        "type": "apiKey",
+        "description": "Sessão de uma conta ativa da equipe, criada por POST /api/v1/auth/login. HttpOnly, Secure e SameSite=Lax; o servidor guarda só o hash do identificador.",
+        "in": "cookie",
+        "name": "__Host-ipc_session"
       }
     }
   }

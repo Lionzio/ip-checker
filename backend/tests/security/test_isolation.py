@@ -268,4 +268,10 @@ def test_image_contains_only_runtime_files(analyzer: str) -> None:
 
     assert contents["uv"] is None
     assert contents["app_files"]
-    assert all(Path(name).parts[0] == "rulesets" for name in contents["app_files"])
+    # Só os dados de que os serviços precisam: o ruleset e, desde a S13-01, as migrações em SQL
+    # (usadas apenas pelo serviço migrate). Nenhum teste, gabarito ou código-fonte solto.
+    for name in contents["app_files"]:
+        parts = Path(name).parts
+        assert parts[0] == "rulesets" or (parts[:2] == ("database", "migrations")), name
+        if parts[0] == "database":
+            assert name.endswith((".up.sql", ".down.sql")), name

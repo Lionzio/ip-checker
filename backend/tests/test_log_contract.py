@@ -1,8 +1,9 @@
 """Contrato dos logs (S9-01, NFR-11, DoD item 13): esquema fixo e nenhum código ou IP gravado.
 
 O teste canário manda à API, ligada ao analyzer de verdade, todo tipo de requisição com um
-marcador escondido no código, na URL, nos cabeçalhos e na questão, e confere que o marcador e o
-IP aparecem 0 vezes em tudo o que os dois serviços escreveram.
+marcador escondido no código, na URL, nos cabeçalhos, na questão e, desde a Sprint 13, na senha,
+no login e no cookie de sessão, e confere que o marcador e o IP aparecem 0 vezes em tudo o que os
+dois serviços escreveram (DoD, itens 13 e 20).
 """
 
 from __future__ import annotations
@@ -14,16 +15,15 @@ from typing import Any
 
 import httpx2
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api_support import COOKIE, DEV_EMAIL, authed_client, make_app
 from conftest import BASE_RULESET
 from ipc_analyzer import logging as analyzer_logging
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api import logging as api_logging
-from ipc_api.app import create_app
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
 
@@ -59,7 +59,9 @@ def analyzer() -> Iterator[TestClient]:
         yield client
 
 
-def bridged_api(analyzer: TestClient) -> FastAPI:
+def bridged_api(analyzer: TestClient) -> TestClient:
+    """Cliente com sessão de uma API ligada ao analyzer de verdade, em memória."""
+
     def bridge(request: httpx2.Request) -> httpx2.Response:
         answer = analyzer.request(
             request.method, request.url.path, content=request.content, headers=request.headers
@@ -70,7 +72,7 @@ def bridged_api(analyzer: TestClient) -> FastAPI:
             headers={"Content-Type": answer.headers["content-type"]},
         )
 
-    return create_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge))
+    return authed_client(*make_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge)))
 
 
 def send_everything(api: TestClient) -> list[httpx2.Response]:
@@ -109,6 +111,18 @@ def send_everything(api: TestClient) -> list[httpx2.Response]:
         ),
         api.get(f"/api/v1/{CANARY}", headers=headers),
         api.get(f"/api/v1/lists?q={CANARY}", headers=headers),
+        api.post(
+            "/api/v1/auth/login",
+            json={"login": f"{CANARY}@cin.ufpe.br", "password": f"{CANARY}-Senha!"},
+            headers=headers,
+        ),
+        api.post(
+            "/api/v1/auth/login",
+            json={"login": DEV_EMAIL, "password": f"{CANARY}-Errada!"},
+            headers=headers,
+        ),
+        api.post("/api/v1/auth/login", json={"login": CANARY, "password": CANARY}, headers=headers),
+        api.get("/api/v1/auth/me", headers={**headers, "Cookie": f"{COOKIE}={CANARY}"}),
         api.get("/ready", headers=headers),
         api.get("/health", headers=headers),
     ]
@@ -118,7 +132,7 @@ def test_canary_never_reaches_the_logs(
     analyzer: TestClient, capfd: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
 ) -> None:
     caplog.set_level(logging.DEBUG)
-    with TestClient(bridged_api(analyzer)) as api:
+    with bridged_api(analyzer) as api:
         responses = send_everything(api)
 
     # O marcador volta ao aluno quando faz parte do relatório dele (prova de que foi analisado)...
@@ -140,8 +154,8 @@ def test_canary_never_reaches_the_logs_when_the_analyzer_is_down(
     def refuse(request: httpx2.Request) -> httpx2.Response:
         raise httpx2.ConnectError(f"recusado {request.content!r}", request=request)
 
-    app = create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(refuse))
-    with TestClient(app) as api:
+    app, store = make_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(refuse))
+    with authed_client(app, store) as api:
         response = api.post("/api/v1/validate", json={"code": f"x = '{CANARY}'", "list_number": 1})
 
     assert response.status_code == 503
@@ -152,7 +166,7 @@ def test_canary_never_reaches_the_logs_when_the_analyzer_is_down(
 def test_every_log_line_follows_the_schema(
     analyzer: TestClient, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    with TestClient(bridged_api(analyzer)) as api:
+    with bridged_api(analyzer) as api:
         response = api.post(
             "/api/v1/validate",
             json={"code": "for i in range(3):\n    print(i)\n", "list_number": 1},
@@ -210,7 +224,7 @@ def test_errors_are_logged_with_their_code(
     outcome: str,
     status: int,
 ) -> None:
-    with TestClient(bridged_api(analyzer)) as api:
+    with bridged_api(analyzer) as api:
         response = api.post("/api/v1/validate", json=payload)
 
     request_id = response.headers["X-Request-Id"]
@@ -223,7 +237,7 @@ def test_errors_are_logged_with_their_code(
 
 
 def test_unknown_paths_are_not_logged_verbatim(capfd: pytest.CaptureFixture[str]) -> None:
-    with TestClient(create_app(ApiSettings())) as api:
+    with TestClient(make_app(ApiSettings())[0]) as api:
         api.get(f"/{CANARY}/../etc/passwd")
 
     (line,) = [x for x in json_lines(capfd.readouterr().out) if x["event"] == "request"]

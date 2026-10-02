@@ -15,7 +15,7 @@ import httpx2
 import pytest
 from fastapi.testclient import TestClient
 
-from ipc_api.app import create_app
+from api_support import authed_client, make_app
 from ipc_api.settings import ApiSettings
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
@@ -93,8 +93,8 @@ def analyzer() -> FakeAnalyzer:
 
 
 def make_client(analyzer: FakeAnalyzer, settings: ApiSettings = SETTINGS) -> TestClient:
-    app = create_app(settings, analyzer_transport=httpx2.MockTransport(analyzer))
-    return TestClient(app)
+    app, store = make_app(settings, analyzer_transport=httpx2.MockTransport(analyzer))
+    return authed_client(app, store)
 
 
 @pytest.fixture
@@ -383,7 +383,8 @@ def test_stopped_analyzer_is_unavailable() -> None:
     # Critério da S8-01 com uma conexão de verdade: nada escuta na porta 9 desta máquina.
     settings = ApiSettings(analyzer_url="http://127.0.0.1:9", analyzer_timeout_s=3.0)
 
-    with TestClient(create_app(settings)) as client:
+    app, store = make_app(settings)
+    with authed_client(app, store) as client:
         _unavailable(validate(client))
         assert client.get("/health").status_code == 200
         _unavailable(client.get("/ready"))

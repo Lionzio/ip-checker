@@ -14,9 +14,10 @@ from __future__ import annotations
 from security.harness import (
     Answer,
     Client,
-    new_client_id,
+    new_session,
     requires_docker,
     service_logs,
+    session_header,
     validate_request,
 )
 
@@ -40,38 +41,37 @@ def _assert_rate_limited(answer: Answer) -> None:
     assert "x-request-id" in answer.headers
 
 
-def test_eleventh_request_of_a_session_is_rate_limited(public: Client) -> None:
-    student = {"X-Client-Id": new_client_id()}
+def test_request_over_the_account_limit_is_rate_limited(public: Client) -> None:
+    member = new_session()
 
-    answers = public.send([validate_request(CODE, headers=student) for _ in range(11)])
+    answers = public.send([validate_request(CODE, session=member) for _ in range(31)])
 
-    assert _statuses(answers) == [200] * 10 + [429]
-    _assert_rate_limited(answers[10])
-    assert answers[10].body["error"]["message"] == "Você fez muitas verificações em pouco tempo."
+    assert _statuses(answers) == [200] * 30 + [429]
+    _assert_rate_limited(answers[30])
+    assert answers[30].body["error"]["message"] == "Você fez muitas requisições em pouco tempo."
 
-    # Outro aluno, atrás do mesmo IP, segue sendo atendido.
+    # Outro membro, atrás do mesmo IP, segue sendo atendido.
     (colleague,) = public.send([validate_request(CODE)])
     assert colleague.status == 200
 
 
 def test_forged_forwarded_for_does_not_create_new_identities(public: Client) -> None:
-    # Sem X-Client-Id válido, o cliente é o IP. Se a borda aceitasse o X-Forwarded-For do cliente,
-    # cada requisição abaixo pareceria vir de um IP diferente e nenhuma seria recusada.
+    # Sem sessão, o cliente é o IP (e a resposta é 401). Se a borda aceitasse o X-Forwarded-For
+    # do cliente, cada requisição abaixo pareceria vir de um IP diferente e nenhuma seria recusada.
     requests = [
-        validate_request(
-            CODE, headers={"X-Client-Id": "", "X-Forwarded-For": f"{FORGED_CAMPUS}{index}"}
-        )
-        for index in range(11)
+        validate_request(CODE, headers={"Cookie": "", "X-Forwarded-For": f"{FORGED_CAMPUS}{index}"})
+        for index in range(31)
     ]
 
     answers = public.send(requests)
 
-    assert _statuses(answers) == [200] * 10 + [429]
-    _assert_rate_limited(answers[10])
+    assert _statuses(answers) == [401] * 30 + [429]
+    assert {answer.error_code for answer in answers[:30]} == {"UNAUTHENTICATED"}
+    _assert_rate_limited(answers[30])
 
 
 def test_one_external_ip_cannot_exceed_120_per_minute(public: Client) -> None:
-    # 150 "alunos" diferentes de um mesmo IP externo, todos fingindo estar no campus.
+    # 150 membros diferentes de um mesmo IP externo, todos fingindo estar no campus.
     requests = [
         validate_request(CODE, headers={"X-Forwarded-For": f"{FORGED_CAMPUS}{index % 250}"})
         for index in range(150)
@@ -87,16 +87,16 @@ def test_one_external_ip_cannot_exceed_120_per_minute(public: Client) -> None:
     for answer in refused:
         _assert_rate_limited(answer)
     assert refused[0].body["error"]["message"] == (
-        "Muitas verificações vieram da sua rede em pouco tempo."
+        "Muitas requisições vieram da sua rede em pouco tempo."
     )
 
 
 def test_only_validation_is_limited_and_nothing_identifying_is_logged(public: Client) -> None:
-    student = new_client_id()
+    student = new_session()
     limited, lists, ready, health = public.send(
         [
-            validate_request(CODE, headers={"X-Client-Id": student}),
-            {"method": "GET", "path": "/api/v1/lists"},
+            validate_request(CODE, session=student),
+            {"method": "GET", "path": "/api/v1/lists", "headers": session_header(student)},
             {"method": "GET", "path": "/ready"},
             {"method": "GET", "path": "/health"},
         ]

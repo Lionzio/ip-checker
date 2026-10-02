@@ -16,6 +16,16 @@ class ErrorCode(StrEnum):
     RATE_LIMITED = "RATE_LIMITED"
     OVERLOADED = "OVERLOADED"
     ANALYZER_UNAVAILABLE = "ANALYZER_UNAVAILABLE"
+    # Acesso restrito à equipe (Sprint 13, FR-22 e FR-25).
+    UNAUTHENTICATED = "UNAUTHENTICATED"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    DOMAIN_NOT_ALLOWED = "DOMAIN_NOT_ALLOWED"
+    ACCOUNT_PENDING_VERIFICATION = "ACCOUNT_PENDING_VERIFICATION"
+    ACCOUNT_PENDING_APPROVAL = "ACCOUNT_PENDING_APPROVAL"
+    ACCOUNT_REJECTED = "ACCOUNT_REJECTED"
+    ACCOUNT_REMOVED = "ACCOUNT_REMOVED"
+    ORIGIN_MISMATCH = "ORIGIN_MISMATCH"
+    DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE"
 
 
 #: Espera sugerida ao cliente quando o analyzer não responde.
@@ -55,6 +65,21 @@ def analyzer_unavailable() -> ApiError:
         ErrorCode.ANALYZER_UNAVAILABLE,
         "O analisador está indisponível no momento. Tente de novo em alguns segundos.",
         retry_after_s=UNAVAILABLE_RETRY_S,
+    )
+
+
+def database_unavailable() -> ApiError:
+    return ApiError(
+        503,
+        ErrorCode.DATABASE_UNAVAILABLE,
+        "O serviço está indisponível no momento. Tente de novo em alguns segundos.",
+        retry_after_s=UNAVAILABLE_RETRY_S,
+    )
+
+
+def unauthenticated() -> ApiError:
+    return ApiError(
+        401, ErrorCode.UNAUTHENTICATED, "Entre com a sua conta da equipe para usar o IP-Checker."
     )
 
 
