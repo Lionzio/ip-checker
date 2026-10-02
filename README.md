@@ -115,8 +115,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 11 | Deploy do piloto: S11-01 imagem do Render com isolamento por processo e seccomp; S11-02 CORS, HSTS e página para a Vercel; S11-03 deploy depois da CI e verificações do piloto no ar | Concluída (falta a configuração das contas, `deploy/README.md`) |
 | 12 | Marco 2: S12-01 exigência R-02 da Lista 1 e aviso de regras de questão; S12-02 teste de carga (recomenda o Starter); S12-03 guia do piloto e apresentação | Concluída |
 | 13 | Contas e sessão: S13-01 banco de contas, migrações e conta do desenvolvedor; S13-02 login por senha, sessão no servidor, bloqueio de tentativas, `Origin` e limite por conta; S13-03 telas inicial e Entrar, rotas com guarda e fim do `X-Client-Id` | Concluída |
-| 14 | Registro por e-mail, verificação e perfil | Próxima |
-| 15 | Cargos, aprovação e gerenciamento | Planejada |
+| 14 | Registro e perfil: S14-01 registro por e-mail institucional e senha; S14-02 e-mail de verificação (SMTP ou Brevo; Mailpit no compose) com link de uso único; S14-03 perfil, tratamento e troca de senha; créditos no rodapé | Concluída |
+| 15 | Cargos, aprovação e gerenciamento | Próxima |
 | 16 | Google, mesma origem e segurança da autenticação | Planejada |
 | 17 | Painel de plágio | Planejada |
 | 18 | Feedback por LLM: provedores e montagem | Planejada |

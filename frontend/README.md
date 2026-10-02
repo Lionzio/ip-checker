@@ -60,13 +60,16 @@ mudança na API que a página não acompanhou quebra a compilação.
 | Sem resposta em 10 s ou falha de rede | "Sem resposta do servidor" e "Tentar novamente" |
 
 Nos estados 429 e 503, o botão "Tentar novamente" só é liberado quando a espera pedida pelo
-servidor termina. Cada aba gera um identificador aleatório (`X-Client-Id`), guardado só no
-`sessionStorage`: ele dá a cada aluno o próprio limite de 10 verificações por minuto, mesmo com
-o laboratório inteiro saindo pelo mesmo IP, e some quando a aba é fechada.
+servidor termina. Desde a Sprint 13, o limite é de 30 verificações por minuto por conta da
+equipe, identificada pelo cookie da sessão (`__Host-ipc_session`, HttpOnly); a página não guarda
+nenhum identificador próprio.
 
 ## Smoke e2e (Playwright)
 
-Os testes de `e2e/` usam o Chromium contra o compose completo (Caddy, API e analyzer):
+Os testes de `e2e/` usam o Chromium contra o compose completo (Caddy, API, analyzer, banco e
+Mailpit). O projeto `login` entra com a conta do desenvolvedor; `chromium` roda os testes em
+paralelo, inclusive o registro que lê o e-mail no Mailpit; `conta` troca a senha e a devolve; e
+`limite` esgota o limite por conta, por último.
 
 ```bash
 docker compose -f ../deploy/compose.yaml up --build -d --wait
@@ -80,6 +83,21 @@ npx playwright install chromium
 npm run e2e
 ```
 
+A senha vem de `E2E_PASSWORD` ou do `IPC_DEV_INITIAL_PASSWORD` do `deploy/.env`, que só vale para
+um banco novo. Se você já trocou a senha da sua conta local, rode o e2e num projeto separado, com
+outro `.env` e outras portas, como a CI faz: `E2E_BASE_URL` e `E2E_MAILPIT_URL` apontam para ele.
+Os testes também criam contas de teste, que assim não ficam no seu banco.
+
+```bash
+docker compose -p ipc-e2e -f ../deploy/compose.yaml --env-file /caminho/e2e.env up --build -d --wait
+```
+
+Com `IPC_HTTP_PORT=28180` e `IPC_MAIL_UI_PORT=28125` no `e2e.env`:
+
+```bash
+E2E_BASE_URL=http://127.0.0.1:28180 E2E_MAILPIT_URL=http://127.0.0.1:28125 E2E_PASSWORD=... npm run e2e
+```
+
 ## Estrutura
 
 | Caminho | Papel |
@@ -88,11 +106,12 @@ npm run e2e
 | `src/types/api.ts` | Nomes curtos para os tipos do contrato |
 | `src/services/client.ts` | Interface `ValidationClient` e `ApiError` |
 | `src/services/api.ts` | Cliente HTTP real (mesma origem, `/api/v1/...`) |
-| `src/services/clientId.ts` | Identificador anônimo da sessão (`X-Client-Id`), só para o limite de taxa |
 | `src/services/mockClient.ts` | Cliente simulado do modo demonstração |
 | `src/hooks/useValidateCode.ts` | Envio com tempo limite de 10 s e cancelamento da requisição anterior |
 | `src/components/` | Área de código, seletor de lista e painel de resultado |
-| `e2e/` | Smoke e2e do Marco 1 |
+| `src/pages/` | Inicial, Entrar, Registrar, Confirmar o e-mail, Perfil e o verificador |
+| `src/passwordPolicy.ts` | A mesma política de senha do backend, mostrada enquanto se digita |
+| `e2e/` | Smoke e2e: verificador, acesso, registro com e-mail, perfil e limite |
 
 ## Cenários do modo demonstração
 
