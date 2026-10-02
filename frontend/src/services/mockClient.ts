@@ -8,7 +8,15 @@
  * A entrada também é simulada (Sprint 13): qualquer nome e senha preenchidos entram como uma
  * monitora de demonstração. Nada é verificado, porque não há servidor.
  */
-import type { Account, ListInfo, ValidateRequest, ValidateResponse, Violation } from "../types/api";
+import type {
+  Account,
+  ListInfo,
+  ManagedAccount,
+  Role,
+  ValidateRequest,
+  ValidateResponse,
+  Violation,
+} from "../types/api";
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
@@ -22,7 +30,79 @@ export const DEMO_ACCOUNT: Account = {
   role: "monitor",
   role_label: "Monitor",
   has_password: true,
+  can_manage: false,
 };
+/** Uma conta que gerencia a equipe, para os testes da tela de gerenciamento (Sprint 15). */
+export const DEMO_MANAGER: Account = {
+  ...DEMO_ACCOUNT,
+  name: "Professora de Demonstração",
+  email: "professora@cin.ufpe.br",
+  role: "professor",
+  role_label: "Professor",
+  can_manage: true,
+};
+
+const ROLE_LABELS: Record<Role, string> = {
+  desenvolvedor: "Monitor e desenvolvedor",
+  professor: "Professor",
+  monitor_chefe: "Monitor-chefe",
+  monitor: "Monitor",
+};
+/** O simulado age como um professor: atribui professor, monitor-chefe e monitor (FR-27). */
+const MANAGER_ROLES: Role[] = ["professor", "monitor_chefe", "monitor"];
+
+function teamMember(
+  id: string,
+  name: string,
+  status: ManagedAccount["status"],
+  role: Role | null,
+  wasHeadMonitor = false,
+): ManagedAccount & { wasHeadMonitor: boolean } {
+  return {
+    id,
+    name,
+    email: `${id}@cin.ufpe.br`,
+    course: "Ciência da Computação",
+    signup_method: "senha",
+    requested_at: "2026-10-01T12:00:00Z",
+    role,
+    role_label: role === null ? null : ROLE_LABELS[role],
+    status,
+    status_label: "",
+    actions: [],
+    roles: [],
+    removal_status: null,
+    wasHeadMonitor,
+  };
+}
+
+const STATUS_LABELS: Record<ManagedAccount["status"], string> = {
+  aguardando_verificacao: "E-mail não confirmado",
+  aguardando_aprovacao: "Pendente",
+  ativo: "Ativo",
+  recusado: "Recusado",
+  ex_monitor: "Ex-monitor",
+  conselheiro: "Conselheiro",
+  inativo: "Inativo",
+};
+
+/** As ações e os cargos que a professora simulada vê em cada conta. */
+function asSeen(member: ManagedAccount & { wasHeadMonitor: boolean }): ManagedAccount {
+  const { wasHeadMonitor, ...account } = member;
+  const base = { ...account, status_label: STATUS_LABELS[account.status], removal_status: null };
+  if (account.role === "desenvolvedor") return { ...base, actions: [], roles: [] };
+  if (account.status === "aguardando_aprovacao") return { ...base, actions: ["aprovar", "recusar"], roles: MANAGER_ROLES };
+  if (account.status === "ativo") {
+    const removal = account.role === "professor" ? "inativo" : wasHeadMonitor ? "conselheiro" : "ex_monitor";
+    return {
+      ...base,
+      actions: ["alterar_cargo", "remover"],
+      roles: MANAGER_ROLES.filter((role) => role !== account.role),
+      removal_status: removal,
+    };
+  }
+  return { ...base, actions: ["reativar"], roles: MANAGER_ROLES };
+}
 
 type Finding = Pick<Violation, "rule_id" | "category" | "construct" | "allowed_from_list" | "message">;
 
@@ -175,9 +255,28 @@ function findViolations(code: string): Violation[] {
 export function createMockClient({
   latencyMs = 400,
   signedIn = false,
-}: { latencyMs?: number; signedIn?: boolean } = {}): ApiClient {
+  as = DEMO_ACCOUNT,
+}: { latencyMs?: number; signedIn?: boolean; as?: Account } = {}): ApiClient {
   let requests = 0;
-  let account: Account | null = signedIn ? DEMO_ACCOUNT : null;
+  let account: Account | null = signedIn ? as : null;
+  const team = [
+    teamMember("dev", "Vinícius Leôncio", "ativo", "desenvolvedor"),
+    teamMember("ana", "Ana Pereira", "aguardando_aprovacao", null),
+    teamMember("bruno", "Bruno Lima", "ativo", "monitor"),
+    teamMember("carla", "Carla Souza", "ex_monitor", "monitor"),
+  ];
+
+  function find(id: string) {
+    const member = team.find((candidate) => candidate.id === id);
+    if (member === undefined) throw new ApiError(404, "ACCOUNT_NOT_FOUND", "Conta não encontrada.");
+    return member;
+  }
+
+  function requireManager() {
+    if (account === null || !account.can_manage) {
+      throw new ApiError(403, "FORBIDDEN", "Você não tem permissão para esta ação.");
+    }
+  }
 
   return {
     async me(signal) {
@@ -193,7 +292,7 @@ export function createMockClient({
       if (login.trim() === "" || password === "") {
         throw new ApiError(422, "INVALID_INPUT", "Requisição inválida: envie login (nome ou e-mail) e password (senha).");
       }
-      account = DEMO_ACCOUNT;
+      account = as;
       return account;
     },
 
@@ -232,6 +331,56 @@ export function createMockClient({
 
     async changePassword() {
       await wait(latencyMs);
+    },
+
+    async listRequests(signal) {
+      await wait(latencyMs, signal);
+      requireManager();
+      return team.filter((member) => member.status === "aguardando_aprovacao").map(asSeen);
+    },
+
+    async listMembers(signal) {
+      await wait(latencyMs, signal);
+      requireManager();
+      return {
+        active: team.filter((member) => member.status === "ativo").map(asSeen),
+        removed: team
+          .filter((member) => ["ex_monitor", "conselheiro", "inativo"].includes(member.status))
+          .map(asSeen),
+      };
+    },
+
+    async approve(id, role) {
+      await wait(latencyMs);
+      requireManager();
+      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
+    },
+
+    async reject(id) {
+      await wait(latencyMs);
+      requireManager();
+      find(id).status = "recusado";
+    },
+
+    async changeRole(id, role) {
+      await wait(latencyMs);
+      requireManager();
+      const member = find(id);
+      Object.assign(member, { role, role_label: ROLE_LABELS[role] });
+      member.wasHeadMonitor ||= role === "monitor_chefe";
+    },
+
+    async remove(id) {
+      await wait(latencyMs);
+      requireManager();
+      const member = find(id);
+      member.status = asSeen(member).removal_status ?? "ex_monitor";
+    },
+
+    async reactivate(id, role) {
+      await wait(latencyMs);
+      requireManager();
+      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
     },
 
     async listLists(signal) {

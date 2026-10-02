@@ -19,6 +19,11 @@ export type Account = Schemas["AccountResponse"];
 export type RegisterRequest = Schemas["RegisterRequest"];
 export type ProfileUpdate = Schemas["ProfileUpdate"];
 export type Treatment = Account["treatment"];
+export type Role = Account["role"];
+/** Uma conta vista no gerenciamento (Sprint 15). Nunca traz o tratamento. */
+export type ManagedAccount = Schemas["ManagedAccount"];
+export type MembersResponse = Schemas["MembersResponse"];
+export type AccountStatus = ManagedAccount["status"];
 
 export type Category = Violation["category"];
 export type ValidationStatus = ValidateResponse["status"];
