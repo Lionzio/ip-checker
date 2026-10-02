@@ -1,21 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
-import { ApiError } from "../services/client";
+import { BUTTON, errorMessage, INPUT } from "../ui";
 
 interface LoginProps {
   onSignIn: (login: string, password: string) => Promise<void>;
-}
-
-function messageFor(error: unknown): string {
-  if (error instanceof ApiError) {
-    // A API já manda a mensagem certa para cada caso (FR-25): credenciais inválidas, domínio,
-    // cadastro aguardando, recusado ou removido, e a espera depois de muitas tentativas.
-    if (error.retryAfterS !== null && error.status === 429) {
-      return `${error.message} Tente de novo em ${error.retryAfterS} s.`;
-    }
-    return error.message;
-  }
-  return "Não foi possível falar com o servidor. Verifique a conexão e tente de novo.";
 }
 
 /** Entrar com nome ou e-mail institucional e senha (FR-25). O Google entra na Sprint 16. */
@@ -32,7 +20,8 @@ export function Login({ onSignIn }: LoginProps) {
     try {
       await onSignIn(login, password);
     } catch (caught) {
-      setError(messageFor(caught));
+      // A API manda a mensagem certa para cada caso (FR-25).
+      setError(errorMessage(caught));
       setSending(false);
     }
   }
@@ -48,7 +37,7 @@ export function Login({ onSignIn }: LoginProps) {
           required
           value={login}
           onChange={(event) => setLogin(event.target.value)}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+          className={INPUT}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -60,7 +49,7 @@ export function Login({ onSignIn }: LoginProps) {
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900"
+          className={INPUT}
         />
       </label>
       {error !== null && (
@@ -72,7 +61,7 @@ export function Login({ onSignIn }: LoginProps) {
         <button
           type="submit"
           disabled={sending}
-          className="rounded-md bg-blue-700 px-5 py-2 font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className={BUTTON}
         >
           Entrar
         </button>

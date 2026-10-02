@@ -71,11 +71,110 @@ describe("App sem sessão (FR-22)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Tente de novo em 600 s.");
   });
 
-  it("explica que o cadastro ainda não abriu", async () => {
-    renderApp(createMockClient({ latencyMs: 0 }), "/registrar");
+  it("registra com e-mail institucional e pede a confirmação do e-mail (FR-23)", async () => {
+    const client = createMockClient({ latencyMs: 0 });
+    const sent: unknown[] = [];
+    const register = client.register.bind(client);
+    client.register = (request) => {
+      sent.push(request);
+      return register(request);
+    };
+    const user = renderApp(client, "/registrar");
 
-    expect(await screen.findByRole("heading", { name: "Registrar" })).toBeInTheDocument();
-    expect(screen.getByText(/ainda não está disponível/)).toBeInTheDocument();
+    await user.type(await screen.findByLabelText("Nome"), "Ana Lima");
+    await user.type(screen.getByLabelText("E-mail institucional"), "Ana@CIN.ufpe.br");
+    const button = screen.getByRole("button", { name: "Registrar" });
+    await user.type(screen.getByLabelText("Senha"), "fraca");
+    expect(screen.getByText(/Pelo menos 9 caracteres/)).toHaveTextContent("(falta)");
+    expect(button).toBeDisabled();
+    await user.clear(screen.getByLabelText("Senha"));
+    await user.type(screen.getByLabelText("Senha"), "Senha-forte-1");
+    expect(screen.getByText(/Pelo menos 9 caracteres/)).toHaveTextContent("(atendido)");
+    await user.type(screen.getByLabelText("Curso"), "Ciência da Computação");
+    await user.click(screen.getByLabelText(/Feminino/));
+    await user.click(button);
+
+    expect(await screen.findByRole("heading", { name: "Confirme o seu e-mail" })).toBeInTheDocument();
+    expect(screen.getByText("ana@cin.ufpe.br")).toBeInTheDocument();
+    expect(sent).toEqual([
+      {
+        name: "Ana Lima",
+        email: "Ana@CIN.ufpe.br",
+        password: "Senha-forte-1",
+        course: "Ciência da Computação",
+        treatment: "feminino",
+      },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Não recebi: enviar de novo" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("enviamos um novo link");
+  });
+
+  it("mostra a recusa do registro", async () => {
+    const client = createMockClient({ latencyMs: 0 });
+    client.register = () =>
+      Promise.reject(new ApiError(409, "NAME_TAKEN", "Este nome já é usado por outra conta; ele serve para entrar."));
+    const user = renderApp(client, "/registrar");
+
+    await user.type(await screen.findByLabelText("Nome"), "Ana");
+    await user.type(screen.getByLabelText("E-mail institucional"), "ana@cin.ufpe.br");
+    await user.type(screen.getByLabelText("Senha"), "Senha-forte-1");
+    await user.type(screen.getByLabelText("Curso"), "CC");
+    await user.click(screen.getByLabelText(/Neutro/));
+    await user.click(screen.getByRole("button", { name: "Registrar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Este nome já é usado");
+  });
+
+  it("confirma o e-mail só pelo botão, nunca ao abrir o link (ameaça 21)", async () => {
+    const client = createMockClient({ latencyMs: 0 });
+    const tokens: string[] = [];
+    client.verifyEmail = (token) => {
+      tokens.push(token);
+      return Promise.resolve();
+    };
+    const user = renderApp(client, "/verificar?token=abc");
+
+    const button = await screen.findByRole("button", { name: "Confirmar meu e-mail" });
+    expect(tokens).toEqual([]);
+    await user.click(button);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("E-mail confirmado");
+    expect(tokens).toEqual(["abc"]);
+  });
+
+  it("avisa quando o link não traz o código", async () => {
+    renderApp(createMockClient({ latencyMs: 0 }), "/verificar");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("não traz o código de verificação");
+  });
+
+  it("mostra quando o link venceu", async () => {
+    const client = createMockClient({ latencyMs: 0 });
+    client.verifyEmail = () =>
+      Promise.reject(new ApiError(422, "INVALID_TOKEN", "O link de verificação é inválido, já foi usado ou venceu. Peça um novo."));
+    const user = renderApp(client, "/verificar?token=velho");
+
+    await user.click(await screen.findByRole("button", { name: "Confirmar meu e-mail" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("já foi usado ou venceu");
+  });
+
+  it("leva para Entrar quem abre o perfil sem sessão", async () => {
+    renderApp(createMockClient({ latencyMs: 0 }), "/perfil");
+
+    expect(await screen.findByLabelText("Nome ou e-mail institucional")).toBeInTheDocument();
+  });
+
+  it("mostra os créditos com GitHub e LinkedIn", async () => {
+    renderApp(createMockClient({ latencyMs: 0 }));
+
+    expect(await screen.findByText(/Desenvolvido por Vinícius Leôncio \(Lionzio\)/)).toHaveTextContent(
+      "Desenvolvido por Vinícius Leôncio (Lionzio) para a disciplina de Introdução a Programação (IP).",
+    );
+    expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/Lionzio");
+    const linkedin = screen.getByRole("link", { name: "LinkedIn" });
+    expect(linkedin).toHaveAttribute("href", "https://www.linkedin.com/in/vin%C3%ADcius-le%C3%B4ncio-3226a9366/");
+    expect(linkedin).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("leva qualquer outro endereço para o início", async () => {
@@ -185,6 +284,75 @@ describe("App com sessão", () => {
     renderApp(createMockClient({ latencyMs: 0, signedIn: true }), "/entrar");
 
     expect(await screen.findByLabelText("Código Python")).toBeInTheDocument();
+  });
+
+  it("edita o perfil e mostra o nome novo no cabeçalho (FR-26)", async () => {
+    const user = renderApp(createMockClient({ latencyMs: 0, signedIn: true }), "/perfil");
+
+    const name = await screen.findByLabelText("Nome");
+    expect(name).toHaveValue(DEMO_ACCOUNT.name);
+    await user.clear(name);
+    await user.type(name, "Monitora Renomeada");
+    await user.click(screen.getByLabelText(/Neutro/));
+    await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
+
+    expect(await screen.findByText("Perfil salvo.")).toBeInTheDocument();
+    expect(screen.getByRole("banner")).toHaveTextContent("Monitora Renomeada");
+  });
+
+  it("troca a senha com a atual e a nova repetida", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    const calls: [string | null, string][] = [];
+    client.changePassword = (current, next) => {
+      calls.push([current, next]);
+      return Promise.resolve();
+    };
+    const user = renderApp(client, "/perfil");
+
+    await user.type(await screen.findByLabelText("Senha atual"), "Senha-antiga-1");
+    await user.type(screen.getByLabelText("Nova senha"), "Senha-nova-2!");
+    await user.type(screen.getByLabelText("Repita a nova senha"), "Senha-nova-X");
+    expect(screen.getByRole("alert")).toHaveTextContent("não são iguais");
+    expect(screen.getByRole("button", { name: "Alterar a senha" })).toBeDisabled();
+    await user.clear(screen.getByLabelText("Repita a nova senha"));
+    await user.type(screen.getByLabelText("Repita a nova senha"), "Senha-nova-2!");
+    await user.click(screen.getByRole("button", { name: "Alterar a senha" }));
+
+    expect(await screen.findByText(/Senha alterada/)).toBeInTheDocument();
+    expect(calls).toEqual([["Senha-antiga-1", "Senha-nova-2!"]]);
+  });
+
+  it("numa conta sem senha, define uma sem pedir a atual", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.me = () => Promise.resolve({ ...DEMO_ACCOUNT, has_password: false });
+    const calls: [string | null, string][] = [];
+    client.changePassword = (current, next) => {
+      calls.push([current, next]);
+      return Promise.resolve();
+    };
+    const user = renderApp(client, "/perfil");
+
+    expect(await screen.findByRole("heading", { name: "Definir uma senha" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Senha atual")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nova senha"), "Senha-nova-2!");
+    await user.type(screen.getByLabelText("Repita a nova senha"), "Senha-nova-2!");
+    await user.click(screen.getByRole("button", { name: "Definir a senha" }));
+
+    expect(await screen.findByText(/Senha alterada/)).toBeInTheDocument();
+    expect(calls).toEqual([[null, "Senha-nova-2!"]]);
+  });
+
+  it("mostra o erro da senha atual errada", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.changePassword = () => Promise.reject(new ApiError(403, "INVALID_CREDENTIALS", "A senha atual está incorreta."));
+    const user = renderApp(client, "/perfil");
+
+    await user.type(await screen.findByLabelText("Senha atual"), "Errada-1!");
+    await user.type(screen.getByLabelText("Nova senha"), "Senha-nova-2!");
+    await user.type(screen.getByLabelText("Repita a nova senha"), "Senha-nova-2!");
+    await user.click(screen.getByRole("button", { name: "Alterar a senha" }));
+
+    expect(await screen.findByText("A senha atual está incorreta.")).toBeInTheDocument();
   });
 
   it("sem o modo demonstração, não mostra o aviso de respostas simuladas", async () => {

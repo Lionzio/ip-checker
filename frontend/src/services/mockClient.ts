@@ -21,6 +21,7 @@ export const DEMO_ACCOUNT: Account = {
   treatment: "feminino",
   role: "monitor",
   role_label: "Monitor",
+  has_password: true,
 };
 
 type Finding = Pick<Violation, "rule_id" | "category" | "construct" | "allowed_from_list" | "message">;
@@ -199,6 +200,38 @@ export function createMockClient({
     async logout() {
       await wait(latencyMs);
       account = null;
+    },
+
+    async register(request) {
+      await wait(latencyMs);
+      return request.email.trim().toLowerCase();
+    },
+
+    async verifyEmail(token) {
+      await wait(latencyMs);
+      if (token === "") {
+        throw new ApiError(422, "INVALID_TOKEN", "O link de verificação é inválido, já foi usado ou venceu. Peça um novo.");
+      }
+    },
+
+    async resendVerification() {
+      await wait(latencyMs);
+    },
+
+    async updateProfile(update) {
+      await wait(latencyMs);
+      const current = account ?? DEMO_ACCOUNT;
+      account = {
+        ...current,
+        name: update.name ?? current.name,
+        course: update.course ?? current.course,
+        treatment: update.treatment ?? current.treatment,
+      };
+      return account;
+    },
+
+    async changePassword() {
+      await wait(latencyMs);
     },
 
     async listLists(signal) {
