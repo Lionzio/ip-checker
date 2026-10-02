@@ -19,7 +19,7 @@ def test_valid_code(base_ruleset: CompiledRuleset) -> None:
 
     assert result.status == "valid"
     assert result.violations == ()
-    assert result.ruleset_version == "2026.2.0"
+    assert result.ruleset_version == "2026.2.1"
     assert result.list_number == 1
     assert not result.truncated
 
@@ -72,6 +72,22 @@ def test_call_args_predicate(call_args: int | None, params: dict[str, int], expe
     fact = Fact("builtin:type", 1, 1, 1, 5, call_args=call_args)
 
     assert holds(Condition(predicate="call_args", params=params), fact) is expected
+
+
+@pytest.mark.parametrize(
+    ("zip_header_args", "expected"),
+    [
+        (2, True),
+        (3, True),
+        (1, False),  # uma sequência só não varia mais de um índice
+        (None, False),  # fora do cabeçalho do for
+    ],
+)
+def test_zip_in_for_header_predicate(zip_header_args: int | None, expected: bool) -> None:
+    fact = Fact("builtin:zip", 1, 13, 1, 16, call_args=2, zip_header_args=zip_header_args)
+    condition = Condition(predicate="zip_in_for_header", params={"min": 2})
+
+    assert holds(condition, fact) is expected
 
 
 def test_missing_condition_always_holds() -> None:

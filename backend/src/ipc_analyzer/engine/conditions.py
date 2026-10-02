@@ -24,7 +24,16 @@ def _call_args(fact: Fact, params: Mapping[str, int]) -> bool:
     return fact.call_args >= low and (high is None or fact.call_args <= high)
 
 
-PREDICATES: Mapping[str, Predicate] = MappingProxyType({"call_args": _call_args})
+def _zip_in_for_header(fact: Fact, params: Mapping[str, int]) -> bool:
+    """O fato é o ``zip()`` que serve de iterável a um ``for`` (ou o alvo desse ``for``), com
+    ``min`` ou mais sequências: "zip() somente para variar mais de um índice no comando for" (R-37).
+    """
+    return fact.zip_header_args is not None and fact.zip_header_args >= params["min"]
+
+
+PREDICATES: Mapping[str, Predicate] = MappingProxyType(
+    {"call_args": _call_args, "zip_in_for_header": _zip_in_for_header}
+)
 
 
 def holds(condition: Condition | None, fact: Fact) -> bool:

@@ -13,7 +13,7 @@
   list: 2
   code: |
     from math import sqrt
-  expect: [R-05 ANULACAO 1]
+  expect: [R-02 EXIGENCIA 1, R-05 ANULACAO 1]
 
 - id: R-05-import-alias-L6
   rule: R-05
@@ -42,7 +42,7 @@
         x = int(input())
     except:
         x = 1
-  expect: [R-06 ANULACAO 2]
+  expect: [R-02 EXIGENCIA 1, R-06 ANULACAO 2]
 
 - id: R-06-try-finally-L6
   rule: R-06
@@ -66,14 +66,14 @@
   list: 2
   code: |
     s = set()
-  expect: [R-07 ANULACAO 1]
+  expect: [R-02 EXIGENCIA 1, R-07 ANULACAO 1]
 
 - id: R-07-set-comprehension-L2
   rule: R-07
   list: 2
   code: |
     s = {c for c in "abc"}
-  expect: [R-07 ANULACAO 1]
+  expect: [R-02 EXIGENCIA 1, R-07 ANULACAO 1]
 
 - id: R-07-frozenset-L1
   rule: R-07
@@ -96,7 +96,7 @@
     x = int(input())
     if x < 0:
         exit(0)
-  expect: [R-08 ANULACAO 3]
+  expect: [R-02 EXIGENCIA 1, R-08 ANULACAO 3]
 
 - id: R-08-exit-reference-L6
   rule: R-08
@@ -227,7 +227,7 @@
   list: 2
   code: |
     print(None)
-  expect: [R-13 ANULACAO 1]
+  expect: [R-02 EXIGENCIA 1, R-13 ANULACAO 1]
 
 - id: R-14-global-L1
   rule: R-14
@@ -242,7 +242,7 @@
   code: |
     x = 1
     global y
-  expect: [R-14 ANULACAO 2]
+  expect: [R-02 EXIGENCIA 1, R-14 ANULACAO 2]
 
 - id: R-14-global-L6
   rule: R-14

@@ -220,13 +220,14 @@
         print(x)
   expect: [R-04 NAO_CONSTA 5]
 
-- id: E30-zip-before-sprint-13
-  rule: R-04
+- id: E30-zip-aliased-to-leave-the-for-header
+  rule: R-37
   list: 2
   code: |
-    for a, b in zip("ab", "cd"):
+    z = zip
+    for a, b in z("ab", "cd"):
         print(a, b)
-  expect: [R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
+  expect: [R-37 NAO_CONSTA 1, R-37 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
 
 - id: E31-builtin-aliased-then-called
   rule: R-04

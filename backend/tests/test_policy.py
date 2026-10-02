@@ -100,16 +100,16 @@ def test_same_rule_at_the_same_position_is_reported_once(base_ruleset: CompiledR
 
 
 def test_violations_are_sorted_and_truncated(base_ruleset: CompiledRuleset) -> None:
-    # Na Lista 2 não há exigência ativa: só as 5 violações R-13.
+    # Na Lista 3 ainda não há exigência ativa (Sprint 22): só as 5 violações R-13.
     parsed = parse_source("x = None\n" * 5, target=(3, 13))
     assert isinstance(parsed, ParsedSource)
     facts = extract_facts(parsed)
 
-    found, truncated = evaluate(facts, base_ruleset, 2, max_violations=3)
+    found, truncated = evaluate(facts, base_ruleset, 3, max_violations=3)
 
     assert [v.line for v in found] == [1, 2, 3]
     assert truncated
-    assert evaluate(facts, base_ruleset, 2)[1] is False
+    assert evaluate(facts, base_ruleset, 3)[1] is False
 
 
 def test_structural_facts_are_accepted(base_ruleset: CompiledRuleset) -> None:
@@ -245,7 +245,8 @@ def test_requirement_comes_first_and_is_never_truncated(base_ruleset: CompiledRu
 
 
 def test_requirements_only_apply_to_their_list(base_ruleset: CompiledRuleset) -> None:
-    # A Lista 2 ainda não tem exigência ativa (Sprint 20).
-    assert all_violations("n = int(input())\nprint(n)\n", 2, base_ruleset) == []
+    # A Lista 3 ainda não tem exigência ativa (Sprint 22).
+    assert all_violations("n = int(input())\nprint(n)\n", 3, base_ruleset) == []
     assert [r.id for r in base_ruleset.requirements_for(1)] == ["R-02"]
-    assert base_ruleset.requirements_for(2) == ()
+    assert [r.id for r in base_ruleset.requirements_for(2)] == ["R-02"]
+    assert base_ruleset.requirements_for(3) == ()

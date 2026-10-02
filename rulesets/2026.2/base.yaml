@@ -5,12 +5,11 @@
 # este arquivo só traduz o documento para o vocabulário de fatos do motor
 # (ver docs/mapping-R-xx.md e o guia em rulesets/README.md).
 #
-# Situação na Sprint 1: R-03 a R-36 (proibições gerais, Lista 1 e Lista 2 sem o zip).
-# O zip condicional (R-37) depende de predicado e entra na Sprint 20;
-# as Listas 3 a 6 entram nas Sprints 22 e 23.
+# Situação na Sprint 20: R-03 a R-37 (proibições gerais, Listas 1 e 2, com o zip condicional)
+# e a exigência R-02 das Listas 1 e 2. As Listas 3 a 6 entram nas Sprints 22 e 23.
 
 schema_version: 2
-ruleset_version: "2026.2.0"
+ruleset_version: "2026.2.1"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -306,7 +305,7 @@ rules:
     source: "Permissões, p.2, Lista 1: type()"
 
   # ---------------------------------------------------------------------------
-  # Lista 2 - Laços de repetição (R-34 a R-36; R-37, zip, entra na Sprint 20).
+  # Lista 2 - Laços de repetição (R-34 a R-37).
   # ---------------------------------------------------------------------------
   - id: "R-34"
     name: "Laços de repetição (for, while)"
@@ -330,15 +329,41 @@ rules:
     match: ["cmp:In"]
     message: "O operador in com range() só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 2: \"in\" para range()"
+  - id: "R-37"
+    name: "zip() no for"
+    effect: allow
+    since_list: 2
+    # A condição vale nas Listas 2 a 4; a partir da Lista 5, zip() é livre (R-64, decisão Q-04).
+    until_list: 4
+    # zip() só como o iterável do comando for, com 2 ou mais sequências; o alvo "a, b" desse for
+    # (target:for_unpack) só é permitido junto com ele (decisão Q-02, item d).
+    match:
+      - fact: "builtin:zip"
+        when:
+          predicate: zip_in_for_header
+          params: { min: 2 }
+          message: "zip() só é permitido como o iterável do for, com 2 ou mais sequências, para variar mais de um índice: for a, b in zip(x, y)."
+      - fact: "target:for_unpack"
+        when:
+          predicate: zip_in_for_header
+          params: { min: 2 }
+          message: "Vários nomes no for (for a, b in ...) só são permitidos com zip() de 2 ou mais sequências, para variar mais de um índice."
+    message: "zip() no for (for a, b in zip(x, y)) só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 2: zip() somente para variar mais de um índice no comando for; decisão Q-04"
 
 # -----------------------------------------------------------------------------
 # Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).
 # A falta vira uma violação EXIGENCIA da solução inteira. Os fatos que comprovam cada
-# assunto seguem a decisão Q-05. Listas 2 a 6 entram nas Sprints 20 e 23.
+# assunto seguem a decisão Q-05. Listas 3 a 6 entram nas Sprints 22 e 23.
 # -----------------------------------------------------------------------------
 requirements:
   - id: "R-02"
     list: 1
     require_any: ["node:If", "node:IfExp"]
     message: "A solução não usa o assunto da Lista 1: é obrigatório um comando condicional (if, com ou sem elif/else) ou o operador ternário. Sem ele, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+  - id: "R-02"
+    list: 2
+    require_any: ["node:For", "node:While"]
+    message: "A solução não usa o assunto da Lista 2: é obrigatório um laço de repetição (for ou while). Sem ele, a questão é anulada."
     source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"

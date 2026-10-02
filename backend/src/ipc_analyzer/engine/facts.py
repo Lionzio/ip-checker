@@ -36,6 +36,9 @@ class Fact:
     #: Número de argumentos da chamada quando o fato é a função chamada (``type('C', (), {})``
     #: -> 3); ``None`` quando não é chamada. Usado pelos predicados (``engine/conditions.py``).
     call_args: int | None = None
+    #: Número de sequências do ``zip()`` que é o iterável de um ``for``, no próprio ``builtin:zip``
+    #: e no ``target:for_unpack`` desse ``for``; ``None`` fora desse caso (predicado da R-37).
+    zip_header_args: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,8 +70,23 @@ class _SourceMap:
             self._encoded[line] = encoded
         return len(encoded[:byte_offset].decode("utf-8", errors="ignore")) + 1
 
-    def fact(self, name: str, start: Position, end: Position, call_args: int | None = None) -> Fact:
-        return Fact(name, start[0], self.column(*start), end[0], self.column(*end), call_args)
+    def fact(
+        self,
+        name: str,
+        start: Position,
+        end: Position,
+        call_args: int | None = None,
+        zip_header_args: int | None = None,
+    ) -> Fact:
+        return Fact(
+            name,
+            start[0],
+            self.column(*start),
+            end[0],
+            self.column(*end),
+            call_args,
+            zip_header_args,
+        )
 
 
 def _const_kind(value: object) -> str:
@@ -99,6 +117,9 @@ class _Extractor:
     def __init__(self, parsed: ParsedSource) -> None:
         self._bindings: Bindings = collect_bindings(parsed.tree)
         self._map = _SourceMap(parsed.source)
+        #: ``id`` do nome ``zip`` e do alvo de cada ``for`` cujo iterável é ``zip(...)`` -> número
+        #: de sequências. O ``for`` é visitado antes dos filhos, então a marca chega a tempo.
+        self._zip_header: dict[int, int] = {}
         self.facts: list[Fact] = []
 
     def emit(
@@ -107,9 +128,12 @@ class _Extractor:
         anchor: ast.AST,
         start: Position | None = None,
         call_args: int | None = None,
+        zip_header_args: int | None = None,
     ) -> None:
         self.facts.append(
-            self._map.fact(name, start or start_of(anchor), end_of(anchor), call_args)
+            self._map.fact(
+                name, start or start_of(anchor), end_of(anchor), call_args, zip_header_args
+            )
         )
 
     def is_student(self, name: str, visit: _Visit, node: ast.AST) -> bool:
@@ -136,7 +160,7 @@ class _Extractor:
         elif visit.role == "call_arg":
             self.emit("call:star_args", node)
         elif visit.role == "for_target":
-            self.emit("target:for_unpack", node)
+            self.emit("target:for_unpack", node, zip_header_args=self._zip_header.get(id(node)))
         else:
             self.emit(f"node:{type(node).__name__}", anchor)
         self._specific_facts(visit)
@@ -146,7 +170,12 @@ class _Extractor:
         match node:
             case ast.Name(ctx=ast.Load()):
                 if is_builtin_name(node.id) and not self.is_student(node.id, visit, node):
-                    self.emit(f"builtin:{node.id}", node, call_args=visit.call_args)
+                    self.emit(
+                        f"builtin:{node.id}",
+                        node,
+                        call_args=visit.call_args,
+                        zip_header_args=self._zip_header.get(id(node)),
+                    )
             case ast.Attribute():
                 self.emit(
                     f"method:{node.attr}",
@@ -215,10 +244,11 @@ class _Extractor:
             callee_is_student = isinstance(node.func, ast.Name) and self.is_student(
                 node.func.id, visit, node
             )
-        elif isinstance(node, (ast.For, ast.AsyncFor)) and isinstance(
-            node.target, (ast.Tuple, ast.List)
-        ):
-            for_target = id(node.target)
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            if isinstance(node.target, (ast.Tuple, ast.List)):
+                for_target = id(node.target)
+            if isinstance(node, ast.For):
+                self._mark_zip_header(node, visit)
 
         children: list[_Visit] = []
         for child in ast.iter_child_nodes(node):
@@ -241,6 +271,20 @@ class _Extractor:
                 )
             )
         return children
+
+    def _mark_zip_header(self, loop: ast.For, visit: _Visit) -> None:
+        """Marca o ``zip()`` built-in que é o iterável do ``for`` e o alvo desse ``for`` (R-37).
+
+        Só o comando ``for`` conta: ``zip()`` numa compreensão ou como argumento de outra chamada
+        dentro do cabeçalho não é marcado.
+        """
+        match loop.iter:
+            case ast.Call(func=ast.Name(id="zip") as func, args=args, keywords=keywords):
+                if self.is_student(func.id, visit, func):
+                    return
+                count = len(args) + len(keywords)
+                self._zip_header[id(func)] = count
+                self._zip_header[id(loop.target)] = count
 
 
 def extract_facts(parsed: ParsedSource) -> tuple[Fact, ...]:

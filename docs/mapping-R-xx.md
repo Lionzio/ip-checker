@@ -44,6 +44,12 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | `f(x=1)` com função do aluno | `call:user_kwarg` → R-04 | A R-59 ("parâmetros") inclui argumentos nomeados na chamada? |
 | `for a, b in pares:` na L3 ou depois | `target:for_unpack` | A R-40 (tuplas) deve casar `target:for_unpack` a partir da L3, além da R-37 (zip, L2–L4). |
 | `f"{x!r}"`, `f"{x!s}"`, `f"{x!a}"` | Aceito como parte da f-string (R-31) | A conversão chama `repr()`, `str()` ou `ascii()` por baixo. Deve contar como esses built-ins (`repr` e `ascii` não constam)? |
+| `[a + b for a, b in zip(x, y)]` na L3 ou L4 | O `zip` não está no comando `for`, então cai na R-37 (condição não atendida) | O `for` de uma *list comprehension* (R-40) conta como "comando for" para a R-37? |
+
+**Para a Sprint 23 (não é decisão nova, é consequência da Q-04):** a R-37 vai até a L4, e o
+`target:for_unpack` só é permitido por ela. Quando a R-64 liberar o `zip` na L5, ela precisa casar
+também o `target:for_unpack` com o mesmo predicado, senão `for a, b in zip(x, y)` cairia na R-04 na
+L5 e na L6.
 
 ## Decisões aplicadas
 
@@ -99,7 +105,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | R-34 | `node:For`, `node:While` | No ruleset |
 | R-35 | `builtin:range` | No ruleset |
 | R-36 | `cmp:In` | No ruleset |
-| R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (≥ 2 argumentos), Listas 2–4 | Sprint 20 |
+| R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (`zip()` built-in como o iterável do comando `for`, com ≥ 2 argumentos), Listas 2–4 | No ruleset (Sprint 20) |
 | R-38–R-43 | `node:List`; `node:Tuple`; `node:ListComp`; `node:Subscript`; `node:Slice` | Sprint 22 |
 | R-44 | `cmp:In` | Sprint 22 |
 | R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | Sprint 22 |

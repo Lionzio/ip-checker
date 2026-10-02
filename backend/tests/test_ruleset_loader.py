@@ -114,8 +114,20 @@ INVALID_CASES: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
     ("fato repetido", lambda d: _second_rule(d).update(match=["node:For", "node:For"]), "repetido"),
     (
         "predicado desconhecido",
-        lambda d: _second_rule(d).update(match=[_conditional("builtin:zip", "zip_in_for_header")]),
+        lambda d: _second_rule(d).update(match=[_conditional("builtin:zip", "zip_anywhere")]),
         "predicado desconhecido",
+    ),
+    (
+        "zip_in_for_header sem min",
+        lambda d: _second_rule(d).update(match=[_conditional("builtin:zip", "zip_in_for_header")]),
+        "min maior ou igual a 1",
+    ),
+    (
+        "zip_in_for_header com max",
+        lambda d: _second_rule(d).update(
+            match=[_conditional("builtin:zip", "zip_in_for_header", {"min": 2, "max": 3})]
+        ),
+        "parâmetro desconhecido",
     ),
     (
         "parâmetro desconhecido",
