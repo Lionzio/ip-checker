@@ -62,8 +62,9 @@ class DeveloperSettings:
 @dataclass(frozen=True, slots=True)
 class ApiSettings:
     analyzer_url: str = "http://127.0.0.1:8001"
-    #: Listas liberadas para os alunos (ENABLED_LISTS). O MVP libera só a Lista 1.
-    enabled_lists: frozenset[int] = field(default_factory=lambda: frozenset({1}))
+    #: Listas habilitadas na ferramenta (ENABLED_LISTS): a Lista 1 desde o MVP e a Lista 2 desde a
+    #: Sprint 20. Uma lista só é habilitada depois que as regras dela estão no ruleset e testadas.
+    enabled_lists: frozenset[int] = field(default_factory=lambda: frozenset({1, 2}))
     #: Tempo máximo de uma chamada ao analyzer: 2 s de análise mais a ida e a volta.
     analyzer_timeout_s: float = 3.0
     #: Corpo máximo aceito antes de ler a requisição. Nas Fases 0 e 2 o Caddy também aplica esse
