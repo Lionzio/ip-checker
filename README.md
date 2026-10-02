@@ -119,8 +119,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 15 | Cargos e gerenciamento: S15-01 política de cargos testada pela matriz completa; S15-02 API de gerenciamento (fila, aprovar com cargo, recusar, alterar cargo, remover e reativar); S15-03 tela Gerenciar com etiquetas coloridas e e2e com axe | Concluída |
 | 16 | Google e mesma origem: S16-01 entrada e registro pelo Google (OIDC com `state`, `nonce` e PKCE, provedor falso nos testes); S16-02 página e API na mesma origem no piloto (*rewrite* da Vercel), migrações antes do deploy e verificações com login; S16-03 suíte de segurança da autenticação pela borda | Concluída (o primeiro deploy com login confirma a P-15) |
 | 17 | Painel de plágio: S17-01 motor de similaridade (*winnowing* em tokens e na AST, corpus de pares); S17-02 comparação no analisador isolado e `POST /api/v1/similarity` com as faixas do FR-29; S17-03 painel com as duas áreas, a faixa escrita e o aviso de indício | Concluída |
-| 18 | Feedback por LLM: provedores e montagem | Próxima |
-| 19 | Marco 2: feedback na página e liberação para a equipe | Planejada |
+| 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
+| 19 | Marco 2: feedback na página e liberação para a equipe | Próxima |
 | 20 | Lista 2 e validação com gabaritos | Planejada |
 | 21 | Telemetria mínima e alertas | Planejada |
 | 22 | Listas 3 e 4 | Planejada |
