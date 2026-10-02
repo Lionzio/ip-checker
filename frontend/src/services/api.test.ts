@@ -9,7 +9,8 @@ const ACCOUNT: Account = {
   course: "Não informado",
   treatment: "masculino",
   role: "desenvolvedor",
-  role_label: "Monitor",
+  role_label: "Monitor e desenvolvedor",
+  has_password: true,
 };
 
 const RESPONSE: ValidateResponse = {

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pageFetch } from "./pageFetch";
 
 /**
  * Acesso restrito à equipe (S13-03, FR-22): sem sessão, só Registrar e Entrar, e a API não devolve
@@ -69,15 +70,17 @@ test("o cookie da sessão é HttpOnly, Secure e SameSite=Lax", async ({ page }) 
 test("sair encerra a sessão e volta para o início", async ({ page }) => {
   // Uma sessão própria: sair com a sessão guardada derrubaria a dos outros testes.
   await page.goto("/entrar");
-  await page.getByLabel("Nome ou e-mail institucional").fill("Vinícius Leôncio");
+  await page.getByLabel("Nome ou e-mail institucional").fill(process.env.E2E_NAME ?? "");
   await page.getByLabel("Senha").fill(process.env.E2E_PASSWORD ?? "");
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByText("Vinícius Leôncio")).toBeVisible();
-  await expect(page.getByText("· Monitor")).toBeVisible();
+  const header = page.getByRole("banner");
+  await expect(header).toContainText(process.env.E2E_NAME ?? "");
+  await expect(header).toContainText("Monitor e desenvolvedor");
+
+  expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(200);
 
   await page.getByRole("button", { name: "Sair" }).click();
 
   await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
-  const me = await page.request.get("/api/v1/auth/me");
-  expect(me.status()).toBe(401);
+  expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(401);
 });

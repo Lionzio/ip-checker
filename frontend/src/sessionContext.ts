@@ -18,6 +18,8 @@ export interface SessionValue {
   /** A API respondeu 401 durante o uso: a sessão venceu ou foi encerrada. */
   expire(): void;
   retry(): void;
+  /** O perfil mudou (FR-26): a página passa a mostrar a conta nova. */
+  setAccount(account: Account): void;
 }
 
 export const SessionContext = createContext<SessionValue | null>(null);

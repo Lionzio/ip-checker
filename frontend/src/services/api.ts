@@ -5,7 +5,16 @@
  * Desde a Sprint 13, toda rota da equipe exige a sessão, que vai sozinha no cookie HttpOnly da
  * mesma origem: a página nunca vê nem guarda o identificador.
  */
-import type { Account, ApiErrorCode, ErrorResponse, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
+import type {
+  Account,
+  ApiErrorCode,
+  ErrorResponse,
+  ListInfo,
+  ProfileUpdate,
+  RegisterRequest,
+  ValidateRequest,
+  ValidateResponse,
+} from "../types/api";
 import { type ApiClient, ApiError } from "./client";
 
 const UNAVAILABLE_MESSAGE = "O serviço está indisponível no momento. Tente de novo em alguns segundos.";
@@ -32,6 +41,10 @@ async function readJson(response: Response): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+function json(method: string, body: unknown): RequestInit {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
 export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): ApiClient {
@@ -84,6 +97,25 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     async logout() {
       // Corpo vazio, mas presente: a borda recusa POST sem Content-Length (S10).
       await call<null>("/api/v1/auth/logout", { method: "POST", body: "" });
+    },
+    async register(request: RegisterRequest) {
+      const body = await call<{ email: string }>("/api/v1/auth/register", json("POST", request));
+      return body.email;
+    },
+    async verifyEmail(token) {
+      await call<unknown>("/api/v1/auth/verify", json("POST", { token }));
+    },
+    async resendVerification(email) {
+      await call<null>("/api/v1/auth/verify/resend", json("POST", { email }));
+    },
+    updateProfile(update: ProfileUpdate) {
+      return call<Account>("/api/v1/profile", json("PATCH", update));
+    },
+    async changePassword(currentPassword, newPassword) {
+      await call<null>(
+        "/api/v1/profile/password",
+        json("POST", { current_password: currentPassword, new_password: newPassword }),
+      );
     },
   };
 }

@@ -3,7 +3,8 @@
 O teste canário manda à API, ligada ao analyzer de verdade, todo tipo de requisição com um
 marcador escondido no código, na URL, nos cabeçalhos, na questão e, desde a Sprint 13, na senha,
 no login e no cookie de sessão, e confere que o marcador e o IP aparecem 0 vezes em tudo o que os
-dois serviços escreveram (DoD, itens 13 e 20).
+dois serviços escreveram (DoD, itens 13 e 20). Desde a Sprint 14, também no registro, no link de
+verificação, no reenvio, no perfil e na troca de senha.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api import logging as api_logging
+from ipc_api.mail import MemorySender
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
 
@@ -144,6 +146,64 @@ def test_canary_never_reaches_the_logs(
     assert written.count(CANARY) == 0
     assert written.count(CLIENT_IP) == 0
     assert "testclient" not in written  # o "IP" que o TestClient informa ao servidor
+
+
+def test_account_routes_never_log_passwords_tokens_or_personal_data(
+    capfd: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    sender = MemorySender()
+    app, store = make_app(UNLIMITED, sender=sender)
+    headers = {"X-Forwarded-For": CLIENT_IP, "User-Agent": f"{CANARY}-navegador"}
+    email = f"{CANARY.lower()}@cin.ufpe.br"
+    member = {
+        "name": f"Pessoa {CANARY}",
+        "email": email,
+        "password": f"{CANARY}-Senha!",
+        "course": f"Curso {CANARY}",
+        "treatment": "neutro",
+    }
+    with authed_client(app, store) as api:
+
+        def post(path: str, payload: dict[str, str]) -> int:
+            return api.post(path, json=payload, headers=headers).status_code
+
+        statuses = [
+            post("/api/v1/auth/register", member),
+            post("/api/v1/auth/register", {**member, "password": CANARY.lower()}),
+            post("/api/v1/auth/register", {**member, "email": f"{CANARY}@gmail.com"}),
+            post("/api/v1/auth/register", {**member, "name": f"{CANARY}@cin.ufpe.br"}),
+            post("/api/v1/auth/verify/resend", {"email": email}),
+        ]
+        # O reenvio troca o link; vale o da última mensagem.
+        body = sender.messages[-1].get_body(("plain",))
+        assert body is not None
+        token = body.get_content().split("token=", 1)[1].split()[0]
+        statuses += [
+            post("/api/v1/auth/verify", {"token": token}),
+            post("/api/v1/auth/verify", {"token": CANARY + "A" * 32}),
+            post("/api/v1/auth/verify", {"token": CANARY}),
+            api.patch(
+                "/api/v1/profile",
+                json={"name": f"Outra {CANARY}", "course": f"Curso {CANARY}"},
+                headers=headers,
+            ).status_code,
+            # O membro do teste não tem senha: a primeira define uma; a segunda erra a atual.
+            post("/api/v1/profile/password", {"new_password": f"{CANARY}-Nova!"}),
+            post(
+                "/api/v1/profile/password",
+                {"current_password": f"{CANARY}-Errada!", "new_password": f"{CANARY}-Outra!"},
+            ),
+        ]
+
+    assert statuses == [201, 422, 422, 422, 202, 200, 422, 422, 200, 204, 403]
+    out, err = capfd.readouterr()
+    written = out + err + caplog.text
+    assert json_lines(out)
+    assert written.count(CANARY) == 0
+    assert written.count(CANARY.lower()) == 0
+    assert written.count(token) == 0
+    assert written.count(CLIENT_IP) == 0
 
 
 def test_canary_never_reaches_the_logs_when_the_analyzer_is_down(

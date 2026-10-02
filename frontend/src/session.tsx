@@ -4,6 +4,7 @@
  */
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, type AuthClient } from "./services/client";
+import type { Account } from "./types/api";
 import { EXPIRED_NOTICE, SessionContext, type SessionState } from "./sessionContext";
 
 export function SessionProvider({ client, children }: { client: AuthClient; children: ReactNode }) {
@@ -47,14 +48,16 @@ export function SessionProvider({ client, children }: { client: AuthClient; chil
 
   const expire = useCallback(() => setState({ status: "anonymous", notice: EXPIRED_NOTICE }), []);
 
+  const setAccount = useCallback((account: Account) => setState({ status: "signed-in", account }), []);
+
   const retry = useCallback(() => {
     setState({ status: "loading" });
     setAttempt((value) => value + 1);
   }, []);
 
   const value = useMemo(
-    () => ({ state, signIn, signOut, expire, retry }),
-    [state, signIn, signOut, expire, retry],
+    () => ({ state, signIn, signOut, expire, retry, setAccount }),
+    [state, signIn, signOut, expire, retry, setAccount],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

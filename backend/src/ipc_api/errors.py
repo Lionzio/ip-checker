@@ -26,6 +26,12 @@ class ErrorCode(StrEnum):
     ACCOUNT_REMOVED = "ACCOUNT_REMOVED"
     ORIGIN_MISMATCH = "ORIGIN_MISMATCH"
     DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE"
+    # Registro, verificação e perfil (Sprint 14, FR-23 e FR-26).
+    NAME_TAKEN = "NAME_TAKEN"
+    EMAIL_TAKEN = "EMAIL_TAKEN"
+    WEAK_PASSWORD = "WEAK_PASSWORD"  # noqa: S105 - código de erro, não um segredo
+    INVALID_TOKEN = "INVALID_TOKEN"  # noqa: S105 - código de erro, não um segredo
+    EMAIL_UNAVAILABLE = "EMAIL_UNAVAILABLE"
 
 
 #: Espera sugerida ao cliente quando o analyzer não responde.

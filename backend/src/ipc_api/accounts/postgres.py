@@ -18,6 +18,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    NewAccount,
     Role,
     SessionRecord,
     SignupMethod,
@@ -110,7 +111,9 @@ class PostgresAccountStore:
                 list(seed.emails),
             )
             if len(owners) > 1:
-                raise AccountConflict("os e-mails do desenvolvedor estão em contas diferentes")
+                raise AccountConflict(
+                    "os e-mails do desenvolvedor estão em contas diferentes", "email"
+                )
             if owners:
                 account_id = owners[0]["account_id"]
                 await connection.execute(
@@ -143,6 +146,136 @@ class PostgresAccountStore:
                 )
             row = await connection.fetchrow(_BY_ID, account_id)
         return _account(row)
+
+    async def register(self, new: NewAccount, now: datetime) -> Account:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            existing = await connection.fetchrow(
+                "SELECT a.id, a.status::text AS status FROM app.account_email e "
+                "JOIN app.account a ON a.id = e.account_id WHERE e.email = $1 FOR UPDATE OF a",
+                new.email,
+            )
+            if existing is not None and existing["status"] != Status.AGUARDANDO_VERIFICACAO:
+                raise AccountConflict("e-mail já cadastrado", "email")
+            other = await connection.fetchval(
+                "SELECT id FROM app.account WHERE lower(name) = lower($1)", new.name
+            )
+            if other is not None and (existing is None or other != existing["id"]):
+                raise AccountConflict("nome já cadastrado", "nome")
+            try:
+                if existing is not None:
+                    account_id = existing["id"]
+                    await connection.execute(
+                        "UPDATE app.account SET name = $2, course = $3, treatment = $4, "
+                        "password_hash = $5 WHERE id = $1",
+                        account_id,
+                        new.name,
+                        new.course,
+                        new.treatment.value,
+                        new.password_hash,
+                    )
+                    await connection.execute(
+                        "UPDATE app.email_token SET used_at = $2 "
+                        "WHERE account_id = $1 AND used_at IS NULL",
+                        account_id,
+                        now,
+                    )
+                else:
+                    account_id = await connection.fetchval(
+                        "INSERT INTO app.account (name, course, treatment, status, password_hash, "
+                        "signup_method, created_at) VALUES ($1, $2, $3, 'aguardando_verificacao', "
+                        "$4, 'senha', $5) RETURNING id",
+                        new.name,
+                        new.course,
+                        new.treatment.value,
+                        new.password_hash,
+                        now,
+                    )
+                    await connection.execute(
+                        "INSERT INTO app.account_email (email, account_id) VALUES ($1, $2)",
+                        new.email,
+                        account_id,
+                    )
+            except asyncpg.UniqueViolationError as exc:
+                field = "email" if "account_email" in str(exc.constraint_name) else "nome"
+                raise AccountConflict("nome ou e-mail já cadastrado", field) from None
+            row = await connection.fetchrow(_BY_ID, account_id)
+        return _account(row)
+
+    async def add_email_token(
+        self, token_hash: bytes, account_id: UUID, purpose: str, now: datetime, expires_at: datetime
+    ) -> None:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            await connection.execute(
+                "UPDATE app.email_token SET used_at = $3 "
+                "WHERE account_id = $1 AND purpose = $2 AND used_at IS NULL",
+                account_id,
+                purpose,
+                now,
+            )
+            await connection.execute(
+                "INSERT INTO app.email_token (token_hash, account_id, purpose, expires_at) "
+                "VALUES ($1, $2, $3, $4)",
+                token_hash,
+                account_id,
+                purpose,
+                expires_at,
+            )
+
+    async def verify_email(self, token_hash: bytes, now: datetime) -> Account | None:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            # O token é gasto mesmo que a conta já não espere a verificação: uso único.
+            account_id = await connection.fetchval(
+                "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
+                "AND purpose = 'verificacao' AND used_at IS NULL AND expires_at > $2 "
+                "RETURNING account_id) "
+                "UPDATE app.account a SET status = 'aguardando_aprovacao' FROM t "
+                "WHERE a.id = t.account_id AND a.status = 'aguardando_verificacao' RETURNING a.id",
+                token_hash,
+                now,
+            )
+            if account_id is None:
+                return None
+            await connection.execute(
+                "UPDATE app.account_email SET verified_at = $2 WHERE account_id = $1",
+                account_id,
+                now,
+            )
+            row = await connection.fetchrow(_BY_ID, account_id)
+        return _account(row)
+
+    async def update_profile(
+        self, account_id: UUID, name: str, course: str, treatment: Treatment
+    ) -> Account:
+        try:
+            async with _guard():
+                await self._pool.execute(
+                    "UPDATE app.account SET name = $2, course = $3, treatment = $4 WHERE id = $1",
+                    account_id,
+                    name,
+                    course,
+                    treatment.value,
+                )
+                row = await self._pool.fetchrow(_BY_ID, account_id)
+        except StoreUnavailable as exc:
+            if isinstance(exc.__cause__, asyncpg.UniqueViolationError):
+                raise AccountConflict("nome já cadastrado", "nome") from None
+            raise
+        return _account(row)
+
+    async def set_password(self, account_id: UUID, password_hash: str) -> None:
+        async with _guard():
+            await self._pool.execute(
+                "UPDATE app.account SET password_hash = $2 WHERE id = $1", account_id, password_hash
+            )
+
+    async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
+        async with _guard():
+            await self._pool.execute(
+                "DELETE FROM app.session WHERE account_id = $1 "
+                "AND ($2::bytea IS NULL OR token_hash <> $2)",
+                account_id,
+                keep,
+            )
 
     async def create_session(
         self, token_hash: bytes, account_id: UUID, now: datetime, expires_at: datetime

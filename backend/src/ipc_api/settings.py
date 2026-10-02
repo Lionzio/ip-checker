@@ -8,9 +8,11 @@ from dataclasses import dataclass, field
 
 from ipc_api.accounts.models import email_domain_allowed, normalize_email
 from ipc_api.admission import AdmissionConfig
+from ipc_api.auth.accounts import AccountsConfig
 from ipc_api.auth.sessions import SessionConfig
 from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
+from ipc_api.mail import EmailConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 
 KIB = 1024
@@ -44,9 +46,10 @@ def parse_emails(value: str) -> tuple[str, ...]:
 class DeveloperSettings:
     """A conta criada por *seed* na subida da API (P-14, S13-01)."""
 
-    name: str = "Vinícius Leôncio"
-    #: Editável no perfil (Sprint 14); o seed não altera um curso já gravado.
-    course: str = "Não informado"
+    #: Nome completo e curso do autor (02/10/2026). Editáveis no perfil; o seed não altera uma
+    #: conta que já existe.
+    name: str = "Vinícius Leôncio de Andrade Corrêa Gondim"
+    course: str = "Ciência da Computação"
     emails: tuple[str, ...] = DEVELOPER_EMAILS
     #: Senha inicial, usada só na criação da conta. Sem ela, a conta nasce sem senha.
     initial_password: str | None = field(default=None, repr=False)
@@ -84,6 +87,10 @@ class ApiSettings:
     #: Origens aceitas, além da própria, em requisições que mudam estado (CSRF, ADR-04).
     allowed_origins: tuple[str, ...] = ()
     developer: DeveloperSettings = field(default_factory=DeveloperSettings)
+    #: Envio de e-mail (S14-02, Q-17): SMTP do provedor ou, no compose, o Mailpit.
+    email: EmailConfig = field(default_factory=EmailConfig)
+    #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
+    accounts: AccountsConfig = field(default_factory=AccountsConfig)
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -109,6 +116,10 @@ class ApiSettings:
             login_throttle=_login_throttle_from_env(env),
             allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),
             developer=_developer_from_env(env),
+            email=EmailConfig.from_env(env),
+            accounts=AccountsConfig(
+                public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
+            ),
         )
 
 

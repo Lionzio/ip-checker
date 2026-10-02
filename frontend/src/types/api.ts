@@ -16,6 +16,9 @@ export type ListInfo = Schemas["ListInfo"];
 export type ErrorResponse = Schemas["ErrorResponse"];
 /** A conta logada (Sprint 13). O tratamento só aparece para o próprio titular. */
 export type Account = Schemas["AccountResponse"];
+export type RegisterRequest = Schemas["RegisterRequest"];
+export type ProfileUpdate = Schemas["ProfileUpdate"];
+export type Treatment = Account["treatment"];
 
 export type Category = Violation["category"];
 export type ValidationStatus = ValidateResponse["status"];

@@ -126,6 +126,14 @@ services:
       IPC_DATABASE_URL: postgresql://ipc_api:${IPC_DB_API_PASSWORD}@db:5432/ipchecker
       # Senha inicial da conta do desenvolvedor (P-14): usada só na criação da conta.
       IPC_DEV_INITIAL_PASSWORD: ${IPC_DEV_INITIAL_PASSWORD:?defina IPC_DEV_INITIAL_PASSWORD em deploy/.env}
+      # E-mail de verificação (S14-02): o Mailpit captura tudo, sem enviar nada para fora. Na
+      # Fase 2, o SMTP do provedor entra por estas mesmas variáveis (Q-17).
+      IPC_SMTP_HOST: mailpit
+      IPC_SMTP_PORT: "1025"
+      IPC_SMTP_SECURITY: none
+      IPC_EMAIL_FROM: IP-Checker <nao-responda@ip-checker.local>
+      # De onde sai o link do e-mail; nunca do Host da requisição (ameaça 21).
+      IPC_PUBLIC_BASE_URL: http://127.0.0.1:${IPC_HTTP_PORT:-8180}
     healthcheck:
       test:
         - CMD
@@ -152,6 +160,28 @@ services:
         condition: service_completed_successfully
     # analyzer_net para chamar o analyzer; edge_net para receber o Caddy; db_net para o banco.
     networks: [analyzer_net, edge_net, db_net]
+    restart: unless-stopped
+
+  mailpit:
+    # Só no desenvolvimento (Fase 0): recebe os e-mails da api e os mostra numa página local,
+    # sem enviá-los a ninguém. Mensagens só em memória (/tmp).
+    image: axllent/mailpit:v1.27@sha256:e22dce5b36f93c77082e204a3942fb6b283b7896e057458400a4c88344c3df68
+    user: "10001:10001"
+    environment:
+      MP_MAX_MESSAGES: "500"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    memswap_limit: 128m
+    # edge_net: a api chega a mailpit:1025. Só a página de leitura é publicada, em 127.0.0.1.
+    networks: [edge_net]
+    ports:
+      - "127.0.0.1:${IPC_MAIL_UI_PORT:-8125}:8025"
     restart: unless-stopped
 
   web:

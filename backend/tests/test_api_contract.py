@@ -207,10 +207,16 @@ def contract(api_app: FastAPI) -> Any:
     return schema
 
 
-# Login e logout gerados ao acaso recusariam credenciais ou encerrariam a sessão dos demais casos;
-# os status deles são provocados um a um em test_auth_statuses_follow_the_contract.
+# Login, logout, registro e troca de senha gerados ao acaso recusariam credenciais, encerrariam a
+# sessão dos demais casos ou esbarrariam em nomes já usados; os status deles são provocados um a
+# um nos testes de acesso restrito abaixo.
 schema = schemathesis.pytest.from_fixture("contract").exclude(
-    path=["/api/v1/auth/login", "/api/v1/auth/logout"]
+    path=[
+        "/api/v1/auth/login",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/register",
+        "/api/v1/profile/password",
+    ]
 )
 
 

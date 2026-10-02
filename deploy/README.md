@@ -2,7 +2,8 @@
 
 Configuração de implantação do IP-Checker. Nas Fases 0 (local) e 2 (servidor do CIn), o compose
 sobe a borda `web` (Caddy com a SPA, S9-02), a `api` pública (S8-01), o `analyzer` endurecido
-(S6-01) e, desde a Sprint 13, o banco de contas e sessões (`db`) com o serviço `migrate`. No piloto
+(S6-01), desde a Sprint 13, o banco de contas e sessões (`db`) com o serviço `migrate` e, desde a
+Sprint 14, o `mailpit`, que captura os e-mails de verificação no desenvolvimento. No piloto
 (Fase 1, 2027.1), a página vai para a Vercel e o backend para o Render, com o isolamento por
 processo (seção "Piloto").
 
@@ -13,6 +14,7 @@ processo (seção "Piloto").
 | `web` | `edge_net` | `127.0.0.1:8180` | UID 10001, só leitura, sem capabilities (nem a de portas baixas), `no-new-privileges`, 64 processos, 128 MB |
 | `db` | `db_net` (interna, sem saída) | nenhuma | PostgreSQL 17 por digest, usuário `postgres` (70) sem passar pelo root, só leitura (dados num volume), sem capabilities, `no-new-privileges`, 100 processos, 256 MB |
 | `migrate` | `db_net` | nenhuma | Roda uma vez a cada subida e sai; é o único com a senha de administrador do banco |
+| `mailpit` | `edge_net` | `127.0.0.1:8125` (página de leitura) | Só no desenvolvimento; UID 10001, só leitura, mensagens só em memória, sem capabilities, `no-new-privileges`, 64 processos, 128 MB. Não envia nada para fora |
 
 A `api` entra no banco com o usuário `ipc_api`, membro de `ipc_app`: lê e escreve contas e sessões,
 mas não altera o esquema nem apaga contas (`backend/tests/test_migrations.py`).
@@ -173,7 +175,32 @@ curl -s http://127.0.0.1:8180/ready
 
 Entrar pela página com `vlacg@cin.ufpe.br` (ou `vinicius.leoncio@ufpe.br`, ou o nome) e a senha do
 `IPC_DEV_INITIAL_PASSWORD`. Ela só vale na criação da conta: trocar o `deploy/.env` depois não muda a
-senha de uma conta que já existe.
+senha de uma conta que já existe. Para trocá-la, use **Perfil > Alterar a senha**; a troca encerra
+as outras sessões da conta e mantém a atual.
+
+### Registro e e-mails (S14)
+
+Quem é da equipe se registra em **Registrar** com o e-mail `@cin.ufpe.br` ou `@ufpe.br`. No
+compose, o e-mail de verificação não sai da máquina: o Mailpit o captura e mostra em
+<http://127.0.0.1:8125>. O link abre a página **Confirmar o e-mail**, e só o botão dela gasta o
+token (um antivírus que abre o link não confirma nada). Depois, o cadastro aguarda a aprovação,
+que chega na Sprint 15.
+
+Para enviar e-mails de verdade (Fase 2 ou piloto), configure um dos transportes na `api`:
+
+| Variável | Uso |
+|---|---|
+| `IPC_EMAIL_TRANSPORT` | `smtp` (padrão) ou `brevo` (API HTTPS do Brevo) |
+| `IPC_SMTP_HOST`, `IPC_SMTP_PORT`, `IPC_SMTP_SECURITY` (`starttls`, `ssl` ou `none`), `IPC_SMTP_USERNAME`, `IPC_SMTP_PASSWORD` | Transporte `smtp`. Sem `IPC_SMTP_HOST`, o envio fica desligado e o registro responde 503 `EMAIL_UNAVAILABLE` |
+| `IPC_EMAIL_API_KEY` | Transporte `brevo`; obrigatória com ele (sem ela, a API não sobe) |
+| `IPC_EMAIL_FROM` | Remetente, por exemplo `IP-Checker <endereco@cin.ufpe.br>` |
+| `IPC_PUBLIC_BASE_URL` | Endereço público da página. O link é montado só a partir dele, nunca do `Host` da requisição |
+
+O plano gratuito do Render bloqueia as portas SMTP de saída (25, 465 e 587) desde 09/2025; no
+piloto, use o transporte `brevo` ou outro serviço por HTTPS. O provedor e o remetente ainda são
+a questão Q-17 do blueprint: com um remetente `@cin.ufpe.br` enviado por terceiros, confira com o
+NTI se a política de e-mail do CIn (SPF, DKIM e DMARC) aceita o envio, para os e-mails não caírem
+no spam.
 
 O banco não publica porta na máquina, então não disputa a 5432 nem a 6432 de outros projetos. Para
 consultá-lo, entre no contêiner:

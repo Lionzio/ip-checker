@@ -1,9 +1,12 @@
 import { Navigate, Route, Routes, useNavigate } from "react-router";
+import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
 import { Checker } from "./pages/Checker";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
+import { Profile } from "./pages/Profile";
 import { Register } from "./pages/Register";
+import { Verify } from "./pages/Verify";
 import type { ApiClient } from "./services/client";
 import { SessionProvider } from "./session";
 import { useSession } from "./sessionContext";
@@ -24,7 +27,7 @@ export function App({ client, demoMode = false }: AppProps) {
 }
 
 function Shell({ client, demoMode }: Required<AppProps>) {
-  const { state, signIn, signOut, expire, retry } = useSession();
+  const { state, signIn, signOut, expire, retry, setAccount } = useSession();
   const navigate = useNavigate();
   const account = state.status === "signed-in" ? state.account : null;
 
@@ -38,10 +41,10 @@ function Shell({ client, demoMode }: Required<AppProps>) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AppHeader account={account} onSignOut={leave} />
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         {demoMode && (
           <p
             role="note"
@@ -83,11 +86,26 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/entrar"
               element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Login onSignIn={enter} />}
             />
-            <Route path="/registrar" element={<Register />} />
+            <Route
+              path="/registrar"
+              element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
+            />
+            <Route path="/verificar" element={<Verify client={client} />} />
+            <Route
+              path="/perfil"
+              element={
+                state.status === "signed-in" ? (
+                  <Profile client={client} account={state.account} onUpdated={setAccount} />
+                ) : (
+                  <Navigate to="/entrar" replace />
+                )
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}
       </main>
+      <AppFooter />
     </div>
   );
 }

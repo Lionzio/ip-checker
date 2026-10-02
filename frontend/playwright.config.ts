@@ -21,6 +21,7 @@ function fromDeployEnv(name: string): string | undefined {
 }
 
 process.env.E2E_LOGIN ??= "vlacg@cin.ufpe.br";
+process.env.E2E_NAME ??= "Vinícius Leôncio de Andrade Corrêa Gondim";
 process.env.E2E_PASSWORD ??= fromDeployEnv("IPC_DEV_INITIAL_PASSWORD") ?? "";
 
 export const STORAGE_STATE = "e2e/.auth/desenvolvedor.json";
@@ -41,13 +42,21 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["login"],
-      testIgnore: /limits\.spec\.ts/,
+      testIgnore: /(limits|account)\.spec\.ts/,
+    },
+    {
+      // Sozinho: a troca de senha encerra as outras sessões da conta do desenvolvedor.
+      name: "conta",
+      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+      dependencies: ["chromium"],
+      testMatch: /account\.spec\.ts/,
+      fullyParallel: false,
     },
     {
       // Por último: o limite é por conta, e todos os testes dividem a do desenvolvedor.
       name: "limite",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["chromium"],
+      dependencies: ["conta"],
       testMatch: /limits\.spec\.ts/,
     },
   ],

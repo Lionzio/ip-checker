@@ -122,6 +122,52 @@ class LoginRequest(_Strict):
     )
 
 
+Text120 = Annotated[str, StringConstraints(min_length=1, max_length=120)]
+Password = Annotated[str, StringConstraints(min_length=1, max_length=128)]
+Email = Annotated[str, StringConstraints(min_length=3, max_length=254)]
+SessionToken = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{43}$")]
+
+
+class RegisterRequest(_Strict):
+    name: Text120 = Field(description="Nome; único sem diferenciar maiúsculas e usado para entrar.")
+    email: Email = Field(description="E-mail institucional (@cin.ufpe.br ou @ufpe.br).")
+    password: Password = Field(
+        description="Pelo menos 9 caracteres, 1 letra maiúscula e 1 caractere especial."
+    )
+    course: Text120
+    treatment: TreatmentName = Field(description="Como a pessoa quer ser tratada no feedback.")
+
+
+class RegisterResponse(_Strict):
+    status: Literal["aguardando_verificacao"]
+    email: str = Field(description="Para onde o link de verificação foi enviado.")
+
+
+class VerifyRequest(_Strict):
+    token: SessionToken = Field(description="O token do link enviado por e-mail.")
+
+
+class VerifyResponse(_Strict):
+    status: Literal["aguardando_aprovacao"]
+
+
+class ResendRequest(_Strict):
+    email: Email
+
+
+class ProfileUpdate(_Strict):
+    name: Text120 | None = None
+    course: Text120 | None = None
+    treatment: TreatmentName | None = None
+
+
+class PasswordChange(_Strict):
+    current_password: Password | None = Field(
+        default=None, description="Obrigatória, a não ser numa conta criada só pelo Google."
+    )
+    new_password: Password
+
+
 class AccountResponse(_Strict):
     """A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."""
 
@@ -131,7 +177,13 @@ class AccountResponse(_Strict):
     treatment: TreatmentName
     role: RoleName
     role_label: str = Field(
-        description='Como o cargo aparece na interface; o desenvolvedor aparece como "Monitor".'
+        description=(
+            'Como o cargo aparece na interface; o desenvolvedor aparece como "Monitor e '
+            'desenvolvedor".'
+        )
+    )
+    has_password: bool = Field(
+        description="Falso numa conta criada pelo Google que ainda não definiu uma senha."
     )
 
 

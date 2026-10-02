@@ -21,12 +21,13 @@ from ipc_api.accounts.passwords import Passwords
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.app import create_app
 from ipc_api.auth.sessions import SECURE_COOKIE, new_token, token_hash
+from ipc_api.mail import MemorySender
 from ipc_api.settings import ApiSettings
 
 #: Senha inicial da conta do desenvolvedor nos testes.
 PASSWORD = "Senha-de-teste-1"
 DEV_EMAIL = "vlacg@cin.ufpe.br"
-DEV_NAME = "Vinícius Leôncio"
+DEV_NAME = "Vinícius Leôncio de Andrade Corrêa Gondim"
 COOKIE = SECURE_COOKIE
 #: HTTPS: o cookie é Secure, e o cliente de teste só o devolve numa conexão segura.
 BASE_URL = "https://testserver"
@@ -46,13 +47,16 @@ def make_app(
     analyzer_transport: httpx2.AsyncBaseTransport | None = None,
     store: MemoryAccountStore | None = None,
     clock: Callable[[], datetime] | None = None,
+    sender: MemorySender | None = None,
 ) -> tuple[FastAPI, MemoryAccountStore]:
+    """A API com repositório e e-mail em memória (as mensagens ficam em ``outbox(app)``)."""
     store = store if store is not None else MemoryAccountStore()
     app = create_app(
         with_developer(settings or ApiSettings()),
         analyzer_transport=analyzer_transport,
         account_store=store,
         passwords=FAST_PASSWORDS,
+        email_sender=sender if sender is not None else MemorySender(),
         **({"clock": clock} if clock is not None else {}),
     )
     return app, store

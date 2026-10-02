@@ -1,4 +1,4 @@
-"""Entrar, sair e a conta logada (S13-02; FR-22 e FR-25)."""
+"""Entrar, sair, a conta logada (S13-02) e o registro com verificação de e-mail (S14)."""
 
 from __future__ import annotations
 
@@ -6,13 +6,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
-from ipc_api.accounts.models import ROLE_LABELS, Account, StoreUnavailable
-from ipc_api.auth.deps import get_authenticator, require_active_account
+from ipc_api.accounts.models import ROLE_LABELS, Account, StoreUnavailable, Treatment
+from ipc_api.auth.accounts import AccountService
+from ipc_api.auth.deps import get_accounts, get_authenticator, require_active_account
 from ipc_api.auth.middleware import session_token
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
-from ipc_api.schemas import AccountResponse, LoginRequest
+from ipc_api.schemas import (
+    AccountResponse,
+    LoginRequest,
+    RegisterRequest,
+    RegisterResponse,
+    ResendRequest,
+    VerifyRequest,
+    VerifyResponse,
+)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["autenticação"])
 
@@ -31,6 +40,7 @@ def account_response(account: Account) -> AccountResponse:
         treatment=account.treatment.value,
         role=role.value,
         role_label=ROLE_LABELS[role],
+        has_password=account.password_hash is not None,
     )
 
 
@@ -114,3 +124,88 @@ async def me(
 ) -> AccountResponse:
     _no_store(response)
     return account_response(account)
+
+
+@router.post(
+    "/register",
+    status_code=201,
+    summary="Pede o cadastro com e-mail institucional e senha; envia o link de verificação",
+    responses=error_docs(
+        {
+            403: FORBIDDEN_ORIGIN,
+            409: "NAME_TAKEN ou EMAIL_TAKEN: o nome ou o e-mail já pertencem a outra conta.",
+            422: "DOMAIN_NOT_ALLOWED, WEAK_PASSWORD ou INVALID_INPUT.",
+            429: "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            503: (
+                "EMAIL_UNAVAILABLE (cadastro recebido, e-mail não enviado: peça um novo link) "
+                "ou DATABASE_UNAVAILABLE."
+            ),
+        }
+    ),
+)
+async def register(
+    body: RegisterRequest,
+    response: Response,
+    accounts: Annotated[AccountService, Depends(get_accounts)],
+) -> RegisterResponse:
+    _no_store(response)
+    try:
+        account = await accounts.register(
+            name=body.name,
+            email=body.email,
+            password=body.password,
+            course=body.course,
+            treatment=Treatment(body.treatment),
+        )
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return RegisterResponse(status="aguardando_verificacao", email=account.primary_email)
+
+
+@router.post(
+    "/verify",
+    summary="Confirma o e-mail pelo token do link; o cadastro vai para a fila de aprovação",
+    responses=error_docs(
+        {
+            403: FORBIDDEN_ORIGIN,
+            422: "INVALID_TOKEN (inválido, já usado ou vencido) ou INVALID_INPUT.",
+            429: "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            503: UNAVAILABLE,
+        }
+    ),
+)
+async def verify(
+    body: VerifyRequest,
+    response: Response,
+    accounts: Annotated[AccountService, Depends(get_accounts)],
+) -> VerifyResponse:
+    _no_store(response)
+    try:
+        await accounts.verify(body.token)
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return VerifyResponse(status="aguardando_aprovacao")
+
+
+@router.post(
+    "/verify/resend",
+    status_code=202,
+    response_class=Response,
+    summary="Reenvia o link de verificação; a resposta é a mesma, exista a conta ou não",
+    responses=error_docs(
+        {
+            403: FORBIDDEN_ORIGIN,
+            422: "DOMAIN_NOT_ALLOWED ou INVALID_INPUT.",
+            429: "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            503: UNAVAILABLE,
+        }
+    ),
+)
+async def resend(
+    body: ResendRequest, accounts: Annotated[AccountService, Depends(get_accounts)]
+) -> Response:
+    try:
+        await accounts.resend(body.email)
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return Response(status_code=202, headers={"Cache-Control": "no-store"})
