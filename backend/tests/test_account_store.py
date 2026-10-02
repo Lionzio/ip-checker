@@ -19,6 +19,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    NewAccount,
     Role,
     SignupMethod,
     Status,
@@ -26,7 +27,7 @@ from ipc_api.accounts.models import (
     Treatment,
 )
 from ipc_api.accounts.postgres import PostgresAccountStore
-from ipc_api.accounts.store import AccountStore, MemoryAccountStore
+from ipc_api.accounts.store import VERIFICATION, AccountStore, MemoryAccountStore
 
 NOW = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
 DEV = DeveloperSeed(
@@ -232,3 +233,100 @@ async def test_memory_store_can_simulate_an_outage() -> None:
 async def test_unreachable_postgres_is_unavailable() -> None:
     with pytest.raises(StoreUnavailable):
         await PostgresAccountStore.connect("postgresql://ninguem:x@127.0.0.1:9/nada")
+
+
+# --- Registro, verificação e perfil (Sprint 14) ------------------------------------------------
+
+NEW = NewAccount(
+    name="Ana Lima",
+    email="ana@cin.ufpe.br",
+    course="Ciência da Computação",
+    treatment=Treatment.FEMININO,
+    password_hash="$argon2id$ana",
+)
+LATER = NOW + timedelta(hours=1)
+
+
+async def test_registration_creates_a_pending_account(store: AccountStore) -> None:
+    account = await store.register(NEW, NOW)
+
+    assert (account.status, account.role) == (Status.AGUARDANDO_VERIFICACAO, None)
+    assert account.emails == ("ana@cin.ufpe.br",)
+    assert account.signup_method is SignupMethod.SENHA
+    assert account.password_hash == "$argon2id$ana"
+    found = await store.find_by_login("ana lima")
+    assert found is not None
+    assert found.id == account.id
+
+
+async def test_registration_conflicts(store: AccountStore) -> None:
+    await store.ensure_developer(DEV, NOW)
+    await insert(store, "Ativa", "ativa@ufpe.br")
+
+    with pytest.raises(AccountConflict) as email:
+        await store.register(replace(NEW, email="ativa@ufpe.br"), NOW)
+    with pytest.raises(AccountConflict) as name:
+        await store.register(replace(NEW, name="VINÍCIUS LEÔNCIO"), NOW)
+
+    assert (email.value.field, name.value.field) == ("email", "nome")
+
+
+async def test_pending_email_can_be_registered_again(store: AccountStore) -> None:
+    first = await store.register(replace(NEW, name="Impostor"), NOW)
+    await store.add_email_token(b"\x01" * 32, first.id, VERIFICATION, NOW, NOW + timedelta(days=1))
+
+    again = await store.register(NEW, LATER)
+
+    assert again.id == first.id
+    assert again.name == "Ana Lima"
+    assert await store.verify_email(b"\x01" * 32, LATER) is None  # o link antigo morreu
+
+
+async def test_verification_token_lifecycle(store: AccountStore) -> None:
+    account = await store.register(NEW, NOW)
+    expires = NOW + timedelta(hours=24)
+    await store.add_email_token(b"\x02" * 32, account.id, VERIFICATION, NOW, expires)
+    await store.add_email_token(b"\x03" * 32, account.id, VERIFICATION, NOW, expires)
+
+    assert await store.verify_email(b"\x02" * 32, LATER) is None  # substituído pelo mais novo
+    assert await store.verify_email(b"\x03" * 32, expires) is None  # vencido no limite
+    await store.add_email_token(b"\x04" * 32, account.id, VERIFICATION, NOW, expires)
+    verified = await store.verify_email(b"\x04" * 32, LATER)
+
+    assert verified is not None
+    assert verified.status is Status.AGUARDANDO_APROVACAO
+    assert await store.verify_email(b"\x04" * 32, LATER) is None  # uso único
+    assert await store.verify_email(b"\x05" * 32, LATER) is None  # desconhecido
+
+
+async def test_profile_and_password_updates(store: AccountStore) -> None:
+    await store.ensure_developer(DEV, NOW)
+    account = await insert(store, "Bia", "bia@ufpe.br")
+
+    updated = await store.update_profile(account.id, "Beatriz", "Engenharia", Treatment.NEUTRO)
+    await store.set_password(account.id, "$argon2id$nova")
+
+    assert (updated.name, updated.course, updated.treatment) == (
+        "Beatriz",
+        "Engenharia",
+        Treatment.NEUTRO,
+    )
+    reread = await store.get_account(account.id)
+    assert reread is not None
+    assert reread.password_hash == "$argon2id$nova"
+    with pytest.raises(AccountConflict):
+        await store.update_profile(account.id, "vinícius leôncio", "Outro", Treatment.NEUTRO)
+
+
+async def test_deleting_the_other_sessions_keeps_one(store: AccountStore) -> None:
+    account = await store.ensure_developer(DEV, NOW)
+    for byte in (b"\x0a", b"\x0b", b"\x0c"):
+        await store.create_session(byte * 32, account.id, NOW, NOW + timedelta(days=1))
+
+    await store.delete_sessions(account.id, keep=b"\x0b" * 32)
+
+    assert await store.get_session(b"\x0a" * 32) is None
+    assert await store.get_session(b"\x0b" * 32) is not None
+    assert await store.get_session(b"\x0c" * 32) is None
+    await store.delete_sessions(account.id)
+    assert await store.get_session(b"\x0b" * 32) is None

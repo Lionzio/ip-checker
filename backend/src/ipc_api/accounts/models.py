@@ -21,9 +21,10 @@ class Role(StrEnum):
     MONITOR = "monitor"
 
 
-#: Como cada cargo aparece na interface. O desenvolvedor aparece como monitor (P-14).
+#: Como cada cargo aparece na interface. O desenvolvedor aparece como "Monitor e desenvolvedor"
+#: (pedido do autor em 02/10/2026); no feedback, ele usa a linha "Monitor" da tabela do FR-30.
 ROLE_LABELS = {
-    Role.DESENVOLVEDOR: "Monitor",
+    Role.DESENVOLVEDOR: "Monitor e desenvolvedor",
     Role.PROFESSOR: "Professor",
     Role.MONITOR_CHEFE: "Monitor-chefe",
     Role.MONITOR: "Monitor",
@@ -107,8 +108,23 @@ class DeveloperSeed:
     password_hash: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class NewAccount:
+    """Um pedido de registro por e-mail e senha (FR-23), já validado."""
+
+    name: str
+    email: str
+    course: str
+    treatment: Treatment
+    password_hash: str
+
+
 class AccountConflict(Exception):  # noqa: N818 - é um estado, não um erro de programação
-    """Nome ou e-mail já pertence a outra conta."""
+    """Nome ou e-mail já pertence a outra conta. ``field`` diz qual dos dois."""
+
+    def __init__(self, message: str, field: str = "nome") -> None:
+        super().__init__(message)
+        self.field = field
 
 
 class StoreUnavailable(Exception):  # noqa: N818 - é um estado, não um erro de programação

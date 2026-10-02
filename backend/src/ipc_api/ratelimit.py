@@ -226,9 +226,19 @@ class ClientIdentifier:
 # Middleware
 # ---------------------------------------------------------------------------------------------
 
-#: Rotas limitadas: a que custa uma análise e a de login (o bloqueio por falhas fica em
-#: ``auth/throttle.py``). /health e /ready ficam livres para o monitoramento.
-LIMITED_ROUTES = frozenset({("POST", "/api/v1/validate"), ("POST", "/api/v1/auth/login")})
+#: Rotas limitadas: a que custa uma análise e as de conta que valem um ataque (login, registro,
+#: verificação, reenvio e troca de senha); o bloqueio por falhas fica em ``auth/throttle.py``.
+#: /health e /ready ficam livres para o monitoramento.
+LIMITED_ROUTES = frozenset(
+    {
+        ("POST", "/api/v1/validate"),
+        ("POST", "/api/v1/auth/login"),
+        ("POST", "/api/v1/auth/register"),
+        ("POST", "/api/v1/auth/verify"),
+        ("POST", "/api/v1/auth/verify/resend"),
+        ("POST", "/api/v1/profile/password"),
+    }
+)
 
 _MESSAGES: dict[LimitScope, str] = {
     "client": "Você fez muitas requisições em pouco tempo.",

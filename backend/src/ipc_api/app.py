@@ -28,15 +28,18 @@ from ipc_api.accounts.models import DeveloperSeed
 from ipc_api.accounts.passwords import Passwords, password_problems
 from ipc_api.accounts.store import AccountStore
 from ipc_api.admission import Admission
+from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.middleware import OriginCheckMiddleware, SessionMiddleware
 from ipc_api.auth.sessions import Authenticator
+from ipc_api.auth.throttle import LoginThrottle
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.edge import SecurityHeadersMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.logging import configure_logging
+from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
-from ipc_api.routes import auth, meta, validate
+from ipc_api.routes import auth, meta, profile, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 
 logger = logging.getLogger(__name__)
@@ -53,6 +56,19 @@ autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/au
 Todo erro segue o formato `{"error": {"code", "message", "retry_after_s"}}`. Toda resposta traz
 o cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.
 """
+
+
+#: Mensagem do 422 INVALID_INPUT de cada rota quando o corpo não segue o esquema.
+VALIDATION_MESSAGES = {
+    "/api/v1/validate": (
+        "Requisição inválida: envie code (texto), list_number (1 a 6) e, se houver, question_id."
+    ),
+    "/api/v1/auth/login": "Requisição inválida: envie login (nome ou e-mail) e password (senha).",
+    "/api/v1/auth/register": (
+        "Requisição inválida: envie name, email, password, course e treatment (masculino, "
+        "feminino ou neutro)."
+    ),
+}
 
 
 async def _connect_store(settings: ApiSettings) -> AccountStore:
@@ -87,10 +103,12 @@ def create_app(
     analyzer_transport: httpx2.AsyncBaseTransport | None = None,
     account_store: AccountStore | None = None,
     passwords: Passwords | None = None,
+    email_sender: EmailSender | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
-    repositório de contas em memória, um Argon2 mais barato e um relógio controlável."""
+    repositório de contas em memória, um Argon2 mais barato, um e-mail em memória e um relógio
+    controlável."""
     config = settings or ApiSettings.from_env()
     if config.json_logs:
         configure_logging()
@@ -110,6 +128,16 @@ def create_app(
                 config.session,
                 rate_limit=config.rate_limit,
                 throttle_config=config.login_throttle,
+                clock=clock,
+            )
+            app.state.accounts = AccountService(
+                store,
+                hasher,
+                email_sender or email_sender_for(config.email),
+                config.email,
+                config.accounts,
+                reserved_emails=config.developer.emails,
+                throttle=LoginThrottle(max_keys=config.login_throttle.max_keys),
                 clock=clock,
             )
             app.state.analyzer = client
@@ -151,7 +179,7 @@ def create_app(
         app.add_middleware(
             CORSMiddleware,
             allow_origins=list(config.cors_origins),
-            allow_methods=["GET", "POST"],
+            allow_methods=["GET", "POST", "PATCH"],
             allow_headers=["Content-Type"],
             expose_headers=["Retry-After", "X-Request-Id"],
             allow_credentials=False,
@@ -166,13 +194,9 @@ def create_app(
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, _exc: RequestValidationError) -> JSONResponse:
         request.state.outcome = ErrorCode.INVALID_INPUT
-        if request.url.path == "/api/v1/auth/login":
-            message = "Requisição inválida: envie login (nome ou e-mail) e password (senha)."
-        else:
-            message = (
-                "Requisição inválida: envie code (texto), list_number (1 a 6) e, se houver, "
-                "question_id."
-            )
+        message = VALIDATION_MESSAGES.get(
+            request.url.path, "Requisição inválida: confira os campos enviados."
+        )
         return error_response(422, ErrorCode.INVALID_INPUT, message)
 
     @app.exception_handler(HTTPException)
@@ -189,6 +213,7 @@ def create_app(
         return await http_exception_handler(request, exc)
 
     app.include_router(auth.router)
+    app.include_router(profile.router)
     app.include_router(validate.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)

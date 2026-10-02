@@ -8,6 +8,7 @@ from fastapi import Request, Security
 from fastapi.security import APIKeyCookie
 
 from ipc_api.accounts.models import Account
+from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.sessions import SECURE_COOKIE, Authenticator
 from ipc_api.errors import database_unavailable, unauthenticated
 
@@ -26,6 +27,11 @@ session_cookie = APIKeyCookie(
 def get_authenticator(request: Request) -> Authenticator:
     authenticator: Authenticator = request.app.state.authenticator
     return authenticator
+
+
+def get_accounts(request: Request) -> AccountService:
+    accounts: AccountService = request.app.state.accounts
+    return accounts
 
 
 def require_active_account(

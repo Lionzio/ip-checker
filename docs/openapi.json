@@ -167,6 +167,387 @@
         ]
       }
     },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Pede o cadastro com e-mail institucional e senha; envia o link de verificação",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NAME_TAKEN ou EMAIL_TAKEN: o nome ou o e-mail já pertencem a outra conta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DOMAIN_NOT_ALLOWED, WEAK_PASSWORD ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "EMAIL_UNAVAILABLE (cadastro recebido, e-mail não enviado: peça um novo link) ou DATABASE_UNAVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Confirma o e-mail pelo token do link; o cadastro vai para a fila de aprovação",
+        "operationId": "verify_api_v1_auth_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_TOKEN (inválido, já usado ou vencido) ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify/resend": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Reenvia o link de verificação; a resposta é a mesma, exista a conta ou não",
+        "operationId": "resend_api_v1_auth_verify_resend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DOMAIN_NOT_ALLOWED ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile": {
+      "patch": {
+        "tags": [
+          "perfil"
+        ],
+        "summary": "Edita o próprio nome, curso e tratamento",
+        "operationId": "update_profile_api_v1_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NAME_TAKEN: o nome já é usado por outra conta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/password": {
+      "post": {
+        "tags": [
+          "perfil"
+        ],
+        "summary": "Troca a senha (ou define uma, numa conta só do Google); as outras sessões caem",
+        "operationId": "change_password_api_v1_profile_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "INVALID_CREDENTIALS (senha atual incorreta) ou ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "WEAK_PASSWORD ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas tentativas com a senha atual errada. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/validate": {
       "post": {
         "tags": [
@@ -405,7 +786,12 @@
           "role_label": {
             "type": "string",
             "title": "Role Label",
-            "description": "Como o cargo aparece na interface; o desenvolvedor aparece como \"Monitor\"."
+            "description": "Como o cargo aparece na interface; o desenvolvedor aparece como \"Monitor e desenvolvedor\"."
+          },
+          "has_password": {
+            "type": "boolean",
+            "title": "Has Password",
+            "description": "Falso numa conta criada pelo Google que ainda não definiu uma senha."
           }
         },
         "additionalProperties": false,
@@ -416,7 +802,8 @@
           "course",
           "treatment",
           "role",
-          "role_label"
+          "role_label",
+          "has_password"
         ],
         "title": "AccountResponse",
         "description": "A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."
@@ -440,7 +827,12 @@
           "ACCOUNT_REJECTED",
           "ACCOUNT_REMOVED",
           "ORIGIN_MISMATCH",
-          "DATABASE_UNAVAILABLE"
+          "DATABASE_UNAVAILABLE",
+          "NAME_TAKEN",
+          "EMAIL_TAKEN",
+          "WEAK_PASSWORD",
+          "INVALID_TOKEN",
+          "EMAIL_UNAVAILABLE"
         ],
         "title": "ErrorCode"
       },
@@ -550,6 +942,85 @@
         ],
         "title": "LoginRequest"
       },
+      "PasswordChange": {
+        "properties": {
+          "current_password": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Password",
+            "description": "Obrigatória, a não ser numa conta criada só pelo Google."
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "New Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "new_password"
+        ],
+        "title": "PasswordChange"
+      },
+      "ProfileUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "course": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course"
+          },
+          "treatment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "masculino",
+                  "feminino",
+                  "neutro"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileUpdate"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -582,6 +1053,94 @@
           "ruleset_version"
         ],
         "title": "ReadyResponse"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Nome; único sem diferenciar maiúsculas e usado para entrar."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "description": "E-mail institucional (@cin.ufpe.br ou @ufpe.br)."
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "description": "Pelo menos 9 caracteres, 1 letra maiúscula e 1 caractere especial."
+          },
+          "course": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Course"
+          },
+          "treatment": {
+            "type": "string",
+            "enum": [
+              "masculino",
+              "feminino",
+              "neutro"
+            ],
+            "title": "Treatment",
+            "description": "Como a pessoa quer ser tratada no feedback."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "password",
+          "course",
+          "treatment"
+        ],
+        "title": "RegisterRequest"
+      },
+      "RegisterResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "aguardando_verificacao",
+            "title": "Status"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Para onde o link de verificação foi enviado."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "email"
+        ],
+        "title": "RegisterResponse"
+      },
+      "ResendRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResendRequest"
       },
       "SyntaxErrorInfo": {
         "properties": {
@@ -732,6 +1291,37 @@
           "truncated"
         ],
         "title": "ValidateResponse"
+      },
+      "VerifyRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Token",
+            "description": "O token do link enviado por e-mail."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "VerifyRequest"
+      },
+      "VerifyResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "aguardando_aprovacao",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "VerifyResponse"
       },
       "Violation": {
         "properties": {

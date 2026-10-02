@@ -35,6 +35,8 @@ ANALYZER_URL = "http://analyzer:8001"
 WEB_URL = "http://web:8080"
 #: Porta da borda nesta suíte, diferente da 8180 do compose de desenvolvimento.
 HTTP_PORT = "18180"
+#: Página do Mailpit nesta suíte, diferente da 8125 do compose de desenvolvimento.
+MAIL_UI_PORT = "18125"
 #: UID e GID do usuário do serviço na imagem.
 UID_GID = 10001
 #: Workers do pool no compose (PoolConfig padrão).
@@ -74,6 +76,7 @@ def docker(*args: str, timeout: float = 60, input: str | None = None, check: boo
         env={
             **os.environ,
             "IPC_HTTP_PORT": HTTP_PORT,
+            "IPC_MAIL_UI_PORT": MAIL_UI_PORT,
             "IPC_DB_ADMIN_PASSWORD": DB_ADMIN_PASSWORD,
             "IPC_DB_API_PASSWORD": DB_API_PASSWORD,
             "IPC_DEV_INITIAL_PASSWORD": DEV_PASSWORD,

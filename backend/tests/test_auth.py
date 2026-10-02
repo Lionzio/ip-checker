@@ -122,6 +122,9 @@ OPEN_ROUTES = {
     ("GET", "/ready"),
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/auth/logout"),
+    ("POST", "/api/v1/auth/register"),
+    ("POST", "/api/v1/auth/verify"),
+    ("POST", "/api/v1/auth/verify/resend"),
 }
 
 
@@ -173,10 +176,12 @@ def test_developer_enters_with_either_email_or_the_name(api: TestClient) -> None
         assert response.json() == {
             "name": DEV_NAME,
             "email": DEV_EMAIL,
-            "course": "Não informado",
+            "course": "Ciência da Computação",
             "treatment": "masculino",
             "role": "desenvolvedor",
-            "role_label": "Monitor",  # na interface, o desenvolvedor aparece como monitor
+            # Pedido do autor (02/10/2026); no feedback, a linha "Monitor" do FR-30.
+            "role_label": "Monitor e desenvolvedor",
+            "has_password": True,
         }
 
 
@@ -490,6 +495,7 @@ def test_me_shows_the_treatment_only_to_its_owner(
         "treatment": "neutro",
         "role": "monitor",
         "role_label": "Monitor",
+        "has_password": False,
     }
     assert response.headers["Cache-Control"] == "no-store"
 

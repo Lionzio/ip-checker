@@ -18,6 +18,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    NewAccount,
     Role,
     SessionRecord,
     SignupMethod,
@@ -26,6 +27,9 @@ from ipc_api.accounts.models import (
     Treatment,
     normalize_email,
 )
+
+#: Finalidade dos tokens de e-mail (5.2.5). A redefinição de senha não existe nesta versão.
+VERIFICATION = "verificacao"
 
 
 class AccountStore(Protocol):
@@ -41,6 +45,31 @@ class AccountStore(Protocol):
 
     async def ensure_developer(self, seed: DeveloperSeed, now: datetime) -> Account:
         """Cria a conta do desenvolvedor ou garante cargo, status e e-mails; nunca toca na senha."""
+
+    async def register(self, new: NewAccount, now: datetime) -> Account:
+        """Cria uma conta ``aguardando_verificacao`` (FR-23).
+
+        Um e-mail cuja conta ainda não foi verificada pode ser registrado de novo: os dados
+        pendentes são substituídos e os links antigos deixam de valer, porque uma conta não
+        verificada não prova nada (FR-25). Nome ou e-mail de outra conta: ``AccountConflict``.
+        """
+
+    async def add_email_token(
+        self, token_hash: bytes, account_id: UUID, purpose: str, now: datetime, expires_at: datetime
+    ) -> None:
+        """Guarda o hash de um token novo e invalida os anteriores da mesma finalidade."""
+
+    async def verify_email(self, token_hash: bytes, now: datetime) -> Account | None:
+        """Consome um token de verificação válido e leva a conta a ``aguardando_aprovacao``."""
+
+    async def update_profile(
+        self, account_id: UUID, name: str, course: str, treatment: Treatment
+    ) -> Account: ...
+
+    async def set_password(self, account_id: UUID, password_hash: str) -> None: ...
+
+    async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
+        """Encerra as sessões da conta, menos a de hash ``keep``."""
 
     async def create_session(
         self, token_hash: bytes, account_id: UUID, now: datetime, expires_at: datetime
@@ -68,12 +97,21 @@ class _Session:
     expires_at: datetime
 
 
+@dataclass(slots=True)
+class _EmailToken:
+    account_id: UUID
+    purpose: str
+    expires_at: datetime
+    used_at: datetime | None = None
+
+
 class MemoryAccountStore:
     """Mesmas regras do esquema ``app``: nome e e-mail únicos, e-mails em minúsculas."""
 
     def __init__(self) -> None:
         self.accounts: dict[UUID, Account] = {}
         self.sessions: dict[bytes, _Session] = {}
+        self.email_tokens: dict[bytes, _EmailToken] = {}
         self.available = True
         self._lock = asyncio.Lock()
 
@@ -87,13 +125,16 @@ class MemoryAccountStore:
     def _by_email(self, email: str) -> Account | None:
         return next((a for a in self.accounts.values() if email in a.emails), None)
 
+    def _by_name(self, name: str) -> Account | None:
+        folded = name.strip().lower()
+        return next((a for a in self.accounts.values() if a.name.lower() == folded), None)
+
     async def find_by_login(self, login: str) -> Account | None:
         self._check()
         text = login.strip()
         if "@" in text:
             return self._by_email(normalize_email(text))
-        folded = text.lower()
-        return next((a for a in self.accounts.values() if a.name.lower() == folded), None)
+        return self._by_name(text)
 
     async def get_account(self, account_id: UUID) -> Account | None:
         self._check()
@@ -103,8 +144,10 @@ class MemoryAccountStore:
         """Insere uma conta pronta (só para os testes montarem cenários)."""
         names = {a.name.lower() for a in self.accounts.values()}
         emails = {e for a in self.accounts.values() for e in a.emails}
-        if account.name.lower() in names or emails & set(account.emails):
-            raise AccountConflict("nome ou e-mail já cadastrado")
+        if account.name.lower() in names:
+            raise AccountConflict("nome já cadastrado", "nome")
+        if emails & set(account.emails):
+            raise AccountConflict("e-mail já cadastrado", "email")
         self.accounts[account.id] = account
         return account
 
@@ -114,7 +157,9 @@ class MemoryAccountStore:
             owners = {e: self._by_email(e) for e in seed.emails}
             ids = {owner.id for owner in owners.values() if owner is not None}
             if len(ids) > 1:
-                raise AccountConflict("os e-mails do desenvolvedor estão em contas diferentes")
+                raise AccountConflict(
+                    "os e-mails do desenvolvedor estão em contas diferentes", "email"
+                )
             if not ids:
                 return self.add(
                     Account(
@@ -138,6 +183,92 @@ class MemoryAccountStore:
             )
             self.accounts[updated.id] = updated
             return updated
+
+    async def register(self, new: NewAccount, now: datetime) -> Account:
+        self._check()
+        async with self._lock:
+            existing = self._by_email(new.email)
+            if existing is not None and existing.status is not Status.AGUARDANDO_VERIFICACAO:
+                raise AccountConflict("e-mail já cadastrado", "email")
+            other = self._by_name(new.name)
+            if other is not None and (existing is None or other.id != existing.id):
+                raise AccountConflict("nome já cadastrado", "nome")
+            if existing is not None:
+                for token in self.email_tokens.values():
+                    if token.account_id == existing.id and token.used_at is None:
+                        token.used_at = now
+            account = Account(
+                id=existing.id if existing is not None else uuid.uuid4(),
+                name=new.name,
+                course=new.course,
+                treatment=new.treatment,
+                role=None,
+                status=Status.AGUARDANDO_VERIFICACAO,
+                ja_foi_monitor_chefe=False,
+                password_hash=new.password_hash,
+                signup_method=SignupMethod.SENHA,
+                emails=(new.email,),
+                created_at=now if existing is None else existing.created_at,
+            )
+            self.accounts[account.id] = account
+            return account
+
+    async def add_email_token(
+        self, token_hash: bytes, account_id: UUID, purpose: str, now: datetime, expires_at: datetime
+    ) -> None:
+        self._check()
+        for token in self.email_tokens.values():
+            if (
+                token.account_id == account_id
+                and token.purpose == purpose
+                and token.used_at is None
+            ):
+                token.used_at = now
+        self.email_tokens[token_hash] = _EmailToken(account_id, purpose, expires_at)
+
+    async def verify_email(self, token_hash: bytes, now: datetime) -> Account | None:
+        self._check()
+        async with self._lock:
+            token = self.email_tokens.get(token_hash)
+            if (
+                token is None
+                or token.purpose != VERIFICATION
+                or token.used_at is not None
+                or token.expires_at <= now
+            ):
+                return None
+            token.used_at = now
+            account = self.accounts[token.account_id]
+            if account.status is not Status.AGUARDANDO_VERIFICACAO:
+                return None
+            verified = replace(account, status=Status.AGUARDANDO_APROVACAO)
+            self.accounts[verified.id] = verified
+            return verified
+
+    async def update_profile(
+        self, account_id: UUID, name: str, course: str, treatment: Treatment
+    ) -> Account:
+        self._check()
+        async with self._lock:
+            other = self._by_name(name)
+            if other is not None and other.id != account_id:
+                raise AccountConflict("nome já cadastrado", "nome")
+            updated = replace(
+                self.accounts[account_id], name=name, course=course, treatment=treatment
+            )
+            self.accounts[account_id] = updated
+            return updated
+
+    async def set_password(self, account_id: UUID, password_hash: str) -> None:
+        self._check()
+        self.accounts[account_id] = replace(self.accounts[account_id], password_hash=password_hash)
+
+    async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
+        self._check()
+        for token_hash in [
+            h for h, s in self.sessions.items() if s.account_id == account_id and h != keep
+        ]:
+            del self.sessions[token_hash]
 
     def add_session(
         self, token_hash: bytes, account_id: UUID, now: datetime, expires_at: datetime
