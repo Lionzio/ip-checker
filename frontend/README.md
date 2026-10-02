@@ -109,9 +109,10 @@ E2E_BASE_URL=http://127.0.0.1:28180 E2E_MAILPIT_URL=http://127.0.0.1:28125 E2E_P
 | `src/services/mockClient.ts` | Cliente simulado do modo demonstração |
 | `src/hooks/useValidateCode.ts` | Envio com tempo limite de 10 s e cancelamento da requisição anterior |
 | `src/components/` | Área de código, seletor de lista e painel de resultado |
-| `src/pages/` | Inicial, Entrar, Registrar, Confirmar o e-mail, Perfil e o verificador |
+| `src/pages/` | Inicial, Entrar, Registrar, Confirmar o e-mail, Perfil, Gerenciar e o verificador |
+| `src/components/RoleBadge.tsx` | Etiquetas de cargo com cor e nome escrito (FR-28) |
 | `src/passwordPolicy.ts` | A mesma política de senha do backend, mostrada enquanto se digita |
-| `e2e/` | Smoke e2e: verificador, acesso, registro com e-mail, perfil e limite |
+| `e2e/` | Smoke e2e: verificador, acesso, registro com e-mail, gerenciamento (com axe), perfil e limite |
 
 ## Cenários do modo demonstração
 

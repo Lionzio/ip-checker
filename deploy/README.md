@@ -183,8 +183,11 @@ as outras sessões da conta e mantém a atual.
 Quem é da equipe se registra em **Registrar** com o e-mail `@cin.ufpe.br` ou `@ufpe.br`. No
 compose, o e-mail de verificação não sai da máquina: o Mailpit o captura e mostra em
 <http://127.0.0.1:8125>. O link abre a página **Confirmar o e-mail**, e só o botão dela gasta o
-token (um antivírus que abre o link não confirma nada). Depois, o cadastro aguarda a aprovação,
-que chega na Sprint 15.
+token (um antivírus que abre o link não confirma nada). Depois, o cadastro aguarda a aprovação
+em **Gerenciar** (S15), que aparece para o desenvolvedor, os professores e os monitores-chefe: lá
+ficam a fila de pedidos (aprovar com um cargo ou recusar), os membros ativos (alterar o cargo ou
+remover) e as contas removidas (reativar). Cada linha só mostra o que o cargo de quem está logado
+permite (FR-27), e a API confere de novo a cada ação.
 
 Para enviar e-mails de verdade (Fase 2 ou piloto), configure um dos transportes na `api`:
 
