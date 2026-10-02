@@ -36,21 +36,29 @@ uv sync
 uv run pytest
 ```
 
+Os testes do banco (migrações e repositório de contas) só rodam com um PostgreSQL de teste em
+`IPC_TEST_DATABASE_URL`; sem ele, são pulados. Um contêiner descartável, só em `127.0.0.1` e numa
+porta que não colide com outros projetos, basta (`backend/tests/db_support.py`):
+
+```bash
+docker run -d --name ipc-test-db -e POSTGRES_PASSWORD=troque -e POSTGRES_DB=ipc_test -p 127.0.0.1:55432:5432 postgres:17-alpine
+```
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-O `analyzer` endurecido em Docker, com os testes de isolamento, está em
-[`deploy/README.md`](deploy/README.md).
+O compose completo (página, API, `analyzer` endurecido e banco), com o `deploy/.env` que ele
+pede e os testes de isolamento, está em [`deploy/README.md`](deploy/README.md).
 
 A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
 
 - backend: ruff, mypy strict, import-linter e pytest, com o contrato OpenAPI;
 - segurança: build das imagens, isolamento do NFR-07, submissões maliciosas contra o analyzer e ataques à API pública pela borda;
 - frontend: tipos gerados do OpenAPI em dia, ESLint, TypeScript, Vitest e build;
-- e2e: o compose completo e o smoke do Marco 1 no Playwright.
+- e2e: o compose completo, o login e o smoke do Marco 1 no Playwright.
 
 ### Portas locais
 
@@ -66,6 +74,8 @@ se a porta estiver ocupada, ele falha em vez de pular para outra.
 | `analyzer` em Docker | nenhuma | Só na rede interna `analyzer_net` |
 | Compose: página e API pelo Caddy | 8180 | Só em `127.0.0.1` (`IPC_HTTP_PORT` muda); a API não tem porta própria |
 | API pública local, sem Docker | 8101 | Só em `127.0.0.1` |
+| Banco de contas em Docker | nenhuma | Só na rede interna `db_net` |
+| PostgreSQL de teste (opcional) | 55432 | Só em `127.0.0.1`; a 5432 e a 6432 ficam com outros projetos |
 
 ## Fluxo de branches
 
@@ -104,8 +114,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 10 | Proteção para exposição pública: S10-01 limite de taxa por cliente e por IP e admissão; S10-02 mensagens e contagem de espera na página; S10-03 limite de taxa atacado pela borda | Concluída |
 | 11 | Deploy do piloto: S11-01 imagem do Render com isolamento por processo e seccomp; S11-02 CORS, HSTS e página para a Vercel; S11-03 deploy depois da CI e verificações do piloto no ar | Concluída (falta a configuração das contas, `deploy/README.md`) |
 | 12 | Marco 2: S12-01 exigência R-02 da Lista 1 e aviso de regras de questão; S12-02 teste de carga (recomenda o Starter); S12-03 guia do piloto e apresentação | Concluída |
-| 13 | Contas, sessão e login por senha | Próxima |
-| 14 | Registro por e-mail, verificação e perfil | Planejada |
+| 13 | Contas e sessão: S13-01 banco de contas, migrações e conta do desenvolvedor; S13-02 login por senha, sessão no servidor, bloqueio de tentativas, `Origin` e limite por conta; S13-03 telas inicial e Entrar, rotas com guarda e fim do `X-Client-Id` | Concluída |
+| 14 | Registro por e-mail, verificação e perfil | Próxima |
 | 15 | Cargos, aprovação e gerenciamento | Planejada |
 | 16 | Google, mesma origem e segurança da autenticação | Planejada |
 | 17 | Painel de plágio | Planejada |

@@ -1,15 +1,21 @@
 # deploy
 
 Configuração de implantação do IP-Checker. Nas Fases 0 (local) e 2 (servidor do CIn), o compose
-sobe a borda `web` (Caddy com a SPA, S9-02), a `api` pública (S8-01) e o `analyzer` endurecido
-(S6-01). No piloto (Fase 1, 2027.1), a página vai para a Vercel e o backend para o Render, com o
-isolamento por processo (seção "Piloto").
+sobe a borda `web` (Caddy com a SPA, S9-02), a `api` pública (S8-01), o `analyzer` endurecido
+(S6-01) e, desde a Sprint 13, o banco de contas e sessões (`db`) com o serviço `migrate`. No piloto
+(Fase 1, 2027.1), a página vai para a Vercel e o backend para o Render, com o isolamento por
+processo (seção "Piloto").
 
 | Serviço | Redes | Porta na máquina | Endurecimento |
 |---|---|---|---|
 | `analyzer` | `analyzer_net` (interna, sem saída) | nenhuma | NFR-07 completo, testado (abaixo) |
-| `api` | `analyzer_net` e `edge_net` | nenhuma | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
+| `api` | `analyzer_net`, `edge_net` e `db_net` | nenhuma | UID 10001, só leitura, sem capabilities, `no-new-privileges`, 64 processos, 256 MB |
 | `web` | `edge_net` | `127.0.0.1:8180` | UID 10001, só leitura, sem capabilities (nem a de portas baixas), `no-new-privileges`, 64 processos, 128 MB |
+| `db` | `db_net` (interna, sem saída) | nenhuma | PostgreSQL 17 por digest, usuário `postgres` (70) sem passar pelo root, só leitura (dados num volume), sem capabilities, `no-new-privileges`, 100 processos, 256 MB |
+| `migrate` | `db_net` | nenhuma | Roda uma vez a cada subida e sai; é o único com a senha de administrador do banco |
+
+A `api` entra no banco com o usuário `ipc_api`, membro de `ipc_app`: lê e escreve contas e sessões,
+mas não altera o esquema nem apaga contas (`backend/tests/test_migrations.py`).
 
 ## Piloto (Render + Vercel, Fase 1)
 
@@ -22,6 +28,12 @@ entre a API e o analisador é feito por processo (`deploy/render/`):
 | `supervisord` | root | O ambiente do Render | Só inicia os outros dois; não abre socket de controle |
 | `api` | 10001 | O ambiente do Render (CORS, limites, credenciais futuras) | Porta pública do Render |
 | `analyzer` | 10002 | Ambiente vazio (`env -i`), só 6 variáveis próprias | Escuta só em `127.0.0.1:8001`; workers com seccomp (sem `socket`, `socketpair`, `execve` nem `execveat`), `RLIMIT_AS` de 160 MiB, `RLIMIT_FSIZE` 0 e `RLIMIT_NOFILE` 32 |
+
+> **Desde a Sprint 13, não implante o piloto antes da Sprint 16.** A API exige o banco de contas
+> (`IPC_DATABASE_URL`) e a sessão de uma conta ativa em toda rota da equipe. Com a página na Vercel e
+> a API no Render, que são sites diferentes, o cookie da sessão não chega à API; a Sprint 16 põe
+> as duas na mesma origem (ADR-04). O banco do piloto (Supabase), as migrações antes do deploy e o
+> login nas verificações do piloto entram nas tasks S16-02 e S19-02.
 
 O UID 10002 não lê o ambiente da API nem o do supervisord: o kernel só permite isso ao dono. Com
 `IPC_SANDBOX=required`, se o Render não permitir o filtro seccomp, nenhum worker nasce e o `/ready`
@@ -137,20 +149,37 @@ Depois, volte o `IPC_RATE_LIMIT_IP_PER_MIN` ao padrão (120).
 
 Todos os comandos rodam na raiz do repositório.
 
-Subir tudo e esperar os healthchecks (cada serviço só sobe depois que o anterior está saudável):
+Antes da primeira subida, crie o `deploy/.env` (fora do Git) a partir do modelo e troque as três
+senhas: a do administrador do banco, a do usuário da API e a senha inicial da conta do
+desenvolvedor (P-14), que precisa de 9 caracteres, 1 maiúscula e 1 caractere especial:
+
+```bash
+cp deploy/.env.example deploy/.env
+```
+
+Subir tudo e esperar os healthchecks (cada serviço só sobe depois que o anterior está saudável; o
+`migrate` aplica as migrações e sai):
 
 ```bash
 docker compose -f deploy/compose.yaml up --build -d --wait
 ```
 
-A página fica em http://127.0.0.1:8180, e a API, na mesma origem:
+A página fica em http://127.0.0.1:8180, e a API, na mesma origem. Sem login, a página só mostra
+Registrar e Entrar, e as rotas da equipe respondem 401:
 
 ```bash
 curl -s http://127.0.0.1:8180/ready
 ```
 
+Entrar pela página com `vlacg@cin.ufpe.br` (ou `vinicius.leoncio@ufpe.br`, ou o nome) e a senha do
+`IPC_DEV_INITIAL_PASSWORD`. Ela só vale na criação da conta: trocar o `deploy/.env` depois não muda a
+senha de uma conta que já existe.
+
+O banco não publica porta na máquina, então não disputa a 5432 nem a 6432 de outros projetos. Para
+consultá-lo, entre no contêiner:
+
 ```bash
-curl -s -X POST http://127.0.0.1:8180/api/v1/validate -H "Content-Type: application/json" -d '{"code": "for i in range(3):\n    print(i)\n", "list_number": 1}'
+docker compose -f deploy/compose.yaml exec db psql -U postgres -d ipchecker
 ```
 
 O analyzer não publica porta na máquina. Para falar direto com ele, entre na rede dele:
@@ -239,7 +268,10 @@ O item 11 é o isolamento da seção anterior.
 ## API pública sob ataque (S9-03)
 
 `backend/tests/security/test_api_limits.py` ataca pela borda, a partir de um contêiner só na
-`edge_net`, como um navegador: Caddy, depois `api`, depois `analyzer`.
+`edge_net`, como um navegador: Caddy, depois `api`, depois `analyzer`. Desde a Sprint 13, cada
+requisição leva a sessão de uma conta ativa diferente, criada pela própria suíte direto no banco do
+compose de teste (`create_sessions` em `harness.py`); as senhas desse compose são sorteadas a cada
+execução.
 
 | Item | O que é enviado | O que se espera |
 |---|---|---|
@@ -247,7 +279,7 @@ O item 11 é o isolamento da seção anterior.
 | 1 | Cabeçalhos de um corpo de 200 KB e só os primeiros bytes dele, com e sem `Content-Length` | 413 e 411 imediatos, da borda: ela responde sem esperar o resto, e a API não recebe nada |
 | 3 | 15 corpos malformados (nulo, controle, surrogate, UTF-8 inválido, JSON quebrado, tipos errados, campo extra…) | 422 `INVALID_INPUT` |
 | 4 | 1.000 níveis de `(`, `[` ou `not` | 422 `ANALYSIS_LIMIT` em ≤ 2,5 s |
-| 13 | Marcador canário no código, na URL, na query e em cabeçalhos; IP falso em `X-Forwarded-For` | 0 ocorrências do marcador, do IP falso e do IP real do cliente nos logs dos três serviços; `docker diff` vazio; nada nas áreas em memória |
+| 13 | Marcador canário no código, na URL, na query e em cabeçalhos; IP falso em `X-Forwarded-For` | 0 ocorrências do marcador, do IP falso e do IP real do cliente nos logs dos três serviços; `docker diff` vazio; nada nas áreas em memória; nada no banco (`pg_dump`) |
 | Final | `/ready` pela borda | 200 |
 
 ## Limite de taxa pela borda (S10-03)
@@ -257,18 +289,21 @@ US-17. Todos os pedidos saem de um único contêiner, ou seja, de um único IP e
 
 | O que é enviado | O que se espera |
 |---|---|
-| 11 verificações com o mesmo `X-Client-Id` | 10 aceitas e a 11ª com 429 `RATE_LIMITED`; o `Retry-After` atravessa a borda; outro aluno do mesmo IP segue atendido |
-| 11 verificações sem identificador, cada uma com um `X-Forwarded-For` forjado diferente | A 11ª recebe 429: a borda descarta o cabeçalho do cliente, e forjá-lo não cria identidades novas |
-| 150 verificações de 150 "alunos", todos fingindo estar na faixa da UFPE | No máximo 120 aceitas no minuto; as demais com 429 (limite do IP externo, não o do campus) |
-| Com o limite do IP esgotado: `/api/v1/lists`, `/ready` e `/health` | 200: a página ainda carrega e o monitoramento ainda enxerga o serviço |
+| 31 verificações com a sessão da mesma conta | 30 aceitas e a 31ª com 429 `RATE_LIMITED` (S13-02); o `Retry-After` atravessa a borda; outro membro do mesmo IP segue atendido |
+| 31 verificações sem sessão, cada uma com um `X-Forwarded-For` forjado diferente | 30 com 401 `UNAUTHENTICATED` e a 31ª com 429: sem sessão, o cliente é o IP, a borda descarta o cabeçalho do cliente, e forjá-lo não cria identidades novas |
+| 150 verificações de 150 membros, todos fingindo estar na faixa da UFPE | No máximo 120 aceitas no minuto; as demais com 429 (limite do IP externo, não o do campus) |
+| Com o limite do IP esgotado: `/api/v1/lists` (com sessão), `/ready` e `/health` | 200: a página ainda carrega e o monitoramento ainda enxerga o serviço |
 | Logs dos três serviços | `rate_limit` com `client` e `ip`; nenhum identificador de sessão nem endereço forjado |
 
 No compose, a `api` roda com `IPC_TRUSTED_PROXY_HOPS=1`: o IP do cliente é o que o Caddy escreve
 no `X-Forwarded-For`. De um único IP externo (120 verificações por minuto), não dá para saturar a
 admissão: o limite de taxa age antes.
 
-O item 13 ainda não cobre o banco, que entra na Sprint 13. O item 14 (Trivy, pip-audit, npm audit e
-gitleaks) ainda não tem sprint no roadmap, e o 15 (TLS, HSTS e CORS) vale a partir da Sprint 11.
+Desde a Sprint 13, o item 13 também procura o marcador no banco. O item 14 (Trivy, pip-audit, npm
+audit e gitleaks) ainda não tem sprint no roadmap, e o 15 (TLS, HSTS e CORS) vale a partir da
+Sprint 11. Os itens 16, 19 e 20 (sem sessão, 401 em tudo; cookie, `Origin` e sessão; bloqueio de
+tentativas e senha fora dos logs) estão em `backend/tests/test_auth.py` e no e2e; pela borda, a
+suíte confere o 401 e o limite por conta.
 
 ### Por que `/tmp` e `/dev/shm` são graváveis
 
