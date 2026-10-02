@@ -10,8 +10,10 @@ voltam em JSON com o tempo medido dentro da rede.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
+import secrets
 import shutil
 import subprocess
 import uuid
@@ -37,6 +39,16 @@ HTTP_PORT = "18180"
 UID_GID = 10001
 #: Workers do pool no compose (PoolConfig padrão).
 WORKERS = 2
+#: Mesma imagem do banco do compose (S13-01), fixada por digest.
+POSTGRES_IMAGE = (
+    "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
+)
+#: Senhas desta execução da suíte (o compose as lê do ambiente; nunca vão para o disco).
+DB_ADMIN_PASSWORD = secrets.token_urlsafe(24)
+DB_API_PASSWORD = secrets.token_urlsafe(24)
+DEV_PASSWORD = "Dev-" + secrets.token_urlsafe(12) + "!"
+#: Desde a S13-02, toda rota da equipe exige a sessão de uma conta ativa (FR-22).
+SESSION_COOKIE = "__Host-ipc_session"
 
 requires_docker = pytest.mark.skipif(
     os.environ.get("IPC_SECURITY_TESTS") != "1",
@@ -59,7 +71,13 @@ def docker(*args: str, timeout: float = 60, input: str | None = None, check: boo
         input=input,
         timeout=timeout,
         check=False,
-        env={**os.environ, "IPC_HTTP_PORT": HTTP_PORT},
+        env={
+            **os.environ,
+            "IPC_HTTP_PORT": HTTP_PORT,
+            "IPC_DB_ADMIN_PASSWORD": DB_ADMIN_PASSWORD,
+            "IPC_DB_API_PASSWORD": DB_API_PASSWORD,
+            "IPC_DEV_INITIAL_PASSWORD": DEV_PASSWORD,
+        },
     )
     if check and result.returncode != 0:
         pytest.fail(f"docker {' '.join(args[:3])} falhou ({result.returncode}):\n{result.stderr}")
@@ -166,36 +184,98 @@ def analyze_request(code: str, list_number: int = 1) -> dict[str, Any]:
     }
 
 
-def new_client_id() -> str:
-    """Identificador de sessão como o que a página gera (``crypto.randomUUID()``)."""
-    return str(uuid.uuid4())
+def create_sessions(db_container: str, count: int, database: str = "ipchecker") -> list[str]:
+    """Contas ativas da equipe, cada uma com uma sessão aberta, criadas direto no banco.
+
+    Só esta suíte faz isso: assim, cada ataque pode vir de um membro diferente, como antes vinha
+    de um ``X-Client-Id`` diferente. Devolve os identificadores dos cookies.
+    """
+    run = uuid.uuid4().hex[:8]
+    tokens = [secrets.token_urlsafe(32) for _ in range(count)]
+    # Só valores gerados aqui (hex, números) entram no SQL; nada vem de fora da suíte.
+    statements = [
+        "WITH a AS (INSERT INTO app.account (name, course, treatment, role, status, signup_method) "  # noqa: S608
+        f"VALUES ('Membro {run} {index}', 'Teste', 'neutro', 'monitor', 'ativo', 'senha') "
+        "RETURNING id) INSERT INTO app.session (token_hash, account_id, expires_at) "
+        f"SELECT decode('{hashlib.sha256(token.encode()).hexdigest()}', 'hex'), id, "
+        "now() + interval '1 day' FROM a;"
+        for index, token in enumerate(tokens)
+    ]
+    sql = "BEGIN;\n" + "\n".join(statements) + "\nCOMMIT;\n"
+    docker(
+        "exec", "-i", db_container, "psql", "-U", "postgres", "-d", database,
+        "-v", "ON_ERROR_STOP=1", "-q",
+        input=sql,
+    )  # fmt: skip
+    return tokens
+
+
+class SessionPool:
+    """Sessões prontas para os ataques pela borda, criadas em lotes no banco do compose."""
+
+    def __init__(self, db_container: str, batch: int = 100) -> None:
+        self.db_container = db_container
+        self.batch = batch
+        self._free: list[str] = []
+
+    def take(self) -> str:
+        if not self._free:
+            self._free = create_sessions(self.db_container, self.batch)
+        return self._free.pop()
+
+
+_POOL: SessionPool | None = None
+
+
+def use_sessions(pool: SessionPool) -> None:
+    # A suíte inteira usa um único compose e, portanto, um único conjunto de sessões.
+    global _POOL
+    _POOL = pool
+
+
+def new_session() -> str:
+    """A sessão de um membro que ainda não fez nenhuma requisição."""
+    if _POOL is None:
+        pytest.fail("o compose da suíte não subiu: use a fixture stack")
+    return _POOL.take()
+
+
+def session_header(token: str | None = None) -> dict[str, str]:
+    return {"Cookie": f"{SESSION_COOKIE}={token or new_session()}"}
 
 
 def validate_request(
-    code: str, list_number: int = 1, headers: dict[str, str] | None = None
+    code: str,
+    list_number: int = 1,
+    headers: dict[str, str] | None = None,
+    *,
+    session: str | None = None,
 ) -> dict[str, Any]:
     """Requisição à API pública, pela borda (5.2.2).
 
-    Cada requisição leva um ``X-Client-Id`` novo, como se viesse de um aluno diferente: o
-    limite de 10 por minuto por cliente tem os próprios testes (``test_api_rate_limit_edge``).
+    Cada requisição vem de um membro diferente (sessão nova), a não ser que ``session`` seja
+    passada: o limite de 30 por minuto por conta tem os próprios testes
+    (``test_api_rate_limit_edge``). Um ``Cookie`` em ``headers`` substitui o da sessão.
     """
     return {
         "method": "POST",
         "path": "/api/v1/validate",
         "json": {"code": code, "list_number": list_number},
-        "headers": {"X-Client-Id": new_client_id(), **(headers or {})},
+        "headers": {**session_header(session), **(headers or {})},
     }
 
 
 def raw_request(
     body: bytes, path: str = "/internal/analyze", *, chunked: bool = False
 ) -> dict[str, Any]:
+    # Na API pública, a sessão faz a requisição chegar à validação; o analyzer a ignora.
+    headers = session_header() if path.startswith("/api/") else {}
     return {
         "method": "POST",
         "path": path,
         "raw": base64.b64encode(body).decode(),
         "chunked": chunked,
-        "headers": {"X-Client-Id": new_client_id()},
+        "headers": headers,
     }
 
 

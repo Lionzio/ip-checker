@@ -245,6 +245,13 @@ def test_privacy_canary_leaves_no_trace(public: Client, stack: dict[str, str]) -
         assert set(docker("diff", container).splitlines()) <= init_mount, service
     assert probe(stack["analyzer"], FS_PROBE, CANARY, "/tmp", "/dev/shm") == []
     assert probe(stack["api"], FS_PROBE, CANARY, "/tmp", "/dev/shm") == []
+    # Banco (Sprint 13): nenhuma tabela guarda o código, a URL ou os cabeçalhos (DoD, item 13).
+    dump = docker(
+        "exec", stack["db"], "pg_dump", "-U", "postgres", "-d", "ipchecker", "--data-only"
+    )
+    assert "app.session" in dump
+    assert dump.count(CANARY) == 0
+    assert dump.count(FAKE_IP) == 0
 
 
 def test_ready_after_the_attacks(public: Client) -> None:

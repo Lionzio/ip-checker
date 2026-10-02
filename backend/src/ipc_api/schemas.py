@@ -106,6 +106,36 @@ class ReadyResponse(_Strict):
 
 
 # ---------------------------------------------------------------------------------------------
+# Acesso restrito à equipe (Sprint 13)
+# ---------------------------------------------------------------------------------------------
+
+RoleName = Literal["desenvolvedor", "professor", "monitor_chefe", "monitor"]
+TreatmentName = Literal["masculino", "feminino", "neutro"]
+
+
+class LoginRequest(_Strict):
+    login: Annotated[str, StringConstraints(min_length=1, max_length=254)] = Field(
+        description="Nome ou e-mail institucional (@cin.ufpe.br ou @ufpe.br)."
+    )
+    password: Annotated[str, StringConstraints(min_length=1, max_length=128)] = Field(
+        description="Senha da conta. Nunca é registrada."
+    )
+
+
+class AccountResponse(_Strict):
+    """A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."""
+
+    name: str
+    email: str = Field(description="E-mail principal.")
+    course: str
+    treatment: TreatmentName
+    role: RoleName
+    role_label: str = Field(
+        description='Como o cargo aparece na interface; o desenvolvedor aparece como "Monitor".'
+    )
+
+
+# ---------------------------------------------------------------------------------------------
 # Respostas do analyzer (rede interna)
 # ---------------------------------------------------------------------------------------------
 

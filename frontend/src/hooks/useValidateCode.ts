@@ -14,7 +14,9 @@ export type ValidationState =
    */
   | { kind: "busy"; code: ApiErrorCode; message: string; retryAfterS: number | null; receivedAt: number }
   | { kind: "network"; message: string }
-  | { kind: "timeout"; message: string };
+  | { kind: "timeout"; message: string }
+  /** A sessão venceu ou foi encerrada (401): a página volta para a tela de entrada. */
+  | { kind: "unauthenticated"; message: string };
 
 export const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -26,6 +28,7 @@ function toErrorState(error: unknown, timedOut: boolean, timeoutMs: number): Val
     };
   }
   if (error instanceof ApiError) {
+    if (error.status === 401) return { kind: "unauthenticated", message: error.message };
     if (error.status === 429 || error.status === 503) {
       return {
         kind: "busy",

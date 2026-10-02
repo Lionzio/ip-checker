@@ -45,12 +45,15 @@ RUN groupadd --system --gid 10001 ipc-api \
 
 COPY --from=build /opt/venv /opt/venv
 COPY rulesets /opt/ip-checker/rulesets
+# Migrações do banco de contas (S13-01): aplicadas antes do deploy, com a credencial de admin.
+COPY database/migrations /opt/ip-checker/database/migrations
 COPY deploy/render/supervisord.conf /etc/ipc/supervisord.conf
 
 # PORT é a porta pública que o Render informa (10000 é o padrão dele).
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    IPC_MIGRATIONS_DIR=/opt/ip-checker/database/migrations \
     PORT=10000
 
 WORKDIR /opt/ip-checker

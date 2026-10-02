@@ -6,5 +6,6 @@
 !backend/README.md
 !backend/src/
 !rulesets/
+!database/migrations/
 **/__pycache__/
 **/*.py[cod]

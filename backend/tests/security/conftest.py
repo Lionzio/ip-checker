@@ -14,11 +14,13 @@ from security.harness import (
     PUBLIC_CLIENT,
     WEB_URL,
     Client,
+    SessionPool,
     compose,
     docker,
+    use_sessions,
 )
 
-SERVICES = ("web", "api", "analyzer")
+SERVICES = ("web", "api", "analyzer", "db")
 
 
 @pytest.fixture(scope="session")
@@ -26,7 +28,9 @@ def stack() -> Iterator[dict[str, str]]:
     """Sobe o ``deploy/compose.yaml`` real num projeto próprio e devolve o id de cada contêiner."""
     try:
         compose("up", "--build", "--detach", "--wait", "--wait-timeout", "180", timeout=900)
-        yield {service: compose("ps", "--quiet", service).strip() for service in SERVICES}
+        ids = {service: compose("ps", "--quiet", service).strip() for service in SERVICES}
+        use_sessions(SessionPool(ids["db"]))
+        yield ids
     finally:
         compose("down", "--volumes", "--remove-orphans", timeout=120)
 

@@ -12,7 +12,7 @@ import httpx2
 import pytest
 from fastapi.testclient import TestClient
 
-from ipc_api.app import create_app
+from api_support import authed_client, make_app
 from ipc_api.edge import HSTS_VALUE, parse_origins
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
@@ -42,7 +42,8 @@ def analyzer(request: httpx2.Request) -> httpx2.Response:
 
 
 def make_client(settings: ApiSettings) -> TestClient:
-    return TestClient(create_app(settings, analyzer_transport=httpx2.MockTransport(analyzer)))
+    app, store = make_app(settings, analyzer_transport=httpx2.MockTransport(analyzer))
+    return authed_client(app, store)
 
 
 PILOT = ApiSettings(cors_origins=(SPA,), hsts=True, release="abc1234")
@@ -60,9 +61,7 @@ def same_origin() -> Iterator[TestClient]:
         yield client
 
 
-def preflight(
-    client: TestClient, origin: str, headers: str = "content-type,x-client-id"
-) -> httpx2.Response:
+def preflight(client: TestClient, origin: str, headers: str = "content-type") -> httpx2.Response:
     return client.options(
         "/api/v1/validate",
         headers={
@@ -94,7 +93,7 @@ def test_preflight_from_the_spa_is_allowed(pilot: TestClient) -> None:
     }
     allowed = response.headers["Access-Control-Allow-Headers"].lower()
     assert "content-type" in allowed
-    assert "x-client-id" in allowed
+    assert "x-client-id" not in allowed  # desde a S13-02, o limite é por conta
     assert response.headers["Access-Control-Max-Age"] == "600"
     assert "Access-Control-Allow-Credentials" not in response.headers
 
@@ -105,12 +104,17 @@ def test_preflight_from_the_spa_is_allowed(pilot: TestClient) -> None:
     ids=["sufixo", "http", "outro-site", "null"],
 )
 def test_other_origins_are_not_allowed(pilot: TestClient, origin: str) -> None:
+    refused = validate(pilot, origin)
+
     assert "Access-Control-Allow-Origin" not in preflight(pilot, origin).headers
-    assert "Access-Control-Allow-Origin" not in validate(pilot, origin).headers
+    assert "Access-Control-Allow-Origin" not in refused.headers
+    # Além do CORS, a API recusa a requisição que muda estado vinda de outro site (S13-02).
+    assert (refused.status_code, refused.json()["error"]["code"]) == (403, "ORIGIN_MISMATCH")
 
 
-def test_only_the_needed_headers_are_allowed(pilot: TestClient) -> None:
-    response = preflight(pilot, SPA, headers="content-type,authorization")
+@pytest.mark.parametrize("extra", ["authorization", "x-client-id"])
+def test_only_the_needed_headers_are_allowed(pilot: TestClient, extra: str) -> None:
+    response = preflight(pilot, SPA, headers=f"content-type,{extra}")
 
     assert response.status_code == 400
 

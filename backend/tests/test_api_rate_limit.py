@@ -1,6 +1,9 @@
 """Limite de taxa e admissão na API (S10-01): critérios da US-17 e da US-18, ponta a ponta.
 
-O analyzer é simulado, para os testes controlarem quanto tempo cada análise leva.
+Desde a S13-02, o limite por cliente é por conta (30 verificações por minuto, C-04): cada
+"aluno" destes testes é uma conta da equipe com a própria sessão. Sem sessão, o cliente é o IP, e
+a rota responde 401. O analyzer é simulado, para os testes controlarem quanto tempo cada análise
+leva.
 """
 
 from __future__ import annotations
@@ -8,17 +11,18 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-import uuid
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 import httpx2
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api_support import COOKIE, make_app, member, open_session
+from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.admission import AdmissionConfig
-from ipc_api.app import create_app
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 from ipc_api.settings import ApiSettings
 
@@ -35,6 +39,8 @@ CAMPUS_IP = "150.161.2.10"
 EXTERNAL_IP = "203.0.113.9"
 #: Atrás de um proxy confiável (Caddy no compose, proxy do Render no piloto).
 BEHIND_PROXY = ApiSettings(rate_limit=RateLimitConfig(trusted_proxy_hops=1))
+#: Verificações por minuto por conta (S13-02).
+LIMIT = RateLimitConfig().client_per_min
 
 
 class Analyzer:
@@ -57,7 +63,7 @@ def analyzer() -> Analyzer:
 
 
 def make_client(analyzer: Analyzer, settings: ApiSettings | None = None) -> TestClient:
-    app = create_app(settings or ApiSettings(), analyzer_transport=httpx2.MockTransport(analyzer))
+    app, _store = make_app(settings, analyzer_transport=httpx2.MockTransport(analyzer))
     return TestClient(app)
 
 
@@ -73,19 +79,22 @@ def proxied(analyzer: Analyzer) -> Iterator[TestClient]:
         yield test_client
 
 
-def new_client_id() -> str:
-    return str(uuid.uuid4())
+def new_student(client: TestClient) -> str:
+    """Uma conta nova da equipe, com sessão aberta; devolve o identificador do cookie."""
+    app = cast(FastAPI, client.app)
+    store = cast(MemoryAccountStore, app.state.authenticator.store)
+    return open_session(store, member(store))
 
 
 def validate(
     client: TestClient,
-    client_id: str | None = None,
+    session: str | None = None,
     forwarded: str | None = None,
     body: Any = BODY,
 ) -> httpx2.Response:
     headers = {"Content-Type": "application/json"}
-    if client_id is not None:
-        headers["X-Client-Id"] = client_id
+    if session is not None:
+        headers["Cookie"] = f"{COOKIE}={session}"
     if forwarded is not None:
         headers["X-Forwarded-For"] = forwarded
     content = body if isinstance(body, bytes) else json.dumps(body).encode()
@@ -96,56 +105,73 @@ def error_of(response: httpx2.Response) -> tuple[int, str]:
     return response.status_code, response.json()["error"]["code"]
 
 
-# --- US-17: limite por cliente anônimo ---------------------------------------------------------
+# --- US-17: limite por conta -------------------------------------------------------------------
 
 
-def test_eleventh_request_of_a_client_in_a_minute_is_rate_limited(
+def test_request_over_the_account_limit_in_a_minute_is_rate_limited(
     client: TestClient, analyzer: Analyzer
 ) -> None:
-    student = new_client_id()
+    student = new_student(client)
 
-    responses = [validate(client, student) for _ in range(11)]
+    responses = [validate(client, student) for _ in range(LIMIT + 1)]
 
-    assert [r.status_code for r in responses[:10]] == [200] * 10
-    limited = responses[10]
+    assert [r.status_code for r in responses[:LIMIT]] == [200] * LIMIT
+    limited = responses[LIMIT]
     assert error_of(limited) == (429, "RATE_LIMITED")
     error = limited.json()["error"]
     assert 1 <= error["retry_after_s"] <= 60
     assert limited.headers["Retry-After"] == str(error["retry_after_s"])
-    assert error["message"] == "Você fez muitas verificações em pouco tempo."
+    assert error["message"] == "Você fez muitas requisições em pouco tempo."
     assert limited.headers["X-Request-Id"]
-    assert analyzer.calls == 10  # a requisição recusada não chega ao analyzer
+    assert analyzer.calls == LIMIT  # a requisição recusada não chega ao analyzer
 
 
-def test_each_client_has_its_own_limit(client: TestClient) -> None:
-    first, second = new_client_id(), new_client_id()
-    for _ in range(10):
+def test_default_limit_per_account_is_thirty() -> None:
+    # S13-02 (C-04): a correção em lote passa das 10 por minuto do aluno anônimo.
+    assert LIMIT == 30
+
+
+def test_each_account_has_its_own_limit(client: TestClient) -> None:
+    first, second = new_student(client), new_student(client)
+    for _ in range(LIMIT):
         validate(client, first)
 
     assert validate(client, first).status_code == 429
     assert validate(client, second).status_code == 200
 
 
-@pytest.mark.parametrize("client_id", [None, "nao-e-uuid", ""], ids=["sem", "invalido", "vazio"])
-def test_requests_without_a_valid_client_id_share_the_limit_of_their_ip(
-    proxied: TestClient, client_id: str | None
-) -> None:
-    for _ in range(10):
-        assert validate(proxied, client_id, EXTERNAL_IP).status_code == 200
+def test_two_sessions_of_one_account_share_its_limit(client: TestClient) -> None:
+    app = cast(FastAPI, client.app)
+    store = cast(MemoryAccountStore, app.state.authenticator.store)
+    account = member(store)
+    first, second = open_session(store, account), open_session(store, account)
+    for _ in range(LIMIT):
+        validate(client, first)
 
-    assert validate(proxied, client_id, EXTERNAL_IP).status_code == 429
+    # Entrar de novo não rende um limite maior: a chave é a conta, não a sessão.
+    assert validate(client, second).status_code == 429
+
+
+@pytest.mark.parametrize("session", [None, "nao-e-sessao", ""], ids=["sem", "invalida", "vazia"])
+def test_requests_without_a_session_are_refused_and_share_the_limit_of_their_ip(
+    proxied: TestClient, session: str | None
+) -> None:
+    for _ in range(LIMIT):
+        assert error_of(validate(proxied, session, EXTERNAL_IP)) == (401, "UNAUTHENTICATED")
+
+    assert validate(proxied, session, EXTERNAL_IP).status_code == 429
     assert validate(proxied, None, EXTERNAL_IP).status_code == 429
-    assert validate(proxied, client_id, "198.51.100.20").status_code == 200  # outro IP
-    assert validate(proxied, new_client_id(), EXTERNAL_IP).status_code == 200  # com identificador
+    assert validate(proxied, session, "198.51.100.20").status_code == 401  # outro IP
+    assert validate(proxied, new_student(proxied), EXTERNAL_IP).status_code == 200  # com sessão
 
 
 # --- US-17: limite por IP ----------------------------------------------------------------------
 
 
-def test_sixty_clients_behind_one_campus_ip_are_never_rate_limited(
+def test_sixty_members_behind_one_campus_ip_are_never_rate_limited(
     proxied: TestClient, analyzer: Analyzer
 ) -> None:
-    students = [new_client_id() for _ in range(60)]
+    students = [new_student(proxied) for _ in range(60)]
 
     statuses = {
         validate(proxied, student, CAMPUS_IP).status_code for _ in range(5) for student in students
@@ -156,14 +182,14 @@ def test_sixty_clients_behind_one_campus_ip_are_never_rate_limited(
 
 
 def test_external_ip_is_limited_to_120_per_minute(proxied: TestClient, analyzer: Analyzer) -> None:
-    # 130 "clientes" de um mesmo IP externo, cada um com 1 verificação.
-    responses = [validate(proxied, new_client_id(), EXTERNAL_IP) for _ in range(130)]
+    # 130 contas de um mesmo IP externo, cada uma com 1 verificação.
+    responses = [validate(proxied, new_student(proxied), EXTERNAL_IP) for _ in range(130)]
 
     assert [r.status_code for r in responses] == [200] * 120 + [429] * 10
     message = responses[-1].json()["error"]["message"]
-    assert message == "Muitas verificações vieram da sua rede em pouco tempo."
+    assert message == "Muitas requisições vieram da sua rede em pouco tempo."
     assert analyzer.calls == 120
-    assert validate(proxied, new_client_id(), "198.51.100.20").status_code == 200
+    assert validate(proxied, new_student(proxied), "198.51.100.20").status_code == 200
 
 
 def test_campus_limit_is_configurable(analyzer: Analyzer) -> None:
@@ -176,24 +202,26 @@ def test_campus_limit_is_configurable(analyzer: Analyzer) -> None:
     )
     with make_client(analyzer, settings) as client:
         statuses = [
-            validate(client, new_client_id(), "198.51.100.20").status_code for _ in range(4)
+            validate(client, new_student(client), "198.51.100.20").status_code for _ in range(4)
         ]
 
     assert statuses == [200, 200, 200, 429]
 
 
-def test_a_client_over_its_limit_does_not_use_up_the_ip_of_its_colleagues(
+def test_an_account_over_its_limit_does_not_use_up_the_ip_of_its_colleagues(
     analyzer: Analyzer,
 ) -> None:
-    settings = ApiSettings(rate_limit=RateLimitConfig(trusted_proxy_hops=1, ip_per_min=12))
-    abusive = new_client_id()
+    settings = ApiSettings(rate_limit=RateLimitConfig(trusted_proxy_hops=1, ip_per_min=LIMIT + 2))
     with make_client(analyzer, settings) as client:
+        abusive = new_student(client)
         for _ in range(100):
-            validate(client, abusive, EXTERNAL_IP)  # 10 aceitas, 90 recusadas
+            validate(client, abusive, EXTERNAL_IP)  # 30 aceitas, 70 recusadas
 
-        colleagues = [validate(client, new_client_id(), EXTERNAL_IP).status_code for _ in range(3)]
+        colleagues = [
+            validate(client, new_student(client), EXTERNAL_IP).status_code for _ in range(3)
+        ]
 
-    assert colleagues == [200, 200, 429]  # só as 10 aceitas contaram para o IP
+    assert colleagues == [200, 200, 429]  # só as aceitas contaram para o IP
 
 
 # --- De onde vem o IP --------------------------------------------------------------------------
@@ -203,16 +231,17 @@ def test_spoofed_forwarded_address_does_not_earn_the_campus_limit(proxied: TestC
     # O cliente manda um X-Forwarded-For falso; o proxy acrescenta o endereço verdadeiro no fim.
     spoofed = f"{CAMPUS_IP}, {EXTERNAL_IP}"
 
-    statuses = [validate(proxied, new_client_id(), spoofed).status_code for _ in range(121)]
+    statuses = [validate(proxied, new_student(proxied), spoofed).status_code for _ in range(121)]
 
     assert statuses == [200] * 120 + [429]
 
 
 def test_forwarded_header_is_ignored_without_a_trusted_proxy(client: TestClient) -> None:
     # Sem proxy configurado, trocar o X-Forwarded-For a cada requisição não muda nada.
-    statuses = [validate(client, None, f"198.51.100.{n}").status_code for n in range(11)]
+    student = new_student(client)
+    statuses = [validate(client, student, f"198.51.100.{n}").status_code for n in range(LIMIT + 1)]
 
-    assert statuses == [200] * 10 + [429]
+    assert statuses == [200] * LIMIT + [429]
 
 
 # --- Ordem: limite de corpo, limite de taxa, validação -----------------------------------------
@@ -221,9 +250,9 @@ def test_forwarded_header_is_ignored_without_a_trusted_proxy(client: TestClient)
 def test_rate_limit_comes_before_validation_and_after_the_size_guard(
     client: TestClient, analyzer: Analyzer
 ) -> None:
-    student = new_client_id()
+    student = new_student(client)
     # Requisições inválidas também gastam o limite: ele é conferido antes de o corpo ser lido.
-    for _ in range(10):
+    for _ in range(LIMIT):
         assert validate(client, student, body={"code": ""}).status_code == 422
 
     assert validate(client, student, body=b'{"code": "x"').status_code == 429
@@ -232,23 +261,25 @@ def test_rate_limit_comes_before_validation_and_after_the_size_guard(
     assert analyzer.calls == 0
 
 
-def test_only_validation_is_rate_limited(client: TestClient) -> None:
-    for _ in range(11):
-        validate(client)
+def test_only_validation_and_login_are_rate_limited(client: TestClient) -> None:
+    student = new_student(client)
+    for _ in range(LIMIT + 1):
+        validate(client, student)
 
-    for path in ("/api/v1/lists", "/health", "/ready"):
-        statuses = {client.get(path).status_code for _ in range(30)}
+    cookie = {"Cookie": f"{COOKIE}={student}"}
+    for path in ("/api/v1/lists", "/api/v1/auth/me", "/health", "/ready"):
+        statuses = {client.get(path, headers=cookie).status_code for _ in range(LIMIT + 5)}
         assert 429 not in statuses, path
 
 
 # --- Log (NFR-11) ------------------------------------------------------------------------------
 
 
-def test_rate_limited_requests_are_logged_without_ip_or_client_id(
+def test_rate_limited_requests_are_logged_without_ip_or_session(
     proxied: TestClient, capfd: pytest.CaptureFixture[str]
 ) -> None:
-    student = new_client_id()
-    for _ in range(11):
+    student = new_student(proxied)
+    for _ in range(LIMIT + 1):
         response = validate(proxied, student, EXTERNAL_IP)
 
     out = capfd.readouterr().out
@@ -271,14 +302,16 @@ def test_saturated_service_answers_overloaded_quickly(capfd: pytest.CaptureFixtu
         rate_limit=RateLimitConfig(client_per_min=1_000, ip_per_min=1_000),
     )
 
-    def timed(_index: int) -> tuple[httpx2.Response, float]:
-        start = time.perf_counter()
-        response = validate(api, new_client_id())
-        return response, time.perf_counter() - start
-
     with make_client(analyzer, settings) as api, ThreadPoolExecutor(max_workers=3) as pool:
+        sessions = [new_student(api) for _ in range(4)]
+
+        def timed(index: int) -> tuple[httpx2.Response, float]:
+            start = time.perf_counter()
+            response = validate(api, sessions[index])
+            return response, time.perf_counter() - start
+
         results = list(pool.map(timed, range(3)))
-        after = validate(api, new_client_id())  # passada a rajada, o serviço se recupera
+        after = validate(api, sessions[3])  # passada a rajada, o serviço se recupera
 
     served = [response for response, _ in results if response.status_code == 200]
     refused = [(response, elapsed) for response, elapsed in results if response.status_code != 200]
@@ -299,14 +332,13 @@ def test_saturated_service_answers_overloaded_quickly(capfd: pytest.CaptureFixtu
 def test_invalid_requests_do_not_take_a_slot() -> None:
     settings = ApiSettings(admission=AdmissionConfig(capacity=0, max_waiting=0))
     with make_client(Analyzer(), settings) as client:
+        student = new_student(client)
         # Sem nenhuma vaga, o que é recusado na validação continua recebendo o próprio erro.
-        assert error_of(
-            validate(client, new_client_id(), body={"code": "x", "list_number": 2})
-        ) == (
+        assert error_of(validate(client, student, body={"code": "x", "list_number": 2})) == (
             422,
             "LIST_NOT_ENABLED",
         )
-        assert error_of(validate(client, new_client_id())) == (503, "OVERLOADED")
+        assert error_of(validate(client, student)) == (503, "OVERLOADED")
         assert client.get("/health").status_code == 200
 
 
@@ -342,9 +374,9 @@ def test_settings_from_environment() -> None:
 def test_default_limits_follow_the_blueprint() -> None:
     settings = ApiSettings.from_env({})
 
-    # FR-19 e P-04: 10/min por cliente, 120/min por IP externo, 1.000/min para a faixa da UFPE.
+    # FR-19, P-04 e C-04: 30/min por conta, 120/min por IP externo, 1.000/min na faixa da UFPE.
     assert settings.rate_limit == RateLimitConfig(
-        client_per_min=10,
+        client_per_min=30,
         ip_per_min=120,
         campus_per_min=1_000,
         campus_networks=parse_networks("150.161.0.0/16"),

@@ -6,7 +6,10 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from ipc_api.accounts.models import email_domain_allowed, normalize_email
 from ipc_api.admission import AdmissionConfig
+from ipc_api.auth.sessions import SessionConfig
+from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 
@@ -22,6 +25,31 @@ def parse_lists(value: str) -> frozenset[int]:
     if not lists or not lists <= set(range(1, 7)):
         raise ValueError(f"IPC_ENABLED_LISTS inválida: {value!r}. Use números de 1 a 6, como 1,2.")
     return lists
+
+
+#: E-mails da conta do desenvolvedor (P-14): o primeiro é o principal.
+DEVELOPER_EMAILS = ("vlacg@cin.ufpe.br", "vinicius.leoncio@ufpe.br")
+
+
+def parse_emails(value: str) -> tuple[str, ...]:
+    emails = tuple(normalize_email(item) for item in value.split(",") if item.strip())
+    if not emails or not all(email_domain_allowed(email) for email in emails):
+        raise ValueError(
+            f"IPC_DEV_EMAILS inválida: {value!r}. Use e-mails @cin.ufpe.br ou @ufpe.br."
+        )
+    return emails
+
+
+@dataclass(frozen=True, slots=True)
+class DeveloperSettings:
+    """A conta criada por *seed* na subida da API (P-14, S13-01)."""
+
+    name: str = "Vinícius Leôncio"
+    #: Editável no perfil (Sprint 14); o seed não altera um curso já gravado.
+    course: str = "Não informado"
+    emails: tuple[str, ...] = DEVELOPER_EMAILS
+    #: Senha inicial, usada só na criação da conta. Sem ela, a conta nasce sem senha.
+    initial_password: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +75,15 @@ class ApiSettings:
     hsts: bool = False
     #: Versão implantada (commit), mostrada em /ready para o pipeline saber que o deploy entrou.
     release: str | None = None
+    #: Banco de contas e sessões (S13-01), com o usuário da API, membro de ipc_app.
+    database_url: str | None = field(default=None, repr=False)
+    #: Cookie e tempos da sessão (S13-02, NFR-22).
+    session: SessionConfig = field(default_factory=SessionConfig)
+    #: Bloqueio de login por falhas (S13-02, FR-25).
+    login_throttle: LoginThrottleConfig = field(default_factory=LoginThrottleConfig)
+    #: Origens aceitas, além da própria, em requisições que mudam estado (CSRF, ADR-04).
+    allowed_origins: tuple[str, ...] = ()
+    developer: DeveloperSettings = field(default_factory=DeveloperSettings)
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -67,7 +104,45 @@ class ApiSettings:
             hsts=env.get("IPC_HSTS", "0") == "1",
             # O Render informa o commit implantado em RENDER_GIT_COMMIT.
             release=env.get("IPC_RELEASE") or env.get("RENDER_GIT_COMMIT") or None,
+            database_url=env.get("IPC_DATABASE_URL") or None,
+            session=_session_from_env(env),
+            login_throttle=_login_throttle_from_env(env),
+            allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),
+            developer=_developer_from_env(env),
         )
+
+
+def _session_from_env(env: Mapping[str, str]) -> SessionConfig:
+    defaults = SessionConfig()
+    return SessionConfig(
+        cookie_secure=env.get("IPC_SESSION_COOKIE_SECURE", "1") != "0",
+        idle_timeout_s=int(env.get("IPC_SESSION_IDLE_TIMEOUT_S", defaults.idle_timeout_s)),
+        absolute_timeout_s=int(
+            env.get("IPC_SESSION_ABSOLUTE_TIMEOUT_S", defaults.absolute_timeout_s)
+        ),
+    )
+
+
+def _login_throttle_from_env(env: Mapping[str, str]) -> LoginThrottleConfig:
+    defaults = LoginThrottleConfig()
+    return LoginThrottleConfig(
+        account_failures=int(env.get("IPC_LOGIN_ACCOUNT_FAILURES", defaults.account_failures)),
+        ip_failures=int(env.get("IPC_LOGIN_IP_FAILURES", defaults.ip_failures)),
+        campus_ip_failures=int(
+            env.get("IPC_LOGIN_CAMPUS_IP_FAILURES", defaults.campus_ip_failures)
+        ),
+    )
+
+
+def _developer_from_env(env: Mapping[str, str]) -> DeveloperSettings:
+    defaults = DeveloperSettings()
+    emails = env.get("IPC_DEV_EMAILS")
+    return DeveloperSettings(
+        name=env.get("IPC_DEV_NAME", defaults.name).strip(),
+        course=env.get("IPC_DEV_COURSE", defaults.course).strip(),
+        emails=parse_emails(emails) if emails is not None else defaults.emails,
+        initial_password=env.get("IPC_DEV_INITIAL_PASSWORD") or None,
+    )
 
 
 def _rate_limit_from_env(env: Mapping[str, str]) -> RateLimitConfig:

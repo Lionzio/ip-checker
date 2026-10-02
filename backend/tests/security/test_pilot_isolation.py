@@ -11,6 +11,10 @@ variável que faz o papel de segredo) e confere, de dentro dela, o que o bluepri
 - só a API escuta fora do loopback;
 - o pior caso de 50 KB cabe nos 160 MiB por worker;
 - CORS, HSTS e a versão implantada se comportam como no piloto.
+
+Desde a Sprint 13, a API do piloto não sobe sem o banco de contas: um PostgreSQL de teste roda
+numa rede só dele, as migrações são aplicadas antes (como no deploy) e a credencial do banco é
+mais um segredo que só a API pode ver.
 """
 
 from __future__ import annotations
@@ -23,18 +27,28 @@ from typing import Any
 import pytest
 
 from security.harness import (
+    DB_ADMIN_PASSWORD,
+    DB_API_PASSWORD,
+    DEV_PASSWORD,
+    POSTGRES_IMAGE,
     REPO_ROOT,
     Client,
+    create_sessions,
     docker,
     requires_docker,
+    session_header,
 )
 
 pytestmark = requires_docker
 
 PILOT_IMAGE = "ip-checker-pilot:local"
 CONTAINER = "ipc-security-test-pilot"
+#: Banco de contas do piloto nos testes: uma rede só para ele e a API.
+PILOT_NETWORK = "ipc-security-test-pilot-net"
+PILOT_DB = "ipc-security-test-pilot-db"
+DATABASE_URL = f"postgresql://ipc_api:{DB_API_PASSWORD}@{PILOT_DB}:5432/ipchecker"
 #: Faz o papel de uma credencial no ambiente do Render: só a API pode recebê-la.
-CANARY_SECRET = "segredo-canario-7d1f"  # noqa: S105 - valor de teste, não é segredo
+CANARY_SECRET = "segredo-canario-7d1f"
 SPA = "https://ip-checker.vercel.app"
 RELEASE = "0123456789abcdef"
 API_UID, ANALYZER_UID = 10001, 10002
@@ -150,13 +164,32 @@ def pilot() -> Iterator[str]:
         str(REPO_ROOT),
         timeout=900,
     )
-    docker("rm", "--force", CONTAINER, check=False)
+    _cleanup()
+    docker("network", "create", PILOT_NETWORK)
     docker(
-        "run", "--detach", "--name", CONTAINER,
+        "run", "--detach", "--name", PILOT_DB, "--network", PILOT_NETWORK,
+        "-e", "POSTGRES_DB=ipchecker",
+        "-e", f"POSTGRES_PASSWORD={DB_ADMIN_PASSWORD}",
+        POSTGRES_IMAGE,
+    )  # fmt: skip
+    _wait_for_database()
+    # Como no deploy: as migrações rodam antes, com a credencial de admin, fora do serviço.
+    docker(
+        "run", "--rm", "--network", PILOT_NETWORK,
+        "-e", f"IPC_DATABASE_ADMIN_URL=postgresql://postgres:{DB_ADMIN_PASSWORD}@{PILOT_DB}:5432/ipchecker",
+        "-e", f"IPC_DB_LOGIN_PASSWORD={DB_API_PASSWORD}",
+        PILOT_IMAGE,
+        "python", "-m", "ipc_api.db.migrate", "up", "--login-role", "ipc_api",
+        timeout=120,
+    )  # fmt: skip
+    docker(
+        "run", "--detach", "--name", CONTAINER, "--network", PILOT_NETWORK,
         "-e", f"IPC_FAKE_SECRET={CANARY_SECRET}",
         "-e", f"IPC_CORS_ORIGINS={SPA}",
         "-e", "IPC_HSTS=1",
         "-e", f"RENDER_GIT_COMMIT={RELEASE}",
+        "-e", f"IPC_DATABASE_URL={DATABASE_URL}",
+        "-e", f"IPC_DEV_INITIAL_PASSWORD={DEV_PASSWORD}",
         PILOT_IMAGE,
     )  # fmt: skip
     try:
@@ -173,7 +206,26 @@ def pilot() -> Iterator[str]:
             time.sleep(1)
         yield client.container
     finally:
-        docker("rm", "--force", CONTAINER, check=False)
+        _cleanup()
+
+
+def _cleanup() -> None:
+    docker("rm", "--force", CONTAINER, PILOT_DB, check=False)
+    docker("network", "rm", PILOT_NETWORK, check=False)
+
+
+def _wait_for_database() -> None:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        ready = docker(
+            "exec", PILOT_DB, "pg_isready", "-U", "postgres", "-d", "ipchecker", check=False
+        )
+        if "accepting connections" in ready:
+            # O pg_isready responde antes de o initdb terminar e reiniciar o servidor.
+            time.sleep(2)
+            return
+        time.sleep(1)
+    pytest.fail(f"o banco do piloto não ficou pronto:\n{docker('logs', PILOT_DB, check=False)}")
 
 
 READY_PROBE = r"""
@@ -228,9 +280,10 @@ def test_analyzer_environment_has_no_secret(pilot: str) -> None:
     for process in analyzer:
         assert set(process["env"]) <= ANALYZER_ENV, process["cmdline"]
 
-    # Prova de que o segredo existe no contêiner e chega a quem deve: a API.
+    # Prova de que os segredos existem no contêiner e chegam a quem deve: a API.
     (api,) = [p for p in probe_as(API_UID, PROCESSES_PROBE) if "ipc_api.app" in p["cmdline"]]
     assert "IPC_FAKE_SECRET" in api["env"]
+    assert "IPC_DATABASE_URL" in api["env"]
 
 
 def test_workers_are_sandboxed_and_limited(processes: list[dict[str, Any]]) -> None:
@@ -269,7 +322,12 @@ def test_analyzer_user_cannot_read_other_environments_or_escape(
 
 
 def test_only_the_api_listens_outside_loopback(pilot: str) -> None:
-    assert probe_as("root", LISTEN_PROBE) == ["0.0.0.0:10000", "127.0.0.1:8001"]
+    # Numa rede própria do Docker (a do banco de teste), o resolvedor DNS do Docker escuta em
+    # 127.0.0.11 dentro do contêiner; ele é do Docker, não do piloto, e não existe no Render.
+    listening: list[str] = probe_as("root", LISTEN_PROBE)
+    ours = [address for address in listening if not address.startswith("127.0.0.11:")]
+
+    assert ours == ["0.0.0.0:10000", "127.0.0.1:8001"]
 
 
 def test_worst_case_inputs_fit_in_160_mib(pilot: str) -> None:
@@ -277,12 +335,13 @@ def test_worst_case_inputs_fit_in_160_mib(pilot: str) -> None:
     widest = ("a = " + ",".join("bcdefghijklmnopqrstuvwxy") + "\n") * 980
     dense = "a = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)\n" * 1_000
     literal = 'x = "' + "a" * 51_180 + '"\n'
+    sessions = create_sessions(PILOT_DB, 3)
     requests = [
         {
             "method": "POST",
             "path": "/api/v1/validate",
             "json": {"code": code, "list_number": 1},
-            "headers": {"X-Client-Id": f"0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c{index:02d}"},
+            "headers": session_header(sessions[index]),
         }
         for index, code in enumerate([widest, dense, literal])
     ]
@@ -297,6 +356,7 @@ def test_worst_case_inputs_fit_in_160_mib(pilot: str) -> None:
 
 def test_pilot_api_cors_headers_and_release(pilot: str) -> None:
     client = Client(pilot, base="http://127.0.0.1:10000")
+    (session,) = create_sessions(PILOT_DB, 1)
     preflight, validate, ready, evil = client.send(
         [
             {
@@ -305,21 +365,21 @@ def test_pilot_api_cors_headers_and_release(pilot: str) -> None:
                 "headers": {
                     "Origin": SPA,
                     "Access-Control-Request-Method": "POST",
-                    "Access-Control-Request-Headers": "content-type,x-client-id",
+                    "Access-Control-Request-Headers": "content-type",
                 },
             },
             {
                 "method": "POST",
                 "path": "/api/v1/validate",
                 "json": {"code": "x = 1\n", "list_number": 1},
-                "headers": {"Origin": SPA},
+                "headers": {"Origin": SPA, **session_header(session)},
             },
             {"method": "GET", "path": "/ready"},
             {
                 "method": "POST",
                 "path": "/api/v1/validate",
                 "json": {"code": "x = 1\n", "list_number": 1},
-                "headers": {"Origin": "https://evil.example"},
+                "headers": {"Origin": "https://evil.example", **session_header(session)},
             },
         ]
     )
@@ -330,13 +390,17 @@ def test_pilot_api_cors_headers_and_release(pilot: str) -> None:
     assert "retry-after" in validate.headers["access-control-expose-headers"].lower()
     assert validate.headers["strict-transport-security"].startswith("max-age=31536000")
     assert validate.headers["x-content-type-options"] == "nosniff"
+    assert validate.status == 200
     assert ready.body == {"status": "ready", "ruleset_version": "2026.2.0", "release": RELEASE}
     assert "access-control-allow-origin" not in evil.headers
+    assert (evil.status, evil.error_code) == (403, "ORIGIN_MISMATCH")
 
 
 def test_logs_have_no_secret(pilot: str) -> None:
     logs = docker("logs", pilot) + docker("logs", pilot, check=False)
 
     assert CANARY_SECRET not in logs
+    assert DB_API_PASSWORD not in logs
+    assert DEV_PASSWORD not in logs
     assert '"service": "api"' in logs
     assert '"service": "analyzer"' in logs

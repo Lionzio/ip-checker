@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ValidateResponse } from "../types/api";
+import type { Account, ValidateResponse } from "../types/api";
 import { createApiClient } from "./api";
 import { ApiError } from "./client";
+
+const ACCOUNT: Account = {
+  name: "Vinícius Leôncio",
+  email: "vlacg@cin.ufpe.br",
+  course: "Não informado",
+  treatment: "masculino",
+  role: "desenvolvedor",
+  role_label: "Monitor",
+};
 
 const RESPONSE: ValidateResponse = {
   request_id: "01J9Z0000000000000000000",
@@ -85,29 +94,55 @@ describe("createApiClient", () => {
     expect(error.retryAfterS).toBe(30);
   });
 
-  it("identifica a sessão com o mesmo X-Client-Id em todas as verificações", async () => {
+  it("manda a sessão pelo cookie da mesma origem, sem X-Client-Id (S13-02)", async () => {
     const fetchMock = respond(200, RESPONSE);
-    const client = createApiClient();
 
-    await client.validate({ code: "x = 1", list_number: 1, question_id: null });
-    fetchMock.mockImplementationOnce(() => Promise.resolve(new Response(JSON.stringify(RESPONSE))));
-    await client.validate({ code: "y = 2", list_number: 1, question_id: null });
-
-    const ids = fetchMock.mock.calls.map((call) => {
-      const [, init] = call as unknown as [string, RequestInit];
-      return (init.headers as Record<string, string>)["X-Client-Id"];
-    });
-    expect(ids[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    expect(ids[1]).toBe(ids[0]);
-  });
-
-  it("não manda o X-Client-Id ao buscar as listas", async () => {
-    const fetchMock = respond(200, []);
-
-    await createApiClient().listLists();
+    await createApiClient().validate({ code: "x = 1", list_number: 1, question_id: null });
 
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.credentials).toBe("same-origin");
     expect(init.headers).not.toHaveProperty("X-Client-Id");
+  });
+
+  it("pergunta quem está logado", async () => {
+    const account = { ...ACCOUNT };
+    const fetchMock = respond(200, account);
+
+    await expect(createApiClient().me()).resolves.toEqual(account);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/v1/auth/me");
+    expect(init.method).toBe("GET");
+  });
+
+  it("devolve 401 quando não há sessão", async () => {
+    respond(401, { error: { code: "UNAUTHENTICATED", message: "Entre.", retry_after_s: null } });
+
+    const error = await rejection(createApiClient().me());
+
+    expect(error.status).toBe(401);
+    expect(error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("entra com login e senha", async () => {
+    const fetchMock = respond(200, ACCOUNT);
+
+    await expect(createApiClient().login("vlacg@cin.ufpe.br", "Senha-forte-1")).resolves.toEqual(ACCOUNT);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/v1/auth/login");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ login: "vlacg@cin.ufpe.br", password: "Senha-forte-1" });
+  });
+
+  it("sai com um corpo vazio, que a borda aceita", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createApiClient().logout();
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/v1/auth/logout");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe("");
   });
 
   it("lê o tempo de espera do limite de taxa", async () => {

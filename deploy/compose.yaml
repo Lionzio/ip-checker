@@ -5,12 +5,71 @@
 # api (S8-01): fala com o analyzer pela analyzer_net e com o Caddy pela edge_net; sem porta própria.
 # analyzer (S6-01): só na analyzer_net, sem porta publicada nem rota para fora. Cada controle é
 # conferido por backend/tests/security/test_isolation.py (NFR-07).
+# db e migrate (S13-01): o banco de contas e sessões, só na db_net (sem porta publicada e sem saída
+# para a internet), e a aplicação das migrações a cada subida, com a credencial de administrador.
+#
+# As senhas vêm de deploy/.env (fora do Git; modelo em deploy/.env.example):
 #
 #     docker compose -f deploy/compose.yaml up --build -d --wait
 
 name: ip-checker
 
 services:
+  db:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    # O usuário postgres da imagem, sem passar pelo root: nenhuma capability é necessária.
+    user: "70:70"
+    environment:
+      POSTGRES_DB: ipchecker
+      POSTGRES_PASSWORD: ${IPC_DB_ADMIN_PASSWORD:?defina IPC_DB_ADMIN_PASSWORD em deploy/.env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:size=1m,mode=1777,noexec,nosuid,nodev
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 256m
+    memswap_limit: 256m
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "ipchecker"]
+      interval: 5s
+      timeout: 3s
+      start_period: 20s
+      retries: 20
+    # Sem "ports": o banco não disputa a 5432 nem a 6432 com outros projetos desta máquina.
+    networks: [db_net]
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: ip-checker-backend:local
+    command: [python, -m, ipc_api.db.migrate, up, --login-role, ipc_api]
+    environment:
+      # A credencial de administrador só existe neste contêiner de vida curta, nunca na api.
+      IPC_DATABASE_ADMIN_URL: postgresql://postgres:${IPC_DB_ADMIN_PASSWORD}@db:5432/ipchecker
+      IPC_DB_LOGIN_PASSWORD: ${IPC_DB_API_PASSWORD:?defina IPC_DB_API_PASSWORD em deploy/.env}
+      # Só este serviço precisa das migrações; o analyzer e a api não recebem a variável.
+      IPC_MIGRATIONS_DIR: /opt/ip-checker/database/migrations
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 32
+    mem_limit: 128m
+    memswap_limit: 128m
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [db_net]
+    restart: "no"
+
   analyzer:
     build:
       context: ..
@@ -63,6 +122,10 @@ services:
       IPC_TRUSTED_PROXY_HOPS: "1"
       # Faixa da UFPE (Q-11): limite por IP de 1.000/min, em vez de 120/min.
       IPC_RATE_LIMIT_CAMPUS_CIDRS: 150.161.0.0/16
+      # Banco de contas (S13-01), com o usuário da API, que não altera o esquema nem apaga contas.
+      IPC_DATABASE_URL: postgresql://ipc_api:${IPC_DB_API_PASSWORD}@db:5432/ipchecker
+      # Senha inicial da conta do desenvolvedor (P-14): usada só na criação da conta.
+      IPC_DEV_INITIAL_PASSWORD: ${IPC_DEV_INITIAL_PASSWORD:?defina IPC_DEV_INITIAL_PASSWORD em deploy/.env}
     healthcheck:
       test:
         - CMD
@@ -85,9 +148,10 @@ services:
     depends_on:
       analyzer:
         condition: service_healthy
-    # analyzer_net para chamar o analyzer; edge_net para receber o Caddy (e, a partir da Sprint 13,
-    # falar com o banco).
-    networks: [analyzer_net, edge_net]
+      migrate:
+        condition: service_completed_successfully
+    # analyzer_net para chamar o analyzer; edge_net para receber o Caddy; db_net para o banco.
+    networks: [analyzer_net, edge_net, db_net]
     restart: unless-stopped
 
   web:
@@ -122,3 +186,9 @@ networks:
   analyzer_net:
     internal: true
   edge_net: {}
+  # Também sem gateway: só a api e o migrate alcançam o banco; o analyzer não está nela.
+  db_net:
+    internal: true
+
+volumes:
+  db_data: {}

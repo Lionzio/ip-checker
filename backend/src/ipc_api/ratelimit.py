@@ -1,8 +1,8 @@
-"""Limite de taxa em memória (S10-01, FR-19): por cliente anônimo e por IP.
+"""Limite de taxa em memória (S10-01, FR-19): por conta e por IP.
 
-- **Cliente anônimo**: 10 verificações por minuto por ``X-Client-Id`` (um UUID que a SPA gera por
-  sessão). É o limite que protege cada aluno de um laço acidental. Sem um ``X-Client-Id`` válido,
-  o "cliente" é o próprio IP.
+- **Conta**: 30 verificações por minuto por conta da equipe (S13-02, C-04; antes eram 10 por
+  ``X-Client-Id`` anônimo). A conta vem da sessão, resolvida pelo ``SessionMiddleware`` antes deste
+  limite. Sem sessão, o "cliente" é o próprio IP, e a rota responde 401 logo depois.
 - **IP**: 120 por minuto para IPs externos e 1.000 por minuto para as faixas do campus
   (``IPC_RATE_LIMIT_CAMPUS_CIDRS``), onde centenas de alunos saem por poucos IPs de NAT (P-04).
   IPv6 é limitado pelo prefixo /64.
@@ -11,8 +11,8 @@ A janela é deslizante: nunca passam mais que ``limite`` requisições em quaisq
 como pede a US-17 (a 11ª em 1 min recebe 429). Uma requisição recusada não gasta o limite de
 ninguém, para um cliente abusivo não esgotar o IP que divide com os colegas.
 
-Privacidade (NFR-11): IP e ``X-Client-Id`` existem só na memória deste processo, como hash com
-um sal sorteado na subida, e somem até 2 min depois da última requisição. Nunca vão para o log.
+Privacidade (NFR-11): IP e conta existem só na memória deste processo, como hash com um sal
+sorteado na subida, e somem até 2 min depois da última requisição. Nunca vão para o log.
 
 O estado é local ao processo: vale porque há uma única instância da API (ADR-03).
 """
@@ -22,7 +22,6 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import math
-import re
 import secrets
 import time
 from collections import deque
@@ -43,10 +42,6 @@ WINDOW_S = 60.0
 #: Intervalo entre varreduras que apagam as chaves sem requisições na janela.
 SWEEP_INTERVAL_S = 10.0
 
-_CLIENT_ID = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
-)
-
 
 def parse_networks(value: str) -> tuple[IPNetwork, ...]:
     """Converte ``"150.161.0.0/16, 2001:db8::/32"`` em redes; recusa valores inválidos na subida."""
@@ -66,7 +61,8 @@ def parse_networks(value: str) -> tuple[IPNetwork, ...]:
 
 @dataclass(frozen=True, slots=True)
 class RateLimitConfig:
-    client_per_min: int = 10
+    #: Por conta (S13-02). A correção em lote passa de 10 por minuto, o valor antigo por aluno.
+    client_per_min: int = 30
     ip_per_min: int = 120
     campus_per_min: int = 1_000
     campus_networks: tuple[IPNetwork, ...] = (ipaddress.ip_network("150.161.0.0/16"),)
@@ -189,7 +185,7 @@ def client_ip(scope: Scope, trusted_proxy_hops: int) -> IPAddress | None:
 
 
 class ClientIdentifier:
-    """Transforma IP e ``X-Client-Id`` em chaves opacas e escolhe o limite de cada uma."""
+    """Transforma IP e conta em chaves opacas e escolhe o limite de cada uma."""
 
     def __init__(self, config: RateLimitConfig) -> None:
         self._config = config
@@ -220,12 +216,9 @@ class ClientIdentifier:
                 ip_value = address.packed
         ip_key = self._key(b"i", ip_value)
 
-        client_id = Headers(scope=scope).get("x-client-id", "")
-        if _CLIENT_ID.match(client_id):
-            client_key = self._key(b"c", client_id.lower().encode())
-        else:
-            # Sem identificador válido, omitir o cabeçalho não pode render um limite maior.
-            client_key = self._key(b"c", ip_value)
+        account_id = scope.get("state", {}).get("account_id")
+        # Sem sessão, o cliente é o IP: sair da conta não rende um limite maior.
+        client_key = self._key(b"c", account_id if account_id else ip_value)
         return [(ip_key, ip_limit, "ip"), (client_key, config.client_per_min, "client")]
 
 
@@ -233,13 +226,14 @@ class ClientIdentifier:
 # Middleware
 # ---------------------------------------------------------------------------------------------
 
-#: Rotas limitadas: só a que custa uma análise. /health e /ready ficam livres para o monitoramento.
-LIMITED_ROUTES = frozenset({("POST", "/api/v1/validate")})
+#: Rotas limitadas: a que custa uma análise e a de login (o bloqueio por falhas fica em
+#: ``auth/throttle.py``). /health e /ready ficam livres para o monitoramento.
+LIMITED_ROUTES = frozenset({("POST", "/api/v1/validate"), ("POST", "/api/v1/auth/login")})
 
 _MESSAGES: dict[LimitScope, str] = {
-    "client": "Você fez muitas verificações em pouco tempo.",
-    "ip": "Muitas verificações vieram da sua rede em pouco tempo.",
-    "capacity": "O serviço recebeu verificações demais em pouco tempo.",
+    "client": "Você fez muitas requisições em pouco tempo.",
+    "ip": "Muitas requisições vieram da sua rede em pouco tempo.",
+    "capacity": "O serviço recebeu requisições demais em pouco tempo.",
 }
 
 

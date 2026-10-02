@@ -48,6 +48,11 @@ describe("useValidateCode", () => {
     [new ApiError(413, "PAYLOAD_TOO_LARGE", "grande"), { kind: "rejected", code: "PAYLOAD_TOO_LARGE" }],
     [new ApiError(429, "RATE_LIMITED", "calma", 30), { kind: "busy", code: "RATE_LIMITED", retryAfterS: 30 }],
     [new ApiError(503, "OVERLOADED", "ocupado", 10), { kind: "busy", code: "OVERLOADED", retryAfterS: 10 }],
+    [
+      new ApiError(503, "DATABASE_UNAVAILABLE", "indisponível", 30),
+      { kind: "busy", code: "DATABASE_UNAVAILABLE", retryAfterS: 30 },
+    ],
+    [new ApiError(401, "UNAUTHENTICATED", "Entre."), { kind: "unauthenticated", message: "Entre." }],
     [new TypeError("Failed to fetch"), { kind: "network" }],
   ])("traduz o erro %# para o estado certo", async (error, expected) => {
     const { result } = renderHook(() => useValidateCode(clientWith(() => Promise.reject(error))));

@@ -1,4 +1,7 @@
-"""Listas habilitadas, ``/health`` (processo vivo) e ``/ready`` (pronto para validar)."""
+"""Listas habilitadas (com sessão), ``/health`` (processo vivo) e ``/ready`` (pronto para validar).
+
+``/health`` e ``/ready`` ficam abertos para o monitoramento (UptimeRobot) e não revelam dados.
+"""
 
 from __future__ import annotations
 
@@ -7,9 +10,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response
 
+from ipc_api.accounts.models import StoreUnavailable
+from ipc_api.auth.deps import get_authenticator, require_active_account
+from ipc_api.auth.sessions import Authenticator
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
 from ipc_api.deps import get_analyzer, get_settings
-from ipc_api.errors import analyzer_unavailable
+from ipc_api.errors import analyzer_unavailable, database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.schemas import HealthResponse, ListInfo, ReadyResponse
 from ipc_api.settings import ApiSettings
@@ -17,15 +23,25 @@ from ipc_api.settings import ApiSettings
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+#: Rotas da equipe: exigem uma sessão de conta ativa (FR-22).
+protected = APIRouter(dependencies=[Depends(require_active_account)])
 
 UNAVAILABLE = error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não respondeu."})
 
 
-@router.get(
+@protected.get(
     "/api/v1/lists",
     tags=["listas"],
     summary="Listas habilitadas, com o título de cada uma",
-    responses=UNAVAILABLE,
+    responses=error_docs(
+        {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            503: (
+                "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE "
+                "(o banco de contas não respondeu)."
+            ),
+        }
+    ),
 )
 async def lists(
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
@@ -47,12 +63,23 @@ async def health() -> HealthResponse:
 @router.get(
     "/ready",
     tags=["operação"],
-    summary="A API consegue validar código: o analisador responde (monitorado pelo UptimeRobot)",
-    responses=UNAVAILABLE,
+    summary=(
+        "A API consegue atender: o analisador e o banco de contas respondem (monitorado pelo "
+        "UptimeRobot)"
+    ),
+    responses=error_docs(
+        {
+            503: (
+                "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE "
+                "(o banco de contas não respondeu)."
+            )
+        }
+    ),
 )
 async def ready(
     response: Response,
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    authenticator: Annotated[Authenticator, Depends(get_authenticator)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> ReadyResponse:
     response.headers["Cache-Control"] = "no-store"
@@ -61,6 +88,11 @@ async def ready(
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
         raise analyzer_unavailable() from None
+    try:
+        await authenticator.store.ping()
+    except StoreUnavailable:
+        logger.warning("banco de contas indisponível")
+        raise database_unavailable() from None
     return ReadyResponse(
         status="ready", ruleset_version=status.ruleset_version, release=settings.release
     )

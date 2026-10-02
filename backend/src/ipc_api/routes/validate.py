@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 
 from ipc_api.admission import Admission, Overloaded
+from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
 from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
@@ -18,7 +19,9 @@ from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["validação"])
+router = APIRouter(
+    prefix="/api/v1", tags=["validação"], dependencies=[Depends(require_active_account)]
+)
 
 
 @router.post(
@@ -26,6 +29,8 @@ router = APIRouter(prefix="/api/v1", tags=["validação"])
     summary="Confere se o código respeita as permissões da lista, sem executá-lo",
     responses=error_docs(
         {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            403: "ORIGIN_MISMATCH: a requisição veio de outro site.",
             413: "PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB.",
             422: (
                 "INVALID_INPUT (entrada inválida), LIST_NOT_ENABLED (lista não liberada), "
@@ -33,12 +38,13 @@ router = APIRouter(prefix="/api/v1", tags=["validação"])
                 "demais)."
             ),
             429: (
-                "RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma "
-                "rede em 1 minuto. Veja retry_after_s."
+                "RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. "
+                "Veja retry_after_s."
             ),
             503: (
-                "OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não "
-                "respondeu). Veja retry_after_s."
+                "OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não "
+                "respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja "
+                "retry_after_s."
             ),
         }
     ),
@@ -51,15 +57,6 @@ async def validate(
     admission: Annotated[Admission, Depends(get_admission)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
     request_id: Annotated[str, Depends(get_request_id)],
-    x_client_id: Annotated[
-        str | None,
-        Header(
-            description=(
-                "UUID aleatório que a página gera a cada sessão do navegador. Serve só ao "
-                "limite de taxa por cliente (lido pelo middleware) e nunca é gravado."
-            )
-        ),
-    ] = None,
 ) -> ValidateResponse:
     # O resultado diz respeito ao código de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"

@@ -6,6 +6,8 @@ readme = "README.md"
 # A gramática do analisador acompanha a versão do Dikastis (Q-01, NFR-21).
 requires-python = ">=3.13,<3.14"
 dependencies = [
+  "argon2-cffi>=25.1",
+  "asyncpg>=0.30",
   "fastapi>=0.142.2",
   "httpx2>=2.13.1",
   "pebble>=5.2.2",
@@ -48,9 +50,10 @@ src = ["src", "tests"]
 select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF", "N", "C4", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Nos testes, senhas fixas são valores de teste (S105, S106), nunca credenciais reais.
+"tests/**" = ["S101", "S105", "S106"]
 # Os caminhos /tmp, /var/tmp e /dev/shm da suíte de segurança são do contêiner, não desta máquina.
-"tests/security/**" = ["S101", "S108"]
+"tests/security/**" = ["S101", "S105", "S106", "S108"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -86,7 +89,18 @@ type = "forbidden"
 source_modules = ["ipc_analyzer.engine"]
 forbidden_modules = ["ipc_analyzer.service", "ipc_analyzer.runtime", "fastapi", "starlette", "uvicorn", "pebble", "httpx2"]
 
+[[tool.importlinter.contracts]]
+name = "O analyzer não tem banco nem senhas: não importa asyncpg nem argon2"
+type = "forbidden"
+source_modules = ["ipc_analyzer"]
+forbidden_modules = ["asyncpg", "argon2"]
+
 [[tool.mypy.overrides]]
 # pyseccomp não publica tipos; o uso fica restrito a ipc_analyzer/runtime/sandbox.py.
 module = ["pyseccomp"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# asyncpg não publica tipos; o uso fica restrito a ipc_api/accounts/postgres.py e ipc_api/db/.
+module = ["asyncpg", "asyncpg.*"]
 ignore_missing_imports = true

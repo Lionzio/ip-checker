@@ -20,6 +20,18 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    services:
+      # Banco descartável para as migrações e o repositório de contas (S13-01). Só existe durante
+      # o job, no próprio runner; a senha não protege nada além dele.
+      postgres:
+        image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_DB: ipc_test
+          POSTGRES_PASSWORD: ci-descartavel
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ipc_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -37,7 +49,9 @@ jobs:
         run: uv run mypy
       - name: Fronteiras de arquitetura (import-linter)
         run: uv run lint-imports
-      - name: Pytest (motor, API, contrato OpenAPI e cobertura >= 90%)
+      - name: Pytest (motor, API, contrato OpenAPI, banco e cobertura >= 90%)
+        env:
+          IPC_TEST_DATABASE_URL: postgresql://postgres:ci-descartavel@127.0.0.1:5432/ipc_test
         run: uv run pytest
 
   security:
@@ -55,6 +69,11 @@ jobs:
           uv python install 3.13
           uv sync --locked
       - name: Build da imagem
+        # Só para o compose interpretar o arquivo; a suíte sorteia as senhas de verdade.
+        env:
+          IPC_DB_ADMIN_PASSWORD: so-para-o-build
+          IPC_DB_API_PASSWORD: so-para-o-build
+          IPC_DEV_INITIAL_PASSWORD: So-para-o-build-1
         run: docker compose -f deploy/compose.yaml build
       - name: Suíte de segurança (DoD, seção 8, itens 2 a 12)
         working-directory: backend
@@ -101,7 +120,19 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Subir web (Caddy + SPA), api e analyzer
+      - name: Senhas desta execução (deploy/.env, nunca versionado)
+        run: |
+          python3 - <<'EOF'
+          import secrets
+          values = {
+              "IPC_DB_ADMIN_PASSWORD": secrets.token_urlsafe(24),
+              "IPC_DB_API_PASSWORD": secrets.token_urlsafe(24),
+              "IPC_DEV_INITIAL_PASSWORD": "Dev-" + secrets.token_urlsafe(12) + "!",
+          }
+          with open("deploy/.env", "w", encoding="utf-8") as env:
+              env.writelines(f"{name}={value}\n" for name, value in values.items())
+          EOF
+      - name: Subir web (Caddy + SPA), api, analyzer e banco
         run: docker compose -f deploy/compose.yaml up --build -d --wait --wait-timeout 180
       - uses: actions/setup-node@v4
         with:
@@ -113,7 +144,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Playwright (Marco 1)
+      - name: Playwright (Marco 1 e acesso restrito; a senha vem do deploy/.env)
         working-directory: frontend
         env:
           E2E_BASE_URL: http://127.0.0.1:8180

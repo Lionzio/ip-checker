@@ -1,8 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * Marco 1 (Sprint 9): com o compose no ar, o aluno cola o código, escolhe a Lista 1 e vê o
- * resultado do motor de verdade. Nada aqui é simulado.
+ * Marco 1 (Sprint 9): com o compose no ar, quem corrige cola o código, escolhe a Lista 1 e vê o
+ * resultado do motor de verdade. Nada aqui é simulado. Desde a Sprint 13, os testes usam a sessão
+ * que o projeto "login" abriu (playwright.config.ts).
  */
 
 /** No piloto (pipeline de deploy), a página está na Vercel e a API no Render (E2E_API_ORIGIN). */
@@ -63,35 +64,6 @@ test("as proibições gerais anulam a questão", async ({ page }) => {
   await verify(page, "try:\n    x = int(input())\nexcept ValueError:\n    x = 0\n");
 
   await expect(result(page).getByRole("listitem").filter({ hasText: "R-06" })).toContainText("Anulação imediata");
-});
-
-test("a 11ª verificação da sessão em um minuto mostra o limite e o tempo de espera", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Lista").selectOption("1");
-  await page.getByLabel("Código Python").fill("x = 1\n");
-  const verifyButton = page.getByRole("button", { name: "Verificar" });
-  const clientIds = new Set<string | undefined>();
-
-  for (let attempt = 1; attempt <= 10; attempt += 1) {
-    const answered = page.waitForResponse((response) => response.url().endsWith("/api/v1/validate"));
-    await verifyButton.click();
-    const response = await answered;
-    expect(response.status(), `verificação ${attempt}`).toBe(200);
-    clientIds.add(response.request().headers()["x-client-id"]);
-  }
-  // A sessão inteira usa um único identificador anônimo.
-  expect(clientIds.size).toBe(1);
-  expect([...clientIds][0]).toMatch(/^[0-9a-f-]{36}$/);
-
-  const limited = page.waitForResponse((response) => response.url().endsWith("/api/v1/validate"));
-  await verifyButton.click();
-  expect((await limited).status()).toBe(429);
-
-  const panel = result(page);
-  await expect(panel.getByRole("heading", { name: "Limite de verificações atingido" })).toBeVisible();
-  await expect(panel).toContainText("Você fez muitas verificações em pouco tempo.");
-  await expect(panel).toContainText(/Tente novamente em \d+ segundos\./);
-  await expect(panel.getByRole("button", { name: "Tentar novamente" })).toBeDisabled();
 });
 
 test("a borda envia os cabeçalhos de segurança", async ({ page }) => {

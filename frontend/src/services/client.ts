@@ -1,10 +1,20 @@
-import type { ApiErrorCode, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
+import type { Account, ApiErrorCode, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
 
-/** Cliente da API. O MVP usa o cliente simulado; o cliente HTTP real entra na Sprint 9 (S9-02). */
+/** Verificação do código: o cliente HTTP real (S9-02) ou o simulado do modo demonstração. */
 export interface ValidationClient {
   listLists(signal?: AbortSignal): Promise<ListInfo[]>;
   validate(request: ValidateRequest, signal?: AbortSignal): Promise<ValidateResponse>;
 }
+
+/** Sessão da equipe (Sprint 13): o cookie é HttpOnly, então a página só pergunta quem está logado. */
+export interface AuthClient {
+  /** A conta logada; `ApiError` 401 quando não há sessão. */
+  me(signal?: AbortSignal): Promise<Account>;
+  login(login: string, password: string): Promise<Account>;
+  logout(): Promise<void>;
+}
+
+export type ApiClient = ValidationClient & AuthClient;
 
 /** Erro no formato `{ error: { code, message, retry_after_s } }` do contrato (5.2.2). */
 export class ApiError extends Error {

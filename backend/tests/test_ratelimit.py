@@ -1,8 +1,13 @@
-"""Limite de taxa (S10-01, FR-19): janela deslizante, identificação do cliente e limites por IP."""
+"""Limite de taxa (S10-01, FR-19): janela deslizante, identificação do cliente e limites por IP.
+
+Desde a S13-02, o cliente é a conta da sessão (resolvida antes pelo ``SessionMiddleware``) ou,
+sem sessão, o IP.
+"""
 
 from __future__ import annotations
 
 import ipaddress
+import uuid
 from typing import Any
 
 import pytest
@@ -16,8 +21,8 @@ from ipc_api.ratelimit import (
     parse_networks,
 )
 
-CLIENT_A = "0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c5d"
-CLIENT_B = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d"
+ACCOUNT_A = uuid.UUID("0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c5d").bytes
+ACCOUNT_B = uuid.UUID("9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d").bytes
 
 
 class FakeClock:
@@ -181,12 +186,16 @@ def test_invalid_networks_prevent_startup(value: str) -> None:
 def scope(
     peer: str | None = "203.0.113.5",
     forwarded: list[str] | None = None,
-    client_id: str | None = None,
+    account: bytes | None = None,
 ) -> dict[str, Any]:
     headers = [(b"x-forwarded-for", value.encode()) for value in forwarded or []]
-    if client_id is not None:
-        headers.append((b"x-client-id", client_id.encode()))
-    return {"type": "http", "client": (peer, 40_000) if peer else None, "headers": headers}
+    state = {"account_id": account} if account is not None else {}
+    return {
+        "type": "http",
+        "client": (peer, 40_000) if peer else None,
+        "headers": headers,
+        "state": state,
+    }
 
 
 def test_without_trusted_proxies_the_forwarded_header_is_ignored() -> None:
@@ -252,7 +261,7 @@ def test_campus_addresses_have_their_own_limit(
     identifier: ClientIdentifier, peer: str, limit: int
 ) -> None:
     assert limits_of(identifier, peer=peer)["ip"][1] == limit
-    assert limits_of(identifier, peer=peer)["client"][1] == 10
+    assert limits_of(identifier, peer=peer)["client"][1] == 30
 
 
 def test_ipv6_campus_networks_are_supported() -> None:
@@ -269,32 +278,37 @@ def test_ipv6_is_limited_by_its_64_prefix(identifier: ClientIdentifier) -> None:
     assert limits_of(identifier, peer="2001:db8:0:2::1")["ip"][0] != first
 
 
-def test_client_key_comes_from_a_valid_client_id(identifier: ClientIdentifier) -> None:
-    a = limits_of(identifier, client_id=CLIENT_A)["client"][0]
+def test_client_key_comes_from_the_session_account(identifier: ClientIdentifier) -> None:
+    a = limits_of(identifier, account=ACCOUNT_A)["client"][0]
 
-    assert limits_of(identifier, client_id=CLIENT_A.upper())["client"][0] == a
-    assert limits_of(identifier, client_id=CLIENT_A, peer="198.51.100.1")["client"][0] == a
-    assert limits_of(identifier, client_id=CLIENT_B)["client"][0] != a
+    assert limits_of(identifier, account=ACCOUNT_A, peer="198.51.100.1")["client"][0] == a
+    assert limits_of(identifier, account=ACCOUNT_B)["client"][0] != a
 
 
-@pytest.mark.parametrize("client_id", [None, "", "abc", CLIENT_A + "0", "a" * 5_000, "../../x"])
-def test_without_a_valid_client_id_the_client_is_the_ip(
-    identifier: ClientIdentifier, client_id: str | None
-) -> None:
+def test_x_client_id_no_longer_identifies_anyone(identifier: ClientIdentifier) -> None:
+    # Sem sessão, o cabeçalho antigo da página não rende uma chave própria: vale o IP.
+    request = scope()
+    request["headers"].append((b"x-client-id", b"0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c5d"))
+    keys = {name: key for key, _, name in identifier.limits(request)}
+
+    assert keys["client"] == limits_of(identifier)["client"][0]
+
+
+def test_without_a_session_the_client_is_the_ip(identifier: ClientIdentifier) -> None:
     anonymous = limits_of(identifier)["client"][0]
 
-    assert limits_of(identifier, client_id=client_id)["client"][0] == anonymous
-    assert limits_of(identifier, client_id=client_id, peer="198.51.100.1")["client"][0] != anonymous
+    assert limits_of(identifier, peer="198.51.100.1")["client"][0] != anonymous
+    assert limits_of(identifier, account=ACCOUNT_A)["client"][0] != anonymous
 
 
 def test_keys_are_opaque_and_salted_per_process() -> None:
     first, second = ClientIdentifier(RateLimitConfig()), ClientIdentifier(RateLimitConfig())
-    keys = limits_of(first, peer="203.0.113.5", client_id=CLIENT_A)
+    keys = limits_of(first, peer="203.0.113.5", account=ACCOUNT_A)
 
     for key, _ in keys.values():
         assert len(key) == 17
         assert ipaddress.ip_address("203.0.113.5").packed not in key
         assert b"203.0.113.5" not in key
-        assert CLIENT_A.encode() not in key
-    assert limits_of(second, peer="203.0.113.5", client_id=CLIENT_A)["ip"][0] != keys["ip"][0]
+        assert ACCOUNT_A not in key
+    assert limits_of(second, peer="203.0.113.5", account=ACCOUNT_A)["ip"][0] != keys["ip"][0]
     assert keys["ip"][0] != keys["client"][0]

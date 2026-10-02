@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Entra com nome ou e-mail institucional e senha; abre a sessão no cookie */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sai: encerra a sessão no servidor e apaga o cookie */
+        post: operations["logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A conta logada (o tratamento só aparece aqui, para o próprio titular) */
+        get: operations["me_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate": {
         parameters: {
             query?: never;
@@ -62,7 +113,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A API consegue validar código: o analisador responde (monitorado pelo UptimeRobot) */
+        /** A API consegue atender: o analisador e o banco de contas respondem (monitorado pelo UptimeRobot) */
         get: operations["ready_ready_get"];
         put?: never;
         post?: never;
@@ -77,10 +128,40 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AccountResponse
+         * @description A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26).
+         */
+        AccountResponse: {
+            /** Name */
+            name: string;
+            /**
+             * Email
+             * @description E-mail principal.
+             */
+            email: string;
+            /** Course */
+            course: string;
+            /**
+             * Treatment
+             * @enum {string}
+             */
+            treatment: "masculino" | "feminino" | "neutro";
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "desenvolvedor" | "professor" | "monitor_chefe" | "monitor";
+            /**
+             * Role Label
+             * @description Como o cargo aparece na interface; o desenvolvedor aparece como "Monitor".
+             */
+            role_label: string;
+        };
+        /**
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -107,6 +188,19 @@ export interface components {
             number: number;
             /** Title */
             title: string;
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /**
+             * Login
+             * @description Nome ou e-mail institucional (@cin.ufpe.br ou @ufpe.br).
+             */
+            login: string;
+            /**
+             * Password
+             * @description Senha da conta. Nunca é registrada.
+             */
+            password: string;
         };
         /** ReadyResponse */
         ReadyResponse: {
@@ -212,13 +306,153 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description INVALID_CREDENTIALS: nome, e-mail ou senha incorretos (mensagem única). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_PENDING_VERIFICATION, ACCOUNT_PENDING_APPROVAL, ACCOUNT_REJECTED ou ACCOUNT_REMOVED (só com a senha correta), ou ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DOMAIN_NOT_ALLOWED (e-mail fora de @cin.ufpe.br e @ufpe.br) ou INVALID_INPUT. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas tentativas. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     validate_api_v1_validate_post: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description UUID aleatório que a página gera a cada sessão do navegador. Serve só ao limite de taxa por cliente (lido pelo middleware) e nunca é gravado. */
-                "x-client-id"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -235,6 +469,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB. */
@@ -255,7 +507,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description RATE_LIMITED: muitas verificações do mesmo cliente (X-Client-Id) ou da mesma rede em 1 minuto. Veja retry_after_s. */
+            /** @description RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s. */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -264,7 +516,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description OVERLOADED (sem vaga para a análise) ou ANALYZER_UNAVAILABLE (o analisador não respondeu). Veja retry_after_s. */
+            /** @description OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja retry_after_s. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -293,7 +545,16 @@ export interface operations {
                     "application/json": components["schemas"]["ListInfo"][];
                 };
             };
-            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. */
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -342,7 +603,7 @@ export interface operations {
                     "application/json": components["schemas"]["ReadyResponse"];
                 };
             };
-            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. */
+            /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
             503: {
                 headers: {
                     [name: string]: unknown;

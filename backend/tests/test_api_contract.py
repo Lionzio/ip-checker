@@ -5,6 +5,9 @@
    do 5.2.2 funcionam ponta a ponta.
 3. O schemathesis gera requisições a partir do ``docs/openapi.json`` e confere que cada resposta
    está documentada, segue o esquema publicado e nunca é um 5xx.
+
+Desde a Sprint 13, as rotas da equipe exigem sessão: as chamadas levam o cookie de um membro, e
+cada status das rotas de autenticação é provocado de propósito no fim do arquivo.
 """
 
 from __future__ import annotations
@@ -21,13 +24,24 @@ from fastapi.testclient import TestClient
 from hypothesis import HealthCheck, settings
 from schemathesis.checks import not_a_server_error
 from schemathesis.config import SchemathesisConfig
+from schemathesis.specs.openapi.checks import ignored_auth, positive_data_acceptance
 
+from api_support import (
+    COOKIE,
+    DEV_EMAIL,
+    PASSWORD,
+    authed_client,
+    make_app,
+    member,
+    open_session,
+)
 from conftest import BASE_RULESET, REPO_ROOT
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app as create_analyzer
 from ipc_analyzer.service.settings import AnalyzerSettings
+from ipc_api.accounts.models import Status
+from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.admission import AdmissionConfig
-from ipc_api.app import create_app
 from ipc_api.openapi import build, render
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
@@ -71,7 +85,7 @@ def analyzer() -> Iterator[TestClient]:
 
 
 @pytest.fixture(scope="module")
-def api_app(analyzer: TestClient) -> FastAPI:
+def api_bundle(analyzer: TestClient) -> tuple[FastAPI, MemoryAccountStore]:
     """A API com a rede trocada por uma ponte direta para o analyzer em memória."""
 
     def bridge(request: httpx2.Request) -> httpx2.Response:
@@ -87,12 +101,25 @@ def api_app(analyzer: TestClient) -> FastAPI:
             headers={"Content-Type": answer.headers["content-type"]},
         )
 
-    return create_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge))
+    return make_app(UNLIMITED, analyzer_transport=httpx2.MockTransport(bridge))
 
 
 @pytest.fixture(scope="module")
-def api(api_app: FastAPI) -> Iterator[TestClient]:
-    with TestClient(api_app) as client:
+def api_app(api_bundle: tuple[FastAPI, MemoryAccountStore]) -> FastAPI:
+    return api_bundle[0]
+
+
+@pytest.fixture(scope="module")
+def session(api_bundle: tuple[FastAPI, MemoryAccountStore]) -> dict[str, str]:
+    """O cookie da sessão de um membro. Como cookie (e não cabeçalho), o schemathesis consegue
+    tirá-lo e conferir que a rota recusa a chamada sem sessão (checagem ignored_auth)."""
+    store = api_bundle[1]
+    return {COOKIE: open_session(store, member(store))}
+
+
+@pytest.fixture(scope="module")
+def api(api_bundle: tuple[FastAPI, MemoryAccountStore]) -> Iterator[TestClient]:
+    with authed_client(*api_bundle) as client:
         yield client
 
 
@@ -167,22 +194,35 @@ CONTRACT_CONFIG = SchemathesisConfig.from_dict(
 )
 
 
-@pytest.fixture(scope="module")
-def contract(api_app: FastAPI) -> Any:
-    schema = schemathesis.openapi.from_dict(
+def _schema() -> Any:
+    return schemathesis.openapi.from_dict(
         json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
     )
+
+
+@pytest.fixture(scope="module")
+def contract(api_app: FastAPI) -> Any:
+    schema = _schema()
     schema.app = api_app
     return schema
 
 
-schema = schemathesis.pytest.from_fixture("contract")
+# Login e logout gerados ao acaso recusariam credenciais ou encerrariam a sessão dos demais casos;
+# os status deles são provocados um a um em test_auth_statuses_follow_the_contract.
+schema = schemathesis.pytest.from_fixture("contract").exclude(
+    path=["/api/v1/auth/login", "/api/v1/auth/logout"]
+)
 
 
 @schema.parametrize()
 @settings(max_examples=60, deadline=None, suppress_health_check=list(HealthCheck))
-def test_responses_follow_the_published_contract(case: Any) -> None:
-    case.call_and_validate()
+def test_responses_follow_the_published_contract(case: Any, session: dict[str, str]) -> None:
+    # Os casos gerados trazem o cookie da sessão com um valor qualquer, que vira o de um membro.
+    # Os casos negativos que o omitem conferem que a rota recusa a chamada sem sessão.
+    if COOKIE in (case.cookies or {}):
+        case.call_and_validate(cookies=session)
+    else:
+        case.call_and_validate()
 
 
 # Cada status documentado do 5.2.2, provocado de propósito e validado contra o OpenAPI publicado.
@@ -207,27 +247,34 @@ DOCUMENTED_CASES = {
 
 
 @pytest.mark.parametrize("name", DOCUMENTED_CASES, ids=list(DOCUMENTED_CASES))
-def test_every_documented_status_follows_the_contract(contract: Any, name: str) -> None:
+def test_every_documented_status_follows_the_contract(
+    contract: Any, session: dict[str, str], name: str
+) -> None:
     body, status, error_code = DOCUMENTED_CASES[name]
     case = contract["/api/v1/validate"]["POST"].Case(body=body, media_type="application/json")
 
-    response = case.call_and_validate()
+    response = case.call_and_validate(cookies=session)
 
     assert response.status_code == status
     if error_code is not None:
         assert response.json()["error"]["code"] == error_code
 
 
+def _contract_with_session(
+    settings: ApiSettings, transport: httpx2.MockTransport
+) -> tuple[Any, dict[str, str]]:
+    app, store = make_app(settings, analyzer_transport=transport)
+    schema = _schema()
+    schema.app = app
+    return schema, {COOKIE: open_session(store, member(store))}
+
+
 @pytest.fixture(scope="module")
-def contract_without_analyzer() -> Any:
+def contract_without_analyzer() -> tuple[Any, dict[str, str]]:
     def refuse(request: httpx2.Request) -> httpx2.Response:
         raise httpx2.ConnectError("analyzer parado", request=request)
 
-    schema = schemathesis.openapi.from_dict(
-        json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
-    )
-    schema.app = create_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(refuse))
-    return schema
+    return _contract_with_session(ApiSettings(), httpx2.MockTransport(refuse))
 
 
 @pytest.mark.parametrize(
@@ -239,20 +286,24 @@ def contract_without_analyzer() -> Any:
     ],
 )
 def test_unavailable_analyzer_follows_the_contract(
-    contract_without_analyzer: Any, path: str, method: str, body: dict[str, Any] | None
+    contract_without_analyzer: tuple[Any, dict[str, str]],
+    path: str,
+    method: str,
+    body: dict[str, Any] | None,
 ) -> None:
-    operation = contract_without_analyzer[path][method]
+    contract, session = contract_without_analyzer
+    operation = contract[path][method]
     case = operation.Case(body=body, media_type="application/json") if body else operation.Case()
 
     # O 503 ANALYZER_UNAVAILABLE é documentado; as demais checagens (status documentado, esquema
     # do corpo, cabeçalhos) continuam valendo. 5xx genérico segue proibido no teste gerado acima.
-    response = case.call_and_validate(excluded_checks=[not_a_server_error])
+    response = case.call_and_validate(cookies=session, excluded_checks=[not_a_server_error])
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "ANALYZER_UNAVAILABLE"
 
 
-def _contract_for(settings: ApiSettings) -> Any:
+def _contract_for(settings: ApiSettings) -> tuple[Any, dict[str, str]]:
     def valid(_request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(
             200,
@@ -266,24 +317,22 @@ def _contract_for(settings: ApiSettings) -> Any:
             },
         )
 
-    schema = schemathesis.openapi.from_dict(
-        json.loads(OPENAPI_FILE.read_text(encoding="utf-8")), config=CONTRACT_CONFIG
-    )
-    schema.app = create_app(settings, analyzer_transport=httpx2.MockTransport(valid))
-    return schema
+    return _contract_with_session(settings, httpx2.MockTransport(valid))
 
 
 def test_rate_limited_follows_the_contract() -> None:
-    contract = _contract_for(ApiSettings(rate_limit=RateLimitConfig(client_per_min=1)))
+    contract, session = _contract_for(ApiSettings(rate_limit=RateLimitConfig(client_per_min=1)))
     operation = contract["/api/v1/validate"]["POST"]
     body = {"code": "x = 1\n", "list_number": 1}
-    headers = {"X-Client-Id": "0b5c1f6e-6f0a-4a57-9d0c-3f1f0a2b4c5d"}
 
-    first = operation.Case(body=body, media_type="application/json", headers=headers)
-    second = operation.Case(body=body, media_type="application/json", headers=headers)
+    first = operation.Case(body=body, media_type="application/json")
+    second = operation.Case(body=body, media_type="application/json")
 
-    assert first.call_and_validate().status_code == 200
-    response = second.call_and_validate()
+    # Sem a checagem ignored_auth: as chamadas extras dela gastariam o limite de 1 por minuto.
+    assert (
+        first.call_and_validate(cookies=session, excluded_checks=[ignored_auth]).status_code == 200
+    )
+    response = second.call_and_validate(cookies=session, excluded_checks=[ignored_auth])
     assert response.status_code == 429
     assert response.json()["error"]["code"] == "RATE_LIMITED"
     assert response.headers["retry-after"] == [str(response.json()["error"]["retry_after_s"])]
@@ -291,13 +340,79 @@ def test_rate_limited_follows_the_contract() -> None:
 
 def test_overloaded_follows_the_contract() -> None:
     # Sem nenhuma vaga de admissão, toda análise é recusada com 503 OVERLOADED.
-    contract = _contract_for(ApiSettings(admission=AdmissionConfig(capacity=0, max_waiting=0)))
+    contract, session = _contract_for(
+        ApiSettings(admission=AdmissionConfig(capacity=0, max_waiting=0))
+    )
     case = contract["/api/v1/validate"]["POST"].Case(
         body={"code": "x = 1\n", "list_number": 1}, media_type="application/json"
     )
 
-    response = case.call_and_validate(excluded_checks=[not_a_server_error])
+    response = case.call_and_validate(cookies=session, excluded_checks=[not_a_server_error])
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "OVERLOADED"
     assert response.headers["retry-after"] == ["10"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Acesso restrito (Sprint 13): cada status das rotas de autenticação e das rotas protegidas
+# ---------------------------------------------------------------------------------------------
+
+
+def test_auth_statuses_follow_the_contract() -> None:
+    app, store = make_app(ApiSettings())
+    contract = _schema()
+    contract.app = app
+    login = contract["/api/v1/auth/login"]["POST"]
+    waiting = member(store, status=Status.AGUARDANDO_APROVACAO, password_hash=None)
+
+    # Os status de recusa são conferidos um a um; a checagem de "dado válido aceito" não se aplica.
+    refusals = [positive_data_acceptance, not_a_server_error]
+
+    def attempt(body: dict[str, Any], **kwargs: Any) -> Any:
+        case = login.Case(body=body, media_type="application/json")
+        return case.call_and_validate(excluded_checks=refusals, **kwargs)
+
+    with TestClient(app):  # o lifespan cria a conta do desenvolvedor
+        ok = attempt({"login": DEV_EMAIL, "password": PASSWORD})
+        name, token = ok.headers["set-cookie"][0].split(";")[0].split("=", 1)
+        session = {name: token}
+        assert ok.status_code == 200
+        assert attempt({"login": DEV_EMAIL, "password": "errada"}).status_code == 401
+        assert attempt({"login": "x@xcin.ufpe.br", "password": "x"}).status_code == 422
+        # Sem senha, a conta que aguarda aprovação nunca chega ao 403: mensagem única de 401.
+        assert attempt({"login": waiting.name, "password": PASSWORD}).status_code == 401
+        evil = attempt(
+            {"login": DEV_EMAIL, "password": PASSWORD}, headers={"Origin": "https://evil.example"}
+        )
+        assert evil.status_code == 403
+        for _ in range(4):
+            attempt({"login": DEV_EMAIL, "password": "errada"})
+        assert attempt({"login": DEV_EMAIL, "password": PASSWORD}).status_code == 429
+
+        me = contract["/api/v1/auth/me"]["GET"]
+        assert me.Case().call_and_validate(cookies=session).status_code == 200
+        assert me.Case().call_and_validate(excluded_checks=refusals).status_code == 401
+        logout = contract["/api/v1/auth/logout"]["POST"].Case().call_and_validate(cookies=session)
+        assert logout.status_code == 204
+        after = me.Case().call_and_validate(cookies=session, excluded_checks=refusals)
+        assert after.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "body"),
+    [
+        ("/api/v1/validate", "POST", {"code": "x = 1\n", "list_number": 1}),
+        ("/api/v1/lists", "GET", None),
+    ],
+)
+def test_routes_without_session_follow_the_contract(
+    contract: Any, path: str, method: str, body: dict[str, Any] | None
+) -> None:
+    operation = contract[path][method]
+    case = operation.Case(body=body, media_type="application/json") if body else operation.Case()
+
+    response = case.call_and_validate(excluded_checks=[positive_data_acceptance])
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHENTICATED"
