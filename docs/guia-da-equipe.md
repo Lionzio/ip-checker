@@ -18,11 +18,17 @@ e descarta tudo depois. O acesso é só da equipe; alunos não têm conta.
 | Aponta construções proibidas em todas as listas (`import`, `try`, `break`, `None`, sets, classes...) | Não testa se a resposta está certa: isso continua com o Dikastis |
 | Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Não considera ainda as regras específicas de cada questão: **se o enunciado liberar algo, vale o enunciado** |
 | Aponta o que não consta no documento de permissões (por exemplo, `eval`) | Não decide se houve plágio: a porcentagem é um indício, e a decisão é da equipe |
-| Exige o assunto da lista (na Lista 1, um `if` ou um operador ternário; na Lista 2, um `for` ou um `while`) | Não guarda nem registra o código de ninguém |
+| Exige o assunto da lista (Lista 1: `if` ou ternário; Lista 2: `for` ou `while`; Lista 3: uma lista ou tupla; Lista 4: um `def`) | Não guarda nem registra o código de ninguém |
 | Mostra erros de sintaxe com linha e coluna, em português | Não substitui a leitura do documento de permissões |
 
-Por enquanto, estão liberadas a **Lista 1 (comandos condicionais)** e a **Lista 2 (laços de
-repetição)**. As demais entram ao longo do período.
+Por enquanto, estão liberadas as **Listas 1 (comandos condicionais), 2 (laços de repetição),
+3 (listas e tuplas) e 4 (funções e escopo de variável)**. As Listas 5 e 6 entram ao longo do
+período.
+
+Na Lista 3, o assunto é comprovado por uma lista ou tupla escrita no código (`[1, 2]`, `(1, 2)`,
+`a, b = ...`), por `list()`, `tuple()` ou por uma *list comprehension*; uma lista que só vem de
+`split()` não basta. Na Lista 4, parâmetro com valor padrão (`def f(x=1)`) e função dentro de
+função não constam no documento e aparecem com a R-04.
 
 Na Lista 2, o `zip()` segue a condição do documento: só serve para variar mais de um índice no
 comando `for`. Então `for a, b in zip(nomes, notas):` passa, e o `zip()` em qualquer outro lugar
@@ -169,8 +175,9 @@ Ele respeita as permissões da lista. Se a resposta está certa, só o Dikastis 
 
 **Por que `print("oi")` sozinho dá "Exigência não atendida"?**
 Toda questão precisa usar o assunto da lista: na Lista 1, um comando condicional (`if`, com ou sem
-`elif`/`else`) ou o operador ternário; na Lista 2, um laço (`for` ou `while`). Um `if` ou um `for`
-dentro de um texto ou de um comentário não conta.
+`elif`/`else`) ou o operador ternário; na Lista 2, um laço (`for` ou `while`); na Lista 3, uma lista
+ou tupla; na Lista 4, uma função com `def`. Um `if` ou um `for` dentro de um texto ou de um
+comentário não conta.
 
 **O enunciado da questão libera algo que o IP-Checker aponta. E agora?**
 Vale o enunciado. Nesse caso, a violação pode ser ignorada, inclusive no feedback, que você pode
