@@ -8,7 +8,9 @@
 import type {
   Account,
   ApiErrorCode,
+  AuthOptions,
   ErrorResponse,
+  GooglePending,
   ListInfo,
   ManagedAccount,
   MembersResponse,
@@ -118,6 +120,16 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
         "/api/v1/profile/password",
         json("POST", { current_password: currentPassword, new_password: newPassword }),
       );
+    },
+    options(signal) {
+      return call<AuthOptions>("/api/v1/auth/options", { method: "GET" }, signal);
+    },
+    googlePending(signal) {
+      return call<GooglePending>("/api/v1/auth/google/pending", { method: "GET" }, signal);
+    },
+    async completeGoogle(request) {
+      const body = await call<{ email: string }>("/api/v1/auth/google/complete", json("POST", request));
+      return body.email;
     },
     async listRequests(signal) {
       const body = await call<{ items: ManagedAccount[] }>("/api/v1/admin/requests", { method: "GET" }, signal);

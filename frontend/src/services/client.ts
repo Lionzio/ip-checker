@@ -1,6 +1,9 @@
 import type {
   Account,
   ApiErrorCode,
+  AuthOptions,
+  GooglePending,
+  GoogleSignup,
   ListInfo,
   ManagedAccount,
   MembersResponse,
@@ -32,6 +35,12 @@ export interface AuthClient {
   updateProfile(update: ProfileUpdate): Promise<Account>;
   /** Troca a senha (ou define uma, numa conta só do Google); as outras sessões caem. */
   changePassword(currentPassword: string | null, newPassword: string): Promise<void>;
+  /** As formas de entrar configuradas no servidor (o Google pode estar desligado). */
+  options(signal?: AbortSignal): Promise<AuthOptions>;
+  /** O cadastro pelo Google em andamento neste navegador: e-mail e nome sugerido. */
+  googlePending(signal?: AbortSignal): Promise<GooglePending>;
+  /** Envia o formulário complementar do Google; devolve o e-mail do cadastro. */
+  completeGoogle(request: GoogleSignup): Promise<string>;
 }
 
 /**

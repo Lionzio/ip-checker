@@ -17,6 +17,10 @@ export type ErrorResponse = Schemas["ErrorResponse"];
 /** A conta logada (Sprint 13). O tratamento só aparece para o próprio titular. */
 export type Account = Schemas["AccountResponse"];
 export type RegisterRequest = Schemas["RegisterRequest"];
+/** Formas de entrar disponíveis no servidor e o cadastro pelo Google (Sprint 16). */
+export type AuthOptions = Schemas["AuthOptions"];
+export type GooglePending = Schemas["GooglePending"];
+export type GoogleSignup = Schemas["GoogleSignup"];
 export type ProfileUpdate = Schemas["ProfileUpdate"];
 export type Treatment = Account["treatment"];
 export type Role = Account["role"];

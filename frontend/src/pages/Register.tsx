@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
+import { GoogleButton } from "../components/GoogleButton";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
@@ -14,7 +15,7 @@ const COURSES = [
   "Inteligência Artificial",
 ];
 
-/** Registro por e-mail institucional e senha (FR-23). O Google entra na Sprint 16. */
+/** Registro por e-mail institucional e senha (FR-23), ou pelo Google (FR-24, S16-01). */
 export function Register({ client }: { client: AuthClient }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,6 +50,7 @@ export function Register({ client }: { client: AuthClient }) {
         Para a equipe da disciplina. Depois de confirmar o e-mail, o pedido vai para a aprovação de
         um monitor-chefe, de um professor ou do desenvolvedor.
       </p>
+      <GoogleButton client={client} label="Registrar com o Google" />
       <div className="flex flex-col gap-1">
         <label className="flex flex-col gap-1">
           <span className="font-medium">Nome</span>

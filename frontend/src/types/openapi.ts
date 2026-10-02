@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Formas de entrar disponíveis neste servidor */
+        get: operations["options_api_v1_auth_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -100,6 +117,74 @@ export interface paths {
         put?: never;
         /** Reenvia o link de verificação; a resposta é a mesma, exista a conta ou não */
         post: operations["resend_api_v1_auth_verify_resend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Começa a entrada pelo Google: redireciona para a escolha da conta */
+        get: operations["start_api_v1_auth_google_start_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retorno do Google: entra, liga a conta de mesmo e-mail ou leva ao formulário */
+        get: operations["callback_api_v1_auth_google_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** O e-mail e o nome sugerido do cadastro pelo Google em andamento */
+        get: operations["pending_api_v1_auth_google_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/google/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Formulário complementar do Google: nome, curso e tratamento; vai para a aprovação */
+        post: operations["complete_api_v1_auth_google_complete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -371,6 +456,14 @@ export interface components {
              */
             can_manage: boolean;
         };
+        /** AuthOptions */
+        AuthOptions: {
+            /**
+             * Google
+             * @description A entrada pelo Google está configurada (FR-24).
+             */
+            google: boolean;
+        };
         /**
          * ErrorCode
          * @enum {string}
@@ -387,6 +480,42 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /** GooglePending */
+        GooglePending: {
+            /**
+             * Email
+             * @description O e-mail confirmado pelo Google.
+             */
+            email: string;
+            /**
+             * Name
+             * @description O nome da conta Google, só como sugestão (pode vir vazio).
+             */
+            name: string;
+        };
+        /** GoogleSignup */
+        GoogleSignup: {
+            /** Name */
+            name: string;
+            /** Course */
+            course: string;
+            /**
+             * Treatment
+             * @description Como a pessoa quer ser tratada no feedback.
+             * @enum {string}
+             */
+            treatment: "masculino" | "feminino" | "neutro";
+        };
+        /** GoogleSignupResponse */
+        GoogleSignupResponse: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "aguardando_aprovacao";
+            /** Email */
+            email: string;
         };
         /** HealthResponse */
         HealthResponse: {
@@ -751,6 +880,26 @@ export interface operations {
             };
         };
     };
+    options_api_v1_auth_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthOptions"];
+                };
+            };
+        };
+    };
     logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
@@ -984,6 +1133,171 @@ export interface operations {
                 };
             };
             /** @description DOMAIN_NOT_ALLOWED ou INVALID_INPUT. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    start_api_v1_auth_google_start_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Para o Google, ou para /entrar se ele não estiver configurado. */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    callback_api_v1_auth_google_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Para / (sessão aberta), /google/concluir (formulário complementar) ou /entrar?google=<motivo> (recusa). */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description INVALID_INPUT: parâmetros longos demais. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pending_api_v1_auth_google_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GooglePending"];
+                };
+            };
+            /** @description INVALID_TOKEN: não há cadastro pelo Google em andamento neste navegador, ou ele venceu (10 minutos). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    complete_api_v1_auth_google_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleSignup"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleSignupResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NAME_TAKEN ou EMAIL_TAKEN: o nome, o e-mail ou a conta Google já têm conta. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_TOKEN: não há cadastro pelo Google em andamento neste navegador, ou ele venceu (10 minutos), ou INVALID_INPUT. */
             422: {
                 headers: {
                     [name: string]: unknown;

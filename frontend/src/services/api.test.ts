@@ -196,6 +196,20 @@ describe("createApiClient", () => {
     await expect(createApiClient().listLists()).rejects.toBeInstanceOf(TypeError);
   });
 
+  it("pergunta as formas de entrar e cuida do cadastro pelo Google", async () => {
+    const fetchMock = respond(200, { google: true });
+    await expect(createApiClient().options()).resolves.toEqual({ google: true });
+    respond(200, { email: "g@cin.ufpe.br", name: "G" });
+    await expect(createApiClient().googlePending()).resolves.toEqual({ email: "g@cin.ufpe.br", name: "G" });
+    const complete = respond(201, { status: "aguardando_aprovacao", email: "g@cin.ufpe.br" });
+    const request = { name: "G", course: "CC", treatment: "neutro" as const };
+
+    await expect(createApiClient().completeGoogle(request)).resolves.toBe("g@cin.ufpe.br");
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe("/api/v1/auth/options");
+    const [url, init] = complete.mock.calls[0] as unknown as [string, RequestInit];
+    expect([url, init.method, JSON.parse(init.body as string)]).toEqual(["/api/v1/auth/google/complete", "POST", request]);
+  });
+
   it("lê a fila e os membros do gerenciamento", async () => {
     const fetchMock = respond(200, { items: [] });
 

@@ -256,7 +256,8 @@ export function createMockClient({
   latencyMs = 400,
   signedIn = false,
   as = DEMO_ACCOUNT,
-}: { latencyMs?: number; signedIn?: boolean; as?: Account } = {}): ApiClient {
+  google = false,
+}: { latencyMs?: number; signedIn?: boolean; as?: Account; google?: boolean } = {}): ApiClient {
   let requests = 0;
   let account: Account | null = signedIn ? as : null;
   const team = [
@@ -331,6 +332,24 @@ export function createMockClient({
 
     async changePassword() {
       await wait(latencyMs);
+    },
+
+    async options(signal) {
+      await wait(latencyMs, signal);
+      return { google };
+    },
+
+    async googlePending(signal) {
+      await wait(latencyMs, signal);
+      if (!google) {
+        throw new ApiError(422, "INVALID_TOKEN", "O cadastro pelo Google expirou. Entre com o Google de novo para continuar.");
+      }
+      return { email: "demonstracao.google@cin.ufpe.br", name: "Pessoa do Google" };
+    },
+
+    async completeGoogle() {
+      await wait(latencyMs);
+      return "demonstracao.google@cin.ufpe.br";
     },
 
     async listRequests(signal) {

@@ -1,16 +1,22 @@
 import { type FormEvent, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
+import { GoogleButton } from "../components/GoogleButton";
+import { googleMessage } from "../google";
+import type { AuthClient } from "../services/client";
 import { BUTTON, errorMessage, INPUT } from "../ui";
 
 interface LoginProps {
+  client: AuthClient;
   onSignIn: (login: string, password: string) => Promise<void>;
 }
 
-/** Entrar com nome ou e-mail institucional e senha (FR-25). O Google entra na Sprint 16. */
-export function Login({ onSignIn }: LoginProps) {
+/** Entrar com nome ou e-mail institucional e senha (FR-25), ou com o Google (FR-24). */
+export function Login({ client, onSignIn }: LoginProps) {
+  const [params] = useSearchParams();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // A volta do Google com recusa traz só um código, que vira a mensagem (S16-01).
+  const [error, setError] = useState<string | null>(() => googleMessage(params.get("google")));
   const [sending, setSending] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -29,6 +35,7 @@ export function Login({ onSignIn }: LoginProps) {
   return (
     <form onSubmit={(event) => void submit(event)} className="mx-auto flex max-w-md flex-col gap-4 py-10">
       <h2 className="text-xl font-semibold">Entrar</h2>
+      <GoogleButton client={client} label="Entrar com o Google" />
       <label className="flex flex-col gap-1">
         <span className="font-medium">Nome ou e-mail institucional</span>
         <input
