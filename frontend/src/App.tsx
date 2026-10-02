@@ -7,6 +7,7 @@ import { GoogleComplete } from "./pages/GoogleComplete";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Plagiarism } from "./pages/Plagiarism";
+import { Privacy } from "./pages/Privacy";
 import { Profile } from "./pages/Profile";
 import { Register } from "./pages/Register";
 import { Verify } from "./pages/Verify";
@@ -96,6 +97,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
             />
             <Route path="/verificar" element={<Verify client={client} />} />
+            <Route path="/privacidade" element={<Privacy />} />
             <Route
               path="/google/concluir"
               element={state.status === "signed-in" ? <Navigate to="/" replace /> : <GoogleComplete client={client} />}

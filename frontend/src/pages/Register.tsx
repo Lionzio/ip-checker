@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { GoogleButton } from "../components/GoogleButton";
 import { PasswordRequirements } from "../components/PasswordRequirements";
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
@@ -93,6 +94,7 @@ export function Register({ client }: { client: AuthClient }) {
         </datalist>
       </label>
       <TreatmentField value={treatment} onChange={setTreatment} />
+      <PrivacyNotice />
       {error !== null && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-300">
           {error}

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { PrivacyNotice } from "../components/PrivacyNotice";
 import { TreatmentField } from "../components/TreatmentField";
 import type { AuthClient } from "../services/client";
 import type { GooglePending, Treatment } from "../types/api";
@@ -98,6 +99,7 @@ export function GoogleComplete({ client }: { client: AuthClient }) {
         <input name="course" required maxLength={120} value={course} onChange={(e) => setCourse(e.target.value)} className={INPUT} />
       </label>
       <TreatmentField value={treatment} onChange={setTreatment} />
+      <PrivacyNotice />
       {error !== null && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-300">
           {error}
