@@ -30,6 +30,9 @@ NETWORK = f"{PROJECT}_analyzer_net"
 EDGE_NETWORK = f"{PROJECT}_edge_net"
 CLIENT = f"{PROJECT}-client"
 PUBLIC_CLIENT = f"{PROJECT}-public-client"
+#: Outro cliente da borda, com outro IP, só para os ataques à autenticação (S16-03): assim eles não
+#: dividem o limite por IP que ``test_api_rate_limit_edge`` esgota de propósito.
+AUTH_CLIENT = f"{PROJECT}-auth-client"
 IMAGE = "ip-checker-backend:local"
 ANALYZER_URL = "http://analyzer:8001"
 WEB_URL = "http://web:8080"
@@ -122,7 +125,17 @@ KEPT_HEADERS = (
     "access-control-expose-headers",
     "strict-transport-security",
     "x-content-type-options",
+    "set-cookie",
+    "location",
+    "cache-control",
 )
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    # Os redirecionamentos (Google) são conferidos como respostas, não seguidos.
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+OPENER = urllib.request.build_opener(NoRedirect)
 
 def call(request):
     if request.get("raw") is not None:
@@ -141,7 +154,7 @@ def call(request):
     )
     start = time.perf_counter()
     try:
-        with urllib.request.urlopen(http, timeout=30) as response:
+        with OPENER.open(http, timeout=30) as response:
             status, raw, headers = response.status, response.read(), response.headers
     except urllib.error.HTTPError as error:
         status, raw, headers = error.code, error.read(), error.headers
