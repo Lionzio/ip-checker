@@ -18,6 +18,8 @@ from ipc_api.feedback.providers import LlmSettings
 from ipc_api.feedback.service import FeedbackLimits
 from ipc_api.mail import EmailConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
+from ipc_api.slo import SloConfig
+from ipc_api.telemetry import TelemetryConfig
 
 KIB = 1024
 
@@ -101,6 +103,10 @@ class ApiSettings:
     feedback_limits: FeedbackLimits = field(default_factory=FeedbackLimits)
     #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
+    #: Telemetria anônima (S21-01): grava no mesmo banco, com o usuário da API (ipc_writer).
+    telemetry: TelemetryConfig = field(default_factory=TelemetryConfig)
+    #: Limites dos alertas de latência e de erro em /health/slo (S21-02, NFR-15).
+    slo: SloConfig = field(default_factory=SloConfig)
 
     @property
     def page_origin(self) -> str:
@@ -143,6 +149,8 @@ class ApiSettings:
             accounts=AccountsConfig(
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
             ),
+            telemetry=TelemetryConfig.from_env(env),
+            slo=SloConfig.from_env(env),
         )
 
 

@@ -1,6 +1,7 @@
-"""Listas habilitadas (com sessão), ``/health`` (processo vivo) e ``/ready`` (pronto para validar).
+"""Listas habilitadas (com sessão), ``/health`` (processo vivo), ``/ready`` (pronto para validar)
+e ``/health/slo`` (latência e erros recentes, S21-02).
 
-``/health`` e ``/ready`` ficam abertos para o monitoramento (UptimeRobot) e não revelam dados.
+As três rotas de operação ficam abertas para o monitoramento (UptimeRobot) e não revelam dados.
 """
 
 from __future__ import annotations
@@ -14,11 +15,13 @@ from ipc_api.accounts.models import StoreUnavailable
 from ipc_api.auth.deps import get_authenticator, require_active_account
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
-from ipc_api.deps import get_analyzer, get_settings
+from ipc_api.deps import get_analyzer, get_settings, get_slo, get_telemetry
 from ipc_api.errors import analyzer_unavailable, database_unavailable
 from ipc_api.routes import error_docs
-from ipc_api.schemas import HealthResponse, ListInfo, ReadyResponse
+from ipc_api.schemas import HealthResponse, ListInfo, ReadyResponse, SloResponse, SloTelemetry
 from ipc_api.settings import ApiSettings
+from ipc_api.slo import SloMonitor
+from ipc_api.telemetry import Telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -95,4 +98,41 @@ async def ready(
         raise database_unavailable() from None
     return ReadyResponse(
         status="ready", ruleset_version=status.ruleset_version, release=settings.release
+    )
+
+
+@router.get(
+    "/health/slo",
+    tags=["operação"],
+    summary=(
+        "Latência e erros dos últimos 5 minutos: 503 quando o P95 da verificação passa de 200 ms "
+        "ou mais de 1% das respostas são 5xx (alerta do UptimeRobot)"
+    ),
+    responses={503: {"model": SloResponse, "description": "Fora da meta do NFR-15."}},
+)
+async def slo(
+    response: Response,
+    monitor: Annotated[SloMonitor, Depends(get_slo)],
+    telemetry: Annotated[Telemetry, Depends(get_telemetry)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
+) -> SloResponse:
+    response.headers["Cache-Control"] = "no-store"
+    report = monitor.report()
+    if not report.healthy:
+        response.status_code = 503
+    stats = telemetry.stats
+    return SloResponse(
+        status="ok" if report.healthy else "degraded",
+        window_s=int(settings.slo.window_s),
+        requests=report.requests,
+        validations=report.validations,
+        p95_ms=report.p95_ms,
+        error_rate_pct=report.error_rate_pct,
+        reasons=list(report.reasons),
+        telemetry=SloTelemetry(
+            written=stats.written,
+            dropped=stats.dropped,
+            failed_batches=stats.failed_batches,
+            queued=telemetry.queued,
+        ),
     )

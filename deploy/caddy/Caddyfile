@@ -62,8 +62,8 @@
 		error 411
 	}
 
-	# /ready também é o que o monitoramento externo consulta (C8).
-	@api path /api/* /health /ready
+	# /ready e /health/slo também são o que o monitoramento externo consulta (C8, S21-02).
+	@api path /api/* /health /health/slo /ready
 	handle @api {
 		# Sem trusted_proxies, o Caddy descarta o X-Forwarded-For do cliente e escreve o IP real.
 		reverse_proxy api:8000

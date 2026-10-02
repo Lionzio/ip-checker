@@ -12,6 +12,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from ipc_api.errors import ErrorCode, error_response
 from ipc_api.ids import new_request_id
 from ipc_api.logging import get_logger
+from ipc_api.slo import SloMonitor
 
 log = get_logger("ipc_api.access")
 
@@ -25,9 +26,10 @@ class RequestContextMiddleware:
     traz o caminho da rota, nunca o caminho pedido: uma URL inventada pelo cliente não chega ao log.
     """
 
-    def __init__(self, app: ASGIApp, max_body_bytes: int) -> None:
+    def __init__(self, app: ASGIApp, max_body_bytes: int, slo: SloMonitor | None = None) -> None:
         self.app = app
         self.max_body_bytes = max_body_bytes
+        self.slo = slo
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -71,13 +73,17 @@ class RequestContextMiddleware:
             await self.app(scope, limited_receive, send_with_id)
         finally:
             route = scope.get("route")
+            path = getattr(route, "path", state.get("route_path", "outra"))
+            latency_ms = round((time.perf_counter() - started) * 1000, 1)
+            if self.slo is not None:
+                self.slo.observe(path, status, latency_ms)
             log.info(
                 "request",
                 request_id=request_id,
                 method=scope["method"],
-                path=getattr(route, "path", state.get("route_path", "outra")),
+                path=path,
                 status=status,
-                latency_ms=round((time.perf_counter() - started) * 1000, 1),
+                latency_ms=latency_ms,
                 payload_bytes=received,
                 list_number=state.get("list_number"),
                 ruleset_version=state.get("ruleset_version"),
