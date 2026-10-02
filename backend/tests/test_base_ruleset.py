@@ -83,7 +83,7 @@ def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: s
         "builtin:getattr",
         "builtin:__import__",
         "node:Lambda",  # só a partir da Lista 5
-        "builtin:zip",  # R-37 entra na Sprint 13
+        "builtin:zip",  # R-37 entra na Sprint 20
     ],
 )
 def test_not_yet_permitted_facts_fall_to_default_deny(

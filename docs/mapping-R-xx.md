@@ -28,7 +28,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
     (S7-01, DoD item 9); aponta para a expressão depois do `@`;
   - `derived:dict_unpack`: cada `**d` dentro de um dicionário literal (S7-01); aponta para `d`.
 
-  `derived:recursion` entra na Sprint 16.
+  `derived:recursion` entra na Sprint 23.
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
 - **Built-in ou nome do aluno** (`engine/symbols.py`): `len = 3` seguido de `print(len)` não gera
   `builtin:len`. A resolução segue a ordem de execução, para impedir que o aluno esconda um
@@ -36,7 +36,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   `builtin:eval`, e em `len = len(x)` o `len(x)` é o built-in. Dentro de funções, um built-in que
   não é local continua sendo o built-in.
 
-## Casos a observar (decidir antes da Sprint 15)
+## Casos a observar (decidir antes da Sprint 22)
 
 | Caso | Hoje | Pergunta |
 |---|---|---|
@@ -63,8 +63,8 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 
 | Regra | Fatos | Situação |
 |---|---|---|
-| R-01 | Override por questão (`questions/<id>.yaml`) | Sprint 17 |
-| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 13; L3–L6 na 16 |
+| R-01 | Override por questão (`questions/<id>.yaml`) | Sprint 24 |
+| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3–L6 na 23 |
 | R-03 | Semântica do motor: `since_list ≤ lista ≤ until_list` | Meta-regra no `base.yaml` |
 | R-04 | Semântica do motor: fato sem regra → violação `NAO_CONSTA` | Meta-regra no `base.yaml` |
 | R-05 | `node:Import`, `node:ImportFrom` | No ruleset |
@@ -99,11 +99,11 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 | R-34 | `node:For`, `node:While` | No ruleset |
 | R-35 | `builtin:range` | No ruleset |
 | R-36 | `cmp:In` | No ruleset |
-| R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (≥ 2 argumentos), Listas 2–4 | Sprint 13 |
-| R-38–R-43 | `node:List`; `node:Tuple`; `node:ListComp`; `node:Subscript`; `node:Slice` | Sprint 15 |
-| R-44 | `cmp:In` | Sprint 15 |
-| R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | Sprint 15 |
-| R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | Sprint 15 |
-| R-59–R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi` | Sprint 15 |
-| R-61–R-67 | `node:Dict`; `builtin:dict`, `enumerate`, `zip` (livre); `method:keys`, `values`, `items`, `get`, `update`; `node:Lambda` | Sprint 16 |
-| R-68 | `derived:recursion` (exigência na Lista 6) | Sprint 16 |
+| R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (≥ 2 argumentos), Listas 2–4 | Sprint 20 |
+| R-38–R-43 | `node:List`; `node:Tuple`; `node:ListComp`; `node:Subscript`; `node:Slice` | Sprint 22 |
+| R-44 | `cmp:In` | Sprint 22 |
+| R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | Sprint 22 |
+| R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | Sprint 22 |
+| R-59–R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi` | Sprint 22 |
+| R-61–R-67 | `node:Dict`; `builtin:dict`, `enumerate`, `zip` (livre); `method:keys`, `values`, `items`, `get`, `update`; `node:Lambda` | Sprint 23 |
+| R-68 | `derived:recursion` (exigência na Lista 6) | Sprint 23 |

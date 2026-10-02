@@ -245,7 +245,7 @@ def test_requirement_comes_first_and_is_never_truncated(base_ruleset: CompiledRu
 
 
 def test_requirements_only_apply_to_their_list(base_ruleset: CompiledRuleset) -> None:
-    # A Lista 2 ainda não tem exigência ativa (Sprint 13).
+    # A Lista 2 ainda não tem exigência ativa (Sprint 20).
     assert all_violations("n = int(input())\nprint(n)\n", 2, base_ruleset) == []
     assert [r.id for r in base_ruleset.requirements_for(1)] == ["R-02"]
     assert base_ruleset.requirements_for(2) == ()

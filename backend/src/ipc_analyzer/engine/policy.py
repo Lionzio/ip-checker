@@ -14,7 +14,7 @@ Para cada fato, na lista ``n``, vale a primeira situação verdadeira:
 Depois, cada exigência da lista (R-02, Q-05; R-68, C-03) pede pelo menos um dos seus fatos no
 código; se nenhum aparece, a solução inteira recebe uma violação ``EXIGENCIA`` (5.2.3, passo 6).
 
-Overrides de questão (R-01) entram na Sprint 17.
+Overrides de questão (R-01) entram na Sprint 24.
 """
 
 from __future__ import annotations
