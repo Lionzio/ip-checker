@@ -1,0 +1,179 @@
+# Guia da equipe do IP-Checker
+
+O **IP-Checker** é a ferramenta da equipe de Introdução à Programação (desenvolvedor, professores,
+monitores-chefe e monitores) para apoiar a correção das listas. Ele faz três coisas:
+
+1. **Verifica** se uma solução em Python respeita as permissões da lista, apontando cada construção
+   proibida com linha, coluna e a regra do documento "Permissões das listas".
+2. **Compara** duas soluções e mostra a similaridade, como indício de plágio.
+3. **Redige um feedback** para o aluno a partir do resultado da verificação.
+
+O código nunca é executado: o IP-Checker lê o texto como o Python o entenderia, num serviço isolado,
+e descarta tudo depois. O acesso é só da equipe; alunos não têm conta.
+
+## O que ele faz e o que não faz
+
+| Faz | Não faz |
+|---|---|
+| Aponta construções proibidas em todas as listas (`import`, `try`, `break`, `None`, sets, classes...) | Não testa se a resposta está certa: isso continua com o Dikastis |
+| Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Não considera ainda as regras específicas de cada questão: **se o enunciado liberar algo, vale o enunciado** |
+| Aponta o que não consta no documento de permissões (por exemplo, `eval`) | Não decide se houve plágio: a porcentagem é um indício, e a decisão é da equipe |
+| Exige o assunto da lista (na Lista 1, pelo menos um `if` ou um operador ternário) | Não guarda nem registra o código de ninguém |
+| Mostra erros de sintaxe com linha e coluna, em português | Não substitui a leitura do documento de permissões |
+
+Por enquanto, só a **Lista 1 (comandos condicionais)** está liberada. As demais entram ao longo do
+período.
+
+## Entrar na equipe
+
+1. Em **Registrar**, use o seu e-mail institucional (`@cin.ufpe.br` ou `@ufpe.br`; prefira o
+   `@cin.ufpe.br`), o nome com que quer aparecer, o curso e o tratamento. A senha precisa de pelo
+   menos 9 caracteres, uma letra maiúscula e um caractere especial; a página mostra o que falta
+   enquanto você digita. Se o Google estiver habilitado, **Registrar com o Google** dispensa a
+   senha.
+2. Abra o e-mail **"Confirme o seu cadastro no IP-Checker"** e clique em **"Clique aqui para
+   verificar seu acesso."**. Na página que abrir, clique em **Confirmar meu e-mail**. O link vale
+   por 24 horas e uma vez só; se ele vencer, peça outro na tela de registro.
+3. O pedido vai para a aprovação de um monitor-chefe, de um professor ou do desenvolvedor, que
+   escolhe o seu cargo. Até lá, a tela de entrada mostra "aguardando a aprovação".
+4. Aprovado, entre com o nome ou o e-mail e a senha, ou com o Google.
+
+O **nome** é único e também serve para entrar. O **tratamento** (masculino, feminino ou neutro)
+define como você se apresenta no feedback ("sou o monitor...", "sou a monitora...", "aqui é ...,
+da monitoria"); só você o vê.
+
+## Perfil
+
+Em **Perfil**, você muda o nome, o curso, o tratamento e a senha. A troca de senha pede a senha
+atual e encerra as suas outras sessões; a desta aba continua. Uma conta criada pelo Google pode
+definir uma senha ali. O cargo não muda pelo perfil: quem aprova os cadastros é que o altera.
+
+A sessão termina depois de 12 horas sem uso, em no máximo 7 dias, e também quando você sai, troca
+a senha, muda de cargo ou é removido da equipe.
+
+## Verificar uma solução
+
+1. Escolha a lista.
+2. Cole a solução (até 50 KB e 1.000 linhas).
+3. Clique em **Verificar**.
+
+Cada violação mostra a categoria, a linha e a coluna, a regra do catálogo (R-xx) e uma explicação.
+
+| Categoria | O que significa |
+|---|---|
+| **Anulação imediata** | Proibido em todas as listas. Enviado assim, a questão é anulada. |
+| **Fora da lista** | Permitido só a partir de uma lista posterior, que a mensagem informa. |
+| **Não consta no documento** | Não aparece no documento de permissões; por isso é proibido (R-04). |
+| **Exigência não atendida** | A solução não usa o assunto obrigatório da lista. Aparece como "Solução inteira". |
+
+Um **erro de sintaxe** aparece no lugar das violações: as permissões só são verificadas quando o
+código está sintaticamente correto. Com mais de 200 violações, a página mostra as 200 primeiras e
+avisa.
+
+## Feedback para o aluno
+
+Depois de verificar, o painel **Feedback para o aluno** aparece ao lado do resultado.
+
+1. Digite o **nome do aluno** e, se quiser, uma **anotação importante** (observações e dicas).
+2. Clique em **Gerar feedback**.
+3. **Revise o texto**: ele é editável. Depois, use **Copiar**.
+
+O texto sempre começa com a saudação, a sua apresentação (pelo seu cargo e tratamento) e a frase
+obrigatória do resultado:
+
+- sem violações: "Sua questão está ótima, não houve nenhuma violação de regras.";
+- com violações: "Sua questão apresenta problemas, como o uso de ..., portanto ela foi anulada.",
+  com o que o IP-Checker encontrou.
+
+O restante é escrito por uma IA, quando há uma configurada, ou montado por modelos de texto, sem
+IA; a página diz qual dos dois. Quem decide se houve violação é sempre o IP-Checker, nunca a IA, e
+o feedback é sobre o código que foi verificado, mesmo que você mude o editor depois.
+
+- Com **erro de sintaxe**, não há feedback: corrija o código e verifique de novo.
+- O **nome do aluno nunca vai para a IA**: no envio, ele vira `[ALUNO]` e volta no texto pronto. Os
+  comentários do código também não vão.
+- Cada conta gera até **60 feedbacks por dia**.
+
+## Painel de plágio
+
+Em **Plágio**, cole a solução de cada aluno nas duas áreas e clique em **Verificar**. A página
+mostra a similaridade, com uma casa decimal, e a faixa:
+
+| Similaridade | Faixa |
+|---|---|
+| 99% ou mais | Plágio |
+| de 95% a menos de 99% | Altas chances de plágio |
+| de 90% a menos de 95% | Requer atenção |
+| de 80% a menos de 90% | Ligeiramente suspeito |
+| menos de 80% | Sem suspeitas |
+
+A comparação resiste a nomes de variáveis trocados, espaços, comentários e trechos reordenados.
+**O resultado é um indício, não uma prova**: leia os dois códigos antes de concluir. Em questões
+simples, soluções independentes tendem a se parecer, e a página avisa quando um dos códigos é
+curto. Os dois precisam ser Python válido; se um tiver erro de sintaxe, a página diz qual e onde.
+
+## Gerenciar a equipe
+
+**Gerenciar** aparece para o desenvolvedor, os professores e os monitores-chefe. Cada linha mostra
+só os botões que o seu cargo permite, e o servidor confere de novo a cada ação.
+
+- **Pedidos pendentes**: aprove com um cargo ou recuse. Recusar pede confirmação.
+- **Membros ativos**: altere o cargo ou remova da equipe. Remover pede confirmação, não apaga a
+  conta e encerra as sessões dela: quem nunca foi monitor-chefe vira **Ex-monitor**, quem já foi vira
+  **Conselheiro**, e um professor fica **inativo**.
+- **Ex-monitores, conselheiros e inativos**: reative com um cargo.
+
+| Seu cargo | Aprova cadastros | Atribui cargo, altera cargo e remove contas de |
+|---|---|---|
+| Desenvolvedor | Sim | Professores, monitores-chefe e monitores |
+| Professor | Sim | Professores, monitores-chefe e monitores |
+| Monitor-chefe | Sim | Monitores-chefe e monitores |
+| Monitor | Não | Ninguém |
+
+Ninguém age sobre a própria conta por essa tela, e a conta do desenvolvedor não é alterada por
+ninguém. As etiquetas de cargo têm cor e nome: professor (verde), monitor-chefe (azul-claro), monitor
+(roxo), monitor e desenvolvedor (dourado), contas removidas (cinza).
+
+## Mensagens de espera
+
+| Mensagem | O que fazer |
+|---|---|
+| "Limite de verificações atingido" | Cada conta pode fazer até 30 verificações, comparações ou feedbacks por minuto. Espere a contagem. |
+| "Você chegou ao limite de feedbacks de hoje" | A cota diária da conta acabou; ela volta no dia seguinte. |
+| "Serviço ocupado" | Muita gente usando ao mesmo tempo. Espere a contagem e tente de novo. |
+| "Serviço indisponível" ou "Sem resposta do servidor" | O serviço está fora do ar ou a conexão caiu. Tente de novo em alguns segundos. |
+
+## Privacidade
+
+O código analisado, comparado ou usado no feedback não é guardado em lugar nenhum. A conta guarda
+nome, e-mail, curso, tratamento e cargo; a senha, só como resumo criptográfico. O aviso completo está
+na própria página, no link **Aviso de privacidade** do rodapé.
+
+## Quando o IP-Checker erra
+
+Se ele apontar algo que o documento permite (**falso positivo**) ou deixar passar algo proibido
+(**falso negativo**), avise o desenvolvedor com o código e a lista. Cada caso confirmado vira um
+teste novo, e a meta é corrigir falsos positivos em até 2 dias úteis (P-09). As regras específicas
+de cada questão entram na Sprint 24, cadastradas pelos monitores e aprovadas por monitor-chefe ou
+professor.
+
+## Perguntas frequentes
+
+**O código passou no IP-Checker. Então está certo?**
+Ele respeita as permissões da lista. Se a resposta está certa, só o Dikastis diz.
+
+**Por que `print("oi")` sozinho dá "Exigência não atendida" na Lista 1?**
+Toda questão da Lista 1 precisa usar o assunto da lista: um comando condicional (`if`, com ou sem
+`elif`/`else`) ou o operador ternário. Um `if` dentro de um texto ou de um comentário não conta.
+
+**O enunciado da questão libera algo que o IP-Checker aponta. E agora?**
+Vale o enunciado. Nesse caso, a violação pode ser ignorada, inclusive no feedback, que você pode
+editar antes de copiar.
+
+**O feedback saiu "montado sem IA". Está errado?**
+Não. A abertura e a frase obrigatória são as mesmas; só o trecho final é mais simples. Isso
+acontece quando nenhuma IA está configurada ou nenhuma respondeu a tempo.
+
+**Esqueci a senha.**
+Se a conta tiver o Google ligado, entre pelo Google e defina uma senha nova no perfil. Ainda não há
+recuperação de senha por e-mail (é a proposta Q-19 b do blueprint); até lá, fale com o desenvolvedor.

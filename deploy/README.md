@@ -67,7 +67,8 @@ fica para uma migração de uma release seguinte).
 Estes passos são feitos por você nos painéis, com as suas contas. Nenhum segredo entra no
 repositório.
 
-1. **Release na `main`.** O Render e a Vercel leem a `main`, que precisa ter o código da Sprint 16:
+1. **Release na `main`.** O Render e a Vercel leem a `main`, que precisa ter o código da última
+   sprint concluída (no mínimo a Sprint 16, que trouxe o login e a mesma origem):
 
    ```bash
    git switch main && git merge --ff-only develop && git push origin main
@@ -165,6 +166,10 @@ NFR-05 pede: recusa rápida com `Retry-After`, sem erro genérico. Pelo critéri
 precisa do **Starter** (cerca de US$ 7 por mês) antes do primeiro prazo da Lista 1. A decisão de custo
 é do autor do projeto.
 
+**Depois da P-13 (02/10/2026):** só a equipe da disciplina usa a ferramenta, e o pico esperado fica
+bem abaixo das 150 verificações por minuto que o gratuito atende. O piloto começa no gratuito, com o
+Starter de reserva; a S25-01 mede de novo no Render de verdade, já com login.
+
 Para confirmar no Render de verdade, com o piloto no ar, aumente por alguns minutos
 `IPC_RATE_LIMIT_IP_PER_MIN` no painel (o k6 sai de um único IP) e rode:
 
@@ -179,11 +184,14 @@ Depois, volte o `IPC_RATE_LIMIT_IP_PER_MIN` ao padrão (120).
 - **Seccomp no Render.** Testado aqui com o perfil padrão do Docker. Se o Render não permitir o
   filtro, o deploy fica vermelho (fail-closed). A saída, a decidir, é `IPC_SANDBOX=optional`, com o
   risco das ameaças 2 e 6 subindo para Médio durante o piloto (blueprint, 5.4).
-- **IP do cliente.** O limite por IP supõe que a borda do Render acrescenta o IP do cliente ao fim do
-  `X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=1`, P-12). Conferir nos primeiros dias pelos campos
-  `rate_limit` do log.
+- **IP do cliente.** O limite por IP supõe que a Vercel e a borda do Render acrescentam, nessa ordem,
+  um endereço cada ao fim do `X-Forwarded-For`, e que o do cliente é o penúltimo
+  (`IPC_TRUSTED_PROXY_HOPS=2` desde a Sprint 16, P-12 e P-15). Conferir nos primeiros dias pelos
+  campos `rate_limit` do log.
 - **Plano gratuito.** 0,1 CPU e 512 MB: não aguenta o pico de 500 verificações por minuto
-  (teste de carga acima). A recomendação é o Starter antes do primeiro prazo (ADR-03).
+  (teste de carga acima), mas atende o uso só pela equipe; o Starter fica de reserva (ADR-03).
+- **Supabase gratuito.** O plano pausa projetos sem atividade por uma semana. O `/ready` consulta o
+  banco, então o monitor do UptimeRobot a cada 5 min também mantém o projeto ativo.
 
 ## Uso (compose, Fases 0 e 2)
 
