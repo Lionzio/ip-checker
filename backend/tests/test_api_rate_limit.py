@@ -334,7 +334,7 @@ def test_invalid_requests_do_not_take_a_slot() -> None:
     with make_client(Analyzer(), settings) as client:
         student = new_student(client)
         # Sem nenhuma vaga, o que é recusado na validação continua recebendo o próprio erro.
-        assert error_of(validate(client, student, body={"code": "x", "list_number": 3})) == (
+        assert error_of(validate(client, student, body={"code": "x", "list_number": 5})) == (
             422,
             "LIST_NOT_ENABLED",
         )

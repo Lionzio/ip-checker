@@ -6,11 +6,25 @@ const client = createMockClient({ latencyMs: 0 });
 const request = (code: string, list_number = 1) => ({ code, list_number, question_id: null });
 
 describe("cliente simulado", () => {
-  it("lista as Listas 1 e 2 (Sprint 20)", async () => {
+  it("lista as Listas 1 a 4 (Sprint 22)", async () => {
     await expect(client.listLists()).resolves.toEqual([
       { number: 1, title: "Comandos condicionais" },
       { number: 2, title: "Laços de repetição" },
+      { number: 3, title: "Listas e tuplas" },
+      { number: 4, title: "Funções e escopo de variável" },
     ]);
+  });
+
+  it("nas Listas 3 e 4, o assunto exigido é uma lista ou tupla e um def", async () => {
+    const withList = await client.validate(request("v = [1, 2]\nprint(v)\n", 3));
+    const withoutList = await client.validate(request("x = 1\nprint(x)\n", 3));
+    const withDef = await client.validate(request("def f():\n    return 1\n", 4));
+    const withoutDef = await client.validate(request("v = [1]\nprint(v)\n", 4));
+
+    expect(withList.status).toBe("valid");
+    expect(withoutList.violations[0]?.message).toContain("assunto da Lista 3");
+    expect(withDef.status).toBe("valid");
+    expect(withoutDef.violations[0]?.message).toContain("assunto da Lista 4");
   });
 
   it("na Lista 2, o for é permitido e o assunto exigido é um laço", async () => {
@@ -73,7 +87,7 @@ describe("cliente simulado", () => {
   });
 
   it("recusa lista ainda não habilitada", async () => {
-    await expect(client.validate(request("x = 1", 3))).rejects.toMatchObject({
+    await expect(client.validate(request("x = 1", 5))).rejects.toMatchObject({
       status: 422,
       code: "LIST_NOT_ENABLED",
     });

@@ -104,7 +104,7 @@ def send_everything(api: TestClient) -> list[httpx2.Response]:
         validate(f"# {CANARY}" + "a" * 51_200),
         validate(f"{CANARY}\x00"),
         validate(f"{CANARY}\x1b"),
-        validate(f"x = '{CANARY}'\n", list_number=3),
+        validate(f"x = '{CANARY}'\n", list_number=5),
         validate(f"x = '{CANARY}'\n", question_id=CANARY),
         validate(f"x = '{CANARY}'\n", extra=CANARY),
         api.post(
@@ -282,7 +282,7 @@ def test_every_log_line_follows_the_schema(
         "latency_ms": None,
         "payload_bytes": len(b'{"code":"for i in range(3):\\n    print(i)\\n","list_number":1}'),
         "list_number": 1,
-        "ruleset_version": "2026.2.1",
+        "ruleset_version": "2026.2.2",
         "outcome": "invalid",
     }
     assert isinstance(api_line["latency_ms"], float)
@@ -298,7 +298,7 @@ def test_every_log_line_follows_the_schema(
 @pytest.mark.parametrize(
     ("payload", "outcome", "status"),
     [
-        ({"code": "x = 1\n", "list_number": 3}, "LIST_NOT_ENABLED", 422),
+        ({"code": "x = 1\n", "list_number": 5}, "LIST_NOT_ENABLED", 422),
         ({"code": "(" * 1_000 + ")" * 1_000, "list_number": 1}, "ANALYSIS_LIMIT", 422),
         ({"code": "#" + "a" * 51_200, "list_number": 1}, "PAYLOAD_TOO_LARGE", 413),
         ({"list_number": 1}, "INVALID_INPUT", 422),

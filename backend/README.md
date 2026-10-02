@@ -43,7 +43,7 @@ analisador já rodando na 8001:
 uv run uvicorn ipc_api.app:create_app --factory --port 8101
 ```
 
-Configuração: `IPC_ANALYZER_URL` (`http://127.0.0.1:8001`), `IPC_ENABLED_LISTS` (`1,2`; por exemplo,
+Configuração: `IPC_ANALYZER_URL` (`http://127.0.0.1:8001`), `IPC_ENABLED_LISTS` (`1,2,3,4`; por exemplo,
 `1` para voltar só à Lista 1), `IPC_ANALYZER_TIMEOUT_S` (3) e `IPC_MAX_BODY_BYTES` (131072, ou seja, 128 KB).
 
 ## Limite de taxa e admissão
