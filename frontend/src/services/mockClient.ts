@@ -4,13 +4,24 @@
  *
  * Para demonstrar os estados de erro, inclua no código um comentário `# simular: <cenário>`, em que
  * o cenário é `sobrecarga`, `limite`, `indisponivel`, `rede` ou `lento`.
+ *
+ * A entrada também é simulada (Sprint 13): qualquer nome e senha preenchidos entram como uma
+ * monitora de demonstração. Nada é verificado, porque não há servidor.
  */
-import type { ListInfo, ValidateRequest, ValidateResponse, Violation } from "../types/api";
-import { ApiError, type ValidationClient } from "./client";
+import type { Account, ListInfo, ValidateRequest, ValidateResponse, Violation } from "../types/api";
+import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
 const RULESET_VERSION = "2026.2.0";
 const ENABLED_LISTS: ListInfo[] = [{ number: 1, title: "Comandos condicionais" }];
+export const DEMO_ACCOUNT: Account = {
+  name: "Monitora de Demonstração",
+  email: "demonstracao@cin.ufpe.br",
+  course: "Ciência da Computação",
+  treatment: "feminino",
+  role: "monitor",
+  role_label: "Monitor",
+};
 
 type Finding = Pick<Violation, "rule_id" | "category" | "construct" | "allowed_from_list" | "message">;
 
@@ -160,10 +171,36 @@ function findViolations(code: string): Violation[] {
   return violations;
 }
 
-export function createMockClient({ latencyMs = 400 }: { latencyMs?: number } = {}): ValidationClient {
+export function createMockClient({
+  latencyMs = 400,
+  signedIn = false,
+}: { latencyMs?: number; signedIn?: boolean } = {}): ApiClient {
   let requests = 0;
+  let account: Account | null = signedIn ? DEMO_ACCOUNT : null;
 
   return {
+    async me(signal) {
+      await wait(latencyMs, signal);
+      if (account === null) {
+        throw new ApiError(401, "UNAUTHENTICATED", "Entre com a sua conta da equipe para usar o IP-Checker.");
+      }
+      return account;
+    },
+
+    async login(login, password) {
+      await wait(latencyMs);
+      if (login.trim() === "" || password === "") {
+        throw new ApiError(422, "INVALID_INPUT", "Requisição inválida: envie login (nome ou e-mail) e password (senha).");
+      }
+      account = DEMO_ACCOUNT;
+      return account;
+    },
+
+    async logout() {
+      await wait(latencyMs);
+      account = null;
+    },
+
     async listLists(signal) {
       await wait(latencyMs, signal);
       return ENABLED_LISTS;

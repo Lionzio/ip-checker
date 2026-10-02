@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "./client";
-import { createMockClient } from "./mockClient";
+import { createMockClient, DEMO_ACCOUNT } from "./mockClient";
 
 const client = createMockClient({ latencyMs: 0 });
 const request = (code: string, list_number = 1) => ({ code, list_number, question_id: null });
@@ -89,5 +89,20 @@ describe("cliente simulado", () => {
     await expect(createMockClient().validate(request("x = 1"), controller.signal)).rejects.toMatchObject({
       name: "AbortError",
     });
+  });
+
+  it("começa sem sessão e entra com qualquer nome e senha preenchidos", async () => {
+    const auth = createMockClient({ latencyMs: 0 });
+
+    await expect(auth.me()).rejects.toMatchObject({ status: 401, code: "UNAUTHENTICATED" });
+    await expect(auth.login("", "x")).rejects.toMatchObject({ status: 422 });
+    await expect(auth.login("demo", "x")).resolves.toEqual(DEMO_ACCOUNT);
+    await expect(auth.me()).resolves.toEqual(DEMO_ACCOUNT);
+    await auth.logout();
+    await expect(auth.me()).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("pode começar com sessão", async () => {
+    await expect(createMockClient({ latencyMs: 0, signedIn: true }).me()).resolves.toEqual(DEMO_ACCOUNT);
   });
 });

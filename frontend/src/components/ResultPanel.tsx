@@ -165,6 +165,12 @@ function Content({ state, onRetry }: ResultPanelProps) {
     case "busy":
       // A chave recria a contagem a cada nova resposta 429 ou 503.
       return <BusyResult key={state.receivedAt} state={state} onRetry={onRetry} />;
+    case "unauthenticated":
+      return (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          A sua sessão terminou. Entre de novo para continuar.
+        </p>
+      );
     case "network":
     case "timeout":
       return (

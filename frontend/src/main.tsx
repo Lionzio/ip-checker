@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import "./index.css";
 import { createApiClient } from "./services/api";
@@ -17,6 +18,8 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
 
 createRoot(root).render(
   <StrictMode>
-    <App client={demoMode ? createMockClient() : createApiClient({ baseUrl: apiBaseUrl })} demoMode={demoMode} />
+    <BrowserRouter>
+      <App client={demoMode ? createMockClient() : createApiClient({ baseUrl: apiBaseUrl })} demoMode={demoMode} />
+    </BrowserRouter>
   </StrictMode>,
 );

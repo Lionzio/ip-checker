@@ -1,10 +1,12 @@
 /**
  * Cliente HTTP da API real (S9-02). A SPA e a API ficam na mesma origem: o Caddy serve a página e
  * repassa `/api/*` à API (Fases 0 e 2); no `npm run dev`, o proxy do Vite faz esse papel.
+ *
+ * Desde a Sprint 13, toda rota da equipe exige a sessão, que vai sozinha no cookie HttpOnly da
+ * mesma origem: a página nunca vê nem guarda o identificador.
  */
-import type { ApiErrorCode, ErrorResponse, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
-import { ApiError, type ValidationClient } from "./client";
-import { getClientId } from "./clientId";
+import type { Account, ApiErrorCode, ErrorResponse, ListInfo, ValidateRequest, ValidateResponse } from "../types/api";
+import { type ApiClient, ApiError } from "./client";
 
 const UNAVAILABLE_MESSAGE = "O serviço está indisponível no momento. Tente de novo em alguns segundos.";
 
@@ -32,7 +34,7 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): ValidationClient {
+export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): ApiClient {
   async function call<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
     // Erros de rede e cancelamento seguem como estão: o hook distingue rede, tempo e cancelamento.
     const response = await fetch(`${baseUrl}${path}`, {
@@ -40,6 +42,7 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Va
       signal,
       headers: { Accept: "application/json", ...init.headers },
       cache: "no-store",
+      credentials: "same-origin",
     });
     const body = await readJson(response);
     if (response.ok) return body as T;
@@ -62,11 +65,25 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Va
         "/api/v1/validate",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-Client-Id": getClientId() },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request),
         },
         signal,
       );
+    },
+    me(signal) {
+      return call<Account>("/api/v1/auth/me", { method: "GET" }, signal);
+    },
+    login(login, password) {
+      return call<Account>("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password }),
+      });
+    },
+    async logout() {
+      // Corpo vazio, mas presente: a borda recusa POST sem Content-Length (S10).
+      await call<null>("/api/v1/auth/logout", { method: "POST", body: "" });
     },
   };
 }
