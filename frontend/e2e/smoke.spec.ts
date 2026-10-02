@@ -6,7 +6,7 @@ import { expect, type Page, test } from "@playwright/test";
  * que o projeto "login" abriu (playwright.config.ts).
  */
 
-/** No piloto (pipeline de deploy), a página está na Vercel e a API no Render (E2E_API_ORIGIN). */
+/** No piloto (pipeline de deploy), a página está na Vercel, que repassa /api/* ao Render. */
 const PILOT = process.env.E2E_TARGET === "pilot";
 
 async function verify(page: Page, code: string) {
@@ -75,9 +75,9 @@ test("a borda envia os cabeçalhos de segurança", async ({ page }) => {
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["referrer-policy"]).toBe("no-referrer");
   if (PILOT) {
-    // Piloto (Vercel, HTTPS): HSTS e a CSP liberando só a API no Render (NFR-10).
+    // Piloto (Vercel, HTTPS): HSTS e a CSP só com a própria origem; a API vem pelo rewrite (NFR-10).
     expect(headers["strict-transport-security"]).toContain("max-age=31536000");
-    expect(headers["content-security-policy"]).toContain(`connect-src 'self' ${process.env.E2E_API_ORIGIN}`);
+    expect(headers["content-security-policy"]).toContain("connect-src 'self';");
   } else {
     // Compose: a borda é o Caddy, que não se apresenta.
     expect(headers["server"]).toBeUndefined();

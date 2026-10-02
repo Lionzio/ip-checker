@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from ipc_api.accounts.models import email_domain_allowed, normalize_email
 from ipc_api.admission import AdmissionConfig
@@ -94,6 +95,16 @@ class ApiSettings:
     google: GoogleConfig = field(default_factory=GoogleConfig)
     #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
+
+    @property
+    def page_origin(self) -> str:
+        """A origem da página (``IPC_PUBLIC_BASE_URL``).
+
+        No piloto, a Vercel repassa ``/api/*`` ao Render (S16-02): a API vê o ``Host`` do Render, e
+        o navegador manda o ``Origin`` da página.
+        """
+        parts = urlsplit(self.accounts.public_base_url)
+        return f"{parts.scheme}://{parts.netloc}".lower()
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:

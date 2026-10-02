@@ -187,7 +187,8 @@ def create_app(
     )
     app.add_middleware(SessionMiddleware, cookie_name=config.session.cookie_name)
     app.add_middleware(
-        OriginCheckMiddleware, allowed_origins=config.allowed_origins + config.cors_origins
+        OriginCheckMiddleware,
+        allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),
     )
     app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
     app.add_middleware(SecurityHeadersMiddleware, hsts=config.hsts)

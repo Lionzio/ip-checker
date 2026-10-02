@@ -26,6 +26,13 @@ process.env.E2E_PASSWORD ??= fromDeployEnv("IPC_DEV_INITIAL_PASSWORD") ?? "";
 
 export const STORAGE_STATE = "e2e/.auth/desenvolvedor.json";
 
+/**
+ * No piloto (pipeline de deploy), só o que não altera o ambiente de verdade: o smoke e o acesso.
+ * Registro, gerenciamento, troca de senha e o limite por conta ficam nos testes do compose.
+ */
+const PILOT = process.env.E2E_TARGET === "pilot";
+const PILOT_ONLY = /(smoke|auth)\.spec\.ts/;
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
@@ -36,7 +43,17 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8180",
     trace: "retain-on-failure",
   },
-  projects: [
+  projects: PILOT
+    ? [
+        { name: "login", testMatch: /auth\.setup\.ts/, use: { ...devices["Desktop Chrome"] } },
+        {
+          name: "chromium",
+          use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+          dependencies: ["login"],
+          testMatch: PILOT_ONLY,
+        },
+      ]
+    : [
     { name: "login", testMatch: /auth\.setup\.ts/, use: { ...devices["Desktop Chrome"] } },
     {
       name: "chromium",
@@ -59,5 +76,5 @@ export default defineConfig({
       dependencies: ["conta"],
       testMatch: /limits\.spec\.ts/,
     },
-  ],
+      ],
 });

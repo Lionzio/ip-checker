@@ -31,6 +31,7 @@ from conftest import REPO_ROOT
 from ipc_api.accounts.models import AccountConflict, Role, Status, Treatment
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.app import create_app
+from ipc_api.auth.accounts import AccountsConfig
 from ipc_api.auth.sessions import PLAIN_COOKIE, SECURE_COOKIE, SessionConfig, token_hash
 from ipc_api.auth.throttle import LoginThrottle, LoginThrottleConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
@@ -610,6 +611,27 @@ def test_same_origin_and_configured_origins_are_accepted(store: MemoryAccountSto
                 headers={"Origin": origin},
             )
             assert response.status_code == 200, origin
+
+
+def test_the_page_origin_is_accepted_behind_a_rewrite(store: MemoryAccountStore) -> None:
+    # Piloto (S16-02): a Vercel repassa /api/* ao Render, então o Host é o do Render e o Origin é
+    # o da página, que é o endereço público configurado.
+    settings = ApiSettings(accounts=AccountsConfig(public_base_url="https://ip-checker.vercel.app"))
+    with start(store, settings=settings) as client:
+        headers = {"Host": "ip-checker-api.onrender.com"}
+        page = client.post(
+            "/api/v1/auth/login",
+            json={"login": DEV_EMAIL, "password": PASSWORD},
+            headers={**headers, "Origin": "https://ip-checker.vercel.app"},
+        )
+        evil = client.post(
+            "/api/v1/auth/login",
+            json={"login": DEV_EMAIL, "password": PASSWORD},
+            headers={**headers, "Origin": "https://ip-checker.vercel.app.evil.example"},
+        )
+
+    assert page.status_code == 200
+    assert error_of(evil) == (403, "ORIGIN_MISMATCH")
 
 
 def test_reading_from_another_origin_is_not_blocked_here(

@@ -75,7 +75,10 @@ test("sair encerra a sessão e volta para o início", async ({ page }) => {
   await page.getByRole("button", { name: "Entrar" }).click();
   const header = page.getByRole("banner");
   await expect(header).toContainText(process.env.E2E_NAME ?? "");
-  await expect(header).toContainText("Monitor e desenvolvedor");
+  if (process.env.E2E_TARGET !== "pilot") {
+    // No compose, a conta do e2e é a do desenvolvedor; no piloto, uma conta de verificação.
+    await expect(header).toContainText("Monitor e desenvolvedor");
+  }
 
   expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(200);
 

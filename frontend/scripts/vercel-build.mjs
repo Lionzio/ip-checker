@@ -3,10 +3,10 @@
  *
  *     npm run build:vercel
  *
- * 1. Confere `VITE_API_BASE_URL` (endereço HTTPS da API no Render): sem ela, o build falha.
- * 2. Gera a página com o Vite, que embute esse endereço no cliente HTTP.
- * 3. Monta `.vercel/output` (Build Output API v3): os arquivos estáticos, os cabeçalhos de
- *    segurança com a CSP apontando para a API e `version.json`, com o commit do build, que o
+ * 1. Confere `IPC_API_ORIGIN` (endereço HTTPS da API no Render): sem ela, o build falha.
+ * 2. Gera a página com o Vite. A página chama `/api/...` na própria origem (S16-02).
+ * 3. Monta `.vercel/output` (Build Output API v3): os arquivos estáticos, o *rewrite* de `/api/*`
+ *    para o Render, os cabeçalhos de segurança e `version.json`, com o commit do build, que o
  *    pipeline usa para saber que o deploy entrou no ar.
  */
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
@@ -17,8 +17,7 @@ import { buildOutputConfig, parseApiOrigin } from "./vercel-config.mjs";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const output = `${root}.vercel/output`;
 
-const apiOrigin = parseApiOrigin(process.env.VITE_API_BASE_URL);
-process.env.VITE_API_BASE_URL = apiOrigin;
+const apiOrigin = parseApiOrigin(process.env.IPC_API_ORIGIN);
 
 await build({ root, logLevel: "warn" });
 

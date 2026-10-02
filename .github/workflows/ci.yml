@@ -109,9 +109,9 @@ jobs:
         run: npm test
       - name: Build de produção
         run: npm run build
-      - name: Build do piloto (Vercel, com os cabeçalhos de segurança)
+      - name: Build do piloto (Vercel, com o rewrite de /api/* e os cabeçalhos de segurança)
         env:
-          VITE_API_BASE_URL: https://ip-checker-api.onrender.com
+          IPC_API_ORIGIN: https://ip-checker-api.onrender.com
         run: npm run build:vercel
 
   e2e:

@@ -2,12 +2,14 @@ name: Deploy do piloto
 
 # Piloto (Fase 1, 2027.1; S11-03, ADR-03). O deploy sai da main, só depois que a CI passa nela:
 # nunca manualmente e nunca a cada push (o Render e a Vercel estão com o deploy automático
-# desligado). Depois do deploy, o pipeline espera a versão nova entrar no ar e confere o piloto
-# de fora: cabeçalhos, CORS, TLS e o smoke e2e no navegador.
+# desligado). Antes do deploy, aplica as migrações no banco do piloto; depois, espera a versão
+# nova entrar no ar e confere o piloto de fora: mesma origem, cabeçalhos, TLS, login e o smoke e2e
+# no navegador (S16-02).
 #
 # Configuração no GitHub (Settings > Secrets and variables > Actions), passo a passo em
 # deploy/README.md, seção "Piloto":
-#   secrets:   RENDER_DEPLOY_HOOK_URL, VERCEL_DEPLOY_HOOK_URL
+#   secrets:   RENDER_DEPLOY_HOOK_URL, VERCEL_DEPLOY_HOOK_URL, PILOT_DATABASE_ADMIN_URL,
+#              PILOT_DB_API_PASSWORD, PILOT_CHECK_LOGIN, PILOT_CHECK_PASSWORD, PILOT_CHECK_NAME
 #   variables: PILOT_API_URL (Render), PILOT_WEB_URL (Vercel)
 
 on:
@@ -52,6 +54,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Migrar o banco do piloto (antes de a versão nova subir)
+        working-directory: backend
+        env:
+          IPC_DATABASE_ADMIN_URL: ${{ secrets.PILOT_DATABASE_ADMIN_URL }}
+          IPC_DB_LOGIN_PASSWORD: ${{ secrets.PILOT_DB_API_PASSWORD }}
+        run: |
+          # As migrações precisam servir também à versão que ainda está no ar (só acrescentam).
+          if [ -z "$IPC_DATABASE_ADMIN_URL" ] || [ -z "$IPC_DB_LOGIN_PASSWORD" ]; then
+            echo "::error::Faltam os secrets PILOT_DATABASE_ADMIN_URL e PILOT_DB_API_PASSWORD."
+            exit 1
+          fi
+          uv python install 3.13
+          uv sync --locked
+          uv run python -m ipc_api.db.migrate up --login-role ipc_api
 
       - name: Disparar os deploy hooks
         env:
@@ -84,16 +104,17 @@ jobs:
           echo "::error::A versão $RELEASE não entrou no ar em 30 minutos."
           exit 1
 
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Conferir o piloto (cabeçalhos, CORS, TLS e versão)
+      - name: Conferir o piloto (mesma origem, cabeçalhos, TLS, login e versão)
         working-directory: backend
         env:
           PILOT_RELEASE: ${{ env.RELEASE }}
+          PILOT_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
+          PILOT_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
         run: |
-          uv python install 3.13
-          uv sync --locked
+          if [ -z "$PILOT_LOGIN" ] || [ -z "$PILOT_PASSWORD" ]; then
+            echo "::error::Faltam os secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD (conta ativa usada nas verificações)."
+            exit 1
+          fi
           uv run pytest tests/pilot --no-cov -v
 
       - uses: actions/setup-node@v4
@@ -105,8 +126,10 @@ jobs:
         working-directory: frontend
         env:
           E2E_BASE_URL: ${{ env.PILOT_WEB_URL }}
-          E2E_API_ORIGIN: ${{ env.PILOT_API_URL }}
           E2E_TARGET: pilot
+          E2E_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
+          E2E_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
+          E2E_NAME: ${{ secrets.PILOT_CHECK_NAME }}
         run: |
           npm ci
           npx playwright install --with-deps chromium
