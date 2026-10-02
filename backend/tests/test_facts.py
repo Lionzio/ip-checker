@@ -387,3 +387,19 @@ def test_extraction_of_1000_lines_is_fast() -> None:
 
     assert time.perf_counter() - start < 1.0
     assert len(found) > 1_000
+
+
+@pytest.mark.parametrize(
+    ("source", "nested"),
+    [
+        ("def f():\n    def g():\n        return 1\n    return g()\n", [(2, 5)]),
+        ("def f():\n    return 1\ndef g():\n    return 2\n", []),
+        ("g = lambda: 1\ndef f():\n    return g()\n", []),
+        ("def f():\n    h = lambda: 1\n    return h()\n", []),
+        ("class C:\n    def m(self):\n        return 1\n", []),
+    ],
+    ids=["def-in-def", "two-defs", "def-after-lambda", "lambda-in-def", "method"],
+)
+def test_function_inside_function_is_marked(source: str, nested: list[tuple[int, int]]) -> None:
+    # Q-02 (f): função aninhada não consta; o def de dentro leva derived:nested_function.
+    assert [(f.line, f.col) for f in facts(source) if f.name == "derived:nested_function"] == nested

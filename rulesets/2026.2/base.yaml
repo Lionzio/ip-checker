@@ -5,11 +5,11 @@
 # este arquivo só traduz o documento para o vocabulário de fatos do motor
 # (ver docs/mapping-R-xx.md e o guia em rulesets/README.md).
 #
-# Situação na Sprint 20: R-03 a R-37 (proibições gerais, Listas 1 e 2, com o zip condicional)
-# e a exigência R-02 das Listas 1 e 2. As Listas 3 a 6 entram nas Sprints 22 e 23.
+# Situação na Sprint 22: R-03 a R-60 (proibições gerais e Listas 1 a 4, com o zip condicional)
+# e a exigência R-02 das Listas 1 a 4. As Listas 5 e 6 entram na Sprint 23.
 
 schema_version: 2
-ruleset_version: "2026.2.1"
+ruleset_version: "2026.2.2"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -351,10 +351,186 @@ rules:
     message: "zip() no for (for a, b in zip(x, y)) só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 2: zip() somente para variar mais de um índice no comando for; decisão Q-04"
 
+  # ---------------------------------------------------------------------------
+  # Lista 3 - Listas e tuplas (R-38 a R-58).
+  # ---------------------------------------------------------------------------
+  - id: "R-38"
+    name: "Listas"
+    effect: allow
+    since_list: 3
+    match: ["node:List"]
+    message: "Listas só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: Listas"
+  - id: "R-39"
+    name: "Matrizes"
+    effect: allow
+    since_list: 3
+    # Uma matriz é uma lista de listas: o fato é o mesmo da R-38 (5.2.3).
+    match: ["node:List"]
+    message: "Matrizes (listas de listas) só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: Matrizes"
+  - id: "R-40"
+    name: "Tuplas"
+    effect: allow
+    since_list: 3
+    # Inclui a atribuição múltipla (a, b = 1, 2), que monta uma tupla (decisão Q-02, item d).
+    match: ["node:Tuple"]
+    message: "Tuplas (inclusive a atribuição múltipla a, b = ...) só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: Tuplas"
+  - id: "R-41"
+    name: "List comprehension"
+    effect: allow
+    since_list: 3
+    # Expressão geradora e dict comprehension não constam (decisão Q-02, item e).
+    match: ["node:ListComp"]
+    message: "List comprehension só é permitida a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: List comprehension"
+  - id: "R-42"
+    name: "Indexação de listas e strings"
+    effect: allow
+    since_list: 3
+    match: ["node:Subscript"]
+    message: "A indexação (x[i]) só é permitida a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: Indexação de listas e strings"
+  - id: "R-43"
+    name: "Slicing"
+    effect: allow
+    since_list: 3
+    match: ["node:Slice"]
+    message: "O fatiamento (x[a:b]) só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: Slicing"
+  - id: "R-44"
+    name: "in para listas"
+    effect: allow
+    since_list: 3
+    # Sintaticamente igual ao in das R-30 e R-36: o tipo do operando não é inferido (5.4, ameaça 8).
+    match: ["cmp:In"]
+    message: "O operador in com listas só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: \"in\" para listas"
+  - id: "R-45"
+    name: "list()"
+    effect: allow
+    since_list: 3
+    match: ["builtin:list"]
+    message: "list() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: list()"
+  - id: "R-46"
+    name: "append(), insert(), pop() e remove()"
+    effect: allow
+    since_list: 3
+    match: ["method:append", "method:insert", "method:pop", "method:remove"]
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: append(), insert(), pop(), remove()"
+  - id: "R-47"
+    name: "del"
+    effect: allow
+    since_list: 3
+    match: ["node:Delete", "node:Del"]
+    message: "del só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: del"
+  - id: "R-48"
+    name: "sort() e sorted()"
+    effect: allow
+    since_list: 3
+    # key= e reverse= não constam (decisão Q-02, item c).
+    match: ["method:sort", "builtin:sorted"]
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: sort(), sorted()"
+  - id: "R-49"
+    name: "reverse() e reversed()"
+    effect: allow
+    since_list: 3
+    match: ["method:reverse", "builtin:reversed"]
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: reverse(), reversed()"
+  - id: "R-50"
+    name: "strip()"
+    effect: allow
+    since_list: 3
+    match: ["method:strip"]
+    message: ".strip() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: strip()"
+  - id: "R-51"
+    name: "replace()"
+    effect: allow
+    since_list: 3
+    match: ["method:replace"]
+    message: ".replace() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: replace()"
+  - id: "R-52"
+    name: "index()"
+    effect: allow
+    since_list: 3
+    match: ["method:index"]
+    message: ".index() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: index()"
+  - id: "R-53"
+    name: "join()"
+    effect: allow
+    since_list: 3
+    match: ["method:join"]
+    message: ".join() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: join()"
+  - id: "R-54"
+    name: "split() e rsplit()"
+    effect: allow
+    since_list: 3
+    match: ["method:split", "method:rsplit"]
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: split(), rsplit()"
+  - id: "R-55"
+    name: "sum()"
+    effect: allow
+    since_list: 3
+    match: ["builtin:sum"]
+    message: "sum() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: sum()"
+  - id: "R-56"
+    name: "count()"
+    effect: allow
+    since_list: 3
+    match: ["method:count"]
+    message: ".count() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: count()"
+  - id: "R-57"
+    name: "copy()"
+    effect: allow
+    since_list: 3
+    match: ["method:copy"]
+    message: ".copy() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: copy()"
+  - id: "R-58"
+    name: "tuple()"
+    effect: allow
+    since_list: 3
+    match: ["builtin:tuple"]
+    message: "tuple() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 3: tuple()"
+
+  # ---------------------------------------------------------------------------
+  # Lista 4 - Funções e escopo de variável (R-59 e R-60).
+  # ---------------------------------------------------------------------------
+  - id: "R-59"
+    name: "Funções (def, parâmetros e return)"
+    effect: allow
+    since_list: 4
+    # Parâmetro com valor padrão e função dentro de função não constam (decisão Q-02, item f);
+    # argumento nomeado na chamada (f(x=1)) é um caso em aberto no mapeamento e segue na R-04.
+    match: ["node:FunctionDef", "node:Return", "call:user"]
+    message: "Funções (def, return e a chamada de uma função sua) só são permitidas a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 4: Funções com def, parâmetros e return"
+  - id: "R-60"
+    name: "Retorno de múltiplos valores"
+    effect: allow
+    since_list: 4
+    match: ["return:multi"]
+    message: "Retornar mais de um valor (return a, b) só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.2, Lista 4: Retornar mais de um valor"
+
 # -----------------------------------------------------------------------------
 # Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).
 # A falta vira uma violação EXIGENCIA da solução inteira. Os fatos que comprovam cada
-# assunto seguem a decisão Q-05. Listas 3 a 6 entram nas Sprints 22 e 23.
+# assunto seguem a decisão Q-05. As Listas 5 e 6 entram na Sprint 23.
 # -----------------------------------------------------------------------------
 requirements:
   - id: "R-02"
@@ -366,4 +542,14 @@ requirements:
     list: 2
     require_any: ["node:For", "node:While"]
     message: "A solução não usa o assunto da Lista 2: é obrigatório um laço de repetição (for ou while). Sem ele, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+  - id: "R-02"
+    list: 3
+    require_any: ["node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple"]
+    message: "A solução não usa o assunto da Lista 3: é obrigatório usar uma lista ou uma tupla (literal, list(), tuple() ou list comprehension). Sem isso, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+  - id: "R-02"
+    list: 4
+    require_any: ["node:FunctionDef"]
+    message: "A solução não usa o assunto da Lista 4: é obrigatório definir uma função com def. Sem ela, a questão é anulada."
     source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"

@@ -1,0 +1,567 @@
+# Corpus golden: permissões da Lista 3, listas e tuplas (R-38 a R-58). Todo código da Lista 3
+# precisa de uma lista ou tupla (R-02, Q-05); por isso os casos permitidos têm uma.
+
+- id: R-38-list-literal-L3
+  rule: R-38
+  list: 3
+  code: |
+    notas = [7, 8, 9]
+    print(notas)
+  expect: []
+
+- id: R-38-list-in-function-L4
+  rule: R-38
+  list: 4
+  code: |
+    def vazia():
+        return []
+    print(vazia())
+  expect: []
+
+- id: R-38-list-before-list-L2
+  rule: R-38
+  list: 2
+  code: |
+    for i in range(3):
+        v = [i]
+        print(v)
+  expect: [R-38 FORA_DA_LISTA 2]
+
+- id: R-39-matrix-L3
+  rule: R-39
+  list: 3
+  code: |
+    m = [[1, 2], [3, 4]]
+    print(m[1][0])
+  expect: []
+
+- id: R-39-matrix-comprehension-L3
+  rule: R-39
+  list: 3
+  code: |
+    m = [[0] * 3 for _ in range(3)]
+    print(m)
+  expect: []
+
+- id: R-39-matrix-before-list-L2
+  rule: R-39
+  list: 2
+  code: |
+    for i in range(2):
+        m = [[i]]
+        print(m)
+  expect: [R-38 FORA_DA_LISTA 2, R-38 FORA_DA_LISTA 2]
+
+- id: R-40-tuple-literal-L3
+  rule: R-40
+  list: 3
+  code: |
+    ponto = (1, 2)
+    print(ponto)
+  expect: []
+
+- id: R-40-multiple-assignment-L3
+  rule: R-40
+  list: 3
+  code: |
+    a, b = 1, 2
+    print(a + b)
+  expect: []
+
+- id: R-40-multiple-assignment-before-list-L2
+  rule: R-40
+  list: 2
+  code: |
+    a, b = 1, 2
+    while a < b:
+        a += 1
+  expect: [R-40 FORA_DA_LISTA 1, R-40 FORA_DA_LISTA 1]
+
+- id: R-37-unpack-list-of-tuples-L3
+  rule: R-37
+  list: 3
+  code: |
+    pares = [(1, 2), (3, 4)]
+    for a, b in pares:
+        print(a, b)
+  expect: [R-37 NAO_CONSTA 2]
+
+- id: R-41-comprehension-L3
+  rule: R-41
+  list: 3
+  code: |
+    quadrados = [x * x for x in range(5)]
+    print(quadrados)
+  expect: []
+
+- id: R-41-comprehension-with-filter-L3
+  rule: R-41
+  list: 3
+  code: |
+    pares = [x for x in range(10) if x % 2 == 0]
+    print(pares)
+  expect: []
+
+- id: R-41-comprehension-before-list-L2
+  rule: R-41
+  list: 2
+  code: |
+    for i in range(1):
+        q = [x for x in range(3)]
+        print(q)
+  expect: [R-41 FORA_DA_LISTA 2]
+
+- id: R-41-generator-expression-L3
+  rule: R-41
+  list: 3
+  code: |
+    total = sum(x for x in range(5))
+    lista = [total]
+    print(lista)
+  expect: [R-04 NAO_CONSTA 1]
+
+- id: R-42-list-index-L3
+  rule: R-42
+  list: 3
+  code: |
+    v = [1, 2, 3]
+    print(v[0])
+  expect: []
+
+- id: R-42-string-index-L3
+  rule: R-42
+  list: 3
+  code: |
+    nome = input()
+    letras = [nome[0]]
+    print(letras)
+  expect: []
+
+- id: R-42-index-before-list-L2
+  rule: R-42
+  list: 2
+  code: |
+    nome = input()
+    for i in range(len(nome)):
+        print(nome[i])
+  expect: [R-42 FORA_DA_LISTA 3]
+
+- id: R-43-slice-L3
+  rule: R-43
+  list: 3
+  code: |
+    v = [1, 2, 3, 4]
+    print(v[1:3])
+  expect: []
+
+- id: R-43-reverse-slice-L3
+  rule: R-43
+  list: 3
+  code: |
+    nome = input()
+    print([nome[::-1]])
+  expect: []
+
+- id: R-43-slice-before-list-L2
+  rule: R-43
+  list: 2
+  code: |
+    nome = input()
+    for i in range(2):
+        print(nome[1:])
+  expect: [R-42 FORA_DA_LISTA 3, R-43 FORA_DA_LISTA 3]
+
+- id: R-44-in-list-L3
+  rule: R-44
+  list: 3
+  code: |
+    v = [1, 2]
+    print(3 in v)
+  expect: []
+
+- id: R-44-not-in-list-L3
+  rule: R-44
+  list: 3
+  code: |
+    v = [1, 2]
+    if 3 not in v:
+        print("não")
+  expect: []
+
+- id: R-44-in-list-of-strings-L3
+  rule: R-44
+  list: 3
+  code: |
+    cores = ["azul", "verde"]
+    cor = input()
+    if cor in cores:
+        print("ok")
+  expect: []
+
+- id: R-45-list-of-string-L3
+  rule: R-45
+  list: 3
+  code: |
+    letras = list(input())
+    print(letras)
+  expect: []
+
+- id: R-45-list-of-range-L3
+  rule: R-45
+  list: 3
+  code: |
+    v = list(range(5))
+    print(v)
+  expect: []
+
+- id: R-45-list-before-list-L2
+  rule: R-45
+  list: 2
+  code: |
+    for i in range(1):
+        v = list("ab")
+        print(v)
+  expect: [R-45 FORA_DA_LISTA 2]
+
+- id: R-46-append-L3
+  rule: R-46
+  list: 3
+  code: |
+    v = []
+    v.append(1)
+    print(v)
+  expect: []
+
+- id: R-46-insert-pop-remove-L3
+  rule: R-46
+  list: 3
+  code: |
+    v = [1, 2, 3]
+    v.insert(0, 5)
+    v.pop()
+    v.remove(1)
+    print(v)
+  expect: []
+
+- id: R-46-append-before-list-L2
+  rule: R-46
+  list: 2
+  code: |
+    v = input()
+    for c in v:
+        v.append(c)
+  expect: [R-46 FORA_DA_LISTA 3]
+
+- id: R-47-del-item-L3
+  rule: R-47
+  list: 3
+  code: |
+    v = [1, 2, 3]
+    del v[0]
+    print(v)
+  expect: []
+
+- id: R-47-del-slice-L3
+  rule: R-47
+  list: 3
+  code: |
+    v = [1, 2, 3]
+    del v[1:]
+    print(v)
+  expect: []
+
+- id: R-47-del-before-list-L2
+  rule: R-47
+  list: 2
+  code: |
+    x = 1
+    while x > 0:
+        del x
+  expect: [R-47 FORA_DA_LISTA 3, R-47 FORA_DA_LISTA 3]
+
+- id: R-48-sort-L3
+  rule: R-48
+  list: 3
+  code: |
+    v = [3, 1, 2]
+    v.sort()
+    print(v)
+  expect: []
+
+- id: R-48-sorted-L3
+  rule: R-48
+  list: 3
+  code: |
+    v = [3, 1, 2]
+    print(sorted(v))
+  expect: []
+
+- id: R-48-sorted-reverse-keyword-L3
+  rule: R-48
+  list: 3
+  code: |
+    v = [3, 1, 2]
+    print(sorted(v, reverse=True))
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-48-sorted-before-list-L2
+  rule: R-48
+  list: 2
+  code: |
+    nome = input()
+    for c in sorted(nome):
+        print(c)
+  expect: [R-48 FORA_DA_LISTA 2]
+
+- id: R-49-reverse-L3
+  rule: R-49
+  list: 3
+  code: |
+    v = [1, 2]
+    v.reverse()
+    print(v)
+  expect: []
+
+- id: R-49-reversed-L3
+  rule: R-49
+  list: 3
+  code: |
+    v = [1, 2]
+    for x in reversed(v):
+        print(x)
+  expect: []
+
+- id: R-49-reversed-before-list-L2
+  rule: R-49
+  list: 2
+  code: |
+    for i in reversed(range(3)):
+        print(i)
+  expect: [R-49 FORA_DA_LISTA 1]
+
+- id: R-50-strip-L3
+  rule: R-50
+  list: 3
+  code: |
+    nome = input().strip()
+    print([nome])
+  expect: []
+
+- id: R-50-strip-chars-L3
+  rule: R-50
+  list: 3
+  code: |
+    texto = input()
+    partes = [texto.strip("!")]
+    print(partes)
+  expect: []
+
+- id: R-50-strip-before-list-L1
+  rule: R-50
+  list: 1
+  code: |
+    nome = input().strip()
+    if nome:
+        print(nome)
+  expect: [R-50 FORA_DA_LISTA 1]
+
+- id: R-51-replace-L3
+  rule: R-51
+  list: 3
+  code: |
+    t = input()
+    print([t.replace("a", "e")])
+  expect: []
+
+- id: R-51-replace-chain-L3
+  rule: R-51
+  list: 3
+  code: |
+    t = input().replace(",", ".").strip()
+    v = [float(t)]
+    print(v)
+  expect: []
+
+- id: R-51-replace-before-list-L2
+  rule: R-51
+  list: 2
+  code: |
+    t = input()
+    for i in range(1):
+        print(t.replace("a", "b"))
+  expect: [R-51 FORA_DA_LISTA 3]
+
+- id: R-52-index-L3
+  rule: R-52
+  list: 3
+  code: |
+    v = [5, 6]
+    print(v.index(6))
+  expect: []
+
+- id: R-52-string-index-method-L3
+  rule: R-52
+  list: 3
+  code: |
+    t = input()
+    posicoes = [t.index("a")]
+    print(posicoes)
+  expect: []
+
+- id: R-52-index-before-list-L1
+  rule: R-52
+  list: 1
+  code: |
+    t = input()
+    if "a" in t:
+        print(t.index("a"))
+  expect: [R-52 FORA_DA_LISTA 3]
+
+- id: R-53-join-L3
+  rule: R-53
+  list: 3
+  code: |
+    v = ["a", "b"]
+    print("-".join(v))
+  expect: []
+
+- id: R-53-join-of-comprehension-L3
+  rule: R-53
+  list: 3
+  code: |
+    n = int(input())
+    print(" ".join([str(i) for i in range(n)]))
+  expect: []
+
+- id: R-53-join-before-list-L2
+  rule: R-53
+  list: 2
+  code: |
+    v = input()
+    for i in range(1):
+        print("-".join(v))
+  expect: [R-53 FORA_DA_LISTA 3]
+
+- id: R-54-split-L3
+  rule: R-54
+  list: 3
+  code: |
+    a, b = input().split()
+    print(a, b)
+  expect: []
+
+- id: R-54-rsplit-L3
+  rule: R-54
+  list: 3
+  code: |
+    nome = input()
+    ultimo = [nome.rsplit(" ", 1)]
+    print(ultimo)
+  expect: []
+
+- id: R-54-split-before-list-L2
+  rule: R-54
+  list: 2
+  code: |
+    for p in input().split():
+        print(p)
+  expect: [R-54 FORA_DA_LISTA 1]
+
+- id: R-55-sum-L3
+  rule: R-55
+  list: 3
+  code: |
+    v = [1, 2, 3]
+    print(sum(v))
+  expect: []
+
+- id: R-55-sum-of-comprehension-L3
+  rule: R-55
+  list: 3
+  code: |
+    print(sum([x for x in range(4)]))
+  expect: []
+
+- id: R-55-sum-before-list-L2
+  rule: R-55
+  list: 2
+  code: |
+    for i in range(1):
+        print(sum(range(4)))
+  expect: [R-55 FORA_DA_LISTA 2]
+
+- id: R-56-count-list-L3
+  rule: R-56
+  list: 3
+  code: |
+    v = [1, 1, 2]
+    print(v.count(1))
+  expect: []
+
+- id: R-56-count-string-L3
+  rule: R-56
+  list: 3
+  code: |
+    t = input()
+    print([t.count("a")])
+  expect: []
+
+- id: R-56-count-before-list-L1
+  rule: R-56
+  list: 1
+  code: |
+    t = input()
+    if t.count("a") > 1:
+        print(t)
+  expect: [R-56 FORA_DA_LISTA 2]
+
+- id: R-57-copy-L3
+  rule: R-57
+  list: 3
+  code: |
+    v = [1, 2]
+    w = v.copy()
+    print(w)
+  expect: []
+
+- id: R-57-copy-in-matrix-L3
+  rule: R-57
+  list: 3
+  code: |
+    m = [[1], [2]]
+    c = [linha.copy() for linha in m]
+    print(c)
+  expect: []
+
+- id: R-57-copy-before-list-L2
+  rule: R-57
+  list: 2
+  code: |
+    x = input()
+    for i in range(1):
+        y = x.copy()
+  expect: [R-57 FORA_DA_LISTA 3]
+
+- id: R-58-tuple-L3
+  rule: R-58
+  list: 3
+  code: |
+    t = tuple(input())
+    print(t)
+  expect: []
+
+- id: R-58-tuple-of-list-L3
+  rule: R-58
+  list: 3
+  code: |
+    t = tuple([1, 2])
+    print(t)
+  expect: []
+
+- id: R-58-tuple-before-list-L2
+  rule: R-58
+  list: 2
+  code: |
+    for i in range(1):
+        t = tuple("ab")
+  expect: [R-58 FORA_DA_LISTA 2]

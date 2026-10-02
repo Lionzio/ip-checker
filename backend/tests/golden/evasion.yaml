@@ -35,7 +35,7 @@
   code: |
     s = input()
     f = s.split
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-54 FORA_DA_LISTA 2]
 
 - id: E06-eval-used-before-shadowing
   rule: R-04
@@ -52,7 +52,7 @@
     print = eval
     print("1")
   # Linha 1: eval. Linha 2: print agora é variável do aluno (chamada de função ainda não consta).
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-59 FORA_DA_LISTA 2]
 
 - id: E08-dunder-attribute
   rule: R-04
@@ -167,21 +167,21 @@
   list: 1
   code: |
     x = [1, 2]
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-38 FORA_DA_LISTA 1]
 
 - id: E24-tuple-literal
   rule: R-04
   list: 1
   code: |
     x = 1, 2
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-40 FORA_DA_LISTA 1]
 
 - id: E25-indexing
   rule: R-04
   list: 1
   code: |
     x = "abc"[0]
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-42 FORA_DA_LISTA 1]
 
 - id: E26-del
   rule: R-04
@@ -189,7 +189,7 @@
   code: |
     x = 1
     del x
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-47 FORA_DA_LISTA 2, R-47 FORA_DA_LISTA 2]
 
 - id: E27-dunder-name
   rule: R-04
@@ -227,7 +227,7 @@
     z = zip
     for a, b in z("ab", "cd"):
         print(a, b)
-  expect: [R-37 NAO_CONSTA 1, R-37 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-37 NAO_CONSTA 1, R-37 NAO_CONSTA 2, R-59 FORA_DA_LISTA 2]
 
 - id: E31-builtin-aliased-then-called
   rule: R-04
@@ -235,7 +235,7 @@
   code: |
     conversor = int
     print(conversor("3"))
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-59 FORA_DA_LISTA 2]
 
 - id: E32-match
   rule: R-04
@@ -263,7 +263,7 @@
         len = eval
     print(len("a"))
   # eval é o built-in na linha 2; na linha 3, len já é variável do aluno (chamada de função).
-  expect: [R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+  expect: [R-04 NAO_CONSTA 2, R-59 FORA_DA_LISTA 3]
 
 - id: E35-decorator
   rule: R-04
@@ -274,7 +274,7 @@
         return 1
   # Linha 1: o decorador (built-in e derived:decorator na mesma posição viram uma violação só).
   # Linhas 2 e 3: def e return, que só constam a partir da Lista 4 (Sprint 22).
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3]
 
 - id: E36-student-decorator
   rule: R-04
@@ -286,7 +286,7 @@
     def g():
         return 1
   # Mesmo com um decorador do próprio aluno, o '@d' da linha 3 gera violação.
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 3, R-04 NAO_CONSTA 4, R-04 NAO_CONSTA 5]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 3, R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 4, R-59 FORA_DA_LISTA 5]
 
 - id: E37-dict-unpacking
   rule: R-04

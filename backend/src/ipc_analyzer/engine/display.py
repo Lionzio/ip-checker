@@ -97,6 +97,9 @@ _OTHERS = {
     "target:for_unpack": "desempacotamento no for",
     "derived:recursion": "recursão",
     "derived:loop_else": "else em laço",
+    "derived:nested_function": "função dentro de função",
+    "derived:decorator": "decorador (@)",
+    "derived:dict_unpack": "** em dicionário",
 }
 
 

@@ -24,6 +24,7 @@ from ipc_analyzer.engine.symbols import (
 )
 
 _OPERATORS = (ast.operator, ast.unaryop, ast.boolop)
+_FUNCTION_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +205,12 @@ class _Extractor:
                 # O 'else' do laço não é nó na AST; o fato aponta para o 1º comando dele (Q-02 g).
                 self.emit("derived:loop_else", first)
             case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                if not isinstance(node, ast.ClassDef) and any(
+                    isinstance(scope, _FUNCTION_SCOPES) for scope in visit.scopes
+                ):
+                    # Função dentro de função não consta (Q-02 f): o def aninhado leva este fato,
+                    # que nenhuma regra permite, além do node:FunctionDef.
+                    self.emit("derived:nested_function", node)
                 # '@d' é uma chamada implícita sem nó próprio; sem este fato, um decorador do
                 # aluno passaria despercebido quando funções forem permitidas (DoD, item 9).
                 for decorator in node.decorator_list:
