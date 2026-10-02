@@ -1,5 +1,5 @@
-"""Serviço interno do analisador: ``POST /internal/analyze``, ``GET /internal/health`` (S5-01) e
-``GET /internal/ruleset/manifest`` (S8-01).
+"""Serviço interno do analisador: ``POST /internal/analyze``, ``GET /internal/health`` (S5-01),
+``GET /internal/ruleset/manifest`` (S8-01) e ``POST /internal/similarity`` (S17-02).
 
 Não tem documentação pública nem segredos e só deve ser alcançável pela API, numa rede interna
 sem saída para a internet (NFR-07). A análise sempre acontece num worker do pool, nunca aqui.
@@ -31,6 +31,7 @@ from ipc_analyzer.engine.guards import (
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.engine.similarity import InvalidSide, Similarity
 from ipc_analyzer.logging import configure_logging
 from ipc_analyzer.runtime.pool import AnalyzerPool
 from ipc_analyzer.service.access_log import AccessLogMiddleware
@@ -98,6 +99,44 @@ class AnalyzeResponse(BaseModel):
                 for v in result.violations
             ],
             truncated=result.truncated,
+        )
+
+
+class SimilarityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    first: str
+    second: str
+
+
+class SimilarityResponse(BaseModel):
+    """Plágio (S17-02): a porcentagem, ou qual dos dois códigos tem erro de sintaxe."""
+
+    status: Literal["compared", "syntax_error"]
+    percent: float | None
+    token_counts: list[int] | None
+    syntax_error_side: Literal[1, 2] | None
+    syntax_error: SyntaxErrorOut | None
+
+    @classmethod
+    def from_result(cls, result: Similarity | InvalidSide) -> SimilarityResponse:
+        if isinstance(result, InvalidSide):
+            problem = result.problem
+            return cls(
+                status="syntax_error",
+                percent=None,
+                token_counts=None,
+                syntax_error_side=1 if result.side == 1 else 2,
+                syntax_error=SyntaxErrorOut(
+                    line=problem.line, col=problem.col, message=problem.message
+                ),
+            )
+        return cls(
+            status="compared",
+            percent=result.percent,
+            token_counts=list(result.token_counts),
+            syntax_error_side=None,
+            syntax_error=None,
         )
 
 
@@ -210,6 +249,27 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
         return AnalyzeResponse.from_result(result)
+
+    @app.post("/internal/similarity")
+    async def similarity(
+        body: SimilarityRequest,
+        request: Request,
+        pool: Annotated[AnalyzerPool, Depends(_pool)],
+    ) -> SimilarityResponse:
+        sizes = [
+            len(code.encode("utf-8", errors="surrogatepass")) for code in (body.first, body.second)
+        ]
+        request.state.payload_bytes = sum(sizes)
+        for label, size in zip("AB", sizes, strict=True):
+            if size > DEFAULT_LIMITS.max_bytes:
+                raise PayloadTooLargeError(
+                    f"Código {label}: o código tem {thousands(size)} bytes; o limite é "
+                    f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
+                )
+        result = await pool.compare(body.first, body.second)
+        response = SimilarityResponse.from_result(result)
+        request.state.outcome = response.status
+        return response
 
     @app.get("/internal/ruleset/manifest")
     async def manifest(

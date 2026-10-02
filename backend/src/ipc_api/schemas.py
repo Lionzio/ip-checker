@@ -45,6 +45,43 @@ class ValidateRequest(_Strict):
     )
 
 
+class SimilarityRequest(_Strict):
+    code_a: str = Field(description="Código de um aluno. Nunca é executado.")
+    code_b: str = Field(description="Código do outro aluno. Nunca é executado.")
+
+
+BandId = Literal[
+    "plagio", "altas_chances", "requer_atencao", "ligeiramente_suspeito", "sem_suspeitas"
+]
+
+
+class SimilarityBand(_Strict):
+    id: BandId
+    label: str = Field(description="O nome da faixa, sempre escrito junto da cor (NFR-19).")
+    minimum: float = Field(description="A faixa começa neste valor, inclusive (FR-29).")
+
+
+class SimilaritySyntaxError(_Strict):
+    code: Literal["a", "b"] = Field(description="Qual dos dois códigos tem o erro.")
+    line: Position
+    col: Position
+    message: Message
+
+
+class SimilarityResponse(_Strict):
+    request_id: str
+    status: Literal["compared", "syntax_error"]
+    similarity: float | None = Field(
+        ge=0, le=100, description="Porcentagem com uma casa decimal; vazia com erro de sintaxe."
+    )
+    band: SimilarityBand | None
+    short_code: bool = Field(
+        description="Um dos códigos é curto: soluções independentes tendem a se parecer."
+    )
+    syntax_error: SimilaritySyntaxError | None
+    notice: str = Field(description="O aviso de que o resultado é um indício (FR-29).")
+
+
 class Violation(_Strict):
     rule_id: Annotated[str, StringConstraints(pattern=r"^R-\d{2}$")]
     category: Category
@@ -261,6 +298,24 @@ class RoleChoice(_Strict):
 # ---------------------------------------------------------------------------------------------
 # Respostas do analyzer (rede interna)
 # ---------------------------------------------------------------------------------------------
+
+
+class AnalyzerSimilarity(_Strict):
+    status: Literal["compared", "syntax_error"]
+    percent: float | None = Field(ge=0, le=100)
+    token_counts: list[Annotated[int, Field(ge=0)]] | None = Field(min_length=2, max_length=2)
+    syntax_error_side: Literal[1, 2] | None
+    syntax_error: SyntaxErrorInfo | None
+
+    @model_validator(mode="after")
+    def _status_matches_content(self) -> Self:
+        compared = self.percent is not None and self.token_counts is not None
+        broken = self.syntax_error is not None and self.syntax_error_side is not None
+        if (self.status == "compared") != (compared and not broken) or (
+            self.status == "syntax_error"
+        ) != (broken and not compared):
+            raise ValueError(f"status {self.status!r} incoerente com o conteúdo da resposta")
+        return self
 
 
 class AnalyzerResult(_Strict):

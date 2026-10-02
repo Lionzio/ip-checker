@@ -18,6 +18,7 @@ from ipc_api.schemas import (
     AnalyzerHealth,
     AnalyzerManifest,
     AnalyzerResult,
+    AnalyzerSimilarity,
 )
 
 #: Teto de uma resposta do analyzer. 200 violações com mensagens longas ficam bem abaixo disso.
@@ -100,6 +101,19 @@ class AnalyzerClient:
             if result.list_number != list_number:
                 raise AnalyzerUnavailable("o analyzer respondeu sobre outra lista")
             return result
+        if status in (413, 422):
+            error = _parse(AnalyzerErrorResponse, body).error
+            raise AnalyzerRejected(status, error.code, error.message)
+        raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
+
+    async def similarity(
+        self, first: str, second: str, request_id: str | None = None
+    ) -> AnalyzerSimilarity:
+        status, body = await self._request(
+            "POST", "/internal/similarity", {"first": first, "second": second}, request_id
+        )
+        if status == 200:
+            return _parse(AnalyzerSimilarity, body)
         if status in (413, 422):
             error = _parse(AnalyzerErrorResponse, body).error
             raise AnalyzerRejected(status, error.code, error.message)

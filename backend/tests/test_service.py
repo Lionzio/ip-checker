@@ -186,3 +186,54 @@ def test_settings_defaults_point_to_the_repository_ruleset() -> None:
 
     assert settings.ruleset_path == BASE_RULESET
     assert settings.pool == PoolConfig()
+
+
+# --- Plágio (S17-02) -----------------------------------------------------------------------------
+
+
+def test_similarity_compares_in_a_worker(client: TestClient) -> None:
+    code = "nota = float(input())\nif nota >= 7:\n    print('aprovado')\n"
+    copy = code.replace("nota", "media")
+
+    response = client.post("/internal/similarity", json={"first": code, "second": copy})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["status"], body["percent"]) == ("compared", 100.0)
+    assert body["token_counts"][0] == body["token_counts"][1] > 0
+    assert (body["syntax_error_side"], body["syntax_error"]) == (None, None)
+
+
+def test_similarity_points_to_the_code_with_a_syntax_error(client: TestClient) -> None:
+    response = client.post(
+        "/internal/similarity", json={"first": "x = 1\n", "second": "if x\n    y = 2\n"}
+    )
+
+    body = response.json()
+    assert (body["status"], body["percent"], body["syntax_error_side"]) == ("syntax_error", None, 2)
+    assert (body["syntax_error"]["line"], body["syntax_error"]["col"]) == (1, 5)
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "status", "code", "prefix"),
+    [
+        ("#" + "a" * 51_200, "x = 1\n", 413, "PAYLOAD_TOO_LARGE", "Código A: "),
+        ("x = 1\n", "#" + "a" * 51_200, 413, "PAYLOAD_TOO_LARGE", "Código B: "),
+        ("x = 1\n", "(" * 1_000 + ")" * 1_000, 422, "ANALYSIS_LIMIT", "Código B: "),
+        ("x = '\x00'\n", "x = 1\n", 422, "INVALID_INPUT", "Código A: "),
+    ],
+    ids=["50kb-em-a", "50kb-em-b", "aninhamento-em-b", "byte-nulo-em-a"],
+)
+def test_similarity_refuses_inputs_like_the_analysis(
+    client: TestClient, first: str, second: str, status: int, code: str, prefix: str
+) -> None:
+    response = client.post("/internal/similarity", json={"first": first, "second": second})
+
+    assert (response.status_code, response.json()["error"]["code"]) == (status, code)
+    assert response.json()["error"]["message"].startswith(prefix)
+
+
+def test_similarity_body_is_strict(client: TestClient) -> None:
+    response = client.post("/internal/similarity", json={"first": "x = 1\n"})
+
+    assert (response.status_code, response.json()["error"]["code"]) == (422, "INVALID_INPUT")

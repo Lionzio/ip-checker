@@ -156,7 +156,7 @@ def _new_password() -> str:
 OPEN = {("GET", "/health"), ("GET", "/ready")}
 
 
-def test_without_a_session_every_route_answers_401_and_no_data(auth_client: Client) -> None:
+def test_without_a_session_every_route_answers_401_and_no_data(fresh_client: Client) -> None:
     contract = json.loads((REPO_ROOT / "docs" / "openapi.json").read_text(encoding="utf-8"))
     requests = []
     for path, operations in contract["paths"].items():
@@ -168,7 +168,7 @@ def test_without_a_session_every_route_answers_401_and_no_data(auth_client: Clie
             body: dict[str, Any] | None = {} if route[0] in ("POST", "PATCH") else None
             requests.append(_request(route[0], concrete, body))
 
-    answers = auth_client.send(requests)
+    answers = fresh_client.send(requests)
 
     assert len(answers) >= 10
     for request, answer in zip(requests, answers, strict=True):
@@ -180,7 +180,7 @@ def test_without_a_session_every_route_answers_401_and_no_data(auth_client: Clie
 
 
 def test_the_permission_matrix_holds_by_direct_calls(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     db = stack["db"]
     password = _new_password()
@@ -190,10 +190,10 @@ def test_the_permission_matrix_holds_by_direct_calls(
     other_id, _, _ = _account(db, role="monitor")
     pending_id, _, _ = _account(db, role=None, status="aguardando_aprovacao")
     developer_id = _developer_id(db)
-    monitor = _signed_in(auth_client, monitor_email, password)
-    chefe = _signed_in(auth_client, chefe_email, password)
-    professor = _signed_in(auth_client, professor_email, password)
-    developer = _signed_in(auth_client, DEV_EMAIL, DEV_PASSWORD)
+    monitor = _signed_in(fresh_client, monitor_email, password)
+    chefe = _signed_in(fresh_client, chefe_email, password)
+    professor = _signed_in(fresh_client, professor_email, password)
+    developer = _signed_in(fresh_client, DEV_EMAIL, DEV_PASSWORD)
     chefe_id = _psql(
         db,
         f"SELECT account_id FROM app.account_email WHERE email = '{chefe_email}';",  # noqa: S608
@@ -226,7 +226,7 @@ def test_the_permission_matrix_holds_by_direct_calls(
         # Ninguém atribui o cargo de desenvolvedor.
         (developer, "POST", f"{admin}/requests/{pending_id}/approve", {"role": "desenvolvedor"}),
     ]
-    answers = auth_client.send(
+    answers = fresh_client.send(
         [_request(method, path, body, session=who) for who, method, path, body in refused]
     )
     for (_, method, path, _), answer in zip(refused, answers, strict=True):
@@ -234,7 +234,7 @@ def test_the_permission_matrix_holds_by_direct_calls(
 
     # Controle: dentro da alçada, a mesma chamada passa.
     approved = _one(
-        auth_client,
+        fresh_client,
         "POST",
         f"{admin}/requests/{pending_id}/approve",
         {"role": "monitor"},
@@ -248,7 +248,7 @@ def test_the_permission_matrix_holds_by_direct_calls(
 LOOKALIKES = ["x@xcin.ufpe.br", "x@ee.ufpe.br", "x@cin.ufpe.br.exemplo.com"]
 
 
-def test_lookalike_domains_are_refused_and_uppercase_is_accepted(auth_client: Client) -> None:
+def test_lookalike_domains_are_refused_and_uppercase_is_accepted(fresh_client: Client) -> None:
     password = _new_password()
     _remember(password)
     register = [
@@ -282,7 +282,7 @@ def test_lookalike_domains_are_refused_and_uppercase_is_accepted(auth_client: Cl
         },
     )
 
-    answers = auth_client.send([*register, *login, accepted])
+    answers = fresh_client.send([*register, *login, accepted])
 
     for answer in answers[:-1]:
         assert _error(answer) == (422, "DOMAIN_NOT_ALLOWED"), answer
@@ -290,8 +290,8 @@ def test_lookalike_domains_are_refused_and_uppercase_is_accepted(auth_client: Cl
     assert answers[-1].body == {"status": "aguardando_verificacao", "email": upper.lower()}
 
 
-def test_google_stays_off_without_configuration(auth_client: Client) -> None:
-    options, start = auth_client.send(
+def test_google_stays_off_without_configuration(fresh_client: Client) -> None:
+    options, start = fresh_client.send(
         [_request("GET", "/api/v1/auth/options"), _request("GET", "/api/v1/auth/google/start")]
     )
 
@@ -304,15 +304,15 @@ def test_google_stays_off_without_configuration(auth_client: Client) -> None:
 
 
 def test_the_cookie_is_safe_and_every_login_gets_a_new_identifier(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     password = _new_password()
     _, _, email = _account(stack["db"], password=password)
 
-    first = _login(auth_client, email, password)
-    second = _login(auth_client, email, password, session=_session_of(first))
+    first = _login(fresh_client, email, password)
+    second = _login(fresh_client, email, password, session=_session_of(first))
     old, new = _session_of(first), _session_of(second)
-    me_old, me_new = auth_client.send(
+    me_old, me_new = fresh_client.send(
         [
             _request("GET", "/api/v1/auth/me", session=old),
             _request("GET", "/api/v1/auth/me", session=new),
@@ -329,20 +329,23 @@ def test_the_cookie_is_safe_and_every_login_gets_a_new_identifier(
 
 
 def test_sessions_end_on_password_change_role_change_and_removal(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     password, changed = _new_password(), _new_password()
     _remember(changed)
     account_id, _, email = _account(stack["db"], password=password)
-    developer = _signed_in(auth_client, DEV_EMAIL, DEV_PASSWORD)
+    developer = _signed_in(fresh_client, DEV_EMAIL, DEV_PASSWORD)
 
     def me(session: str) -> int:
-        return _one(auth_client, "GET", "/api/v1/auth/me", session=session).status
+        return _one(fresh_client, "GET", "/api/v1/auth/me", session=session).status
 
     # Troca de senha: a sessão que trocou continua; as outras caem.
-    keep, other = _signed_in(auth_client, email, password), _signed_in(auth_client, email, password)
+    keep, other = (
+        _signed_in(fresh_client, email, password),
+        _signed_in(fresh_client, email, password),
+    )
     change = _one(
-        auth_client,
+        fresh_client,
         "POST",
         "/api/v1/profile/password",
         {"current_password": password, "new_password": changed},
@@ -353,7 +356,7 @@ def test_sessions_end_on_password_change_role_change_and_removal(
 
     # Mudança de cargo: as sessões da conta caem.
     role = _one(
-        auth_client,
+        fresh_client,
         "PATCH",
         f"/api/v1/admin/members/{account_id}/role",
         {"role": "monitor_chefe"},
@@ -363,20 +366,20 @@ def test_sessions_end_on_password_change_role_change_and_removal(
     assert me(keep) == 401
 
     # Remoção: as sessões caem, e o login mostra a conta removida só com a senha certa.
-    session = _signed_in(auth_client, email, changed)
+    session = _signed_in(fresh_client, email, changed)
     removed = _one(
-        auth_client, "POST", f"/api/v1/admin/members/{account_id}/remove", session=developer
+        fresh_client, "POST", f"/api/v1/admin/members/{account_id}/remove", session=developer
     )
     assert removed.status == 204
     assert me(session) == 401
-    assert _error(_login(auth_client, email, changed)) == (403, "ACCOUNT_REMOVED")
-    assert _error(_login(auth_client, email, _new_password())) == (401, "INVALID_CREDENTIALS")
+    assert _error(_login(fresh_client, email, changed)) == (403, "ACCOUNT_REMOVED")
+    assert _error(_login(fresh_client, email, _new_password())) == (401, "INVALID_CREDENTIALS")
 
 
 def test_state_changes_from_another_site_are_refused(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
-    developer = _signed_in(auth_client, DEV_EMAIL, DEV_PASSWORD)
+    developer = _signed_in(fresh_client, DEV_EMAIL, DEV_PASSWORD)
     pending_id, _, _ = _account(stack["db"], role=None, status="aguardando_aprovacao")
     evil = {"Origin": EVIL}
     attempts = [
@@ -412,14 +415,14 @@ def test_state_changes_from_another_site_are_refused(
         ),
     ]
 
-    answers = auth_client.send(attempts)
+    answers = fresh_client.send(attempts)
 
     for request, answer in zip(attempts, answers, strict=True):
         assert _error(answer) == (403, "ORIGIN_MISMATCH"), (request["path"], answer)
     # Nada mudou: o pedido segue na fila e a sessão do desenvolvedor segue válida.
     status = _psql(stack["db"], f"SELECT status FROM app.account WHERE id = '{pending_id}';")  # noqa: S608
     assert status.strip() == "aguardando_aprovacao"
-    assert _one(auth_client, "GET", "/api/v1/auth/me", session=developer).status == 200
+    assert _one(fresh_client, "GET", "/api/v1/auth/me", session=developer).status == 200
 
 
 # --- Item 20: tokens e senhas --------------------------------------------------------------------
@@ -444,13 +447,13 @@ def _mailpit_token(to: str) -> str:
 
 
 def test_used_and_expired_verification_links_do_not_work(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     password = _new_password()
     _remember(password)
     email = f"seg.link.{uuid.uuid4().hex[:8]}@cin.ufpe.br"
     registered = _one(
-        auth_client,
+        fresh_client,
         "POST",
         "/api/v1/auth/register",
         {
@@ -464,7 +467,7 @@ def test_used_and_expired_verification_links_do_not_work(
     assert registered.status == 201
     token = _mailpit_token(email)
 
-    first, again = auth_client.send(
+    first, again = fresh_client.send(
         [_request("POST", "/api/v1/auth/verify", {"token": token}) for _ in range(2)]
     )
     assert first.status == 200
@@ -481,7 +484,7 @@ def test_used_and_expired_verification_links_do_not_work(
         f"VALUES (decode('{digest}', 'hex'), '{waiting_id}', 'verificacao', "
         "now() - interval '1 minute');",
     )
-    answer = _one(auth_client, "POST", "/api/v1/auth/verify", {"token": expired})
+    answer = _one(fresh_client, "POST", "/api/v1/auth/verify", {"token": expired})
     assert _error(answer) == (422, "INVALID_TOKEN")
 
 
@@ -489,11 +492,11 @@ WEAK = ["Curta-1!", "sem-maiuscula-1", "SemEspecial1", "A!" + "a" * 128]
 
 
 def test_weak_passwords_are_refused_by_the_backend(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     password = _new_password()
     _, _, email = _account(stack["db"], password=password)
-    session = _signed_in(auth_client, email, password)
+    session = _signed_in(fresh_client, email, password)
     _remember(*WEAK)
     requests = [
         _request(
@@ -518,7 +521,7 @@ def test_weak_passwords_are_refused_by_the_backend(
         for weak in WEAK
     ]
 
-    answers = auth_client.send(requests)
+    answers = fresh_client.send(requests)
 
     for answer in answers:
         assert _error(answer) in {(422, "WEAK_PASSWORD"), (422, "INVALID_INPUT")}, answer
@@ -527,14 +530,14 @@ def test_weak_passwords_are_refused_by_the_backend(
 
 
 def test_after_five_failures_the_next_login_waits(
-    auth_client: Client, stack: dict[str, str]
+    fresh_client: Client, stack: dict[str, str]
 ) -> None:
     password = _new_password()
     _, _, email = _account(stack["db"], password=password)
     wrong = [_new_password() for _ in range(5)]
 
-    failures = [_login(auth_client, email, attempt) for attempt in wrong]
-    blocked = _login(auth_client, email, password)  # nem a senha certa passa enquanto espera
+    failures = [_login(fresh_client, email, attempt) for attempt in wrong]
+    blocked = _login(fresh_client, email, password)  # nem a senha certa passa enquanto espera
 
     assert [_error(answer) for answer in failures] == [(401, "INVALID_CREDENTIALS")] * 5
     assert _error(blocked) == (429, "RATE_LIMITED")

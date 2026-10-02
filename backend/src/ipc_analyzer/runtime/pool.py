@@ -26,6 +26,7 @@ from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.engine.similarity import InvalidSide, Similarity, compare_sources
 from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits
 from ipc_analyzer.runtime.sandbox import SandboxMode, enforce
 
@@ -70,6 +71,12 @@ def _analyze_in_worker(source: str, list_number: int) -> AnalysisResult:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
     return analyze_source(source, list_number=list_number, ruleset=_RULESET)
+
+
+def _compare_in_worker(first: str, second: str) -> Similarity | InvalidSide:
+    if _RULESET is None:
+        raise RuntimeError("worker sem ruleset carregado")
+    return compare_sources(first, second, target=_RULESET.target_version)
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +125,10 @@ class AnalyzerPool:
 
     async def analyze(self, source: str, list_number: int) -> AnalysisResult:
         return await self.run(_analyze_in_worker, source, list_number)
+
+    async def compare(self, first: str, second: str) -> Similarity | InvalidSide:
+        """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento."""
+        return await self.run(_compare_in_worker, first, second)
 
     def close(self) -> None:
         self._pool.close()  # type: ignore[no-untyped-call]
