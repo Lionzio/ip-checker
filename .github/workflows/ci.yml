@@ -128,6 +128,8 @@ jobs:
               "IPC_DB_ADMIN_PASSWORD": secrets.token_urlsafe(24),
               "IPC_DB_API_PASSWORD": secrets.token_urlsafe(24),
               "IPC_DEV_INITIAL_PASSWORD": "Dev-" + secrets.token_urlsafe(12) + "!",
+              # Feedback com a IA falsa: texto fixo, sem rede nem chave (S19-01).
+              "IPC_LLM_PROVIDER": "fake",
           }
           with open("deploy/.env", "w", encoding="utf-8") as env:
               env.writelines(f"{name}={value}\n" for name, value in values.items())

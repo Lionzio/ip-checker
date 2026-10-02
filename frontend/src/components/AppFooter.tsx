@@ -1,4 +1,6 @@
-/** Créditos da plataforma, pedidos pelo autor (02/10/2026). */
+import { Link } from "react-router";
+
+/** Créditos da plataforma, pedidos pelo autor (02/10/2026), e o aviso de privacidade (S19-02). */
 export function AppFooter() {
   const link = "underline hover:text-slate-900 dark:hover:text-white";
   return (
@@ -18,6 +20,10 @@ export function AppFooter() {
         >
           LinkedIn
         </a>
+        {" · "}
+        <Link className={link} to="/privacidade">
+          Aviso de privacidade
+        </Link>
       </p>
     </footer>
   );

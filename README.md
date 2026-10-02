@@ -1,15 +1,13 @@
 # IP-Checker
 
-Verificador web que confere, **sem executar o código**, se a solução em Python de um aluno de
-Introdução à Programação respeita as regras de permissão da lista (e da questão) antes do envio
-ao Dikastis. O código é analisado só pela árvore sintática (AST), num serviço isolado.
-Nas Sprints 13 a 19, o acesso passa a ser restrito à equipe da disciplina (login com aprovação
-manual e cargos), com painel de plágio e feedback por LLM (P-13 do blueprint).
+Ferramenta web da equipe de Introdução à Programação que confere, **sem executar o código**, se a
+solução em Python de um aluno respeita as regras de permissão da lista (e da questão), compara duas
+soluções em busca de plágio e redige o feedback para o aluno. O código é analisado só pela árvore
+sintática (AST), num serviço isolado. O acesso é restrito à equipe da disciplina, com login,
+aprovação manual e cargos (P-13 do blueprint).
 
 O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
-O guia do piloto, escrito para alunos e monitores, está em
-[`docs/guia-do-piloto.md`](docs/guia-do-piloto.md); com o acesso restrito à equipe, ele será
-substituído pelo guia da equipe na Sprint 19.
+O guia de uso, para a equipe da disciplina, está em [`docs/guia-da-equipe.md`](docs/guia-da-equipe.md).
 
 ## Estrutura do repositório
 
@@ -120,8 +118,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 16 | Google e mesma origem: S16-01 entrada e registro pelo Google (OIDC com `state`, `nonce` e PKCE, provedor falso nos testes); S16-02 página e API na mesma origem no piloto (*rewrite* da Vercel), migrações antes do deploy e verificações com login; S16-03 suíte de segurança da autenticação pela borda | Concluída (o primeiro deploy com login confirma a P-15) |
 | 17 | Painel de plágio: S17-01 motor de similaridade (*winnowing* em tokens e na AST, corpus de pares); S17-02 comparação no analisador isolado e `POST /api/v1/similarity` com as faixas do FR-29; S17-03 painel com as duas áreas, a faixa escrita e o aviso de indício | Concluída |
 | 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
-| 19 | Marco 2: feedback na página e liberação para a equipe | Próxima |
-| 20 | Lista 2 e validação com gabaritos | Planejada |
+| 19 | Marco 2: S19-01 painel de feedback na página (nome do aluno, anotação, texto editável e Copiar); S19-02 aviso de privacidade, guia da equipe, passo a passo das contas externas e apresentação revista | Concluída (falta o primeiro deploy com login, `deploy/README.md`) |
+| 20 | Lista 2 e validação com gabaritos | Próxima |
 | 21 | Telemetria mínima e alertas | Planejada |
 | 22 | Listas 3 e 4 | Planejada |
 | 23 | Listas 5 e 6 e recursão obrigatória | Planejada |

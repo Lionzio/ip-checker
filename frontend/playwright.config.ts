@@ -59,7 +59,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["login"],
-      testIgnore: /(limits|account)\.spec\.ts/,
+      testIgnore: /(limits|account|feedback)\.spec\.ts/,
     },
     {
       // Sozinho: a troca de senha encerra as outras sessões da conta do desenvolvedor.
@@ -70,10 +70,18 @@ export default defineConfig({
       fullyParallel: false,
     },
     {
+      // Sozinho também: troca o tratamento do desenvolvedor para conferir os três (S19-01).
+      name: "feedback",
+      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+      dependencies: ["conta"],
+      testMatch: /feedback\.spec\.ts/,
+      fullyParallel: false,
+    },
+    {
       // Por último: o limite é por conta, e todos os testes dividem a do desenvolvedor.
       name: "limite",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["conta"],
+      dependencies: ["feedback"],
       testMatch: /limits\.spec\.ts/,
     },
       ],

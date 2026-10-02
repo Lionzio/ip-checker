@@ -2,6 +2,8 @@ import type {
   Account,
   ApiErrorCode,
   AuthOptions,
+  FeedbackRequest,
+  FeedbackResponse,
   GooglePending,
   GoogleSignup,
   ListInfo,
@@ -63,7 +65,15 @@ export interface PlagiarismClient {
   compare(codeA: string, codeB: string, signal?: AbortSignal): Promise<SimilarityResponse>;
 }
 
-export type ApiClient = ValidationClient & AuthClient & AdminClient & PlagiarismClient;
+/**
+ * Feedback para o aluno (Sprint 19): o servidor analisa o código de novo e escreve o texto com a IA
+ * principal, a de reserva ou, sem nenhuma, com modelos de texto.
+ */
+export interface FeedbackClient {
+  feedback(request: FeedbackRequest, signal?: AbortSignal): Promise<FeedbackResponse>;
+}
+
+export type ApiClient = ValidationClient & AuthClient & AdminClient & PlagiarismClient & FeedbackClient;
 
 /** Erro no formato `{ error: { code, message, retry_after_s } }` do contrato (5.2.2). */
 export class ApiError extends Error {
