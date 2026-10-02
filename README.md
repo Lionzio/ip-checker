@@ -117,8 +117,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 13 | Contas e sessão: S13-01 banco de contas, migrações e conta do desenvolvedor; S13-02 login por senha, sessão no servidor, bloqueio de tentativas, `Origin` e limite por conta; S13-03 telas inicial e Entrar, rotas com guarda e fim do `X-Client-Id` | Concluída |
 | 14 | Registro e perfil: S14-01 registro por e-mail institucional e senha; S14-02 e-mail de verificação (SMTP ou Brevo; Mailpit no compose) com link de uso único; S14-03 perfil, tratamento e troca de senha; créditos no rodapé | Concluída |
 | 15 | Cargos e gerenciamento: S15-01 política de cargos testada pela matriz completa; S15-02 API de gerenciamento (fila, aprovar com cargo, recusar, alterar cargo, remover e reativar); S15-03 tela Gerenciar com etiquetas coloridas e e2e com axe | Concluída |
-| 16 | Google, mesma origem e segurança da autenticação | Próxima |
-| 17 | Painel de plágio | Planejada |
+| 16 | Google e mesma origem: S16-01 entrada e registro pelo Google (OIDC com `state`, `nonce` e PKCE, provedor falso nos testes); S16-02 página e API na mesma origem no piloto (*rewrite* da Vercel), migrações antes do deploy e verificações com login; S16-03 suíte de segurança da autenticação pela borda | Concluída (o primeiro deploy com login confirma a P-15) |
+| 17 | Painel de plágio | Próxima |
 | 18 | Feedback por LLM: provedores e montagem | Planejada |
 | 19 | Marco 2: feedback na página e liberação para a equipe | Planejada |
 | 20 | Lista 2 e validação com gabaritos | Planejada |

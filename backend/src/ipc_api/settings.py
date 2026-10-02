@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from ipc_api.accounts.models import email_domain_allowed, normalize_email
 from ipc_api.admission import AdmissionConfig
 from ipc_api.auth.accounts import AccountsConfig
+from ipc_api.auth.google import GoogleConfig
 from ipc_api.auth.sessions import SessionConfig
 from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
@@ -89,8 +91,20 @@ class ApiSettings:
     developer: DeveloperSettings = field(default_factory=DeveloperSettings)
     #: Envio de e-mail (S14-02, Q-17): SMTP do provedor ou, no compose, o Mailpit.
     email: EmailConfig = field(default_factory=EmailConfig)
+    #: Entrada pelo Google (S16-01); desligada sem IPC_GOOGLE_CLIENT_ID e IPC_GOOGLE_CLIENT_SECRET.
+    google: GoogleConfig = field(default_factory=GoogleConfig)
     #: Registro, verificação e perfil (S14); o endereço público monta o link do e-mail.
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
+
+    @property
+    def page_origin(self) -> str:
+        """A origem da página (``IPC_PUBLIC_BASE_URL``).
+
+        No piloto, a Vercel repassa ``/api/*`` ao Render (S16-02): a API vê o ``Host`` do Render, e
+        o navegador manda o ``Origin`` da página.
+        """
+        parts = urlsplit(self.accounts.public_base_url)
+        return f"{parts.scheme}://{parts.netloc}".lower()
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> ApiSettings:
@@ -117,6 +131,7 @@ class ApiSettings:
             allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),
             developer=_developer_from_env(env),
             email=EmailConfig.from_env(env),
+            google=GoogleConfig.from_env(env),
             accounts=AccountsConfig(
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
             ),

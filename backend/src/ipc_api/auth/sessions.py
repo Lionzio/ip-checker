@@ -81,6 +81,15 @@ _STATUS_ERRORS: dict[Status, tuple[ErrorCode, str]] = {
     ),
 }
 
+
+def status_refusal(account: Account) -> ApiError | None:
+    """O 403 de uma conta que não está ativa (FR-25), só depois de a identidade ser confirmada."""
+    if account.status is Status.ATIVO:
+        return None
+    code, message = _STATUS_ERRORS[account.status]
+    return ApiError(403, code, message)
+
+
 INVALID_CREDENTIALS = (
     "Nome, e-mail ou senha incorretos. Se você criou a conta pelo Google, entre pelo Google ou "
     "defina uma senha no perfil."
@@ -153,10 +162,13 @@ class Authenticator:
             self._throttle.fail([subject, ip_key])
             raise ApiError(401, ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS)
         self._throttle.clear(subject)
-        if account.status is not Status.ATIVO:
-            code, message = _STATUS_ERRORS[account.status]
-            raise ApiError(403, code, message)
+        refusal = status_refusal(account)
+        if refusal is not None:
+            raise refusal
+        return account, await self.open_session(account)
 
+    async def open_session(self, account: Account) -> str:
+        """Abre uma sessão para uma conta cuja identidade já foi confirmada (senha ou Google)."""
         token = new_token()
         now = self._clock()
         await self.store.create_session(
@@ -165,7 +177,7 @@ class Authenticator:
             now,
             now + timedelta(seconds=self.config.absolute_timeout_s),
         )
-        return account, token
+        return token
 
     async def resolve(self, token: str | None) -> Account | None:
         """A conta ativa dona da sessão, ou ``None`` se a sessão não existe ou já venceu."""

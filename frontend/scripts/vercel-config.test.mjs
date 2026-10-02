@@ -23,15 +23,16 @@ describe("parseApiOrigin", () => {
     `${API}?x=1`,
     "https://user@ip-checker-api.onrender.com",
   ])("recusa %s, e o build falha", (value) => {
-    expect(() => parseApiOrigin(value)).toThrow(/VITE_API_BASE_URL inválida/);
+    expect(() => parseApiOrigin(value)).toThrow(/IPC_API_ORIGIN inválida/);
   });
 });
 
 describe("contentSecurityPolicy", () => {
-  it("só deixa a página falar com ela mesma e com a API", () => {
-    const csp = contentSecurityPolicy(API);
+  it("só deixa a página falar com ela mesma: a API chega pelo rewrite (S16-02)", () => {
+    const csp = contentSecurityPolicy();
 
-    expect(csp).toContain(`connect-src 'self' ${API}`);
+    expect(csp).toContain("connect-src 'self';");
+    expect(csp).not.toContain(API);
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toContain("unsafe-inline");
@@ -51,7 +52,7 @@ describe("buildOutputConfig", () => {
   it("manda os cabeçalhos de segurança em todas as respostas", () => {
     expect(securityRoute).toMatchObject({ src: "/(.*)", continue: true });
     expect(securityRoute.headers).toEqual({
-      "Content-Security-Policy": contentSecurityPolicy(API),
+      "Content-Security-Policy": contentSecurityPolicy(),
       "Strict-Transport-Security": HSTS,
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
@@ -65,7 +66,9 @@ describe("buildOutputConfig", () => {
 
     expect(handle).toBeGreaterThan(0);
     expect(config.routes.at(-1)).toEqual({ src: "/(.*)", dest: "/index.html" });
-    expect(config.routes.slice(0, handle).every((route) => route.continue)).toBe(true);
+    // Antes dos arquivos, só cabeçalhos (que seguem adiante) e o rewrite da API, que termina ali.
+    const before = config.routes.slice(0, handle).filter((route) => route.src !== "/api/(.*)");
+    expect(before.every((route) => route.continue)).toBe(true);
   });
 
   it("não guarda em cache o arquivo de versão", () => {
@@ -74,5 +77,13 @@ describe("buildOutputConfig", () => {
       headers: { "Cache-Control": "no-store" },
       continue: true,
     });
+  });
+
+  it("repassa /api/* ao Render antes de servir os arquivos (mesma origem, S16-02)", () => {
+    const rewrite = config.routes.findIndex((route) => route.src === "/api/(.*)");
+    const handle = config.routes.findIndex((route) => route.handle === "filesystem");
+
+    expect(config.routes[rewrite]).toEqual({ src: "/api/(.*)", dest: `${API}/api/$1` });
+    expect(rewrite).toBeLessThan(handle);
   });
 });

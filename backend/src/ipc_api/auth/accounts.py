@@ -90,6 +90,12 @@ def check_password(password: str) -> None:
 def conflict(error: AccountConflict) -> ApiError:
     if error.field == "email":
         return ApiError(409, ErrorCode.EMAIL_TAKEN, "Este e-mail já tem uma conta no IP-Checker.")
+    if error.field == "google":
+        return ApiError(
+            409,
+            ErrorCode.EMAIL_TAKEN,
+            "Esta conta Google já está ligada a outra conta do IP-Checker.",
+        )
     return ApiError(
         409, ErrorCode.NAME_TAKEN, "Este nome já é usado por outra conta; ele serve para entrar."
     )

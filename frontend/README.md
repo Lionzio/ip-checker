@@ -24,16 +24,19 @@ npm run build
 
 ## Piloto na Vercel
 
-No piloto, a página fica na Vercel e a API no Render, em outra origem. O projeto da Vercel usa
-`frontend/` como raiz e o `vercel.json` daqui: `npm ci` e `npm run build:vercel`, sem deploy
-automático a cada push (o pipeline de deploy chama o deploy hook depois da CI).
+No piloto, a página fica na Vercel e a API no Render, mas o navegador só vê a origem da Vercel:
+ela repassa `/api/*` ao Render por *rewrite* (S16-02, ADR-04), o que mantém o cookie da sessão
+na origem da página e dispensa o CORS. O projeto da Vercel usa `frontend/` como raiz e o
+`vercel.json` daqui: `npm ci` e `npm run build:vercel`, sem deploy automático a cada push (o
+pipeline de deploy chama o deploy hook depois da CI).
 
-`npm run build:vercel` exige `VITE_API_BASE_URL` (endereço HTTPS da API) e gera `.vercel/output`
-(Build Output API v3): a página, os cabeçalhos de segurança (CSP com `connect-src` só para a API,
-HSTS, `nosniff`, `no-referrer`) e `version.json` com o commit do build. Para testar localmente:
+`npm run build:vercel` exige `IPC_API_ORIGIN` (endereço HTTPS da API no Render, lido só no build)
+e gera `.vercel/output` (Build Output API v3): a página, o *rewrite* de `/api/*`, os cabeçalhos de
+segurança (CSP com `connect-src 'self'`, HSTS, `nosniff`, `no-referrer`) e `version.json` com o
+commit do build. Para testar localmente:
 
 ```bash
-VITE_API_BASE_URL=https://ip-checker-api.onrender.com npm run build:vercel
+IPC_API_ORIGIN=https://ip-checker-api.onrender.com npm run build:vercel
 ```
 
 ## Contrato da API
@@ -109,7 +112,8 @@ E2E_BASE_URL=http://127.0.0.1:28180 E2E_MAILPIT_URL=http://127.0.0.1:28125 E2E_P
 | `src/services/mockClient.ts` | Cliente simulado do modo demonstração |
 | `src/hooks/useValidateCode.ts` | Envio com tempo limite de 10 s e cancelamento da requisição anterior |
 | `src/components/` | Área de código, seletor de lista e painel de resultado |
-| `src/pages/` | Inicial, Entrar, Registrar, Confirmar o e-mail, Perfil, Gerenciar e o verificador |
+| `src/pages/` | Inicial, Entrar, Registrar, Confirmar o e-mail, Registrar com o Google, Perfil, Gerenciar e o verificador |
+| `src/google.ts` | O início da entrada pelo Google e as mensagens das recusas (`/entrar?google=...`) |
 | `src/components/RoleBadge.tsx` | Etiquetas de cargo com cor e nome escrito (FR-28) |
 | `src/passwordPolicy.ts` | A mesma política de senha do backend, mostrada enquanto se digita |
 | `e2e/` | Smoke e2e: verificador, acesso, registro com e-mail, gerenciamento (com axe), perfil e limite |

@@ -1,10 +1,11 @@
 /**
- * Configuração da página no piloto (Vercel, Fase 1; S11-02, NFR-10), no formato da Build Output
- * API v3 (`.vercel/output/config.json`).
+ * Configuração da página no piloto (Vercel, Fase 1; S11-02, S16-02, NFR-10), no formato da Build
+ * Output API v3 (`.vercel/output/config.json`).
  *
- * Os cabeçalhos de segurança dependem do endereço da API no Render (a CSP só deixa a página falar
- * com ele). Por isso são gerados no build, a partir da mesma variável que a página usa
- * (`VITE_API_BASE_URL`): o endereço da API fica num lugar só.
+ * Desde a Sprint 16, página e API ficam na mesma origem (ADR-04): a Vercel repassa `/api/*` ao
+ * Render por *rewrite*. O cookie da sessão fica na origem da página, o CORS deixa de existir e a
+ * CSP só permite falar com a própria origem. O endereço do Render vem de `IPC_API_ORIGIN`, lida só
+ * no build, para montar o *rewrite*; ele nunca entra no código da página.
  */
 
 /** Um ano, como na API e na borda do compose. */
@@ -20,26 +21,26 @@ export function parseApiOrigin(value) {
   try {
     url = new URL(value ?? "");
   } catch {
-    throw new Error(`VITE_API_BASE_URL inválida: ${JSON.stringify(value ?? "")}. Use, por exemplo, https://ip-checker-api.onrender.com`);
+    throw new Error(`IPC_API_ORIGIN inválida: ${JSON.stringify(value ?? "")}. Use, por exemplo, https://ip-checker-api.onrender.com`);
   }
   const extra = (url.pathname !== "/" && url.pathname !== "") || url.search || url.hash || url.username;
   if (url.protocol !== "https:" || extra) {
-    throw new Error(`VITE_API_BASE_URL inválida: ${JSON.stringify(value)}. Use só a origem HTTPS da API, sem caminho.`);
+    throw new Error(`IPC_API_ORIGIN inválida: ${JSON.stringify(value)}. Use só a origem HTTPS da API, sem caminho.`);
   }
   return url.origin;
 }
 
 /**
- * @param {string} apiOrigin
+ * A página só fala com a própria origem: a API chega pelo *rewrite* de `/api/*`.
  * @returns {string}
  */
-export function contentSecurityPolicy(apiOrigin) {
+export function contentSecurityPolicy() {
   return [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
     "img-src 'self' data:",
-    `connect-src 'self' ${apiOrigin}`,
+    "connect-src 'self'",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
@@ -59,7 +60,7 @@ export function buildOutputConfig({ apiOrigin }) {
       {
         src: "/(.*)",
         headers: {
-          "Content-Security-Policy": contentSecurityPolicy(apiOrigin),
+          "Content-Security-Policy": contentSecurityPolicy(),
           "Strict-Transport-Security": HSTS,
           "X-Content-Type-Options": "nosniff",
           "Referrer-Policy": "no-referrer",
@@ -75,6 +76,9 @@ export function buildOutputConfig({ apiOrigin }) {
         continue: true,
       },
       { src: "/version.json", headers: { "Cache-Control": "no-store" }, continue: true },
+      // Mesma origem (S16-02): a API no Render atende /api/* pela origem da página. Os cookies e o
+      // retorno do Google ficam aqui; o Render vê o IP do cliente no X-Forwarded-For (P-15 b).
+      { src: "/api/(.*)", dest: `${apiOrigin}/api/$1` },
       { handle: "filesystem" },
       // Página única: qualquer outro caminho devolve o index.html.
       { src: "/(.*)", dest: "/index.html" },

@@ -12,14 +12,13 @@ if (root === null) throw new Error("elemento #root não encontrado");
 // A página fala com a API real. O modo demonstração (respostas simuladas, para mostrar os estados
 // de erro) só existe num build feito com VITE_DEMO_MODE=1.
 const demoMode = import.meta.env.VITE_DEMO_MODE === "1";
-// Nas Fases 0 e 2 a API está na mesma origem (Caddy). No piloto, a página está na Vercel e a API
-// no Render: o build da Vercel define VITE_API_BASE_URL (scripts/vercel-build.mjs).
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+// A API está sempre na mesma origem da página: o Caddy nas Fases 0 e 2 e, no piloto, o rewrite
+// de /api/* da Vercel para o Render (S16-02). O cookie da sessão só funciona assim (ADR-04).
 
 createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
-      <App client={demoMode ? createMockClient() : createApiClient({ baseUrl: apiBaseUrl })} demoMode={demoMode} />
+      <App client={demoMode ? createMockClient() : createApiClient()} demoMode={demoMode} />
     </BrowserRouter>
   </StrictMode>,
 );

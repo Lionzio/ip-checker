@@ -16,16 +16,37 @@ services:
     autoDeployTrigger: "off"
     # O Render só troca a versão no ar quando a nova responde /ready (API e analisador prontos).
     healthCheckPath: /ready
+    # Os valores com "sync: false" são definidos no painel do Render (Environment), nunca no Git.
     envVars:
-      # Endereço da página na Vercel, definido no painel depois de criar o projeto lá.
-      - key: IPC_CORS_ORIGINS
+      # Endereço da página na Vercel. A Vercel repassa /api/* para cá (S16-02, ADR-04): é a origem
+      # aceita nas requisições que mudam estado, a base do link do e-mail e do retorno do Google.
+      - key: IPC_PUBLIC_BASE_URL
         sync: false
       - key: IPC_HSTS
         value: "1"
       - key: IPC_ENABLED_LISTS
         value: "1"
-      # A borda do Render acrescenta o IP do cliente ao fim do X-Forwarded-For [PREMISSA P-12].
+      # A Vercel e a borda do Render acrescentam cada uma um endereço ao X-Forwarded-For: o IP do
+      # cliente é o penúltimo [PREMISSA P-15 b, a confirmar no primeiro deploy com login].
       - key: IPC_TRUSTED_PROXY_HOPS
-        value: "1"
+        value: "2"
+      # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
+      - key: IPC_DATABASE_URL
+        sync: false
+      # Senha inicial da conta do desenvolvedor; só vale na criação da conta.
+      - key: IPC_DEV_INITIAL_PASSWORD
+        sync: false
+      # E-mail de verificação: o plano gratuito do Render bloqueia SMTP de saída (Q-17).
+      - key: IPC_EMAIL_TRANSPORT
+        value: brevo
+      - key: IPC_EMAIL_API_KEY
+        sync: false
+      - key: IPC_EMAIL_FROM
+        sync: false
+      # Entrada pelo Google (S16-01); sem os dois, o botão do Google não aparece.
+      - key: IPC_GOOGLE_CLIENT_ID
+        sync: false
+      - key: IPC_GOOGLE_CLIENT_SECRET
+        sync: false
       - key: IPC_RATE_LIMIT_CAMPUS_CIDRS
         value: 150.161.0.0/16

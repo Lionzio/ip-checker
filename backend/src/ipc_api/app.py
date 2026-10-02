@@ -29,6 +29,8 @@ from ipc_api.accounts.passwords import Passwords, password_problems
 from ipc_api.accounts.store import AccountStore
 from ipc_api.admission import Admission
 from ipc_api.auth.accounts import AccountService
+from ipc_api.auth.google import Expiring, GoogleOidc
+from ipc_api.auth.google_accounts import GoogleAccounts
 from ipc_api.auth.management import Management
 from ipc_api.auth.middleware import OriginCheckMiddleware, SessionMiddleware
 from ipc_api.auth.sessions import Authenticator
@@ -40,7 +42,7 @@ from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
 from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
-from ipc_api.routes import admin, auth, meta, profile, validate
+from ipc_api.routes import admin, auth, google, meta, profile, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,7 @@ def create_app(
     account_store: AccountStore | None = None,
     passwords: Passwords | None = None,
     email_sender: EmailSender | None = None,
+    google_transport: httpx2.AsyncBaseTransport | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
@@ -147,6 +150,14 @@ def create_app(
                 clock=clock,
             )
             app.state.management = Management(store, clock=clock)
+            google_config = config.google
+            app.state.google = google.GoogleLogin(
+                oidc=GoogleOidc(google_config, transport=google_transport),
+                accounts=GoogleAccounts(store, app.state.authenticator, clock=clock),
+                flows=Expiring(google_config.flow_ttl_s),
+                signups=Expiring(google_config.flow_ttl_s),
+                redirect_uri=f"{config.accounts.public_base_url}/api/v1/auth/google/callback",
+            )
             app.state.analyzer = client
             # O semáforo pertence ao laço de eventos que atende as requisições.
             app.state.admission = Admission(config.admission)
@@ -176,7 +187,8 @@ def create_app(
     )
     app.add_middleware(SessionMiddleware, cookie_name=config.session.cookie_name)
     app.add_middleware(
-        OriginCheckMiddleware, allowed_origins=config.allowed_origins + config.cors_origins
+        OriginCheckMiddleware,
+        allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),
     )
     app.add_middleware(RequestContextMiddleware, max_body_bytes=config.max_body_bytes)
     app.add_middleware(SecurityHeadersMiddleware, hsts=config.hsts)
@@ -223,6 +235,7 @@ def create_app(
         return await http_exception_handler(request, exc)
 
     app.include_router(auth.router)
+    app.include_router(google.router)
     app.include_router(profile.router)
     app.include_router(admin.router)
     app.include_router(validate.router)

@@ -87,6 +87,27 @@
         }
       }
     },
+    "/api/v1/auth/options": {
+      "get": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Formas de entrar disponíveis neste servidor",
+        "operationId": "options_api_v1_auth_options_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOptions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -352,6 +373,229 @@
           },
           "422": {
             "description": "DOMAIN_NOT_ALLOWED ou INVALID_INPUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/start": {
+      "get": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Começa a entrada pelo Google: redireciona para a escolha da conta",
+        "operationId": "start_api_v1_auth_google_start_get",
+        "responses": {
+          "303": {
+            "description": "Para o Google, ou para /entrar se ele não estiver configurado."
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/callback": {
+      "get": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Retorno do Google: entra, liga a conta de mesmo e-mail ou leva ao formulário",
+        "operationId": "callback_api_v1_auth_google_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Para / (sessão aberta), /google/concluir (formulário complementar) ou /entrar?google=<motivo> (recusa)."
+          },
+          "422": {
+            "description": "INVALID_INPUT: parâmetros longos demais.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/pending": {
+      "get": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "O e-mail e o nome sugerido do cadastro pelo Google em andamento",
+        "operationId": "pending_api_v1_auth_google_pending_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GooglePending"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_TOKEN: não há cadastro pelo Google em andamento neste navegador, ou ele venceu (10 minutos).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/complete": {
+      "post": {
+        "tags": [
+          "autenticação"
+        ],
+        "summary": "Formulário complementar do Google: nome, curso e tratamento; vai para a aprovação",
+        "operationId": "complete_api_v1_auth_google_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSignup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleSignupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NAME_TAKEN ou EMAIL_TAKEN: o nome, o e-mail ou a conta Google já têm conta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_TOKEN: não há cadastro pelo Google em andamento neste navegador, ou ele venceu (10 minutos), ou INVALID_INPUT.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1411,6 +1655,21 @@
         "title": "AccountResponse",
         "description": "A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."
       },
+      "AuthOptions": {
+        "properties": {
+          "google": {
+            "type": "boolean",
+            "title": "Google",
+            "description": "A entrada pelo Google está configurada (FR-24)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "google"
+        ],
+        "title": "AuthOptions"
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -1484,6 +1743,81 @@
           "error"
         ],
         "title": "ErrorResponse"
+      },
+      "GooglePending": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "O e-mail confirmado pelo Google."
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "O nome da conta Google, só como sugestão (pode vir vazio)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "name"
+        ],
+        "title": "GooglePending"
+      },
+      "GoogleSignup": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "course": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Course"
+          },
+          "treatment": {
+            "type": "string",
+            "enum": [
+              "masculino",
+              "feminino",
+              "neutro"
+            ],
+            "title": "Treatment",
+            "description": "Como a pessoa quer ser tratada no feedback."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "course",
+          "treatment"
+        ],
+        "title": "GoogleSignup"
+      },
+      "GoogleSignupResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "aguardando_aprovacao",
+            "title": "Status"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "email"
+        ],
+        "title": "GoogleSignupResponse"
       },
       "HealthResponse": {
         "properties": {

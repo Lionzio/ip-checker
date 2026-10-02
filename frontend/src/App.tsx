@@ -3,6 +3,7 @@ import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
 import { Admin } from "./pages/Admin";
 import { Checker } from "./pages/Checker";
+import { GoogleComplete } from "./pages/GoogleComplete";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
@@ -85,13 +86,19 @@ function Shell({ client, demoMode }: Required<AppProps>) {
             />
             <Route
               path="/entrar"
-              element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Login onSignIn={enter} />}
+              element={
+                state.status === "signed-in" ? <Navigate to="/" replace /> : <Login client={client} onSignIn={enter} />
+              }
             />
             <Route
               path="/registrar"
               element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
             />
             <Route path="/verificar" element={<Verify client={client} />} />
+            <Route
+              path="/google/concluir"
+              element={state.status === "signed-in" ? <Navigate to="/" replace /> : <GoogleComplete client={client} />}
+            />
             <Route
               path="/perfil"
               element={

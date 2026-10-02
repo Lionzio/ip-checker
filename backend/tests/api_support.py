@@ -48,6 +48,7 @@ def make_app(
     store: MemoryAccountStore | None = None,
     clock: Callable[[], datetime] | None = None,
     sender: MemorySender | None = None,
+    google_transport: httpx2.AsyncBaseTransport | None = None,
 ) -> tuple[FastAPI, MemoryAccountStore]:
     """A API com repositório e e-mail em memória (as mensagens ficam em ``outbox(app)``)."""
     store = store if store is not None else MemoryAccountStore()
@@ -57,7 +58,8 @@ def make_app(
         account_store=store,
         passwords=FAST_PASSWORDS,
         email_sender=sender if sender is not None else MemorySender(),
-        **({"clock": clock} if clock is not None else {}),
+        google_transport=google_transport,
+        clock=clock if clock is not None else (lambda: datetime.now(UTC)),
     )
     return app, store
 

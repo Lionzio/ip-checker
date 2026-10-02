@@ -20,6 +20,7 @@ from ipc_api.accounts.models import (
     AccountConflict,
     DeveloperSeed,
     NewAccount,
+    NewGoogleAccount,
     Role,
     SessionRecord,
     SignupMethod,
@@ -43,6 +44,24 @@ class AccountStore(Protocol):
         """Conta pelo e-mail (exato, em minúsculas) ou pelo nome (sem diferenciar maiúsculas)."""
 
     async def get_account(self, account_id: UUID) -> Account | None: ...
+
+    async def find_by_google_sub(self, sub: str) -> Account | None:
+        """A conta ligada a esta conta Google (FR-24)."""
+
+    async def link_google(self, account_id: UUID, sub: str) -> Account:
+        """Liga a conta Google a uma conta de e-mail verificado; o mesmo e-mail dá a mesma conta.
+
+        Se a conta já estiver ligada a outra conta Google, ou o ``sub`` a outra conta:
+        ``AccountConflict`` com o campo ``google``.
+        """
+
+    async def register_google(self, new: NewGoogleAccount, now: datetime) -> Account:
+        """Cria a conta pelo Google, já ``aguardando_aprovacao`` e com o e-mail verificado.
+
+        Se o e-mail pertence a uma conta nunca verificada, a senha e os dados pendentes dela são
+        descartados e os links antigos deixam de valer (FR-25, pré-sequestro de conta). E-mail de
+        uma conta verificada, nome de outra conta ou ``sub`` já ligado: ``AccountConflict``.
+        """
 
     async def ensure_developer(self, seed: DeveloperSeed, now: datetime) -> Account:
         """Cria a conta do desenvolvedor ou garante cargo, status e e-mails; nunca toca na senha."""
@@ -163,6 +182,56 @@ class MemoryAccountStore:
     async def get_account(self, account_id: UUID) -> Account | None:
         self._check()
         return self.accounts.get(account_id)
+
+    async def find_by_google_sub(self, sub: str) -> Account | None:
+        self._check()
+        return next((a for a in self.accounts.values() if a.google_sub == sub), None)
+
+    async def link_google(self, account_id: UUID, sub: str) -> Account:
+        self._check()
+        async with self._lock:
+            current = self.accounts[account_id]
+            owner = next((a for a in self.accounts.values() if a.google_sub == sub), None)
+            if (owner is not None and owner.id != account_id) or current.google_sub not in (
+                None,
+                sub,
+            ):
+                raise AccountConflict("outra conta Google já está ligada", "google")
+            linked = replace(current, google_sub=sub)
+            self.accounts[account_id] = linked
+            return linked
+
+    async def register_google(self, new: NewGoogleAccount, now: datetime) -> Account:
+        self._check()
+        async with self._lock:
+            existing = self._by_email(new.email)
+            if existing is not None and existing.status is not Status.AGUARDANDO_VERIFICACAO:
+                raise AccountConflict("e-mail já cadastrado", "email")
+            other = self._by_name(new.name)
+            if other is not None and (existing is None or other.id != existing.id):
+                raise AccountConflict("nome já cadastrado", "nome")
+            if any(a.google_sub == new.google_sub for a in self.accounts.values()):
+                raise AccountConflict("conta Google já ligada", "google")
+            if existing is not None:
+                for token in self.email_tokens.values():
+                    if token.account_id == existing.id and token.used_at is None:
+                        token.used_at = now
+            account = Account(
+                id=existing.id if existing is not None else uuid.uuid4(),
+                name=new.name,
+                course=new.course,
+                treatment=new.treatment,
+                role=None,
+                status=Status.AGUARDANDO_APROVACAO,
+                ja_foi_monitor_chefe=False,
+                password_hash=None,
+                signup_method=SignupMethod.GOOGLE,
+                emails=(new.email,),
+                created_at=now if existing is None else existing.created_at,
+                google_sub=new.google_sub,
+            )
+            self.accounts[account.id] = account
+            return account
 
     def add(self, account: Account) -> Account:
         """Insere uma conta pronta (só para os testes montarem cenários)."""

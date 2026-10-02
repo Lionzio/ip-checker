@@ -19,6 +19,7 @@ from ipc_api.accounts.models import (
     AccountConflict,
     DeveloperSeed,
     NewAccount,
+    NewGoogleAccount,
     Role,
     SessionRecord,
     SignupMethod,
@@ -32,7 +33,7 @@ _SELECT_ACCOUNT = """
 SELECT
     a.id, a.name, a.course, a.treatment::text AS treatment, a.role::text AS role,
     a.status::text AS status, a.ja_foi_monitor_chefe, a.password_hash, a.signup_method,
-    a.created_at,
+    a.created_at, a.google_sub,
     array(
         SELECT e.email FROM app.account_email e
         WHERE e.account_id = a.id ORDER BY e.is_primary DESC, e.email
@@ -45,6 +46,7 @@ _BY_EMAIL = _SELECT_ACCOUNT + (  # noqa: S608
 )
 _BY_NAME = _SELECT_ACCOUNT + "WHERE lower(a.name) = lower($1)"
 _BY_ID = _SELECT_ACCOUNT + "WHERE a.id = $1"
+_BY_GOOGLE_SUB = _SELECT_ACCOUNT + "WHERE a.google_sub = $1"
 _BY_STATUS = _SELECT_ACCOUNT + (
     "WHERE a.status = ANY($1::app.status[]) ORDER BY a.created_at, lower(a.name)"
 )
@@ -76,7 +78,15 @@ def _account(row: Any) -> Account:
         signup_method=SignupMethod(row["signup_method"]),
         emails=tuple(row["emails"]),
         created_at=row["created_at"],
+        google_sub=row["google_sub"],
     )
+
+
+def _conflict_field(exc: asyncpg.UniqueViolationError) -> str:
+    constraint = str(exc.constraint_name)
+    if "account_email" in constraint:
+        return "email"
+    return "google" if "google_sub" in constraint else "nome"
 
 
 @asynccontextmanager
@@ -208,8 +218,97 @@ class PostgresAccountStore:
                         account_id,
                     )
             except asyncpg.UniqueViolationError as exc:
-                field = "email" if "account_email" in str(exc.constraint_name) else "nome"
-                raise AccountConflict("nome ou e-mail já cadastrado", field) from None
+                raise AccountConflict(
+                    "nome ou e-mail já cadastrado", _conflict_field(exc)
+                ) from None
+            row = await connection.fetchrow(_BY_ID, account_id)
+        return _account(row)
+
+    async def find_by_google_sub(self, sub: str) -> Account | None:
+        async with _guard():
+            row = await self._pool.fetchrow(_BY_GOOGLE_SUB, sub)
+        return _account(row) if row is not None else None
+
+    async def link_google(self, account_id: UUID, sub: str) -> Account:
+        try:
+            async with _guard(), self._pool.acquire() as connection, connection.transaction():
+                linked = await connection.fetchval(
+                    "UPDATE app.account SET google_sub = $2 WHERE id = $1 "
+                    "AND (google_sub IS NULL OR google_sub = $2) RETURNING id",
+                    account_id,
+                    sub,
+                )
+                if linked is None:
+                    raise AccountConflict("outra conta Google já está ligada", "google")
+                row = await connection.fetchrow(_BY_ID, account_id)
+        except StoreUnavailable as exc:
+            if isinstance(exc.__cause__, asyncpg.UniqueViolationError):
+                raise AccountConflict("conta Google já ligada", "google") from None
+            raise
+        return _account(row)
+
+    async def register_google(self, new: NewGoogleAccount, now: datetime) -> Account:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            existing = await connection.fetchrow(
+                "SELECT a.id, a.status::text AS status FROM app.account_email e "
+                "JOIN app.account a ON a.id = e.account_id WHERE e.email = $1 FOR UPDATE OF a",
+                new.email,
+            )
+            if existing is not None and existing["status"] != Status.AGUARDANDO_VERIFICACAO:
+                raise AccountConflict("e-mail já cadastrado", "email")
+            other = await connection.fetchval(
+                "SELECT id FROM app.account WHERE lower(name) = lower($1)", new.name
+            )
+            if other is not None and (existing is None or other != existing["id"]):
+                raise AccountConflict("nome já cadastrado", "nome")
+            try:
+                if existing is not None:
+                    # Pré-sequestro (FR-25): quem pediu o cadastro sem confirmar o e-mail perde a
+                    # senha e os dados pendentes; o Google provou quem é o dono do e-mail.
+                    account_id = existing["id"]
+                    await connection.execute(
+                        "UPDATE app.account SET name = $2, course = $3, treatment = $4, "
+                        "password_hash = NULL, google_sub = $5, signup_method = 'google', "
+                        "status = 'aguardando_aprovacao' WHERE id = $1",
+                        account_id,
+                        new.name,
+                        new.course,
+                        new.treatment.value,
+                        new.google_sub,
+                    )
+                    await connection.execute(
+                        "UPDATE app.email_token SET used_at = $2 "
+                        "WHERE account_id = $1 AND used_at IS NULL",
+                        account_id,
+                        now,
+                    )
+                    await connection.execute(
+                        "UPDATE app.account_email SET verified_at = $2 WHERE email = $1",
+                        new.email,
+                        now,
+                    )
+                else:
+                    account_id = await connection.fetchval(
+                        "INSERT INTO app.account (name, course, treatment, status, google_sub, "
+                        "signup_method, created_at) VALUES ($1, $2, $3, 'aguardando_aprovacao', "
+                        "$4, 'google', $5) RETURNING id",
+                        new.name,
+                        new.course,
+                        new.treatment.value,
+                        new.google_sub,
+                        now,
+                    )
+                    await connection.execute(
+                        "INSERT INTO app.account_email (email, account_id, verified_at) "
+                        "VALUES ($1, $2, $3)",
+                        new.email,
+                        account_id,
+                        now,
+                    )
+            except asyncpg.UniqueViolationError as exc:
+                raise AccountConflict(
+                    "nome, e-mail ou conta Google já cadastrados", _conflict_field(exc)
+                ) from None
             row = await connection.fetchrow(_BY_ID, account_id)
         return _account(row)
 

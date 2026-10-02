@@ -163,6 +163,26 @@ class VerifyResponse(_Strict):
     status: Literal["aguardando_aprovacao"]
 
 
+class AuthOptions(_Strict):
+    google: bool = Field(description="A entrada pelo Google está configurada (FR-24).")
+
+
+class GooglePending(_Strict):
+    email: str = Field(description="O e-mail confirmado pelo Google.")
+    name: str = Field(description="O nome da conta Google, só como sugestão (pode vir vazio).")
+
+
+class GoogleSignup(_Strict):
+    name: Text120
+    course: Text120
+    treatment: TreatmentName = Field(description="Como a pessoa quer ser tratada no feedback.")
+
+
+class GoogleSignupResponse(_Strict):
+    status: Literal["aguardando_aprovacao"]
+    email: str
+
+
 class ResendRequest(_Strict):
     email: Email
 

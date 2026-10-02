@@ -28,14 +28,17 @@ entre a API e o analisador é feito por processo (`deploy/render/`):
 | Processo | Usuário | O que recebe | Isolamento |
 |---|---|---|---|
 | `supervisord` | root | O ambiente do Render | Só inicia os outros dois; não abre socket de controle |
-| `api` | 10001 | O ambiente do Render (CORS, limites, credenciais futuras) | Porta pública do Render |
+| `api` | 10001 | O ambiente do Render (banco, e-mail, Google, limites) | Porta pública do Render |
 | `analyzer` | 10002 | Ambiente vazio (`env -i`), só 6 variáveis próprias | Escuta só em `127.0.0.1:8001`; workers com seccomp (sem `socket`, `socketpair`, `execve` nem `execveat`), `RLIMIT_AS` de 160 MiB, `RLIMIT_FSIZE` 0 e `RLIMIT_NOFILE` 32 |
 
-> **Desde a Sprint 13, não implante o piloto antes da Sprint 16.** A API exige o banco de contas
-> (`IPC_DATABASE_URL`) e a sessão de uma conta ativa em toda rota da equipe. Com a página na Vercel e
-> a API no Render, que são sites diferentes, o cookie da sessão não chega à API; a Sprint 16 põe
-> as duas na mesma origem (ADR-04). O banco do piloto (Supabase), as migrações antes do deploy e o
-> login nas verificações do piloto entram nas tasks S16-02 e S19-02.
+Desde a Sprint 16, a página e a API ficam na **mesma origem** (ADR-04): a Vercel repassa
+`/api/*` ao Render por *rewrite* (`frontend/scripts/vercel-config.mjs`). O navegador só fala com o
+endereço da Vercel, o cookie da sessão fica nele e o CORS deixa de existir. A API aceita, nas
+requisições que mudam estado, o `Origin` de `IPC_PUBLIC_BASE_URL` (o endereço da página), porque
+atrás do *rewrite* ela vê o `Host` do Render. Três suposições ficam para conferir no primeiro
+deploy com login (P-15): o *rewrite* externo no plano Hobby com cookies e tempo-limite suficiente;
+o IP do cliente como penúltimo endereço do `X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=2`); e o
+cookie `__Host-` atravessando o *rewrite*.
 
 O UID 10002 não lê o ambiente da API nem o do supervisord: o kernel só permite isso ao dono. Com
 `IPC_SANDBOX=required`, se o Render não permitir o filtro seccomp, nenhum worker nasce e o `/ready`
@@ -48,49 +51,83 @@ confere tudo isso na CI, inclusive o pior caso de 50 KB dentro dos 160 MiB por w
 
 ```
 develop ──(release: fast-forward)──> main ──> CI ──(verde)──> deploy.yml
-    deploy hooks do Render e da Vercel ──> espera a versão nova em /ready e /version.json
-    ──> confere cabeçalhos, CORS e TLS (backend/tests/pilot) ──> smoke e2e no navegador
+    migrações no banco do piloto ──> deploy hooks do Render e da Vercel
+    ──> espera a versão nova em /ready e /version.json
+    ──> confere mesma origem, cabeçalhos, TLS e login (backend/tests/pilot) ──> smoke e2e com login
 ```
 
 O Render e a Vercel estão com o deploy automático desligado (`render.yaml` e `frontend/vercel.json`):
 nada vai ao ar sem a CI verde na `main`. Enquanto o piloto não estiver configurado no GitHub, o
-pipeline só avisa e não faz nada.
+pipeline só avisa e não faz nada. As migrações rodam antes da versão nova subir, então cada uma
+precisa servir também à versão que ainda está no ar (só acrescentar tabelas e colunas; remover
+fica para uma migração de uma release seguinte).
 
 ### Passo a passo da configuração (uma vez)
 
 Estes passos são feitos por você nos painéis, com as suas contas. Nenhum segredo entra no
 repositório.
 
-1. **Release na `main`.** O Render e a Vercel leem a `main`, que precisa ter o código da Sprint 11:
+1. **Release na `main`.** O Render e a Vercel leem a `main`, que precisa ter o código da Sprint 16:
 
    ```bash
    git switch main && git merge --ff-only develop && git push origin main
    ```
 
-   Sem as variáveis do passo 5, a CI roda e o deploy só avisa que o piloto não está configurado.
+   Sem as variáveis do passo 8, a CI roda e o deploy só avisa que o piloto não está configurado.
 
-2. **Render.** Em <https://dashboard.render.com>, **New > Blueprint**, conecte o repositório
+2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região mais próxima (São
+   Paulo). Em **Project Settings > Database**, copie a *connection string* do **Session pooler**
+   (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
+   `postgres`: ela é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o
+   usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração do pipeline cria esse usuário.
+   A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando `postgres` por `ipc_api`
+   e a senha pela do `ipc_api`.
+
+3. **E-mail (Brevo).** Em <https://www.brevo.com>, verifique o remetente (o endereço que vai em
+   `IPC_EMAIL_FROM`) e crie uma chave de API em **SMTP & API > API Keys**. Antes de usar um
+   remetente `@cin.ufpe.br`, confira com o NTI se o SPF, o DKIM e o DMARC do domínio aceitam o envio
+   por terceiros (Q-17); senão, os e-mails caem no spam ou são recusados.
+
+4. **Render.** Em <https://dashboard.render.com>, **New > Blueprint**, conecte o repositório
    `Lionzio/ip-checker` e confirme o `render.yaml`. Ele cria o serviço `ip-checker-api` (Docker,
    plano Free, região Virginia). Anote o endereço, por exemplo `https://ip-checker-api.onrender.com`.
    Em **Settings > Deploy Hook**, copie a URL do hook.
 
-3. **Vercel.** Em <https://vercel.com/new>, importe o mesmo repositório com **Root Directory**
+5. **Vercel.** Em <https://vercel.com/new>, importe o mesmo repositório com **Root Directory**
    `frontend` e **Framework Preset** "Other" (o `vercel.json` define instalação e build). Em
-   **Environment Variables**, crie `VITE_API_BASE_URL` com o endereço do Render, para Production.
-   Depois do primeiro deploy, anote o endereço da página, por exemplo `https://ip-checker.vercel.app`.
-   Em **Settings > Git > Deploy Hooks**, crie um hook para a branch `main` e copie a URL.
+   **Environment Variables**, crie `IPC_API_ORIGIN` com o endereço do Render, para Production: o
+   build monta com ela o *rewrite* de `/api/*`, e ela nunca entra no código da página. Depois do
+   primeiro deploy, anote o endereço da página, por exemplo `https://ip-checker.vercel.app`. Em
+   **Settings > Git > Deploy Hooks**, crie um hook para a branch `main` e copie a URL.
 
-4. **CORS no Render.** No serviço do Render, em **Environment**, defina `IPC_CORS_ORIGINS` com o
-   endereço da página na Vercel (sem barra no fim) e salve. Sem isso, o navegador bloqueia as
-   chamadas da página à API.
+6. **Google (opcional).** Em <https://console.cloud.google.com>, **APIs & Services > Credentials >
+   Create credentials > OAuth client ID**, tipo **Web application**. Em **Authorized redirect
+   URIs**, coloque `<endereço da Vercel>/api/v1/auth/google/callback` (o retorno fica na origem da
+   página). A tela de consentimento pede só `openid`, `email` e `profile`. Copie o *client ID* e o
+   *client secret*. Sem eles, a entrada por senha funciona e o botão do Google não aparece.
 
-5. **GitHub.** Em **Settings > Secrets and variables > Actions** do repositório:
-   - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL`, com as URLs dos hooks;
+7. **Variáveis no Render.** No serviço, em **Environment**, preencha as que o `render.yaml` deixou
+   em aberto:
+
+   | Variável | Valor |
+   |---|---|
+   | `IPC_PUBLIC_BASE_URL` | Endereço da página na Vercel, sem barra no fim |
+   | `IPC_DATABASE_URL` | *Connection string* do Supabase com o usuário `ipc_api` (passo 2) |
+   | `IPC_DEV_INITIAL_PASSWORD` | Senha inicial da conta do desenvolvedor (9+ caracteres, 1 maiúscula, 1 especial); só vale na criação |
+   | `IPC_EMAIL_API_KEY` e `IPC_EMAIL_FROM` | Chave do Brevo e remetente verificado (passo 3) |
+   | `IPC_GOOGLE_CLIENT_ID` e `IPC_GOOGLE_CLIENT_SECRET` | Do passo 6, ou vazias |
+
+8. **GitHub.** Em **Settings > Secrets and variables > Actions** do repositório:
+   - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` (URLs dos hooks);
+     `PILOT_DATABASE_ADMIN_URL` e `PILOT_DB_API_PASSWORD` (passo 2), para as migrações;
+     `PILOT_CHECK_LOGIN`, `PILOT_CHECK_PASSWORD` e `PILOT_CHECK_NAME`, de uma conta ativa usada só
+     nas verificações e no smoke e2e do piloto (registre-a, aprove-a como monitor e não a use para
+     mais nada);
    - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel).
 
-   A partir daí, toda release na `main` faz o deploy e as verificações sozinha.
+   A partir daí, toda release na `main` migra o banco, faz o deploy e as verificações sozinha.
 
-6. **UptimeRobot.** Em <https://uptimerobot.com>, crie dois monitores HTTP(S) com intervalo de 5 min
+9. **UptimeRobot.** Em <https://uptimerobot.com>, crie dois monitores HTTP(S) com intervalo de 5 min
    e alerta por e-mail: `<endereço do Render>/ready` e `<endereço da Vercel>/`. O primeiro também
    mantém o plano gratuito do Render acordado (ADR-03).
 

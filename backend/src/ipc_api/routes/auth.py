@@ -11,11 +11,12 @@ from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.deps import get_accounts, get_authenticator, require_active_account
 from ipc_api.auth.middleware import session_token
 from ipc_api.auth.policy import can_manage
-from ipc_api.auth.sessions import Authenticator
+from ipc_api.auth.sessions import Authenticator, SessionConfig
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     AccountResponse,
+    AuthOptions,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
@@ -43,6 +44,19 @@ def account_response(account: Account) -> AccountResponse:
         role_label=ROLE_LABELS[role],
         has_password=account.password_hash is not None,
         can_manage=can_manage(account),
+    )
+
+
+def set_session_cookie(response: Response, config: SessionConfig, token: str) -> None:
+    """O cookie da sessão (NFR-22): HttpOnly, Secure, SameSite=Lax e ``__Host-``."""
+    response.set_cookie(
+        config.cookie_name,
+        token,
+        max_age=config.absolute_timeout_s,
+        path="/",
+        secure=config.cookie_secure,
+        httponly=True,
+        samesite="lax",
     )
 
 
@@ -79,17 +93,14 @@ async def login(
         await authenticator.logout(session_token(request.scope, authenticator.config.cookie_name))
     except StoreUnavailable:
         raise database_unavailable() from None
-    config = authenticator.config
-    response.set_cookie(
-        config.cookie_name,
-        token,
-        max_age=config.absolute_timeout_s,
-        path="/",
-        secure=config.cookie_secure,
-        httponly=True,
-        samesite="lax",
-    )
+    set_session_cookie(response, authenticator.config, token)
     return account_response(account)
+
+
+@router.get("/options", summary="Formas de entrar disponíveis neste servidor")
+async def options(request: Request, response: Response) -> AuthOptions:
+    _no_store(response)
+    return AuthOptions(google=request.app.state.google.oidc.config.enabled)
 
 
 @router.post(

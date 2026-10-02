@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Iterator
 
 import pytest
 
 from security.harness import (
+    AUTH_CLIENT,
     CLIENT,
     EDGE_NETWORK,
     IMAGE,
@@ -82,3 +84,23 @@ def public(stack: dict[str, str]) -> Iterator[Client]:
         yield Client(container, base=WEB_URL)
     finally:
         docker("rm", "--force", container, check=False)
+
+
+@pytest.fixture(scope="session")
+def _auth_clients(stack: dict[str, str]) -> Iterator[list[str]]:
+    created: list[str] = []
+    try:
+        yield created
+    finally:
+        for container in created:
+            docker("rm", "--force", container, check=False)
+
+
+@pytest.fixture
+def auth_client(_auth_clients: list[str]) -> Client:
+    """Um cliente da borda novo para cada teste da autenticação (S16-03), com outro IP e, portanto,
+    o próprio limite de 30 requisições anônimas por minuto (login e registro). Os contêineres só
+    saem no fim da sessão: removido antes, o IP de um voltaria para o seguinte."""
+    container = _client_container(f"{AUTH_CLIENT}-{uuid.uuid4().hex[:8]}", EDGE_NETWORK)
+    _auth_clients.append(container)
+    return Client(container, base=WEB_URL)
