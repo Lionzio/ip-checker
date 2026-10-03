@@ -1,0 +1,108 @@
+# Corpus golden: permissões da Lista 4, funções e escopo de variável (R-59 e R-60). Todo código da
+# Lista 4 precisa de um def (R-02, Q-05). Parâmetro com valor padrão e função dentro de função não
+# constam (Q-02 f); argumento nomeado na chamada e if __name__ são casos em aberto (mapeamento).
+
+- id: R-59-def-return-L4
+  rule: R-59
+  list: 4
+  code: |
+    def dobro(x):
+        return x * 2
+    print(dobro(int(input())))
+  expect: []
+
+- id: R-59-def-without-return-L4
+  rule: R-59
+  list: 4
+  code: |
+    def mostra(texto):
+        print(texto)
+    mostra(input())
+  expect: []
+
+- id: R-59-recursion-allowed-L4
+  rule: R-59
+  list: 4
+  code: |
+    def fat(n):
+        if n <= 1:
+            return 1
+        return n * fat(n - 1)
+    print(fat(5))
+  expect: []
+
+- id: R-59-def-before-list-L3
+  rule: R-59
+  list: 3
+  code: |
+    def soma(v):
+        return sum(v)
+    print(soma([1, 2]))
+  expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3]
+
+- id: R-59-default-parameter-L4
+  rule: R-59
+  list: 4
+  code: |
+    def f(x=1):
+        return x
+    print(f())
+  expect: [R-04 NAO_CONSTA 1]
+
+- id: R-59-nested-function-L4
+  rule: R-59
+  list: 4
+  code: |
+    def externa():
+        def interna():
+            return 1
+        return interna()
+    print(externa())
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-59-keyword-argument-L4
+  rule: R-59
+  list: 4
+  code: |
+    def f(x):
+        return x
+    print(f(x=1))
+  expect: [R-04 NAO_CONSTA 3]
+
+- id: R-59-main-guard-L4
+  rule: R-59
+  list: 4
+  code: |
+    def main():
+        print(1)
+    if __name__ == "__main__":
+        main()
+  expect: [R-04 NAO_CONSTA 3]
+
+- id: R-60-return-multi-L4
+  rule: R-60
+  list: 4
+  code: |
+    def minmax(v):
+        return min(v), max(v)
+    a, b = minmax([3, 1])
+    print(a, b)
+  expect: []
+
+- id: R-60-return-tuple-literal-L4
+  rule: R-60
+  list: 4
+  code: |
+    def par():
+        return (1, 2)
+    print(par())
+  expect: []
+
+- id: R-60-return-multi-before-list-L3
+  rule: R-60
+  list: 3
+  code: |
+    def f():
+        return 1, 2
+    print(f())
+  expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3, R-60 FORA_DA_LISTA 2]

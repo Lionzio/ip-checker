@@ -187,10 +187,12 @@ def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [
         {"number": 1, "title": "Comandos condicionais"},
         {"number": 2, "title": "Laços de repetição"},
+        {"number": 3, "title": "Listas e tuplas"},
+        {"number": 4, "title": "Funções e escopo de variável"},
     ]
     assert api.get("/ready").json() == {
         "status": "ready",
-        "ruleset_version": "2026.2.1",
+        "ruleset_version": "2026.2.2",
         "release": None,
     }
 
@@ -257,7 +259,7 @@ DOCUMENTED_CASES = {
     "200-syntax-error": ({"code": "if x\n    y = 1\n", "list_number": 1}, 200, None),
     "413": ({"code": "#" + "a" * 51_200, "list_number": 1}, 413, "PAYLOAD_TOO_LARGE"),
     "422-invalid-input": ({"code": "", "list_number": 1}, 422, "INVALID_INPUT"),
-    "422-list-not-enabled": ({"code": "x = 1\n", "list_number": 3}, 422, "LIST_NOT_ENABLED"),
+    "422-list-not-enabled": ({"code": "x = 1\n", "list_number": 5}, 422, "LIST_NOT_ENABLED"),
     "422-unknown-question": (
         {"code": "x = 1\n", "list_number": 1, "question_id": "L1-Q1"},
         422,
@@ -575,5 +577,5 @@ def test_feedback_statuses_follow_the_contract(
     assert (ok.status_code, ok.json()["source"], ok.json()["provider"]) == (200, "template", None)
     assert run({**base, "code": "if x\n    y = 1\n"}).status_code == 422
     assert run({**base, "code": "#" + "a" * 51_200}).status_code == 413
-    assert run({**base, "list_number": 3}).status_code == 422
+    assert run({**base, "list_number": 5}).status_code == 422
     assert run(base, cookies=None).status_code == 401

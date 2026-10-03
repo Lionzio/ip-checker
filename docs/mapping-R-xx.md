@@ -26,7 +26,9 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
     do `else`;
   - `derived:decorator`: cada `@decorador` de função ou classe, que é uma chamada implícita
     (S7-01, DoD item 9); aponta para a expressão depois do `@`;
-  - `derived:dict_unpack`: cada `**d` dentro de um dicionário literal (S7-01); aponta para `d`.
+  - `derived:dict_unpack`: cada `**d` dentro de um dicionário literal (S7-01); aponta para `d`;
+  - `derived:nested_function`: cada `def` dentro de outra função ou de um `lambda` (Q-02, item f;
+    Sprint 22); aponta para o `def` de dentro. Métodos de classe não contam (a classe já é R-09).
 
   `derived:recursion` entra na Sprint 23.
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
@@ -36,15 +38,19 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   `builtin:eval`, e em `len = len(x)` o `len(x)` é o built-in. Dentro de funções, um built-in que
   não é local continua sendo o built-in.
 
-## Casos a observar (decidir antes da Sprint 22)
+## Casos a observar (sem decisão: seguem como em "Hoje" até a ratificação no Marco 2)
+
+As Listas 3 e 4 entraram na Sprint 22 sem essas respostas. Todos os casos ficam do lado mais
+restritivo, que a equipe pode relevar quando o enunciado liberar (vale o enunciado).
 
 | Caso | Hoje | Pergunta |
 |---|---|---|
 | `if __name__ == "__main__":` | Gera `builtin:__name__` → R-04 (não consta) | As listas usam esse padrão? Se sim, liberar a partir da L4. |
 | `f(x=1)` com função do aluno | `call:user_kwarg` → R-04 | A R-59 ("parâmetros") inclui argumentos nomeados na chamada? |
-| `for a, b in pares:` na L3 ou depois | `target:for_unpack` | A R-40 (tuplas) deve casar `target:for_unpack` a partir da L3, além da R-37 (zip, L2–L4). |
+| `for a, b in pares:` na L3 ou depois | `target:for_unpack` → R-37 (condição não atendida), desde a Sprint 20 | A R-40 (tuplas) deve casar `target:for_unpack` a partir da L3, além da R-37 (zip, L2–L4)? |
 | `f"{x!r}"`, `f"{x!s}"`, `f"{x!a}"` | Aceito como parte da f-string (R-31) | A conversão chama `repr()`, `str()` ou `ascii()` por baixo. Deve contar como esses built-ins (`repr` e `ascii` não constam)? |
-| `[a + b for a, b in zip(x, y)]` na L3 ou L4 | O `zip` não está no comando `for`, então cai na R-37 (condição não atendida) | O `for` de uma *list comprehension* (R-40) conta como "comando for" para a R-37? |
+| `[a + b for a, b in zip(x, y)]` na L3 ou L4 | O `zip` não está no comando `for`, então cai na R-37 (condição não atendida) | O `for` de uma *list comprehension* (R-41) conta como "comando for" para a R-37? |
+| `palavras = input().split()` sem outra lista, na L3 | R-02: a lista vem só do `split()`, que não está entre as provas da Q-05 | Uma lista recebida de `split()` comprova o assunto da Lista 3? |
 
 **Para a Sprint 23 (não é decisão nova, é consequência da Q-04):** a R-37 vai até a L4, e o
 `target:for_unpack` só é permitido por ela. Quando a R-64 liberar o `zip` na L5, ela precisa casar
@@ -65,12 +71,16 @@ L5 e na L6.
 | Q-06 | Todo `import`, inclusive da biblioteca padrão → R-05 (anulação). |
 | Q-07 | `type()` com 3 argumentos → R-09; com 1 argumento → R-33. |
 
+**Q-02 (d) desde a Sprint 22:** com as tuplas na Lista 3 (R-40), `a, b = 1, 2` antes da L3 aparece
+como "Fora da lista" pela R-40, e não mais como R-04. A decisão não muda: é proibido antes da
+Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista ele é liberado.
+
 ## Matriz
 
 | Regra | Fatos | Situação |
 |---|---|---|
 | R-01 | Override por questão (`questions/<id>.yaml`) | Sprint 24 |
-| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3–L6 na 23 |
+| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3 e L4 na 22; L5 e L6 na 23 |
 | R-03 | Semântica do motor: `since_list ≤ lista ≤ until_list` | Meta-regra no `base.yaml` |
 | R-04 | Semântica do motor: fato sem regra → violação `NAO_CONSTA` | Meta-regra no `base.yaml` |
 | R-05 | `node:Import`, `node:ImportFrom` | No ruleset |
@@ -106,10 +116,10 @@ L5 e na L6.
 | R-35 | `builtin:range` | No ruleset |
 | R-36 | `cmp:In` | No ruleset |
 | R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (`zip()` built-in como o iterável do comando `for`, com ≥ 2 argumentos), Listas 2–4 | No ruleset (Sprint 20) |
-| R-38–R-43 | `node:List`; `node:Tuple`; `node:ListComp`; `node:Subscript`; `node:Slice` | Sprint 22 |
-| R-44 | `cmp:In` | Sprint 22 |
-| R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | Sprint 22 |
-| R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | Sprint 22 |
-| R-59–R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi` | Sprint 22 |
+| R-38–R-43 | `node:List` (R-38 e R-39: matriz = lista de listas); `node:Tuple` (R-40, inclusive a atribuição múltipla); `node:ListComp`; `node:Subscript`; `node:Slice` | No ruleset (Sprint 22) |
+| R-44 | `cmp:In` | No ruleset (Sprint 22) |
+| R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | No ruleset (Sprint 22) |
+| R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | No ruleset (Sprint 22) |
+| R-59–R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi`. `param:default` e `derived:nested_function` ficam na R-04 (Q-02 f) | No ruleset (Sprint 22) |
 | R-61–R-67 | `node:Dict`; `builtin:dict`, `enumerate`, `zip` (livre); `method:keys`, `values`, `items`, `get`, `update`; `node:Lambda` | Sprint 23 |
 | R-68 | `derived:recursion` (exigência na Lista 6) | Sprint 23 |

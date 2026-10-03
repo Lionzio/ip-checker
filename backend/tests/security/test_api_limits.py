@@ -216,7 +216,7 @@ def test_privacy_canary_leaves_no_trace(public: Client, stack: dict[str, str]) -
         validate_request(f"y = input().{CANARY}()\n", headers=headers),
         validate_request(f"{CANARY} = (\n", headers=headers),
         validate_request("(" * 1_000 + CANARY + ")" * 1_000, headers=headers),
-        validate_request(f"x = '{CANARY}'\n", list_number=3, headers=headers),
+        validate_request(f"x = '{CANARY}'\n", list_number=5, headers=headers),
         validate_request(f"# {CANARY}" + "a" * 51_200, headers=headers),
         {"method": "GET", "path": f"/api/v1/{CANARY}?q={CANARY}", "headers": headers},
         {"method": "GET", "path": f"/{CANARY}", "headers": headers},

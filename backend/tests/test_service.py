@@ -30,7 +30,7 @@ def test_health_reports_the_loaded_ruleset(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["ruleset_version"] == "2026.2.1"
+    assert body["ruleset_version"] == "2026.2.2"
     assert body["target_python"] == "3.13"
     assert body["workers"] == 1
     assert len(body["ruleset_sha256"]) == 64
@@ -41,7 +41,7 @@ def test_manifest_describes_the_active_ruleset(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["ruleset_version"] == "2026.2.1"
+    assert body["ruleset_version"] == "2026.2.2"
     assert body["period"] == "2026.2"
     assert len(body["ruleset_sha256"]) == 64
     assert [item["number"] for item in body["lists"]] == [1, 2, 3, 4, 5, 6]
@@ -55,7 +55,7 @@ def test_valid_code(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "ruleset_version": "2026.2.1",
+        "ruleset_version": "2026.2.2",
         "status": "valid",
         "list_number": 1,
         "syntax_error": None,

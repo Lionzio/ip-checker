@@ -23,7 +23,29 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
 
   await expect(page.getByRole("option", { name: "Lista 1: Comandos condicionais" })).toBeAttached();
   await expect(page.getByRole("option", { name: "Lista 2: Laços de repetição" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "Lista 3: Listas e tuplas" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "Lista 4: Funções e escopo de variável" })).toBeAttached();
   await expect(page.getByRole("note")).toHaveCount(0);
+});
+
+test("Lista 3: lista com append passa, e o append na Lista 2 é da Lista 3", async ({ page }) => {
+  const code = "v = input()\nfor c in v:\n    v.append(c)\n";
+  await verify(page, "notas = []\nnotas.append(float(input()))\nprint(sum(notas))\n", "3");
+  await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
+
+  await verify(page, code, "2");
+  const r46 = result(page).getByRole("listitem").filter({ hasText: "R-46" });
+  await expect(r46).toContainText("Fora da lista");
+  await expect(r46).toContainText("a partir da Lista 3");
+});
+
+test("Lista 4: função passa, e função dentro de função não consta (Q-02 f)", async ({ page }) => {
+  await verify(page, "def dobro(x):\n    return x * 2\nprint(dobro(3))\n", "4");
+  await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
+
+  await verify(page, "def f():\n    def g():\n        return 1\n    return g()\nprint(f())\n", "4");
+  const r04 = result(page).getByRole("listitem").filter({ hasText: "R-04" });
+  await expect(r04).toContainText("Linha 2, coluna 5");
 });
 
 test("Lista 2: zip no cabeçalho do for passa (US-07)", async ({ page }) => {

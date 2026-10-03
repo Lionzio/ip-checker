@@ -19,10 +19,10 @@ def test_base_ruleset_metadata(base_ruleset: CompiledRuleset) -> None:
     assert len(base_ruleset.sha256) == 64
 
 
-def test_sprint_20_scope_is_r03_to_r37(base_ruleset: CompiledRuleset) -> None:
+def test_sprint_22_scope_is_r03_to_r60(base_ruleset: CompiledRuleset) -> None:
     ruleset = base_ruleset.ruleset
 
-    assert {rule.id for rule in ruleset.rules} == _ids(5, 37)
+    assert {rule.id for rule in ruleset.rules} == _ids(5, 60)
     assert {meta.id for meta in ruleset.meta_rules} == {"R-03", "R-04"}
     assert {meta.kind for meta in ruleset.meta_rules} == {
         MetaKind.CUMULATIVE,
@@ -39,7 +39,9 @@ def test_general_prohibitions_annul_the_question(base_ruleset: CompiledRuleset) 
             assert rule.category is Category.ANULACAO
 
 
-@pytest.mark.parametrize(("first", "last", "since"), [(15, 33, 1), (34, 36, 2)])
+@pytest.mark.parametrize(
+    ("first", "last", "since"), [(15, 33, 1), (34, 36, 2), (38, 58, 3), (59, 60, 4)]
+)
 def test_permissions_start_at_their_list(
     base_ruleset: CompiledRuleset, first: int, last: int, since: int
 ) -> None:
@@ -62,7 +64,10 @@ def test_permissions_start_at_their_list(
         ("builtin:format", {"R-28"}),
         ("cmp:IsNot", {"R-17"}),  # Q-02 (b)
         ("cmp:NotIn", {"R-30"}),  # Q-02 (b)
-        ("cmp:In", {"R-30", "R-36"}),
+        ("cmp:In", {"R-30", "R-36", "R-44"}),
+        ("node:List", {"R-38", "R-39"}),  # matriz = lista de listas (5.2.3)
+        ("node:Tuple", {"R-40"}),  # inclusive a atribuição múltipla (Q-02 d)
+        ("call:user", {"R-59"}),
         ("op:Add", {"R-18", "R-21"}),
         ("kwarg:print.end", {"R-32"}),
         ("node:For", {"R-34"}),
@@ -132,4 +137,9 @@ def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:
         for requirement in base_ruleset.ruleset.requirements
     }
 
-    assert requirements == {1: {"node:If", "node:IfExp"}, 2: {"node:For", "node:While"}}
+    assert requirements == {
+        1: {"node:If", "node:IfExp"},
+        2: {"node:For", "node:While"},
+        3: {"node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple"},
+        4: {"node:FunctionDef"},
+    }

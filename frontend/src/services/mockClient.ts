@@ -21,10 +21,12 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.1";
+const RULESET_VERSION = "2026.2.2";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },
+  { number: 3, title: "Listas e tuplas" },
+  { number: 4, title: "Funções e escopo de variável" },
 ];
 export const DEMO_ACCOUNT: Account = {
   name: "Monitora de Demonstração",
@@ -271,6 +273,15 @@ const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string 
     pattern: /\b(for|while)\b/,
     message:
       "A solução não usa o assunto da Lista 2: é obrigatório um laço de repetição (for ou while). Sem ele, a questão é anulada.",
+  },
+  3: {
+    pattern: /\[|\(.*,.*\)|\blist\(|\btuple\(/,
+    message:
+      "A solução não usa o assunto da Lista 3: é obrigatório usar uma lista ou uma tupla (literal, list(), tuple() ou list comprehension). Sem isso, a questão é anulada.",
+  },
+  4: {
+    pattern: /\bdef\b/,
+    message: "A solução não usa o assunto da Lista 4: é obrigatório definir uma função com def. Sem ela, a questão é anulada.",
   },
 };
 

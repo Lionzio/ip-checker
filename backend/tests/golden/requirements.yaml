@@ -1,6 +1,7 @@
 # Corpus golden: exigências (R-02, Q-05). A solução precisa usar o assunto da lista; sem ele, a
 # solução inteira recebe EXIGENCIA (linha 1). Lista 1: if (com ou sem elif/else) ou ternário;
-# Lista 2: for ou while. As exigências das Listas 3 a 6 entram nas Sprints 22 e 23.
+# Lista 2: for ou while; Lista 3: lista ou tupla (literal, list(), tuple() ou list comprehension);
+# Lista 4: def. As exigências das Listas 5 e 6 entram na Sprint 23.
 
 - id: R-02-without-conditional-L1
   rule: R-02
@@ -140,3 +141,51 @@
     # for i in range(3)
     print("while True")
   expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-without-list-L3
+  rule: R-02
+  list: 3
+  code: |
+    n = int(input())
+    print(n * 2)
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-list-comprehension-satisfies-L3
+  rule: R-02
+  list: 3
+  code: |
+    print([x for x in range(3)])
+  expect: []
+
+- id: R-02-tuple-satisfies-L3
+  rule: R-02
+  list: 3
+  code: |
+    a, b = 1, 2
+    print(a)
+  expect: []
+
+- id: R-02-split-alone-does-not-count-L3
+  rule: R-02
+  list: 3
+  code: |
+    palavras = input().split()
+    print(len(palavras))
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-without-def-L4
+  rule: R-02
+  list: 4
+  code: |
+    v = [1, 2]
+    print(sum(v))
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-def-satisfies-L4
+  rule: R-02
+  list: 4
+  code: |
+    def f():
+        return 1
+    print(f())
+  expect: []

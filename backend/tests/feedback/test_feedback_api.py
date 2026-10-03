@@ -213,7 +213,7 @@ def test_a_syntax_error_has_no_feedback(stack: tuple[TestClient, MemoryAccountSt
         ({"student_name": " "}, "Informe o nome do aluno."),
         ({"student_name": "Ana\x00"}, "caracteres de controle"),
         ({"annotation": "linha\x07"}, "caracteres de controle"),
-        ({"list_number": 3}, "Lista 3"),
+        ({"list_number": 5}, "Lista 5"),
     ],
 )
 def test_invalid_input_is_refused_before_the_provider(

@@ -161,4 +161,4 @@
     z = zip(a, b)
     for par in z:
         print(par)
-  expect: [R-37 NAO_CONSTA 3]
+  expect: [R-02 EXIGENCIA 1, R-37 NAO_CONSTA 3]

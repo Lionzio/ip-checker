@@ -119,7 +119,7 @@
   code: |
     C = type("C", (), {})
   # type com 3 argumentos cria classe (Q-07); a tupla e o dicionário ainda não constam.
-  expect: [R-02 EXIGENCIA 1, R-09 ANULACAO 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-09 ANULACAO 1, R-40 FORA_DA_LISTA 1]
 
 - id: R-09-class-L6
   rule: R-09

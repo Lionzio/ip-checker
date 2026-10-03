@@ -224,7 +224,7 @@ def test_refusals_are_counted_with_the_known_ruleset_version() -> None:
     with client_with(sink, analyzer) as client:
         assert post(client, "x = (1)\n") == 422  # o analisador recusa: limite de análise
         assert post(client, "\x00") == 422  # a API recusa antes de analisar
-        assert post(client, "x = 1\n", list_number=3) == 422  # lista não habilitada: não conta
+        assert post(client, "x = 1\n", list_number=5) == 422  # lista não habilitada: não conta
 
     assert [(e.outcome, e.ruleset_version, e.list_number) for e in sink.events] == [
         ("analysis_limit", "2026.2.0", 1),
