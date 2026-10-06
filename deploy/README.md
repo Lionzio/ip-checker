@@ -76,9 +76,9 @@ repositório.
 
    Sem as variáveis do passo 8, a CI roda e o deploy só avisa que o piloto não está configurado.
 
-2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região mais próxima (São
-   Paulo). Em **Project Settings > Database**, copie a *connection string* do **Session pooler**
-   (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
+2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região East US (North
+   Virginia), a mesma da API no Render (Q-20). Em **Project Settings > Database**, copie a
+   *connection string* do **Session pooler** (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
    `postgres`: ela é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o
    usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração do pipeline cria esse usuário.
    A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando `postgres` por `ipc_api`
