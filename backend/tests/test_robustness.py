@@ -67,15 +67,15 @@ def test_the_api_sends_its_budget_to_the_analyzer() -> None:
 
 
 def test_the_api_gives_up_at_the_deadline_even_if_the_analyzer_trickles() -> None:
-    async def slow(_request: httpx2.Request) -> httpx2.Response:
-        await asyncio.sleep(2)
-        return httpx2.Response(200, json=VALID)
+    async def slow(request: httpx2.Request) -> httpx2.Response:
+        # O manifesto responde na hora; só a análise demora mais que o prazo.
+        if request.url.path == "/internal/analyze":
+            await asyncio.sleep(2)
+            return httpx2.Response(200, json=VALID)
+        return httpx2.Response(200, json=MANIFEST)
 
-    analyzer = FakeAnalyzer(
-        {"/internal/analyze": slow, "/internal/ruleset/manifest": reply(200, MANIFEST)}
-    )
     settings = ApiSettings(analyzer_url="http://analyzer.test", analyzer_timeout_s=0.2)
-    app, store = make_app(settings, analyzer_transport=httpx2.MockTransport(analyzer))
+    app, store = make_app(settings, analyzer_transport=httpx2.MockTransport(slow))
     with authed_client(app, store) as client:
         started = time.monotonic()
         response = client.post("/api/v1/validate", json={"code": "x = 1\n", "list_number": 1})

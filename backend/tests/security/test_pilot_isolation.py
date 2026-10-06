@@ -270,7 +270,7 @@ def test_each_process_runs_as_its_own_user(processes: list[dict[str, Any]]) -> N
     assert [p["pid"] for p in roles["supervisord"]] == [1]
     assert roles["supervisord"][0]["uid"] == 0
     assert {p["uid"] for p in roles["api"]} == {API_UID}
-    assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e 2 workers
+    assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e o worker
     assert {p["uid"] for p in roles["analyzer"]} == {ANALYZER_UID}
 
 
@@ -296,7 +296,7 @@ def test_workers_are_sandboxed_and_limited(processes: list[dict[str, Any]]) -> N
     )
     workers = [p for p in analyzer if p["ppid"] == forkserver["pid"]]
 
-    assert len(workers) == 2
+    assert len(workers) == 1  # um worker no plano gratuito (S25-04)
     for worker in workers:
         # Um filtro a mais que o processo que o criou: o seccomp do IP-Checker.
         assert worker["filters"] == service["filters"] + 1
