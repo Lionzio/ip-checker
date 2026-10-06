@@ -145,8 +145,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06); duas evasões do motor corrigidas na revisão de fim de sprint | Concluída |
 | 24 | Regras por questão: S24-01 questões em `rulesets/<período>/questions/` com precedência sobre a lista e seletor na página; S24-02 `ipc-rules validate` na CI, registro único de predicados e `facts/` dividido; S24-03 `RULES.md` e modelo de PR de regras; S24-04 "esqueci minha senha" por link de e-mail | Concluída (nenhuma questão real cadastrada ainda) |
 | 25 | Endurecimento para o primeiro deploy: S25-01 CI fixada por SHA, Dependabot e auditoria semanal; S25-02 deploy seguro, roteiro do primeiro deploy e runbook; S25-03 limpeza diária do banco e expurgo de contas sem atividade (Q-19 d); S25-04 prazos ponta a ponta, limite geral por IP, seccomp e rlimits ampliados; S25-05 docstrings e dados pessoais fora do feedback por IA e cota persistida | Concluída (falta o primeiro deploy, `deploy/README.md`) |
-| 26 | Correção em lote e relatório: "Próximo aluno", atalhos, celular, relatório agrupado e clique na linha | Próxima (aguarda autorização) |
-| 27 | Plágio por árvore canonizada, insensível à ordem (ADR-07) | Planejada |
+| 26 | Correção em lote e relatório: S26-01 cabeçalho e navegação no celular, títulos por tela e componentes comuns; S26-02 "Próximo aluno", Ctrl+Enter, rascunho em memória e editor com Tab, Limpar e Colar; S26-03 relatório agrupado por regra, com resumo, trecho e clique na linha; S26-04 prazos, cancelamento e sessão vencida iguais em todas as telas, busca no gerenciamento | Concluída |
+| 27 | Plágio por árvore canonizada, insensível à ordem (ADR-07) | Próxima (aguarda autorização) |
 | 28 | Carga, eficácia e passagem de bastão: k6 com login, relatório de eficácia, runbook, onboarding e releases | Planejada |
 | 29 | Indícios de uso de IA (ADR-08): múltiplas violações, semelhança com referências geradas por IA e marcadores de estilo | Planejada |
 

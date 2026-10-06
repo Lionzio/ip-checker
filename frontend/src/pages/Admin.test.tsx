@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { type ApiClient, ApiError } from "../services/client";
 import { createMockClient, DEMO_MANAGER } from "../services/mockClient";
+import type { ManagementLogEntry } from "../types/api";
 
 function renderAt(client: ApiClient, path = "/gerenciar") {
   const user = userEvent.setup();
@@ -186,5 +187,86 @@ describe("Gerenciamento da equipe (S15-03, FR-28)", () => {
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
     expect(await screen.findByRole("region", { name: /Membros ativos/ })).toBeInTheDocument();
+  });
+
+  it("busca por nome ou e-mail, sem acento, e filtra os membros por cargo (S26-04)", async () => {
+    const user = renderAt(manager());
+    const search = await screen.findByRole("searchbox", { name: "Buscar por nome ou e-mail" });
+
+    await user.type(search, "vinicius");
+    const active = section(/Membros ativos/);
+    expect(row(active, "Vinícius Leôncio")).toBeInTheDocument();
+    expect(within(active).queryByRole("rowheader", { name: "Bruno Lima" })).not.toBeInTheDocument();
+    expect(section(/Pedidos pendentes/)).toHaveTextContent("Nenhuma conta corresponde à busca.");
+
+    await user.clear(search);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Cargo" }), "monitor");
+    expect(row(section(/Membros ativos/), "Bruno Lima")).toBeInTheDocument();
+    expect(within(section(/Membros ativos/)).queryByRole("rowheader", { name: "Vinícius Leôncio" })).not.toBeInTheDocument();
+  });
+
+  it("mostra o registro aos poucos (S26-04)", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.listRequests = () => Promise.resolve([]);
+    client.listMembers = () => Promise.resolve({ active: [], removed: [] });
+    const entry = (index: number): ManagementLogEntry => ({
+      at: new Date(Date.UTC(2026, 9, 1, 12, index)).toISOString(),
+      action: "aprovar",
+      action_label: "Aprovou",
+      actor_name: "Professora",
+      actor_role_label: "Professor",
+      target_name: `Pessoa ${index}`,
+      from_status: "aguardando_aprovacao",
+      from_status_label: "Aguardando aprovação",
+      to_status: "ativo",
+      to_status_label: "Ativo",
+      from_role: null,
+      from_role_label: null,
+      to_role: "monitor",
+      to_role_label: "Monitor",
+    });
+    client.managementLog = () => Promise.resolve(Array.from({ length: 45 }, (_, index) => entry(index)));
+    render(
+      <MemoryRouter initialEntries={["/gerenciar"]}>
+        <App client={{ ...client, me: () => Promise.resolve({ ...DEMO_MANAGER, can_view_log: true }) }} />
+      </MemoryRouter>,
+    );
+    const user = userEvent.setup();
+    const log = await screen.findByRole("region", { name: /Registro de ações/ });
+
+    expect(within(log).getAllByRole("row")).toHaveLength(21);
+    await user.click(within(log).getByRole("button", { name: "Mostrar mais (25 restantes)" }));
+    expect(within(log).getAllByRole("row")).toHaveLength(41);
+    await user.click(within(log).getByRole("button", { name: "Mostrar mais (5 restantes)" }));
+    expect(within(log).getAllByRole("row")).toHaveLength(46);
+    expect(within(log).queryByRole("button", { name: /Mostrar mais/ })).not.toBeInTheDocument();
+  });
+
+  it("só a linha da ação fica ocupada (S26-04)", async () => {
+    const client = manager();
+    let finish: () => void = () => undefined;
+    client.approve = () =>
+      new Promise((resolve) => {
+        finish = () => resolve();
+      });
+    const user = renderAt(client);
+    const pending = await screen.findByRole("region", { name: /Pedidos pendentes/ });
+
+    await user.click(within(row(pending, "Ana Pereira")).getByRole("button", { name: "Aprovar Ana Pereira" }));
+
+    expect(row(pending, "Ana Pereira")).toHaveAttribute("aria-busy", "true");
+    expect(within(row(pending, "Ana Pereira")).getByRole("button", { name: "Aprovar Ana Pereira" })).toBeDisabled();
+    expect(row(section(/Membros ativos/), "Bruno Lima")).not.toHaveAttribute("aria-busy");
+    finish();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Ana Pereira foi aprovado(a)"));
+  });
+
+  it("vai para Entrar quando a sessão termina (S26-04)", async () => {
+    const client = manager();
+    client.listRequests = () => Promise.reject(new ApiError(401, "UNAUTHENTICATED", "Entre."));
+    renderAt(client);
+
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("A sua sessão terminou.");
   });
 });

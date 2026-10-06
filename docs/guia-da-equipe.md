@@ -78,13 +78,34 @@ a senha, muda de cargo ou é removido da equipe.
 
 ## Verificar uma solução
 
-1. Escolha a lista.
+1. Escolha a lista. A página lembra a última lista neste navegador.
 2. Escolha a questão, se ela tiver regras cadastradas (veja abaixo). Sem questão, valem só as
    permissões da lista, e o resultado avisa isso.
-3. Cole a solução (até 50 KB e 1.000 linhas).
-4. Clique em **Verificar**.
+3. Cole a solução (até 50 KB e 1.000 linhas), com Ctrl+V ou o botão **Colar**.
+4. Clique em **Verificar** ou aperte **Ctrl+Enter** no editor.
 
-Cada violação mostra a categoria, a linha e a coluna, a regra do catálogo (R-xx) e uma explicação.
+O relatório começa por um resumo ("2 anulações imediatas, 1 fora da lista") e mostra uma linha por
+regra, da mais grave para a mais leve, com a categoria, a regra do catálogo (R-xx), a explicação,
+todas as linhas em que ela aparece e o trecho do código. Clicar numa linha seleciona o trecho no
+editor e marca a linha na numeração. Se você mudar o código depois de verificar, o relatório avisa
+que é do código anterior.
+
+No editor, Tab insere 4 espaços; para sair do editor pelo teclado, aperte Esc e depois Tab. A
+altura do editor se ajusta pelo canto inferior direito.
+
+### Corrigir em lote
+
+Para uma turma inteira, o caminho mais curto é:
+
+1. Cole o código do aluno.
+2. Aperte **Ctrl+Enter**: o foco vai ao resultado.
+3. Escreva o nome do aluno e aperte Enter: o feedback é gerado, e o foco vai a **Copiar**.
+4. Clique em **Próximo aluno**: o código, o nome, a anotação e o resultado são limpos, a lista e a
+   questão ficam, e o foco volta ao editor.
+
+Se você verificar outro código sem trocar o nome do aluno, o painel de feedback avisa antes de você
+gerar um texto com o nome errado. O que está no editor e no painel fica na página enquanto você
+navega e mesmo se a sessão vencer e você entrar de novo; **Sair** apaga tudo.
 
 | Categoria | O que significa |
 |---|---|
@@ -151,7 +172,11 @@ só os botões que o seu cargo permite, e o servidor confere de novo a cada aç�
 - **Ex-monitores, conselheiros e inativos**: reative com um cargo.
 - **Registro de ações** (só o desenvolvedor e os professores veem): quem aprovou, recusou, alterou o
   cargo, removeu ou reativou cada conta nos últimos 12 meses, e quando. Ninguém edita nem apaga o
-  registro; depois de 12 meses, cada ação sai sozinha.
+  registro; depois de 12 meses, cada ação sai sozinha. A tela mostra 20 ações por vez; **Mostrar
+  mais** traz as seguintes.
+
+A busca acha contas por nome ou e-mail, sem diferenciar acentos, e o filtro de cargo vale para os
+membros ativos e as contas removidas.
 
 | Seu cargo | Aprova cadastros | Atribui cargo, altera cargo e remove contas de |
 |---|---|---|

@@ -1,11 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
+import { TIMEOUT_MESSAGE } from "../hooks/useApiCall";
 import { type ApiClient, ApiError } from "../services/client";
 import { createMockClient } from "../services/mockClient";
 import type { SimilarityResponse } from "../types/api";
+import { PLAGIARISM_TIMEOUT_MS } from "./Plagiarism";
 
 function renderAt(client: ApiClient, path = "/plagio") {
   const user = userEvent.setup();
@@ -130,5 +132,34 @@ describe("Painel de plágio (S17-03, FR-29)", () => {
     await user.click(screen.getByRole("button", { name: "Verificar" }));
 
     expect(await screen.findByText("100,0%")).toBeInTheDocument();
+  });
+
+  it("pode cancelar uma comparação em andamento (S26-04)", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.compare = (_a, _b, signal) =>
+      new Promise((_, reject) => signal?.addEventListener("abort", () => reject(new DOMException("x", "AbortError"))));
+    const user = await compareWith(client);
+
+    await user.click(await screen.findByRole("button", { name: "Cancelar" }));
+
+    expect(screen.getByRole("button", { name: "Verificar" })).toBeEnabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("desiste no prazo e explica (S26-04)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const client = createMockClient({ latencyMs: 0, signedIn: true });
+      client.compare = (_a, _b, signal) =>
+        new Promise((_, reject) => signal?.addEventListener("abort", () => reject(new DOMException("x", "AbortError"))));
+      await compareWith(client);
+      await screen.findByRole("button", { name: "Cancelar" });
+
+      vi.advanceTimersByTime(PLAGIARISM_TIMEOUT_MS);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(TIMEOUT_MESSAGE);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
