@@ -291,6 +291,15 @@ class ResendRequest(_Strict):
     email: Email
 
 
+class ForgotPasswordRequest(_Strict):
+    email: Email
+
+
+class ResetPasswordRequest(_Strict):
+    token: SessionToken = Field(description="O token do link de redefinição enviado por e-mail.")
+    new_password: Password
+
+
 class ProfileUpdate(_Strict):
     name: Text120 | None = None
     course: Text120 | None = None

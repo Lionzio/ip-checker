@@ -128,6 +128,8 @@ OPEN_ROUTES = {
     ("POST", "/api/v1/auth/register"),
     ("POST", "/api/v1/auth/verify"),
     ("POST", "/api/v1/auth/verify/resend"),
+    ("POST", "/api/v1/auth/password/forgot"),
+    ("POST", "/api/v1/auth/password/reset"),
     # Sprint 16: as formas de entrar e o Google, que abrem a sessão em vez de exigi-la.
     ("GET", "/api/v1/auth/options"),
     ("GET", "/api/v1/auth/google/start"),

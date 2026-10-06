@@ -31,3 +31,24 @@ export async function verificationLink(request: APIRequestContext, to: string): 
   expect(href, "o HTML do e-mail traz o link de verificação").toBeTruthy();
   return new URL((href ?? "").replaceAll("&amp;", "&"));
 }
+
+/** O link do e-mail de "esqueci minha senha" (S24-04) mandado para `to`. */
+export async function resetLink(request: APIRequestContext, to: string): Promise<URL> {
+  let id: string | undefined;
+  await expect
+    .poll(
+      async () => {
+        const query = `to:"${to}" subject:"Redefina a sua senha"`;
+        const search = await request.get(`${MAILPIT}/api/v1/search`, { params: { query } });
+        const body = (await search.json()) as { messages: MailpitSummary[] };
+        id = body.messages[0]?.ID;
+        return id;
+      },
+      { message: `o e-mail de redefinição para ${to} não chegou ao Mailpit`, timeout: 15_000 },
+    )
+    .toBeTruthy();
+  const message = (await (await request.get(`${MAILPIT}/api/v1/message/${id}`)).json()) as { HTML: string };
+  const href = /href="([^"]+\/redefinir-senha\?token=[A-Za-z0-9_-]{43})"/.exec(message.HTML)?.[1];
+  expect(href, "o HTML do e-mail traz o link de redefinição").toBeTruthy();
+  return new URL((href ?? "").replaceAll("&amp;", "&"));
+}

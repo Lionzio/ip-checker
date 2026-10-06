@@ -392,6 +392,27 @@ class PostgresAccountStore:
             row = await connection.fetchrow(_BY_ID, account_id)
         return _account(row)
 
+    async def reset_password(
+        self, token_hash: bytes, password_hash: str, now: datetime
+    ) -> Account | None:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            # Uso único: o token é gasto na mesma transação que troca a senha.
+            account_id = await connection.fetchval(
+                "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
+                "AND purpose = 'redefinicao' AND used_at IS NULL AND expires_at > $2 "
+                "RETURNING account_id) "
+                "UPDATE app.account a SET password_hash = $3 FROM t "
+                "WHERE a.id = t.account_id RETURNING a.id",
+                token_hash,
+                now,
+                password_hash,
+            )
+            if account_id is None:
+                return None
+            await connection.execute("DELETE FROM app.session WHERE account_id = $1", account_id)
+            row = await connection.fetchrow(_BY_ID, account_id)
+        return _account(row)
+
     async def update_profile(
         self, account_id: UUID, name: str, course: str, treatment: Treatment
     ) -> Account:

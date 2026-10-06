@@ -240,6 +240,8 @@ LIMITED_ROUTES = frozenset(
         ("POST", "/api/v1/auth/register"),
         ("POST", "/api/v1/auth/verify"),
         ("POST", "/api/v1/auth/verify/resend"),
+        ("POST", "/api/v1/auth/password/forgot"),
+        ("POST", "/api/v1/auth/password/reset"),
         ("POST", "/api/v1/profile/password"),
         # Google (S16-01): cada início abre um fluxo na memória; o limite por IP o protege.
         ("GET", "/api/v1/auth/google/start"),

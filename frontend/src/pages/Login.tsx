@@ -72,6 +72,9 @@ export function Login({ client, onSignIn }: LoginProps) {
         >
           Entrar
         </button>
+        <Link to="/esqueci-senha" className="text-sm text-blue-700 underline dark:text-blue-300">
+          Esqueci minha senha
+        </Link>
         <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
           Voltar
         </Link>

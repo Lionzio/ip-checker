@@ -32,11 +32,17 @@ from ipc_api.accounts.models import (
     normalize_email,
 )
 from ipc_api.accounts.passwords import Passwords, password_problems
-from ipc_api.accounts.store import VERIFICATION, AccountStore
+from ipc_api.accounts.store import RESET, VERIFICATION, AccountStore
 from ipc_api.auth.sessions import token_hash
 from ipc_api.auth.throttle import LoginThrottle
 from ipc_api.errors import ApiError, ErrorCode
-from ipc_api.mail import EmailConfig, EmailSender, EmailUnavailable, verification_message
+from ipc_api.mail import (
+    EmailConfig,
+    EmailSender,
+    EmailUnavailable,
+    reset_message,
+    verification_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +54,8 @@ class AccountsConfig:
     #: Endereço da página, de onde sai o link do e-mail (nunca o Host da requisição).
     public_base_url: str = "http://127.0.0.1:8180"
     token_ttl_s: int = 24 * 3600
+    #: O link de "esqueci minha senha" vale por menos tempo que o de verificação (S24-04).
+    reset_ttl_s: int = 3600
     resend_interval_s: int = 60
     resend_per_day: int = 5
     #: Falhas da senha atual ao trocá-la, em 15 min, antes de esperar.
@@ -173,8 +181,8 @@ class AccountService:
                 retry_after_s=60,
             ) from None
 
-    def _may_resend(self, account: Account) -> bool:
-        key = account.id.bytes
+    def _may_resend(self, account: Account, kind: bytes = b"v") -> bool:
+        key = kind + account.id.bytes
         now = self._monotonic()
         sent = self._resends.setdefault(key, deque())
         while sent and sent[0] <= now - 24 * 3600:
@@ -208,6 +216,54 @@ class AccountService:
                 422,
                 ErrorCode.INVALID_TOKEN,
                 "O link de verificação é inválido, já foi usado ou venceu. Peça um novo.",
+            )
+        return account
+
+    # --- Esqueci minha senha (S24-04, Q-19 b) ------------------------------------------------
+
+    async def forgot_password(self, email: str) -> None:
+        """Envia o link de redefinição; a resposta é sempre igual, para não revelar quem tem conta.
+
+        Só recebe o link quem já confirmou o e-mail e não foi recusado; quem ainda não confirmou
+        precisa do link de verificação. O envio segue o limite do reenvio (1 por minuto, 5 por dia).
+        """
+        address = normalize_email(email)
+        if not email_domain_allowed(address):
+            raise ApiError(422, ErrorCode.DOMAIN_NOT_ALLOWED, DOMAIN_MESSAGE)
+        account = await self.store.find_by_login(address)
+        if account is None or account.status in (Status.AGUARDANDO_VERIFICACAO, Status.RECUSADO):
+            return
+        if not self._may_resend(account, b"r"):
+            return
+        token = secrets.token_urlsafe(32)
+        now = self._clock()
+        await self.store.add_email_token(
+            token_hash(token),
+            account.id,
+            RESET,
+            now,
+            now + timedelta(seconds=self.config.reset_ttl_s),
+        )
+        base = self.config.public_base_url.rstrip("/")
+        link = f"{base}/redefinir-senha?{urlencode({'token': token})}"
+        message = reset_message(self.email.sender, address, account.name, link)
+        try:
+            await self.sender.send(message)
+        except EmailUnavailable as exc:
+            # A resposta continua a mesma: dizer que falhou revelaria que a conta existe.
+            logger.warning("e-mail de redefinição não enviado: %s", exc)
+
+    async def reset_password(self, token: str, new_password: str) -> Account:
+        """Define a senha nova pelo link; todas as sessões da conta são encerradas (NFR-22)."""
+        check_password(new_password)
+        account = await self.store.reset_password(
+            token_hash(token), await self.passwords.hash(new_password), self._clock()
+        )
+        if account is None:
+            raise ApiError(
+                422,
+                ErrorCode.INVALID_TOKEN,
+                "O link de redefinição é inválido, já foi usado ou venceu. Peça um novo.",
             )
         return account
 

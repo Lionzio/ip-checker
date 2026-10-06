@@ -115,6 +115,12 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     async resendVerification(email) {
       await call<null>("/api/v1/auth/verify/resend", json("POST", { email }));
     },
+    async forgotPassword(email) {
+      await call<null>("/api/v1/auth/password/forgot", json("POST", { email }));
+    },
+    async resetPassword(token, newPassword) {
+      await call<null>("/api/v1/auth/password/reset", json("POST", { token, new_password: newPassword }));
+    },
     updateProfile(update: ProfileUpdate) {
       return call<Account>("/api/v1/profile", json("PATCH", update));
     },

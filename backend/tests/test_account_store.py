@@ -29,7 +29,7 @@ from ipc_api.accounts.models import (
     Treatment,
 )
 from ipc_api.accounts.postgres import PostgresAccountStore
-from ipc_api.accounts.store import VERIFICATION, AccountStore, MemoryAccountStore
+from ipc_api.accounts.store import RESET, VERIFICATION, AccountStore, MemoryAccountStore
 
 NOW = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
 DEV = DeveloperSeed(
@@ -452,6 +452,40 @@ async def test_transition_can_end_the_sessions_of_the_account(
     )
 
     assert (await store.get_session(b"\x0d" * 32) is None) is end_sessions
+
+
+# --- Esqueci minha senha (S24-04) -----------------------------------------------------------------
+
+
+async def test_reset_password_is_one_time_and_ends_the_sessions(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    await store.create_session(b"\x0e" * 32, ana.id, NOW, NOW + timedelta(days=1))
+    expires = NOW + timedelta(hours=1)
+    await store.add_email_token(b"\x01" * 32, ana.id, RESET, NOW, expires)
+    # Um pedido novo invalida o anterior da mesma finalidade.
+    await store.add_email_token(b"\x02" * 32, ana.id, RESET, NOW, expires)
+    await store.add_email_token(b"\x03" * 32, ana.id, VERIFICATION, NOW, expires)
+
+    assert await store.reset_password(b"\x01" * 32, "$argon2id$novo", NOW) is None
+    assert await store.reset_password(b"\x03" * 32, "$argon2id$novo", NOW) is None
+    changed = await store.reset_password(b"\x02" * 32, "$argon2id$novo", NOW)
+    again = await store.reset_password(b"\x02" * 32, "$argon2id$outro", NOW)
+
+    assert changed is not None
+    assert changed.password_hash == "$argon2id$novo"
+    assert again is None
+    assert await store.get_session(b"\x0e" * 32) is None
+
+
+async def test_an_expired_reset_token_does_nothing(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    await store.add_email_token(b"\x04" * 32, ana.id, RESET, NOW, NOW + timedelta(hours=1))
+
+    later = NOW + timedelta(hours=1, seconds=1)
+    assert await store.reset_password(b"\x04" * 32, "$argon2id$novo", later) is None
+    unchanged = await store.get_account(ana.id)
+    assert unchanged is not None
+    assert unchanged.password_hash is None
 
 
 # --- Registro de gerenciamento (S23-03, REC-06) ---------------------------------------------------

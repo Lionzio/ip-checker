@@ -424,6 +424,17 @@ export function createMockClient({
       await wait(latencyMs);
     },
 
+    async forgotPassword() {
+      await wait(latencyMs);
+    },
+
+    async resetPassword(token) {
+      await wait(latencyMs);
+      if (token === "") {
+        throw new ApiError(422, "INVALID_TOKEN", "O link de redefinição é inválido, já foi usado ou venceu. Peça um novo.");
+      }
+    },
+
     async updateProfile(update) {
       await wait(latencyMs);
       const current = account ?? DEMO_ACCOUNT;
