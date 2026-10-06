@@ -1,6 +1,10 @@
 # Atualizações de dependências (S25-01). Um mantenedor só: uma vez por mês, para a develop, em
 # grupos por ecossistema e com poucos PRs abertos ao mesmo tempo. Cada PR passa pela CI inteira
 # como qualquer outro, e o merge segue o processo de sempre (CI verde, squash).
+#
+# Os saltos de versão principal que mudam o ambiente ficam de fora (ignore): são decisões feitas de
+# propósito, com o gatilho anotado em cada regra e no blueprint (seção 7.11, manutenção de
+# 06/10/2026). Correções e versões menores continuam chegando todo mês.
 version: 2
 updates:
   # As actions ficam fixadas por SHA nos workflows; o Dependabot troca o SHA e o comentário da versão.
@@ -33,6 +37,13 @@ updates:
       npm:
         patterns: ["*"]
     open-pull-requests-limit: 3
+    ignore:
+      # TypeScript 7: só quando o typescript-eslint (o lint da CI) aceitar a versão.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Os tipos acompanham o Node de produção (engines 24.x, imagens e CI): sobem junto com ele.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # Imagens base fixadas por digest (Python, Node, Caddy) e as do compose (Postgres, Mailpit).
   - package-ecosystem: docker
@@ -44,6 +55,14 @@ updates:
       imagens:
         patterns: ["*"]
     open-pull-requests-limit: 3
+    ignore:
+      # O analisador lê o código com a gramática do Python em que roda: o ruleset e o pyproject
+      # estão em 3.13. Python 3.14 sobe junto com eles, de propósito.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # O Node das imagens acompanha o engines do frontend e a CI.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker-compose
     directory: /deploy
@@ -54,3 +73,8 @@ updates:
       compose:
         patterns: ["*"]
     open-pull-requests-limit: 3
+    ignore:
+      # A versão principal do Postgres acompanha o Supabase do piloto (17). A 18 também muda o
+      # caminho dos dados na imagem, e o volume do compose precisa mudar junto.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
