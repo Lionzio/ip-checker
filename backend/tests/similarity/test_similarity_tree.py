@@ -6,10 +6,12 @@ propriedades de cada camada, medidas direto na árvore.
 
 from __future__ import annotations
 
-import timeit
+import asyncio
+import time
 
 import pytest
 
+from conftest import BASE_RULESET
 from ipc_analyzer.engine.guards import PayloadTooLargeError
 from ipc_analyzer.engine.parse import SyntaxProblem, parse_source
 from ipc_analyzer.engine.similarity import (
@@ -28,6 +30,7 @@ from ipc_analyzer.engine.similarity_tree import (
     matches,
     scores,
 )
+from ipc_analyzer.runtime.pool import AnalyzerPool, PoolConfig
 from similarity.test_similarity import _big_program
 
 TARGET = (3, 13)
@@ -248,15 +251,24 @@ def test_the_class_has_a_ceiling() -> None:
 
 
 def test_two_50_kb_codes_are_compared_in_under_one_second() -> None:
+    """S27-01: as três métricas e os trechos, em menos de 1 s, medidos no worker do analisador.
+
+    O worker roda em outro processo, sem o rastreamento da cobertura do pytest, que deixa o
+    Python várias vezes mais lento: é o tempo que a equipe sente. Vale o melhor de três, para a
+    medida ser do código e não da carga da máquina durante a suíte.
+    """
     big = _big_program()
     other = big.replace("valor_", "saida_")
-
-    result = compare_sources(big, other, target=TARGET)
-    # O melhor de três: a medida é do código, não da carga da máquina durante a suíte.
-    elapsed = min(
-        timeit.repeat(lambda: compare_sources(big, other, target=TARGET), number=1, repeat=3)
-    )
+    pool = AnalyzerPool(BASE_RULESET, PoolConfig(workers=1, timeout_s=10.0))
+    try:
+        asyncio.run(pool.compare("x = 1\n", "y = 1\n"))  # aquece o worker
+        timings = []
+        for _ in range(3):
+            start = time.perf_counter()
+            result = asyncio.run(pool.compare(big, other))
+            timings.append(time.perf_counter() - start)
+    finally:
+        pool.close()
 
     assert result.percent == 100.0  # type: ignore[union-attr]
-    # S27-01: as duas métricas e os trechos, em menos de 1 s.
-    assert elapsed < 1.0, f"{elapsed:.2f} s"
+    assert min(timings) < 1.0, f"{min(timings):.2f} s"
