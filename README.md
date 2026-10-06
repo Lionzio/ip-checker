@@ -122,6 +122,6 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (falta o repositório privado dos gabaritos, `rulesets/README.md`) |
 | 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (falta o terceiro monitor do UptimeRobot, `deploy/README.md`) |
 | 22 | Listas 3 e 4: S22-01 regras R-38 a R-60, exigência das Listas 3 (lista ou tupla) e 4 (`def`) e função aninhada na R-04 (Q-02 f); S22-02 Listas 3 e 4 habilitadas e e2e | Concluída (os casos em aberto do mapeamento seguem para o Marco 2) |
-| 23 | Listas 5 e 6 e recursão obrigatória | Próxima |
-| 24 | Regras por questão e governança | Planejada |
-| 25 | Carga, eficácia e passagem de bastão | Planejada |
+| 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06) | Concluída |
+| 24 | Regras por questão, governança e "esqueci minha senha" | Próxima |
+| 25 | Carga, eficácia, expurgo de contas e passagem de bastão | Planejada |
