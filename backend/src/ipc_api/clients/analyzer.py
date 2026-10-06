@@ -92,10 +92,17 @@ class AnalyzerClient:
             ) from None
 
     async def analyze(
-        self, code: str, list_number: int, request_id: str | None = None
+        self,
+        code: str,
+        list_number: int,
+        request_id: str | None = None,
+        question_id: str | None = None,
     ) -> AnalyzerResult:
         status, body = await self._request(
-            "POST", "/internal/analyze", {"code": code, "list_number": list_number}, request_id
+            "POST",
+            "/internal/analyze",
+            {"code": code, "list_number": list_number, "question_id": question_id},
+            request_id,
         )
         if status == 200:
             result = _parse(AnalyzerResult, body)
@@ -108,12 +115,16 @@ class AnalyzerClient:
         raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
 
     async def feedback_input(
-        self, code: str, list_number: int, request_id: str | None = None
+        self,
+        code: str,
+        list_number: int,
+        request_id: str | None = None,
+        question_id: str | None = None,
     ) -> AnalyzerFeedbackInput:
         status, body = await self._request(
             "POST",
             "/internal/feedback-input",
-            {"code": code, "list_number": list_number},
+            {"code": code, "list_number": list_number, "question_id": question_id},
             request_id,
         )
         if status == 200:

@@ -46,7 +46,14 @@ MANIFEST = {
     "ruleset_sha256": "a" * 64,
     "period": "2026.2",
     "target_python": "3.13",
-    "lists": [{"number": n, "title": f"Lista {n}"} for n in range(1, 7)],
+    "lists": [
+        {
+            "number": n,
+            "title": f"Lista {n}",
+            "questions": [{"id": "L3-Q2", "title": "Soma dos pares"}] if n == 3 else [],
+        }
+        for n in range(1, 7)
+    ],
 }
 HEALTH = {
     "status": "ok",
@@ -179,8 +186,42 @@ def test_enabled_lists_come_from_settings(analyzer: FakeAnalyzer) -> None:
 
 
 def test_unknown_question(client: TestClient, analyzer: FakeAnalyzer) -> None:
-    assert error_of(validate(client, question_id="L1-Q3")) == (422, "UNKNOWN_QUESTION")
-    assert analyzer.calls == []
+    response = validate(client, question_id="L1-Q3")
+
+    assert error_of(response) == (422, "UNKNOWN_QUESTION")
+    assert "não está cadastrada" in response.json()["error"]["message"]
+    # Só o manifesto foi consultado: a análise nem começou.
+    assert analyzer.calls == ["/internal/ruleset/manifest"]
+
+
+def test_question_of_another_list(client: TestClient, analyzer: FakeAnalyzer) -> None:
+    response = validate(client, question_id="L3-Q2", list_number=4)
+
+    assert error_of(response) == (422, "UNKNOWN_QUESTION")
+    assert response.json()["error"]["message"] == "A questão L3-Q2 é da Lista 3, não da Lista 4."
+    assert "/internal/analyze" not in analyzer.calls
+
+
+def test_question_rules_are_applied(client: TestClient, analyzer: FakeAnalyzer) -> None:
+    sent: list[dict[str, Any]] = []
+
+    def capture(request: httpx2.Request) -> httpx2.Response:
+        sent.append(json.loads(request.content))
+        return httpx2.Response(200, json={**VALID, "list_number": 3})
+
+    analyzer.routes["/internal/analyze"] = capture
+
+    body = validate(client, question_id="L3-Q2", list_number=3).json()
+
+    assert sent[0]["question_id"] == "L3-Q2"
+    # Com a questão, as regras dela valem e o aviso some (FR-11).
+    assert (body["question_id"], body["notices"]) == ("L3-Q2", [])
+
+
+def test_without_question_the_notice_stays(client: TestClient) -> None:
+    body = validate(client).json()
+
+    assert (body["question_id"], body["notices"]) == (None, ["QUESTION_RULES_NOT_APPLIED"])
 
 
 @pytest.mark.parametrize(
@@ -399,7 +440,8 @@ def test_lists_show_only_enabled_lists(client: TestClient) -> None:
     response = client.get("/api/v1/lists")
 
     assert response.status_code == 200
-    assert response.json() == [{"number": n, "title": f"Lista {n}"} for n in range(1, 7)]
+    # As questões cadastradas vêm junto de cada lista (FR-03), em ordem.
+    assert response.json() == MANIFEST["lists"]
 
 
 def test_lists_follow_enabled_lists_setting(analyzer: FakeAnalyzer) -> None:

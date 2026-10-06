@@ -13,6 +13,7 @@ from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
 from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings, get_telemetry
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
+from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import ValidateRequest, ValidateResponse
 from ipc_api.settings import ApiSettings
@@ -77,19 +78,15 @@ async def validate(
             ErrorCode.LIST_NOT_ENABLED,
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
-    if body.question_id is not None:
-        # As regras por questão (R-01) entram na Sprint 24; até lá, nenhuma está cadastrada.
-        raise ApiError(
-            422,
-            ErrorCode.UNKNOWN_QUESTION,
-            f"A questão {body.question_id} não está cadastrada no IP-Checker.",
-        )
+    await check_question(analyzer, body.list_number, body.question_id)
 
     try:
         # A vaga só é ocupada durante a análise, com a entrada já lida e validada.
         async with admission.slot():
             started = time.perf_counter()
-            result = await analyzer.analyze(body.code, body.list_number, request_id=request_id)
+            result = await analyzer.analyze(
+                body.code, body.list_number, request_id=request_id, question_id=body.question_id
+            )
             analysis_ms = round((time.perf_counter() - started) * 1000)
     except Overloaded:
         raise overloaded() from None
@@ -108,6 +105,7 @@ async def validate(
         TelemetryEvent.from_result(
             ruleset_version=result.ruleset_version,
             list_number=result.list_number,
+            question_id=body.question_id,
             outcome=result.status,
             rule_ids=[violation.rule_id for violation in result.violations],
             analysis_ms=analysis_ms,
@@ -118,8 +116,9 @@ async def validate(
         ruleset_version=result.ruleset_version,
         status=result.status,
         list_number=result.list_number,
-        question_id=None,
-        notices=["QUESTION_RULES_NOT_APPLIED"],
+        question_id=body.question_id,
+        # Sem questão, valem só as regras da lista, e a resposta avisa (FR-11).
+        notices=[] if body.question_id is not None else ["QUESTION_RULES_NOT_APPLIED"],
         syntax_error=result.syntax_error,
         violations=result.violations,
         truncated=result.truncated,

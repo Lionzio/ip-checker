@@ -581,6 +581,11 @@ export interface components {
              * @description Anotação para o aluno (opcional).
              */
             annotation?: string | null;
+            /**
+             * Question Id
+             * @description Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).
+             */
+            question_id?: string | null;
         };
         /** FeedbackResponse */
         FeedbackResponse: {
@@ -658,6 +663,11 @@ export interface components {
             number: number;
             /** Title */
             title: string;
+            /**
+             * Questions
+             * @description Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando a lista não tem nenhuma.
+             */
+            questions?: components["schemas"]["QuestionInfo"][];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -827,6 +837,16 @@ export interface components {
             course?: string | null;
             /** Treatment */
             treatment?: ("masculino" | "feminino" | "neutro") | null;
+        };
+        /** QuestionInfo */
+        QuestionInfo: {
+            /**
+             * Id
+             * @description Numeração oficial da questão no período (P-07), como L3-Q2.
+             */
+            id: string;
+            /** Title */
+            title: string;
         };
         /** ReadyResponse */
         ReadyResponse: {

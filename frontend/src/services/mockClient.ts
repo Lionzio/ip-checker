@@ -26,7 +26,8 @@ const RULESET_VERSION = "2026.2.3";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },
-  { number: 3, title: "Listas e tuplas" },
+  // Uma questão só da demonstração, para o seletor de questões (R-01) ter o que mostrar.
+  { number: 3, title: "Listas e tuplas", questions: [{ id: "L3-Q1", title: "Questão de demonstração" }] },
   { number: 4, title: "Funções e escopo de variável" },
   { number: 5, title: "Dicionários" },
   { number: 6, title: "Recursão" },
@@ -572,12 +573,17 @@ export function createMockClient({
       if (request.code.trim() === "") {
         throw new ApiError(422, "INVALID_INPUT", "O código está vazio.");
       }
-      if (!ENABLED_LISTS.some((list) => list.number === request.list_number)) {
+      const list = ENABLED_LISTS.find((item) => item.number === request.list_number);
+      if (list === undefined) {
         throw new ApiError(
           422,
           "LIST_NOT_ENABLED",
           `A Lista ${request.list_number} ainda não está habilitada.`,
         );
+      }
+      const questionId = request.question_id ?? null;
+      if (questionId !== null && !(list.questions ?? []).some((question) => question.id === questionId)) {
+        throw new ApiError(422, "UNKNOWN_QUESTION", `A questão ${questionId} não está cadastrada no IP-Checker.`);
       }
 
       requests += 1;

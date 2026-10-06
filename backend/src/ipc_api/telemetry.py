@@ -72,12 +72,13 @@ class TelemetryEvent:
         outcome: Outcome,
         rule_ids: Iterable[str] = (),
         analysis_ms: int = 0,
+        question_id: str | None = None,
     ) -> TelemetryEvent:
         counts = Counter(rule_ids)
         return cls(
             semester=semester_of(ruleset_version),
             list_number=list_number,
-            question_id=None,
+            question_id=question_id,
             ruleset_version=ruleset_version,
             outcome=outcome,
             violation_count=sum(counts.values()),

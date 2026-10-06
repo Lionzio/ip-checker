@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { CodeEditor } from "../components/CodeEditor";
 import { type FeedbackForm, FeedbackPanel } from "../components/FeedbackPanel";
 import { ListSelector } from "../components/ListSelector";
+import { QuestionSelector } from "../components/QuestionSelector";
 import { ResultPanel } from "../components/ResultPanel";
 import { useValidateCode } from "../hooks/useValidateCode";
 import { ApiError, type FeedbackClient, type ValidationClient } from "../services/client";
@@ -17,6 +18,7 @@ interface CheckerProps {
 export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const [code, setCode] = useState("");
   const [listNumber, setListNumber] = useState<number | null>(null);
+  const [questionId, setQuestionId] = useState<string | null>(null);
   const [lists, setLists] = useState<ListInfo[]>([]);
   const [listsError, setListsError] = useState<string | null>(null);
   const { state, validate, retry } = useValidateCode(client);
@@ -39,12 +41,19 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   }, [state.kind, onUnauthenticated]);
 
   const loading = state.kind === "loading";
+  const questions = listNumber === null ? null : (lists.find((list) => list.number === listNumber)?.questions ?? []);
+
+  function chooseList(value: number | null) {
+    setListNumber(value);
+    // As questões são de uma lista só: trocar de lista volta para "sem questão".
+    setQuestionId(null);
+  }
   const canVerify = listNumber !== null && code.trim() !== "" && !loading;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (listNumber === null) return;
-    const request = { code, list_number: listNumber, question_id: null };
+    const request = { code, list_number: listNumber, question_id: questionId };
     setVerified(request);
     void validate(request);
   }
@@ -52,10 +61,12 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <ListSelector lists={lists} value={listNumber} onChange={setListNumber} disabled={loading} />
+        <ListSelector lists={lists} value={listNumber} onChange={chooseList} disabled={loading} />
+        <QuestionSelector questions={questions} value={questionId} onChange={setQuestionId} disabled={loading} />
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          A verificação usa as permissões da lista. As regras específicas de cada questão
-          ainda não são consideradas: em caso de divergência, vale o enunciado.
+          {questionId === null
+            ? "Sem questão, valem só as permissões da lista: se o enunciado liberar ou proibir algo, vale o enunciado."
+            : `Valem as permissões da lista e as regras da questão ${questionId}, cadastradas a partir do enunciado.`}
         </p>
         {listsError !== null && (
           <p role="alert" className="text-sm text-red-700 dark:text-red-300">

@@ -190,11 +190,12 @@ def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
 
 def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [
-        {"number": 1, "title": "Comandos condicionais"},
-        {"number": 2, "title": "Laços de repetição"},
-        {"number": 3, "title": "Listas e tuplas"},
-        {"number": 4, "title": "Funções e escopo de variável"},
-        {"number": 5, "title": "Dicionários"},
+        # O ruleset do repositório ainda não tem questões cadastradas (R-01).
+        {"number": 1, "title": "Comandos condicionais", "questions": []},
+        {"number": 2, "title": "Laços de repetição", "questions": []},
+        {"number": 3, "title": "Listas e tuplas", "questions": []},
+        {"number": 4, "title": "Funções e escopo de variável", "questions": []},
+        {"number": 5, "title": "Dicionários", "questions": []},
     ]
     assert api.get("/ready").json() == {
         "status": "ready",

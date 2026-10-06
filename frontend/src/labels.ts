@@ -10,7 +10,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 
 export const NOTICE_TEXTS: Record<Notice, string> = {
   QUESTION_RULES_NOT_APPLIED:
-    "As permissões específicas da questão não foram consideradas. Em caso de divergência, vale o enunciado.",
+    "Nenhuma questão foi escolhida: valeram só as permissões da lista. Em caso de divergência, vale o enunciado.",
 };
 
 /** Títulos dos estados em que basta esperar e tentar de novo (FR-20: limite de taxa e sobrecarga). */

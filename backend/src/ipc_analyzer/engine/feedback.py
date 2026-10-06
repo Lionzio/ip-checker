@@ -48,9 +48,12 @@ def feedback_input(
     *,
     list_number: int,
     ruleset: CompiledRuleset,
+    question_id: str | None = None,
     limits: Limits = DEFAULT_LIMITS,
 ) -> FeedbackInput:
-    result = analyze_source(source, list_number=list_number, ruleset=ruleset, limits=limits)
+    result = analyze_source(
+        source, list_number=list_number, ruleset=ruleset, question_id=question_id, limits=limits
+    )
     if result.status == "syntax_error":
         return FeedbackInput("syntax_error", (), "", result.syntax_error)
     requirements = {r.id: r for r in ruleset.requirements_for(list_number)}

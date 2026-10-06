@@ -45,7 +45,7 @@ def test_manifest_describes_the_active_ruleset(client: TestClient) -> None:
     assert body["period"] == "2026.2"
     assert len(body["ruleset_sha256"]) == 64
     assert [item["number"] for item in body["lists"]] == [1, 2, 3, 4, 5, 6]
-    assert body["lists"][0] == {"number": 1, "title": "Comandos condicionais"}
+    assert body["lists"][0] == {"number": 1, "title": "Comandos condicionais", "questions": []}
 
 
 def test_valid_code(client: TestClient) -> None:

@@ -2068,6 +2068,19 @@
             ],
             "title": "Annotation",
             "description": "Anotação para o aluno (opcional)."
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id",
+            "description": "Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01)."
           }
         },
         "additionalProperties": false,
@@ -2238,6 +2251,14 @@
             "maxLength": 200,
             "minLength": 1,
             "title": "Title"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionInfo"
+            },
+            "type": "array",
+            "title": "Questions",
+            "description": "Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando a lista não tem nenhuma."
           }
         },
         "additionalProperties": false,
@@ -2705,6 +2726,29 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ProfileUpdate"
+      },
+      "QuestionInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^L[1-6]-Q[1-9]\\d?$",
+            "title": "Id",
+            "description": "Numeração oficial da questão no período (P-07), como L3-Q2."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "QuestionInfo"
       },
       "ReadyResponse": {
         "properties": {

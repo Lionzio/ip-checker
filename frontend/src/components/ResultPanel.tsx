@@ -63,7 +63,7 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
           Nenhuma violação encontrada
         </h2>
         <Notices response={response} />
-        <p className="mt-3 text-xs text-slate-500">Regras {response.ruleset_version}</p>
+        <RulesLine response={response} />
       </div>
     );
   }
@@ -102,7 +102,7 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
         </p>
       )}
       <Notices response={response} />
-      <p className="mt-3 text-xs text-slate-500">Regras {response.ruleset_version}</p>
+      <RulesLine response={response} />
     </div>
   );
 }
@@ -193,5 +193,15 @@ export function ResultPanel({ state, onRetry }: ResultPanelProps) {
     >
       <Content state={state} onRetry={onRetry} />
     </section>
+  );
+}
+
+/** A versão das regras e, se houver, a questão cujas regras valeram (R-01). */
+function RulesLine({ response }: { response: ValidateResponse }) {
+  return (
+    <p className="mt-3 text-xs text-slate-500">
+      Regras {response.ruleset_version}
+      {response.question_id !== null && ` · questão ${response.question_id}`}
+    </p>
   );
 }

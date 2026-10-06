@@ -200,12 +200,28 @@ describe("App sem sessão (FR-22)", () => {
 });
 
 describe("App com sessão", () => {
-  it("avisa antes da verificação que as regras de questão ainda não valem", async () => {
-    await setup();
+  it("escolhe a questão depois da lista e aplica as regras dela (R-01)", async () => {
+    const user = await setup();
+    const question = screen.getByRole("combobox", { name: "Questão" });
 
-    expect(
-      screen.getByText(/As regras específicas de cada questão\s+ainda não são consideradas/),
-    ).toBeInTheDocument();
+    expect(question).toBeDisabled();
+    expect(question).toHaveDisplayValue("Escolha a lista primeiro");
+    expect(screen.getByText(/Sem questão, valem só as permissões da lista/)).toBeInTheDocument();
+
+    // A Lista 1 não tem questões cadastradas; a 3 tem uma, na demonstração.
+    await user.selectOptions(screen.getByLabelText("Lista"), "1");
+    expect(question).toHaveDisplayValue("Nenhuma questão com regra específica cadastrada");
+    await user.selectOptions(screen.getByLabelText("Lista"), "3");
+    await user.selectOptions(question, "L3-Q1");
+    expect(screen.getByText(/regras da questão L3-Q1/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Código Python"), "v = [[1]{enter}print(v)");
+    await user.click(screen.getByRole("button", { name: "Verificar" }));
+
+    expect(await screen.findByText(/questão L3-Q1/, { selector: "p.text-xs" })).toBeInTheDocument();
+    // Trocar de lista volta para "sem questão".
+    await user.selectOptions(screen.getByLabelText("Lista"), "2");
+    expect(question).toHaveDisplayValue("Nenhuma questão com regra específica cadastrada");
   });
 
   it("avisa que as respostas são simuladas", async () => {
