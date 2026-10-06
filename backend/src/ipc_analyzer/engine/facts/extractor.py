@@ -11,7 +11,8 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 
-from ipc_analyzer.engine.guards import split_lines
+from ipc_analyzer.engine.facts.callgraph import enclosing_function, recursive_functions
+from ipc_analyzer.engine.facts.model import Fact, SourceMap
 from ipc_analyzer.engine.parse import ParsedSource
 from ipc_analyzer.engine.symbols import (
     SCOPE_NODES,
@@ -29,24 +30,6 @@ _FUNCTION_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
 
 @dataclass(frozen=True, slots=True)
-class Fact:
-    name: str
-    line: int
-    col: int
-    end_line: int
-    end_col: int
-    #: Número de argumentos da chamada quando o fato é a função chamada (``type('C', (), {})``
-    #: -> 3); ``None`` quando não é chamada. Usado pelos predicados (``engine/conditions.py``).
-    call_args: int | None = None
-    #: Número de sequências do ``zip()`` que é o iterável de um ``for``, no próprio ``builtin:zip``
-    #: e no ``target:for_unpack`` desse ``for``; ``None`` fora desse caso (predicado da R-37).
-    zip_header_args: int | None = None
-    #: No ``target:for_unpack``: ``"enumerate"`` ou ``"items"`` quando o iterável do ``for`` é
-    #: ``enumerate(...)`` (built-in) ou ``x.items()`` (predicados das R-63 e R-65, Sprint 23).
-    for_header: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class _Visit:
     node: ast.AST
     scopes: tuple[ast.AST, ...]
@@ -57,43 +40,6 @@ class _Visit:
     callee_is_student: bool = False
     #: Preenchido só para o nó que é a função de uma chamada.
     call_args: int | None = None
-
-
-class _SourceMap:
-    """Converte colunas da AST (bytes UTF-8, a partir de 0) em caracteres (a partir de 1)."""
-
-    def __init__(self, source: str) -> None:
-        self._lines = split_lines(source)
-        self._encoded: dict[int, bytes] = {}
-
-    def column(self, line: int, byte_offset: int) -> int:
-        if not 1 <= line <= len(self._lines):
-            return byte_offset + 1
-        encoded = self._encoded.get(line)
-        if encoded is None:
-            encoded = self._lines[line - 1].encode("utf-8")
-            self._encoded[line] = encoded
-        return len(encoded[:byte_offset].decode("utf-8", errors="ignore")) + 1
-
-    def fact(
-        self,
-        name: str,
-        start: Position,
-        end: Position,
-        call_args: int | None = None,
-        zip_header_args: int | None = None,
-        for_header: str | None = None,
-    ) -> Fact:
-        return Fact(
-            name,
-            start[0],
-            self.column(*start),
-            end[0],
-            self.column(*end),
-            call_args,
-            zip_header_args,
-            for_header,
-        )
 
 
 def _const_kind(value: object) -> str:
@@ -123,7 +69,7 @@ def _attribute_name_start(node: ast.Attribute) -> Position:
 class _Extractor:
     def __init__(self, parsed: ParsedSource) -> None:
         self._bindings: Bindings = collect_bindings(parsed.tree)
-        self._map = _SourceMap(parsed.source)
+        self._map = SourceMap(parsed.source)
         #: ``id`` do nome ``zip`` e do alvo de cada ``for`` cujo iterável é ``zip(...)`` -> número
         #: de sequências. O ``for`` é visitado antes dos filhos, então a marca chega a tempo.
         self._zip_header: dict[int, int] = {}
@@ -222,7 +168,7 @@ class _Extractor:
                     self.emit(f"kwarg:{visit.callee}.{node.arg}", node)
             case ast.Call(func=ast.Name(id=name)) if self.is_student(name, visit, node):
                 self.emit("call:user", node)
-                caller = _enclosing_function(visit.scopes)
+                caller = enclosing_function(visit.scopes)
                 # Um parâmetro ou variável local com o nome de um def não é esse def:
                 # em ``def f(f): return f(1)`` não há recursão.
                 if caller is not None and not self._bindings.is_local(name, visit.scopes):
@@ -337,80 +283,9 @@ class _Extractor:
                 self._for_header[id(loop.target)] = "items"
 
     def _mark_recursion(self) -> None:
-        """Cada ``def`` num ciclo do grafo de chamadas leva ``derived:recursion`` (R-68, C-03).
-
-        O ciclo pode ser direto (``f`` chama ``f``) ou mútuo (``f`` chama ``g``, que chama ``f``).
-        As chamadas são pelo nome, como ``call:user``; um ``lambda`` não entra no grafo.
-        """
-        graph: dict[int, set[int]] = {}
-        nodes: dict[int, ast.AST] = {}
-        for definitions in self._defs.values():
-            for definition in definitions:
-                nodes[id(definition)] = definition
-                graph.setdefault(id(definition), set())
-        for caller, name in self._calls:
-            for callee in self._defs.get(name, ()):
-                graph[id(caller)].add(id(callee))
-        for component in _strongly_connected(graph):
-            first = component[0]
-            if len(component) > 1 or first in graph[first]:
-                for member in component:
-                    self.emit("derived:recursion", nodes[member])
-
-
-def _enclosing_function(scopes: tuple[ast.AST, ...]) -> ast.AST | None:
-    """O ``def`` mais interno em volta da chamada; ``None`` no módulo ou dentro de um ``lambda``."""
-    for scope in reversed(scopes):
-        if isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return scope
-        if isinstance(scope, ast.Lambda):
-            return None
-    return None
-
-
-def _strongly_connected(graph: dict[int, set[int]]) -> list[list[int]]:
-    """Componentes fortemente conexos (Tarjan, iterativo): linear no tamanho do grafo."""
-    index: dict[int, int] = {}
-    low: dict[int, int] = {}
-    on_stack: set[int] = set()
-    stack: list[int] = []
-    components: list[list[int]] = []
-    counter = 0
-    for root in graph:
-        if root in index:
-            continue
-        work: list[tuple[int, list[int]]] = [(root, sorted(graph[root]))]
-        index[root] = low[root] = counter
-        counter += 1
-        stack.append(root)
-        on_stack.add(root)
-        while work:
-            node, pending = work[-1]
-            if pending:
-                target = pending.pop()
-                if target not in index:
-                    index[target] = low[target] = counter
-                    counter += 1
-                    stack.append(target)
-                    on_stack.add(target)
-                    work.append((target, sorted(graph[target])))
-                elif target in on_stack:
-                    low[node] = min(low[node], index[target])
-                continue
-            work.pop()
-            if work:
-                parent = work[-1][0]
-                low[parent] = min(low[parent], low[node])
-            if low[node] == index[node]:
-                component: list[int] = []
-                while True:
-                    member = stack.pop()
-                    on_stack.discard(member)
-                    component.append(member)
-                    if member == node:
-                        break
-                components.append(component)
-    return components
+        """Cada ``def`` num ciclo do grafo de chamadas leva ``derived:recursion`` (R-68, C-03)."""
+        for definition in recursive_functions(self._defs, self._calls):
+            self.emit("derived:recursion", definition)
 
 
 def extract_facts(parsed: ParsedSource) -> tuple[Fact, ...]:

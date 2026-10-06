@@ -32,6 +32,8 @@ from pydantic import (
     model_validator,
 )
 
+from ipc_analyzer.engine.predicates import REGISTRY
+
 # ---------------------------------------------------------------------------
 # Vocabulário de fatos (5.2.3): "<tipo>:<nome>", por exemplo "node:For" ou "kwarg:print.end".
 # ---------------------------------------------------------------------------
@@ -159,15 +161,10 @@ def _validate_message(value: str) -> str:
     return value
 
 
-#: Predicados contextuais implementados pelo motor (``engine/conditions.py``) e os parâmetros
-#: que cada um aceita. Um predicado novo exige código e ADR (5.2.3).
+#: Predicados contextuais e os parâmetros de cada um, do registro único (``engine/predicates.py``).
+#: Um predicado novo exige código e ADR (5.2.3).
 _PREDICATE_PARAMS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {
-        "call_args": frozenset({"min", "max"}),
-        "zip_in_for_header": frozenset({"min"}),
-        "enumerate_in_for_header": frozenset(),
-        "items_in_for_header": frozenset(),
-    }
+    {name: predicate.params for name, predicate in REGISTRY.items()}
 )
 KNOWN_PREDICATES: frozenset[str] = frozenset(_PREDICATE_PARAMS)
 

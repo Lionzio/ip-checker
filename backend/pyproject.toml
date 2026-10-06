@@ -20,6 +20,10 @@ dependencies = [
   "uvicorn>=0.54.0",
 ]
 
+[project.scripts]
+# Valida o ruleset de um período (FR-21, US-14): uv run ipc-rules validate ../rulesets/2026.2
+ipc-rules = "ipc_analyzer.cli:main"
+
 [dependency-groups]
 dev = [
   "import-linter>=2.15",
