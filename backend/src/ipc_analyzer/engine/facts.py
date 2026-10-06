@@ -19,6 +19,7 @@ from ipc_analyzer.engine.symbols import (
     Position,
     collect_bindings,
     end_of,
+    evaluated_outside,
     is_builtin_name,
     start_of,
 )
@@ -131,6 +132,10 @@ class _Extractor:
         #: Funções do aluno (``def``) e as chamadas de cada uma, para achar a recursão (C-03).
         self._defs: dict[str, list[ast.AST]] = {}
         self._calls: list[tuple[ast.AST, str]] = []
+        #: ``id`` das partes de um escopo que o Python avalia no escopo de fora -> esses escopos:
+        #: o iterável do 1º ``for`` de uma compreensão, valores padrão e decoradores. Sem isso,
+        #: ``[v for map in [map(s)] for v in map]`` esconderia o built-in ``map`` (ameaça 8).
+        self._outer_scopes: dict[int, tuple[ast.AST, ...]] = {}
         self.facts: list[Fact] = []
 
     def emit(
@@ -218,7 +223,9 @@ class _Extractor:
             case ast.Call(func=ast.Name(id=name)) if self.is_student(name, visit, node):
                 self.emit("call:user", node)
                 caller = _enclosing_function(visit.scopes)
-                if caller is not None:
+                # Um parâmetro ou variável local com o nome de um def não é esse def:
+                # em ``def f(f): return f(1)`` não há recursão.
+                if caller is not None and not self._bindings.is_local(name, visit.scopes):
                     self._calls.append((caller, name))
             case ast.Return(value=ast.Tuple()):
                 self.emit("return:multi", node)
@@ -266,6 +273,9 @@ class _Extractor:
     def _children(self, visit: _Visit) -> list[_Visit]:
         node = visit.node
         scopes = (*visit.scopes, node) if isinstance(node, SCOPE_NODES) else visit.scopes
+        if isinstance(node, SCOPE_NODES):
+            for part in evaluated_outside(node):
+                self._outer_scopes[id(part)] = visit.scopes
         anchor = node if hasattr(node, "lineno") else visit.anchor
         star_args: set[int] = set()
         for_target = -1
@@ -296,7 +306,7 @@ class _Extractor:
             children.append(
                 _Visit(
                     node=child,
-                    scopes=scopes,
+                    scopes=self._outer_scopes.pop(id(child), scopes),
                     anchor=anchor,
                     role=role,
                     callee=callee,

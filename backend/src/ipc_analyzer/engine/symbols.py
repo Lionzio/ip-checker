@@ -106,6 +106,24 @@ def _bindings_of(node: ast.AST) -> Iterator[tuple[str, Position]]:
                 yield name, end_of(node)
 
 
+def evaluated_outside(scope: ast.AST) -> Iterator[ast.AST]:
+    """Partes de um escopo que o Python avalia no escopo de fora, antes de entrar nele.
+
+    O iterável do primeiro ``for`` de uma compreensão, os valores padrão de parâmetros e os
+    decoradores (e as bases de uma classe). Um nome usado ali não é um nome local do escopo.
+    """
+    if isinstance(scope, _COMPREHENSIONS):
+        yield scope.generators[0].iter
+    elif isinstance(scope, _FUNCTIONS):
+        yield from scope.args.defaults
+        yield from (default for default in scope.args.kw_defaults if default is not None)
+    if isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        yield from scope.decorator_list
+    if isinstance(scope, ast.ClassDef):
+        yield from scope.bases
+        yield from (keyword.value for keyword in scope.keywords)
+
+
 def _scope_locals(scope: ast.AST) -> Iterator[str]:
     """Nomes que já nascem locais ao entrar no escopo: parâmetros e alvos de compreensão."""
     if isinstance(scope, _FUNCTIONS):
@@ -131,6 +149,10 @@ class Bindings:
             return not is_builtin_name(name) and name in self.module
         first = self.module.get(name)
         return first is not None and first < position
+
+    def is_local(self, name: str, scopes: tuple[ast.AST, ...]) -> bool:
+        """Indica se ``name`` é ligado num dos escopos em volta (e não no módulo)."""
+        return any(name in self.scopes.get(id(scope), frozenset()) for scope in scopes)
 
 
 def collect_bindings(tree: ast.Module) -> Bindings:

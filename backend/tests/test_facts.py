@@ -465,6 +465,9 @@ def recursive_lines(source: str) -> list[int]:
         ("def f(n):\n    return n\nprint(f(f(1)))\n", []),
         ("def f(n):\n    return f\n", []),
         ("def f(g):\n    return g(1)\n", []),
+        # Um parâmetro ou uma variável local com o nome da função esconde o def.
+        ("def f(f):\n    return f(1)\n", []),
+        ("def f(n):\n    f = abs\n    return f(n)\n", []),
         ("f = lambda n: f(n - 1)\n", []),
         ("def f():\n    g = lambda: f()\n    return g\n", []),
     ],
@@ -476,6 +479,8 @@ def recursive_lines(source: str) -> list[int]:
         "module-call",
         "reference",
         "parameter",
+        "parameter-named-like-the-function",
+        "local-named-like-the-function",
         "lambda",
         "call-inside-lambda",
     ],
