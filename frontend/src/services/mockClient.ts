@@ -21,12 +21,14 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.2";
+const RULESET_VERSION = "2026.2.3";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },
   { number: 3, title: "Listas e tuplas" },
   { number: 4, title: "Funções e escopo de variável" },
+  { number: 5, title: "Dicionários" },
+  { number: 6, title: "Recursão" },
 ];
 export const DEMO_ACCOUNT: Account = {
   name: "Monitora de Demonstração",
@@ -262,8 +264,8 @@ function simulateScenario(code: string): Promise<never> | null {
   }
 }
 
-/** A exigência do assunto de cada lista (R-02, Q-05), só para a simulação. */
-const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string }> = {
+/** A exigência do assunto de cada lista (R-02, Q-05; R-68 na Lista 6), só para a simulação. */
+const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string; ruleId?: string }> = {
   1: {
     pattern: /\bif\b/,
     message:
@@ -282,6 +284,18 @@ const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string 
   4: {
     pattern: /\bdef\b/,
     message: "A solução não usa o assunto da Lista 4: é obrigatório definir uma função com def. Sem ela, a questão é anulada.",
+  },
+  5: {
+    pattern: /\{|\bdict\(/,
+    message:
+      "A solução não usa o assunto da Lista 5: é obrigatório usar um dicionário (literal ou dict()). Sem ele, a questão é anulada.",
+  },
+  6: {
+    // Aproximação: um def que chama o próprio nome no corpo (o motor real usa o grafo de chamadas).
+    pattern: /^def\s+(\w+)\s*\(.*\n(?:[ \t]+.*\n)*?[ \t]+.*\b\1\s*\(/m,
+    ruleId: "R-68",
+    message:
+      "A solução não usa o assunto da Lista 6: é obrigatória a recursão, uma função que chama a si mesma, direta ou indiretamente. Sem ela, a questão é anulada.",
   },
 };
 
@@ -538,13 +552,14 @@ export function createMockClient({
       }
 
       const violations = findViolations(request.code, request.list_number);
-      // Exigência do assunto da lista (R-02): sem ele, a solução inteira é apontada.
+      // Exigência do assunto da lista (R-02; R-68 na Lista 6): sem ele, a solução inteira é apontada.
       const requirement = SIMULATED_REQUIREMENTS[request.list_number];
       if (requirement !== undefined && !requirement.pattern.test(request.code.replace(/#.*$/gm, ""))) {
+        const ruleId = requirement.ruleId ?? "R-02";
         violations.unshift({
-          rule_id: "R-02",
+          rule_id: ruleId,
           category: "EXIGENCIA",
-          construct: "requirement:R-02",
+          construct: `requirement:${ruleId}`,
           allowed_from_list: null,
           message: requirement.message,
           line: 1,

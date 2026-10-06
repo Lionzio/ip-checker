@@ -6,12 +6,29 @@ const client = createMockClient({ latencyMs: 0 });
 const request = (code: string, list_number = 1) => ({ code, list_number, question_id: null });
 
 describe("cliente simulado", () => {
-  it("lista as Listas 1 a 4 (Sprint 22)", async () => {
+  it("lista as Listas 1 a 6 (Sprint 23)", async () => {
     await expect(client.listLists()).resolves.toEqual([
       { number: 1, title: "Comandos condicionais" },
       { number: 2, title: "Laços de repetição" },
       { number: 3, title: "Listas e tuplas" },
       { number: 4, title: "Funções e escopo de variável" },
+      { number: 5, title: "Dicionários" },
+      { number: 6, title: "Recursão" },
+    ]);
+  });
+
+  it("nas Listas 5 e 6, o assunto exigido é um dicionário e a recursão (R-68)", async () => {
+    const withDict = await client.validate(request("d = {}\nprint(d)\n", 5));
+    const withoutDict = await client.validate(request("v = [1]\nprint(v)\n", 5));
+    const recursive = "def f(n):\n    return 0 if n == 0 else f(n - 1)\nprint(f(3))\n";
+    const withRecursion = await client.validate(request(recursive, 6));
+    const withoutRecursion = await client.validate(request("def f(n):\n    return n\nprint(f(3))\n", 6));
+
+    expect(withDict.status).toBe("valid");
+    expect(withoutDict.violations[0]?.message).toContain("assunto da Lista 5");
+    expect(withRecursion.status).toBe("valid");
+    expect(withoutRecursion.violations.map((v) => [v.rule_id, v.construct])).toEqual([
+      ["R-68", "requirement:R-68"],
     ]);
   });
 
@@ -86,8 +103,8 @@ describe("cliente simulado", () => {
     await expect(client.validate(request(code))).rejects.toMatchObject({ status, code: errorCode });
   });
 
-  it("recusa lista ainda não habilitada", async () => {
-    await expect(client.validate(request("x = 1", 5))).rejects.toMatchObject({
+  it("recusa lista que não está habilitada", async () => {
+    await expect(client.validate(request("x = 1", 7))).rejects.toMatchObject({
       status: 422,
       code: "LIST_NOT_ENABLED",
     });

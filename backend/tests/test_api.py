@@ -160,8 +160,10 @@ def test_each_request_has_its_own_id(client: TestClient) -> None:
 # --- Validação da API, antes do analyzer -------------------------------------------------------
 
 
-def test_list_not_enabled(client: TestClient, analyzer: FakeAnalyzer) -> None:
-    response = validate(client, list_number=5)
+def test_list_not_enabled(analyzer: FakeAnalyzer) -> None:
+    settings = ApiSettings(analyzer_url="http://analyzer.test", enabled_lists=frozenset({1, 2}))
+    with make_client(analyzer, settings) as client:
+        response = validate(client, list_number=5)
 
     assert error_of(response) == (422, "LIST_NOT_ENABLED")
     assert "Lista 5" in response.json()["error"]["message"]
@@ -397,7 +399,7 @@ def test_lists_show_only_enabled_lists(client: TestClient) -> None:
     response = client.get("/api/v1/lists")
 
     assert response.status_code == 200
-    assert response.json() == [{"number": n, "title": f"Lista {n}"} for n in (1, 2, 3, 4)]
+    assert response.json() == [{"number": n, "title": f"Lista {n}"} for n in range(1, 7)]
 
 
 def test_lists_follow_enabled_lists_setting(analyzer: FakeAnalyzer) -> None:

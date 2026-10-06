@@ -18,7 +18,7 @@ def test_settings_defaults() -> None:
     settings = ApiSettings.from_env({})
 
     assert settings == ApiSettings()
-    assert settings.enabled_lists == {1, 2, 3, 4}
+    assert settings.enabled_lists == {1, 2, 3, 4, 5, 6}
     assert settings.analyzer_timeout_s == 3.0
     assert settings.max_body_bytes == 128 * 1024
 
