@@ -35,6 +35,8 @@ SETTINGS = ApiSettings(
     rate_limit=RateLimitConfig(client_per_min=1_000_000, ip_per_min=1_000_000),
     llm=LlmSettings(primary=LlmConfig(provider="fake")),
     feedback_limits=FeedbackLimits(per_account_day=1_000, daily_cap=1_000),
+    # Todas as listas vêm habilitadas desde a Sprint 23; a 6 fica de fora para o LIST_NOT_ENABLED.
+    enabled_lists=frozenset({1, 2, 3, 4, 5}),
 )
 
 
@@ -213,7 +215,7 @@ def test_a_syntax_error_has_no_feedback(stack: tuple[TestClient, MemoryAccountSt
         ({"student_name": " "}, "Informe o nome do aluno."),
         ({"student_name": "Ana\x00"}, "caracteres de controle"),
         ({"annotation": "linha\x07"}, "caracteres de controle"),
-        ({"list_number": 5}, "Lista 5"),
+        ({"list_number": 6}, "Lista 6"),
     ],
 )
 def test_invalid_input_is_refused_before_the_provider(

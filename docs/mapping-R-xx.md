@@ -12,7 +12,8 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 - **Fatos estruturais** são sempre aceitos, porque o nó pai ou um fato mais específico já decide:
   `node:Module`, `node:Expr`, `node:Name`, `node:Call`, `node:keyword`, `node:Load`, `node:Store`,
   `node:Constant` (decidido por `const:*`), `node:Attribute` (decidido por `method:*`),
-  `node:arguments`, `node:arg`, `node:comprehension`, `node:alias` e `node:ExceptHandler`.
+  `node:arguments`, `node:arg`, `node:comprehension`, `node:alias`, `node:ExceptHandler` e
+  `derived:recursion` (só serve à exigência da R-68; o `def` e a chamada são da R-59).
 - **Fatos contextuais substituem o fato genérico** do mesmo nó: `*x` numa chamada gera
   `call:star_args` (e não `node:Starred`); `a, b` como alvo de qualquer `for` gera
   `target:for_unpack` (e não `node:Tuple`).
@@ -30,7 +31,14 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
   - `derived:nested_function`: cada `def` dentro de outra função ou de um `lambda` (Q-02, item f;
     Sprint 22); aponta para o `def` de dentro. Métodos de classe não contam (a classe já é R-09).
 
-  `derived:recursion` entra na Sprint 23.
+  `derived:recursion` (Sprint 23) é a exceção: é estrutural e marca cada `def` que está num ciclo
+  do grafo de chamadas entre funções do aluno, direto (`f` chama `f`) ou mútuo (`f` chama `g`, que
+  chama `f`), pela C-03. As chamadas são pelo nome, como `call:user`; chamar um parâmetro, citar a
+  função sem chamá-la ou chamá-la só no módulo não forma ciclo, e um `lambda` não entra no grafo.
+- **Alvo do `for` com vários nomes** (`target:for_unpack`): até a Lista 4, só com `zip()` de 2 ou
+  mais sequências como o iterável do comando `for` (R-37); a partir da Lista 5, quando o `for`
+  percorre `zip()` (R-64), `enumerate()` (R-63) ou `.items()` sem argumentos (R-65). Os predicados
+  estão no blueprint, 5.2.3.
 - O tipo do operando não é inferido: `in` para strings, listas e `range()` é o mesmo fato `cmp:In`.
 - **Built-in ou nome do aluno** (`engine/symbols.py`): `len = 3` seguido de `print(len)` não gera
   `builtin:len`. A resolução segue a ordem de execução, para impedir que o aluno esconda um
@@ -40,8 +48,9 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 
 ## Casos a observar (sem decisão: seguem como em "Hoje" até a ratificação no Marco 2)
 
-As Listas 3 e 4 entraram na Sprint 22 sem essas respostas. Todos os casos ficam do lado mais
-restritivo, que a equipe pode relevar quando o enunciado liberar (vale o enunciado).
+As Listas 3 e 4 entraram na Sprint 22 e as Listas 5 e 6 na Sprint 23 sem essas respostas. Todos
+os casos ficam do lado mais restritivo, que a equipe pode relevar quando o enunciado liberar (vale
+o enunciado); a partir da Sprint 24, uma questão poderá liberá-los pela R-01.
 
 | Caso | Hoje | Pergunta |
 |---|---|---|
@@ -51,11 +60,13 @@ restritivo, que a equipe pode relevar quando o enunciado liberar (vale o enuncia
 | `f"{x!r}"`, `f"{x!s}"`, `f"{x!a}"` | Aceito como parte da f-string (R-31) | A conversão chama `repr()`, `str()` ou `ascii()` por baixo. Deve contar como esses built-ins (`repr` e `ascii` não constam)? |
 | `[a + b for a, b in zip(x, y)]` na L3 ou L4 | O `zip` não está no comando `for`, então cai na R-37 (condição não atendida) | O `for` de uma *list comprehension* (R-41) conta como "comando for" para a R-37? |
 | `palavras = input().split()` sem outra lista, na L3 | R-02: a lista vem só do `split()`, que não está entre as provas da Q-05 | Uma lista recebida de `split()` comprova o assunto da Lista 3? |
+| `dict(a=1)`, `d.update(a=1)`, `enumerate(v, start=1)` na L5 | Argumento nomeado → R-04 (Q-02 c: só `end=` consta) | Os argumentos nomeados de `dict()`, `update()` e o `start=` do `enumerate()` fazem parte do que a Lista 5 ensina? `enumerate(v, 1)` e `dict(zip(...))` já passam. |
+| `for a, b in pares:` e `for x, y in d.values():` na L5 ou L6 | `target:for_unpack` → R-63 (condição não atendida): o `for` não percorre `zip()`, `enumerate()` nem `.items()` | Junto com o caso da R-40 acima: vários nomes no `for` valem para qualquer sequência de pares a partir da L3? |
+| `f = lambda n: f(n - 1) if n else 0` na L6 | Não conta como recursão (só funções com `def` entram no grafo): R-68 | Recursão por `lambda` comprova o assunto da Lista 6? |
 
-**Para a Sprint 23 (não é decisão nova, é consequência da Q-04):** a R-37 vai até a L4, e o
-`target:for_unpack` só é permitido por ela. Quando a R-64 liberar o `zip` na L5, ela precisa casar
-também o `target:for_unpack` com o mesmo predicado, senão `for a, b in zip(x, y)` cairia na R-04 na
-L5 e na L6.
+**Consequência da Q-02 (c) na Lista 5:** `sorted(v, key=lambda x: ...)`, o uso mais comum de
+`lambda`, continua na R-04 pelo `key=`. O `lambda` em si (R-67) é permitido: atribuído a um nome,
+chamado ou passado a uma função do aluno.
 
 ## Decisões aplicadas
 
@@ -80,7 +91,7 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 | Regra | Fatos | Situação |
 |---|---|---|
 | R-01 | Override por questão (`questions/<id>.yaml`) | Sprint 24 |
-| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3 e L4 na 22; L5 e L6 na 23 |
+| R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3 e L4 na 22; L5 na 23 (na L6, a exigência é a R-68) |
 | R-03 | Semântica do motor: `since_list ≤ lista ≤ until_list` | Meta-regra no `base.yaml` |
 | R-04 | Semântica do motor: fato sem regra → violação `NAO_CONSTA` | Meta-regra no `base.yaml` |
 | R-05 | `node:Import`, `node:ImportFrom` | No ruleset |
@@ -121,5 +132,9 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 | R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | No ruleset (Sprint 22) |
 | R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | No ruleset (Sprint 22) |
 | R-59–R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi`. `param:default` e `derived:nested_function` ficam na R-04 (Q-02 f) | No ruleset (Sprint 22) |
-| R-61–R-67 | `node:Dict`; `builtin:dict`, `enumerate`, `zip` (livre); `method:keys`, `values`, `items`, `get`, `update`; `node:Lambda` | Sprint 23 |
-| R-68 | `derived:recursion` (exigência na Lista 6) | Sprint 23 |
+| R-61–R-62 | `node:Dict`; `builtin:dict`. Dict comprehension e `**` num dicionário ficam na R-04 (Q-02 e) | No ruleset (Sprint 23) |
+| R-63 | `builtin:enumerate`; `target:for_unpack` com `enumerate_in_for_header` | No ruleset (Sprint 23) |
+| R-64 | `builtin:zip` (livre, Q-04); `target:for_unpack` com `zip_in_for_header` (`min: 1`) | No ruleset (Sprint 23) |
+| R-65–R-66 | `method:keys`, `values`, `items`; `target:for_unpack` com `items_in_for_header`; `method:get`, `update` | No ruleset (Sprint 23) |
+| R-67 | `node:Lambda` (valor padrão de parâmetro segue na R-04, Q-02 f) | No ruleset (Sprint 23) |
+| R-68 | `derived:recursion` (exigência na Lista 6, C-03) | No ruleset (Sprint 23) |

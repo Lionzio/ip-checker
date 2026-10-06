@@ -18,12 +18,11 @@ e descarta tudo depois. O acesso é só da equipe; alunos não têm conta.
 | Aponta construções proibidas em todas as listas (`import`, `try`, `break`, `None`, sets, classes...) | Não testa se a resposta está certa: isso continua com o Dikastis |
 | Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Não considera ainda as regras específicas de cada questão: **se o enunciado liberar algo, vale o enunciado** |
 | Aponta o que não consta no documento de permissões (por exemplo, `eval`) | Não decide se houve plágio: a porcentagem é um indício, e a decisão é da equipe |
-| Exige o assunto da lista (Lista 1: `if` ou ternário; Lista 2: `for` ou `while`; Lista 3: uma lista ou tupla; Lista 4: um `def`) | Não guarda nem registra o código de ninguém |
+| Exige o assunto da lista (Lista 1: `if` ou ternário; Lista 2: `for` ou `while`; Lista 3: uma lista ou tupla; Lista 4: um `def`; Lista 5: um dicionário; Lista 6: recursão) | Não guarda nem registra o código de ninguém |
 | Mostra erros de sintaxe com linha e coluna, em português | Não substitui a leitura do documento de permissões |
 
-Por enquanto, estão liberadas as **Listas 1 (comandos condicionais), 2 (laços de repetição),
-3 (listas e tuplas) e 4 (funções e escopo de variável)**. As Listas 5 e 6 entram ao longo do
-período.
+Estão liberadas as seis listas: **1 (comandos condicionais), 2 (laços de repetição), 3 (listas e
+tuplas), 4 (funções e escopo de variável), 5 (dicionários) e 6 (recursão)**.
 
 Na Lista 3, o assunto é comprovado por uma lista ou tupla escrita no código (`[1, 2]`, `(1, 2)`,
 `a, b = ...`), por `list()`, `tuple()` ou por uma *list comprehension*; uma lista que só vem de
@@ -34,6 +33,16 @@ Na Lista 2, o `zip()` segue a condição do documento: só serve para variar mai
 comando `for`. Então `for a, b in zip(nomes, notas):` passa, e o `zip()` em qualquer outro lugar
 (`z = zip(a, b)`, com uma sequência só ou dentro de outra chamada) aparece com a R-37. Vários nomes
 no `for` (`for a, b in ...`) só passam junto com esse `zip()`.
+
+Na Lista 5, o assunto é comprovado por um dicionário escrito no código (`{"a": 1}`) ou por `dict()`;
+uma *dict comprehension* não consta no documento e aparece com a R-04. O `zip()` fica livre, e
+vários nomes no `for` passam quando o `for` percorre `zip()`, `enumerate()` ou `.items()`
+(`for chave, valor in d.items():`). O `lambda` é permitido, mas `key=` (como em
+`sorted(v, key=lambda x: x[1])`) continua sem constar no documento.
+
+Na Lista 6, toda questão precisa de recursão: uma função com `def` que chama a si mesma, direta ou
+indiretamente (`f` chama `g`, que chama `f`). Chamar a função várias vezes fora dela não é
+recursão, e um `lambda` que chama a si mesmo não conta.
 
 ## Entrar na equipe
 
@@ -133,6 +142,9 @@ só os botões que o seu cargo permite, e o servidor confere de novo a cada aç�
   conta e encerra as sessões dela: quem nunca foi monitor-chefe vira **Ex-monitor**, quem já foi vira
   **Conselheiro**, e um professor fica **inativo**.
 - **Ex-monitores, conselheiros e inativos**: reative com um cargo.
+- **Registro de ações** (só o desenvolvedor e os professores veem): quem aprovou, recusou, alterou o
+  cargo, removeu ou reativou cada conta nos últimos 12 meses, e quando. Ninguém edita nem apaga o
+  registro; depois de 12 meses, cada ação sai sozinha.
 
 | Seu cargo | Aprova cadastros | Atribui cargo, altera cargo e remove contas de |
 |---|---|---|
@@ -176,8 +188,8 @@ Ele respeita as permissões da lista. Se a resposta está certa, só o Dikastis 
 **Por que `print("oi")` sozinho dá "Exigência não atendida"?**
 Toda questão precisa usar o assunto da lista: na Lista 1, um comando condicional (`if`, com ou sem
 `elif`/`else`) ou o operador ternário; na Lista 2, um laço (`for` ou `while`); na Lista 3, uma lista
-ou tupla; na Lista 4, uma função com `def`. Um `if` ou um `for` dentro de um texto ou de um
-comentário não conta.
+ou tupla; na Lista 4, uma função com `def`; na Lista 5, um dicionário; na Lista 6, recursão (R-68).
+Um `if` ou um `for` dentro de um texto ou de um comentário não conta.
 
 **O enunciado da questão libera algo que o IP-Checker aponta. E agora?**
 Vale o enunciado. Nesse caso, a violação pode ser ignorada, inclusive no feedback, que você pode

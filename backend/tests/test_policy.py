@@ -59,11 +59,12 @@ def test_construct_of_a_later_list_is_out_of_the_list(base_ruleset: CompiledRule
 
 
 def test_construct_absent_from_the_document_is_denied(base_ruleset: CompiledRuleset) -> None:
-    found = violations("f = lambda x: x\n", 1, base_ruleset)
+    # Desde a Sprint 23, o lambda é da Lista 5 (R-67); assert não consta em nenhuma lista.
+    found = violations("assert 1 > 0\n", 6, base_ruleset)
 
     assert summary(found) == [("R-04", "NAO_CONSTA", 1)]
-    assert found[0].construct == "node:Lambda"
-    assert found[0].message.startswith("'lambda' não consta no documento")
+    assert found[0].construct == "node:Assert"
+    assert found[0].message.startswith("'assert' não consta no documento")
 
 
 def test_eval_is_denied_by_default(base_ruleset: CompiledRuleset) -> None:
@@ -100,14 +101,14 @@ def test_same_rule_at_the_same_position_is_reported_once(base_ruleset: CompiledR
 
 
 def test_violations_are_sorted_and_truncated(base_ruleset: CompiledRuleset) -> None:
-    # Na Lista 5 ainda não há exigência ativa (Sprint 23): só as 5 violações R-13.
-    parsed = parse_source("x = None\n" * 5, target=(3, 13))
+    # O dicionário cumpre a exigência da Lista 5 (R-02): sobram as 5 violações R-13.
+    parsed = parse_source("d = {}\n" + "x = None\n" * 5, target=(3, 13))
     assert isinstance(parsed, ParsedSource)
     facts = extract_facts(parsed)
 
     found, truncated = evaluate(facts, base_ruleset, 5, max_violations=3)
 
-    assert [v.line for v in found] == [1, 2, 3]
+    assert [v.line for v in found] == [2, 3, 4]
     assert truncated
     assert evaluate(facts, base_ruleset, 5)[1] is False
 
@@ -245,9 +246,10 @@ def test_requirement_comes_first_and_is_never_truncated(base_ruleset: CompiledRu
 
 
 def test_requirements_only_apply_to_their_list(base_ruleset: CompiledRuleset) -> None:
-    # A Lista 5 ainda não tem exigência ativa (Sprint 23).
-    assert all_violations("n = int(input())\nprint(n)\n", 5, base_ruleset) == []
+    # Na Lista 5, sem if, sem laço e sem def, só a exigência dela (dicionário) conta.
+    assert all_violations("d = {'n': int(input())}\nprint(d)\n", 5, base_ruleset) == []
     assert [r.id for r in base_ruleset.requirements_for(1)] == ["R-02"]
     assert [r.id for r in base_ruleset.requirements_for(2)] == ["R-02"]
     assert [r.id for r in base_ruleset.requirements_for(4)] == ["R-02"]
-    assert base_ruleset.requirements_for(5) == ()
+    assert [r.id for r in base_ruleset.requirements_for(5)] == ["R-02"]
+    assert [r.id for r in base_ruleset.requirements_for(6)] == ["R-68"]

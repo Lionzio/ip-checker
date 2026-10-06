@@ -126,7 +126,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/gerenciar"
               element={
                 state.status === "signed-in" && state.account.can_manage ? (
-                  <Admin client={client} />
+                  <Admin client={client} canViewLog={state.account.can_view_log} />
                 ) : (
                   <Navigate to={state.status === "signed-in" ? "/" : "/entrar"} replace />
                 )

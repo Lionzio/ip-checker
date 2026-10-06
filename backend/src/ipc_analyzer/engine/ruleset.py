@@ -162,7 +162,12 @@ def _validate_message(value: str) -> str:
 #: Predicados contextuais implementados pelo motor (``engine/conditions.py``) e os parâmetros
 #: que cada um aceita. Um predicado novo exige código e ADR (5.2.3).
 _PREDICATE_PARAMS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {"call_args": frozenset({"min", "max"}), "zip_in_for_header": frozenset({"min"})}
+    {
+        "call_args": frozenset({"min", "max"}),
+        "zip_in_for_header": frozenset({"min"}),
+        "enumerate_in_for_header": frozenset(),
+        "items_in_for_header": frozenset(),
+    }
 )
 KNOWN_PREDICATES: frozenset[str] = frozenset(_PREDICATE_PARAMS)
 

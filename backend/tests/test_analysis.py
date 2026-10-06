@@ -19,7 +19,7 @@ def test_valid_code(base_ruleset: CompiledRuleset) -> None:
 
     assert result.status == "valid"
     assert result.violations == ()
-    assert result.ruleset_version == "2026.2.2"
+    assert result.ruleset_version == "2026.2.3"
     assert result.list_number == 1
     assert not result.truncated
 
@@ -88,6 +88,25 @@ def test_zip_in_for_header_predicate(zip_header_args: int | None, expected: bool
     condition = Condition(predicate="zip_in_for_header", params={"min": 2})
 
     assert holds(condition, fact) is expected
+
+
+@pytest.mark.parametrize(
+    ("predicate", "for_header", "expected"),
+    [
+        ("enumerate_in_for_header", "enumerate", True),
+        ("enumerate_in_for_header", "items", False),
+        ("enumerate_in_for_header", None, False),
+        ("items_in_for_header", "items", True),
+        ("items_in_for_header", "enumerate", False),
+        ("items_in_for_header", None, False),
+    ],
+)
+def test_enumerate_and_items_predicates(
+    predicate: str, for_header: str | None, expected: bool
+) -> None:
+    fact = Fact("target:for_unpack", 1, 5, 1, 9, for_header=for_header)
+
+    assert holds(Condition(predicate=predicate), fact) is expected
 
 
 def test_missing_condition_always_holds() -> None:

@@ -403,3 +403,99 @@ def test_extraction_of_1000_lines_is_fast() -> None:
 def test_function_inside_function_is_marked(source: str, nested: list[tuple[int, int]]) -> None:
     # Q-02 (f): função aninhada não consta; o def de dentro leva derived:nested_function.
     assert [(f.line, f.col) for f in facts(source) if f.name == "derived:nested_function"] == nested
+
+
+def header_marks(source: str) -> list[tuple[int, str | None, int | None]]:
+    return [
+        (fact.col, fact.for_header, fact.zip_header_args)
+        for fact in facts(source)
+        if fact.name == "target:for_unpack"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        # enumerate() built-in e x.items() como o iterável do for marcam o alvo (R-63 e R-65).
+        ("for i, x in enumerate('ab'):\n    print(i)\n", [(5, "enumerate", None)]),
+        ("d = {}\nfor k, v in d.items():\n    print(k)\n", [(5, "items", None)]),
+        ("for a, b in zip('a', 'b'):\n    print(a)\n", [(5, None, 2)]),
+        # Um enumerate do aluno, .items() com argumento e .values() não marcam.
+        ("enumerate = 1\nfor i, x in enumerate:\n    print(i)\n", [(5, None, None)]),
+        ("d = {}\nfor k, v in d.items(1):\n    print(k)\n", [(5, None, None)]),
+        ("d = {}\nfor k, v in d.values():\n    print(k)\n", [(5, None, None)]),
+        # Dentro de outra chamada do cabeçalho, ou numa compreensão, não é o comando for.
+        ("for i, x in list(enumerate('ab')):\n    print(i)\n", [(5, None, None)]),
+        ("x = [i for i, c in enumerate('ab')]\n", []),
+    ],
+    ids=[
+        "enumerate",
+        "items",
+        "zip",
+        "shadowed",
+        "items-with-arg",
+        "values",
+        "wrapped",
+        "comprehension",
+    ],
+)
+def test_enumerate_and_items_in_the_for_header_are_marked(
+    source: str, expected: list[tuple[int, str | None, int | None]]
+) -> None:
+    assert header_marks(source) == expected
+
+
+def recursive_lines(source: str) -> list[int]:
+    return [fact.line for fact in facts(source) if fact.name == "derived:recursion"]
+
+
+@pytest.mark.parametrize(
+    ("source", "lines"),
+    [
+        ("def f(n):\n    return f(n - 1)\n", [1]),
+        # Recursão mútua (C-03): cada def do ciclo leva o fato.
+        ("def a(n):\n    return b(n)\ndef b(n):\n    return a(n)\n", [1, 3]),
+        (
+            "def a():\n    return b()\ndef b():\n    return c()\ndef c():\n    return a()\n",
+            [1, 3, 5],
+        ),
+        # Só quem está no ciclo: g chama f, mas ninguém chama g.
+        ("def f(n):\n    return f(n)\ndef g():\n    return f(1)\n", [1]),
+        # Não é recursão: chamada no módulo, referência sem chamada, parâmetro e lambda.
+        ("def f(n):\n    return n\nprint(f(f(1)))\n", []),
+        ("def f(n):\n    return f\n", []),
+        ("def f(g):\n    return g(1)\n", []),
+        # Um parâmetro ou uma variável local com o nome da função esconde o def.
+        ("def f(f):\n    return f(1)\n", []),
+        ("def f(n):\n    f = abs\n    return f(n)\n", []),
+        ("f = lambda n: f(n - 1)\n", []),
+        ("def f():\n    g = lambda: f()\n    return g\n", []),
+    ],
+    ids=[
+        "direct",
+        "mutual",
+        "cycle-of-three",
+        "only-the-cycle",
+        "module-call",
+        "reference",
+        "parameter",
+        "parameter-named-like-the-function",
+        "local-named-like-the-function",
+        "lambda",
+        "call-inside-lambda",
+    ],
+)
+def test_recursion_is_a_cycle_in_the_call_graph(source: str, lines: list[int]) -> None:
+    assert recursive_lines(source) == lines
+
+
+def test_long_call_chain_does_not_recurse_in_the_extractor() -> None:
+    # Um ciclo com 400 funções (800 linhas): o grafo é percorrido sem recursão do Python.
+    count = 400
+    source = "".join(f"def f{i}():\n    return f{(i + 1) % count}()\n" for i in range(count))
+
+    start = time.perf_counter()
+    lines = recursive_lines(source)
+
+    assert time.perf_counter() - start < 1.0
+    assert lines == [2 * i + 1 for i in range(count)]

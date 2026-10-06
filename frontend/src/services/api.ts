@@ -14,6 +14,7 @@ import type {
   GooglePending,
   ListInfo,
   ManagedAccount,
+  ManagementLogEntry,
   MembersResponse,
   ProfileUpdate,
   RegisterRequest,
@@ -165,6 +166,10 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     },
     async reactivate(id, role) {
       await call<null>(`/api/v1/admin/members/${encodeURIComponent(id)}/reactivate`, json("POST", { role }));
+    },
+    async managementLog(signal) {
+      const body = await call<{ items: ManagementLogEntry[] }>("/api/v1/admin/log", { method: "GET" }, signal);
+      return body.items;
     },
   };
 }

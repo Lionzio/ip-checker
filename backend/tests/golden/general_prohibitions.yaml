@@ -21,7 +21,7 @@
   code: |
     x = 1
     import os as sistema
-  expect: [R-05 ANULACAO 2]
+  expect: [R-68 EXIGENCIA 1, R-05 ANULACAO 2]
 
 - id: R-06-try-except-L1
   rule: R-06
@@ -52,7 +52,7 @@
         x = 1
     finally:
         x = 2
-  expect: [R-06 ANULACAO 1]
+  expect: [R-06 ANULACAO 1, R-68 EXIGENCIA 1]
 
 - id: R-07-set-literal-L1
   rule: R-07
@@ -103,7 +103,7 @@
   list: 6
   code: |
     sair = exit
-  expect: [R-08 ANULACAO 1]
+  expect: [R-68 EXIGENCIA 1, R-08 ANULACAO 1]
 
 - id: R-09-class-L1
   rule: R-09
@@ -118,8 +118,8 @@
   list: 1
   code: |
     C = type("C", (), {})
-  # type com 3 argumentos cria classe (Q-07); a tupla e o dicionário ainda não constam.
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-09 ANULACAO 1, R-40 FORA_DA_LISTA 1]
+  # type com 3 argumentos cria classe (Q-07); a tupla (L3) e o dicionário (L5) são de listas posteriores.
+  expect: [R-02 EXIGENCIA 1, R-09 ANULACAO 1, R-40 FORA_DA_LISTA 1, R-61 FORA_DA_LISTA 1]
 
 - id: R-09-class-L6
   rule: R-09
@@ -127,7 +127,7 @@
   code: |
     class Vazia:
         x = 1
-  expect: [R-09 ANULACAO 1]
+  expect: [R-09 ANULACAO 1, R-68 EXIGENCIA 1]
 
 - id: R-10-star-in-call-L1
   rule: R-10
@@ -141,16 +141,16 @@
   list: 1
   code: |
     print("a", **{"end": ""})
-  # O dicionário ainda não consta (R-04).
-  expect: [R-02 EXIGENCIA 1, R-10 ANULACAO 1, R-04 NAO_CONSTA 1]
+  # O dicionário só é permitido a partir da Lista 5 (R-61).
+  expect: [R-02 EXIGENCIA 1, R-10 ANULACAO 1, R-61 FORA_DA_LISTA 1]
 
 - id: R-10-kwargs-in-lambda-L1
   rule: R-10
   list: 1
   code: |
     f = lambda **extras: 1
-  # lambda ainda não consta (R-04); **extras é R-10.
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-10 ANULACAO 1]
+  # lambda só a partir da Lista 5 (R-67); **extras é R-10.
+  expect: [R-02 EXIGENCIA 1, R-67 FORA_DA_LISTA 1, R-10 ANULACAO 1]
 
 - id: R-11-break-L2
   rule: R-11
@@ -177,7 +177,7 @@
         x -= 1
         if x == 2:
             break
-  expect: [R-11 ANULACAO 5]
+  expect: [R-68 EXIGENCIA 1, R-11 ANULACAO 5]
 
 - id: R-12-pass-in-if-L1
   rule: R-12
@@ -249,4 +249,4 @@
   list: 6
   code: |
     global contador
-  expect: [R-14 ANULACAO 1]
+  expect: [R-14 ANULACAO 1, R-68 EXIGENCIA 1]

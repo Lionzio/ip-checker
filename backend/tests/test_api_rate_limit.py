@@ -330,11 +330,14 @@ def test_saturated_service_answers_overloaded_quickly(capfd: pytest.CaptureFixtu
 
 
 def test_invalid_requests_do_not_take_a_slot() -> None:
-    settings = ApiSettings(admission=AdmissionConfig(capacity=0, max_waiting=0))
+    settings = ApiSettings(
+        admission=AdmissionConfig(capacity=0, max_waiting=0),
+        enabled_lists=frozenset({1, 2, 3, 4, 5}),
+    )
     with make_client(Analyzer(), settings) as client:
         student = new_student(client)
         # Sem nenhuma vaga, o que é recusado na validação continua recebendo o próprio erro.
-        assert error_of(validate(client, student, body={"code": "x", "list_number": 5})) == (
+        assert error_of(validate(client, student, body={"code": "x", "list_number": 6})) == (
             422,
             "LIST_NOT_ENABLED",
         )

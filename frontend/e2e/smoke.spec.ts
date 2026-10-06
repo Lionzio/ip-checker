@@ -25,7 +25,32 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   await expect(page.getByRole("option", { name: "Lista 2: Laços de repetição" })).toBeAttached();
   await expect(page.getByRole("option", { name: "Lista 3: Listas e tuplas" })).toBeAttached();
   await expect(page.getByRole("option", { name: "Lista 4: Funções e escopo de variável" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "Lista 5: Dicionários" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "Lista 6: Recursão" })).toBeAttached();
   await expect(page.getByRole("note")).toHaveCount(0);
+});
+
+test("Lista 5: dicionário com items no for passa, e o dicionário na Lista 4 é da Lista 5", async ({ page }) => {
+  const code = "estoque = {'maçã': 3}\nfor fruta, qtd in estoque.items():\n    print(fruta, estoque.get(fruta, qtd))\n";
+  await verify(page, code, "5");
+  await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
+
+  await verify(page, "def cria():\n    return {'a': 1}\nprint(cria())\n", "4");
+  const r61 = result(page).getByRole("listitem").filter({ hasText: "R-61" });
+  await expect(r61).toContainText("Fora da lista");
+  await expect(r61).toContainText("a partir da Lista 5");
+});
+
+test("Lista 6: recursão passa, e código sem recursão mostra a R-68 (US-06)", async ({ page }) => {
+  const recursive = "def fatorial(n):\n    if n <= 1:\n        return 1\n    return n * fatorial(n - 1)\nprint(fatorial(5))\n";
+  await verify(page, recursive, "6");
+  await expect(result(page).getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeVisible();
+
+  await verify(page, "def dobro(x):\n    return x * 2\nprint(dobro(3))\n", "6");
+  const r68 = result(page).getByRole("listitem").filter({ hasText: "R-68" });
+  await expect(r68).toContainText("Exigência não atendida");
+  await expect(r68).toContainText("Solução inteira");
+  await expect(r68).toContainText("recursão");
 });
 
 test("Lista 3: lista com append passa, e o append na Lista 2 é da Lista 3", async ({ page }) => {

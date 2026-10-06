@@ -16,9 +16,11 @@ from typing import Protocol
 from uuid import UUID
 
 from ipc_api.accounts.models import (
+    LOG_RETENTION_MONTHS,
     Account,
     AccountConflict,
     DeveloperSeed,
+    ManagementRecord,
     NewAccount,
     NewGoogleAccount,
     Role,
@@ -27,6 +29,7 @@ from ipc_api.accounts.models import (
     Status,
     StoreUnavailable,
     Treatment,
+    months_before,
     normalize_email,
 )
 
@@ -101,12 +104,21 @@ class AccountStore(Protocol):
         decided_by: UUID | None,
         now: datetime,
         end_sessions: bool,
+        record: ManagementRecord | None = None,
     ) -> Account | None:
         """Muda status e cargo só se a conta ainda estiver como ``expected`` (status, cargo).
 
         Devolve ``None`` se outra pessoa agiu antes. ``decided_by`` registra quem decidiu o
-        pedido; ``end_sessions`` encerra as sessões da conta na mesma transação. Receber o cargo
-        de monitor-chefe liga ``ja_foi_monitor_chefe`` para sempre (FR-27).
+        pedido; ``end_sessions`` encerra as sessões da conta e ``record`` entra no registro de
+        gerenciamento (REC-06), os dois na mesma transação. Receber o cargo de monitor-chefe liga
+        ``ja_foi_monitor_chefe`` para sempre (FR-27).
+        """
+
+    async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
+        """As ações de gerenciamento, da mais recente para a mais antiga (REC-06).
+
+        Antes de ler, apaga as de mais de 12 meses; o usuário da API não apaga nem altera o
+        registro de outro jeito.
         """
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
@@ -155,6 +167,8 @@ class MemoryAccountStore:
         self.email_tokens: dict[bytes, _EmailToken] = {}
         #: Quem decidiu cada pedido e quando (``decided_by`` e ``decided_at`` no banco).
         self.decisions: dict[UUID, tuple[UUID, datetime]] = {}
+        #: Registro das ações de gerenciamento (``app.management_log``), na ordem em que entraram.
+        self.log: list[ManagementRecord] = []
         self.available = True
         self._lock = asyncio.Lock()
 
@@ -372,6 +386,7 @@ class MemoryAccountStore:
         decided_by: UUID | None,
         now: datetime,
         end_sessions: bool,
+        record: ManagementRecord | None = None,
     ) -> Account | None:
         self._check()
         async with self._lock:
@@ -389,7 +404,20 @@ class MemoryAccountStore:
                 self.decisions[account_id] = (decided_by, now)
             if end_sessions:
                 await self.delete_sessions(account_id)
+            if record is not None:
+                self._purge_log(now)
+                self.log.append(record)
             return updated
+
+    async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
+        self._check()
+        async with self._lock:
+            self._purge_log(now)
+            return list(reversed(self.log))[:limit]
+
+    def _purge_log(self, now: datetime) -> None:
+        oldest = months_before(now, LOG_RETENTION_MONTHS)
+        self.log = [record for record in self.log if record.at >= oldest]
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
         self._check()

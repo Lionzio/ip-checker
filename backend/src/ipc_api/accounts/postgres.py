@@ -18,6 +18,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    ManagementRecord,
     NewAccount,
     NewGoogleAccount,
     Role,
@@ -59,6 +60,19 @@ UPDATE app.account SET
 WHERE id = $1 AND status = $6::app.status AND role IS NOT DISTINCT FROM $7::app.role
 RETURNING id
 """
+_LOG_INSERT = """
+INSERT INTO app.management_log (
+    at, action, actor_id, actor_name, actor_role, target_id, target_name,
+    from_status, to_status, from_role, to_role
+) VALUES ($1, $2, $3, $4, $5::app.role, $6, $7, $8::app.status, $9::app.status,
+          $10::app.role, $11::app.role)
+"""
+_LOG_SELECT = """
+SELECT at, action, actor_id, actor_name, actor_role::text AS actor_role, target_id, target_name,
+       from_status::text AS from_status, to_status::text AS to_status,
+       from_role::text AS from_role, to_role::text AS to_role
+FROM app.management_log ORDER BY at DESC, id DESC LIMIT $1
+"""
 _SESSION = """
 SELECT s.account_id, s.created_at, s.last_seen_at, s.expires_at
 FROM app.session s WHERE s.token_hash = $1
@@ -79,6 +93,30 @@ def _account(row: Any) -> Account:
         emails=tuple(row["emails"]),
         created_at=row["created_at"],
         google_sub=row["google_sub"],
+    )
+
+
+def _role(value: str | None) -> Role | None:
+    return Role(value) if value is not None else None
+
+
+def _value(role: Role | None) -> str | None:
+    return role.value if role is not None else None
+
+
+def _record(row: Any) -> ManagementRecord:
+    return ManagementRecord(
+        at=row["at"],
+        action=row["action"],
+        actor_id=row["actor_id"],
+        actor_name=row["actor_name"],
+        actor_role=_role(row["actor_role"]),
+        target_id=row["target_id"],
+        target_name=row["target_name"],
+        from_status=Status(row["from_status"]),
+        to_status=Status(row["to_status"]),
+        from_role=_role(row["from_role"]),
+        to_role=_role(row["to_role"]),
     )
 
 
@@ -394,6 +432,7 @@ class PostgresAccountStore:
         decided_by: UUID | None,
         now: datetime,
         end_sessions: bool,
+        record: ManagementRecord | None = None,
     ) -> Account | None:
         old_status, old_role = expected
         async with _guard(), self._pool.acquire() as connection, connection.transaction():
@@ -413,8 +452,30 @@ class PostgresAccountStore:
                 await connection.execute(
                     "DELETE FROM app.session WHERE account_id = $1", account_id
                 )
+            if record is not None:
+                await connection.fetchval("SELECT app.purge_management_log($1)", now)
+                await connection.execute(
+                    _LOG_INSERT,
+                    record.at,
+                    record.action,
+                    record.actor_id,
+                    record.actor_name,
+                    _value(record.actor_role),
+                    record.target_id,
+                    record.target_name,
+                    record.from_status.value,
+                    record.to_status.value,
+                    _value(record.from_role),
+                    _value(record.to_role),
+                )
             row = await connection.fetchrow(_BY_ID, account_id)
         return _account(row)
+
+    async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            await connection.fetchval("SELECT app.purge_management_log($1)", now)
+            rows = await connection.fetch(_LOG_SELECT, limit)
+        return [_record(row) for row in rows]
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
         async with _guard():

@@ -32,6 +32,11 @@ export function Privacy() {
         desenvolvedor, os professores e os monitores-chefe acessam. O tratamento só você vê, e ele é
         usado apenas para escrever o feedback.
       </p>
+      <p>
+        Cada aprovação, recusa, mudança de cargo, remoção e reativação entra num registro de ações, com o
+        nome e o cargo de quem agiu e de quem recebeu a ação, a mudança e a data. Só o desenvolvedor e os
+        professores o veem, ninguém o edita, e cada ação é apagada depois de 12 meses.
+      </p>
 
       <h3 className="text-lg font-semibold">Código dos alunos</h3>
       <p>
@@ -71,8 +76,9 @@ export function Privacy() {
 
       <h3 className="text-lg font-semibold">Saída da equipe</h3>
       <p>
-        Uma conta removida não é apagada: perde o acesso e guarda só o necessário ao histórico da
-        equipe (nome, cargo e datas). Para corrigir os seus dados, use o perfil; para outros pedidos
+        Uma conta removida não é apagada: perde o acesso e as sessões, e os dados ficam guardados para
+        que a pessoa possa voltar à equipe, como acontece com monitores em outros períodos, sem um
+        novo cadastro. Para corrigir os seus dados, use o perfil; para outros pedidos
         sobre eles, fale com o desenvolvedor da plataforma ou com a coordenação da disciplina.
       </p>
 

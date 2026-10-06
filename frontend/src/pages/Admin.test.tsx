@@ -144,6 +144,35 @@ describe("Gerenciamento da equipe (S15-03, FR-28)", () => {
     expect(screen.getByRole("button", { name: "Aprovar Ana Pereira" })).toBeEnabled();
   });
 
+  it("mostra no registro de ações quem aprovou e o que mudou (REC-06)", async () => {
+    const client = manager();
+    const user = renderAt(client);
+
+    const log = await screen.findByRole("region", { name: /Registro de ações/ });
+    expect(within(log).getByText("Nenhuma ação registrada nos últimos 12 meses.")).toBeInTheDocument();
+
+    const pending = section(/Pedidos pendentes/);
+    await user.selectOptions(within(pending).getByRole("combobox"), "Monitor-chefe");
+    await user.click(within(pending).getByRole("button", { name: "Aprovar Ana Pereira" }));
+
+    await waitFor(() => expect(within(section(/Registro de ações/)).getAllByRole("row")).toHaveLength(2));
+    const entry = within(section(/Registro de ações/)).getAllByRole("row")[1];
+    expect(entry).toHaveTextContent("Professora de Demonstração");
+    expect(entry).toHaveTextContent("Aprovou Ana Pereira");
+    expect(entry).toHaveTextContent("Pendente → Ativo (Monitor-chefe)");
+  });
+
+  it("não mostra o registro de ações a quem gerencia sem ser professor nem desenvolvedor", async () => {
+    const chefe = { ...DEMO_MANAGER, role: "monitor_chefe" as const, role_label: "Monitor-chefe", can_view_log: false };
+    const client = createMockClient({ latencyMs: 0, signedIn: true, as: chefe });
+    const managementLog = vi.spyOn(client, "managementLog");
+    renderAt(client);
+
+    expect(await screen.findByRole("region", { name: /Membros ativos/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Registro de ações/ })).not.toBeInTheDocument();
+    expect(managementLog).not.toHaveBeenCalled();
+  });
+
   it("oferece nova tentativa quando as listas não carregam", async () => {
     const client = manager();
     const listMembers = client.listMembers.bind(client);

@@ -31,8 +31,23 @@ def _zip_in_for_header(fact: Fact, params: Mapping[str, int]) -> bool:
     return fact.zip_header_args is not None and fact.zip_header_args >= params["min"]
 
 
+def _enumerate_in_for_header(fact: Fact, _params: Mapping[str, int]) -> bool:
+    """O fato é o alvo de um ``for`` cujo iterável é ``enumerate(...)`` (R-63, Sprint 23)."""
+    return fact.for_header == "enumerate"
+
+
+def _items_in_for_header(fact: Fact, _params: Mapping[str, int]) -> bool:
+    """O fato é o alvo de um ``for`` cujo iterável é ``x.items()`` (R-65, Sprint 23)."""
+    return fact.for_header == "items"
+
+
 PREDICATES: Mapping[str, Predicate] = MappingProxyType(
-    {"call_args": _call_args, "zip_in_for_header": _zip_in_for_header}
+    {
+        "call_args": _call_args,
+        "zip_in_for_header": _zip_in_for_header,
+        "enumerate_in_for_header": _enumerate_in_for_header,
+        "items_in_for_header": _items_in_for_header,
+    }
 )
 
 

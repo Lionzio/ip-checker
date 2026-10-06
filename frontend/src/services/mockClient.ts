@@ -12,6 +12,7 @@ import type {
   Account,
   ListInfo,
   ManagedAccount,
+  ManagementLogEntry,
   Role,
   SimilarityBand,
   ValidateRequest,
@@ -21,12 +22,14 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.2";
+const RULESET_VERSION = "2026.2.3";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },
   { number: 3, title: "Listas e tuplas" },
   { number: 4, title: "Funções e escopo de variável" },
+  { number: 5, title: "Dicionários" },
+  { number: 6, title: "Recursão" },
 ];
 export const DEMO_ACCOUNT: Account = {
   name: "Monitora de Demonstração",
@@ -37,6 +40,7 @@ export const DEMO_ACCOUNT: Account = {
   role_label: "Monitor",
   has_password: true,
   can_manage: false,
+  can_view_log: false,
 };
 /** Uma conta que gerencia a equipe, para os testes da tela de gerenciamento (Sprint 15). */
 export const DEMO_MANAGER: Account = {
@@ -46,6 +50,7 @@ export const DEMO_MANAGER: Account = {
   role: "professor",
   role_label: "Professor",
   can_manage: true,
+  can_view_log: true,
 };
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -262,8 +267,8 @@ function simulateScenario(code: string): Promise<never> | null {
   }
 }
 
-/** A exigência do assunto de cada lista (R-02, Q-05), só para a simulação. */
-const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string }> = {
+/** A exigência do assunto de cada lista (R-02, Q-05; R-68 na Lista 6), só para a simulação. */
+const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string; ruleId?: string }> = {
   1: {
     pattern: /\bif\b/,
     message:
@@ -282,6 +287,18 @@ const SIMULATED_REQUIREMENTS: Record<number, { pattern: RegExp; message: string 
   4: {
     pattern: /\bdef\b/,
     message: "A solução não usa o assunto da Lista 4: é obrigatório definir uma função com def. Sem ela, a questão é anulada.",
+  },
+  5: {
+    pattern: /\{|\bdict\(/,
+    message:
+      "A solução não usa o assunto da Lista 5: é obrigatório usar um dicionário (literal ou dict()). Sem ele, a questão é anulada.",
+  },
+  6: {
+    // Aproximação: um def que chama o próprio nome no corpo (o motor real usa o grafo de chamadas).
+    pattern: /^def\s+(\w+)\s*\(.*\n(?:[ \t]+.*\n)*?[ \t]+.*\b\1\s*\(/m,
+    ruleId: "R-68",
+    message:
+      "A solução não usa o assunto da Lista 6: é obrigatória a recursão, uma função que chama a si mesma, direta ou indiretamente. Sem ela, a questão é anulada.",
   },
 };
 
@@ -333,6 +350,38 @@ export function createMockClient({
     if (account === null || !account.can_manage) {
       throw new ApiError(403, "FORBIDDEN", "Você não tem permissão para esta ação.");
     }
+  }
+
+  // Registro das ações (REC-06): o simulado anota cada ação, como o backend faz na transação.
+  const log: ManagementLogEntry[] = [];
+  const ACTION_LABELS: Record<ManagementLogEntry["action"], string> = {
+    aprovar: "Aprovou",
+    recusar: "Recusou",
+    alterar_cargo: "Alterou o cargo de",
+    remover: "Removeu",
+    reativar: "Reativou",
+  };
+
+  function record(action: ManagementLogEntry["action"], id: string, change: () => void) {
+    const member = find(id);
+    const before = { status: member.status, role: member.role };
+    change();
+    log.unshift({
+      at: new Date().toISOString(),
+      action,
+      action_label: ACTION_LABELS[action],
+      actor_name: account?.name ?? "",
+      actor_role_label: account?.role_label ?? null,
+      target_name: member.name,
+      from_status: before.status,
+      from_status_label: STATUS_LABELS[before.status],
+      to_status: member.status,
+      to_status_label: STATUS_LABELS[member.status],
+      from_role: before.role,
+      from_role_label: before.role === null ? null : ROLE_LABELS[before.role],
+      to_role: member.role,
+      to_role_label: member.role === null ? null : ROLE_LABELS[member.role],
+    });
   }
 
   const client: ApiClient = {
@@ -456,34 +505,48 @@ export function createMockClient({
     async approve(id, role) {
       await wait(latencyMs);
       requireManager();
-      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
+      record("aprovar", id, () => Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] }));
     },
 
     async reject(id) {
       await wait(latencyMs);
       requireManager();
-      find(id).status = "recusado";
+      record("recusar", id, () => {
+        find(id).status = "recusado";
+      });
     },
 
     async changeRole(id, role) {
       await wait(latencyMs);
       requireManager();
-      const member = find(id);
-      Object.assign(member, { role, role_label: ROLE_LABELS[role] });
-      member.wasHeadMonitor ||= role === "monitor_chefe";
+      record("alterar_cargo", id, () => {
+        const member = find(id);
+        Object.assign(member, { role, role_label: ROLE_LABELS[role] });
+        member.wasHeadMonitor ||= role === "monitor_chefe";
+      });
     },
 
     async remove(id) {
       await wait(latencyMs);
       requireManager();
-      const member = find(id);
-      member.status = asSeen(member).removal_status ?? "ex_monitor";
+      record("remover", id, () => {
+        const member = find(id);
+        member.status = asSeen(member).removal_status ?? "ex_monitor";
+      });
+    },
+
+    async managementLog(signal) {
+      await wait(latencyMs, signal);
+      if (account === null || !account.can_view_log) {
+        throw new ApiError(403, "FORBIDDEN", "Você não tem permissão para esta ação.");
+      }
+      return [...log];
     },
 
     async reactivate(id, role) {
       await wait(latencyMs);
       requireManager();
-      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
+      record("reativar", id, () => Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] }));
     },
 
     async listLists(signal) {
@@ -538,13 +601,14 @@ export function createMockClient({
       }
 
       const violations = findViolations(request.code, request.list_number);
-      // Exigência do assunto da lista (R-02): sem ele, a solução inteira é apontada.
+      // Exigência do assunto da lista (R-02; R-68 na Lista 6): sem ele, a solução inteira é apontada.
       const requirement = SIMULATED_REQUIREMENTS[request.list_number];
       if (requirement !== undefined && !requirement.pattern.test(request.code.replace(/#.*$/gm, ""))) {
+        const ruleId = requirement.ruleId ?? "R-02";
         violations.unshift({
-          rule_id: "R-02",
+          rule_id: ruleId,
           category: "EXIGENCIA",
-          construct: "requirement:R-02",
+          construct: `requirement:${ruleId}`,
           allowed_from_list: null,
           message: requirement.message,
           line: 1,

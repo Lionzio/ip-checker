@@ -25,7 +25,7 @@ services:
       - key: IPC_HSTS
         value: "1"
       - key: IPC_ENABLED_LISTS
-        value: "1,2,3,4"
+        value: "1,2,3,4,5,6"
       # A Vercel e a borda do Render acrescentam cada uma um endereço ao X-Forwarded-For: o IP do
       # cliente é o penúltimo [PREMISSA P-15 b, a confirmar no primeiro deploy com login].
       - key: IPC_TRUSTED_PROXY_HOPS

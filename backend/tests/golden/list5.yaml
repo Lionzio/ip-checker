@@ -1,0 +1,287 @@
+# Corpus golden: permissões da Lista 5, dicionários (R-61 a R-67). Todo código da Lista 5 precisa
+# de um dicionário, literal ou dict() (R-02, Q-05). zip() é livre a partir daqui (R-64, Q-04); o
+# alvo "a, b" do for só é permitido quando o for percorre zip(), enumerate() ou .items().
+# Dict comprehension (Q-02 e), key= (Q-02 c) e valor padrão de parâmetro (Q-02 f) seguem na R-04.
+
+- id: R-61-dict-literal-L5
+  rule: R-61
+  list: 5
+  code: |
+    notas = {"ana": 7.5}
+    notas["bia"] = 8.0
+    print(notas["ana"], len(notas))
+  expect: []
+
+- id: R-61-nested-dict-and-in-L5
+  rule: R-61
+  list: 5
+  code: |
+    agenda = {"ana": {"tel": "9999"}}
+    if "ana" in agenda:
+        del agenda["ana"]
+    print(agenda)
+  expect: []
+
+- id: R-61-dict-before-list-L4
+  rule: R-61
+  list: 4
+  code: |
+    def cria():
+        return {"a": 1}
+    print(cria())
+  expect: [R-61 FORA_DA_LISTA 2]
+
+- id: R-61-dict-comprehension-L5
+  rule: R-61
+  list: 5
+  code: |
+    dobros = {x: x * 2 for x in range(3)}
+    print(dobros)
+  # Dict comprehension não consta (Q-02 e) e também não comprova o assunto da Lista 5.
+  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+
+- id: R-61-dict-unpacking-L5
+  rule: R-61
+  list: 5
+  code: |
+    a = {1: 2}
+    b = {**a}
+    print(b)
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-62-dict-call-L5
+  rule: R-62
+  list: 5
+  code: |
+    contagem = dict()
+    contagem["x"] = 1
+    print(contagem)
+  expect: []
+
+- id: R-62-dict-of-zip-L5
+  rule: R-62
+  list: 5
+  code: |
+    chaves = ["a", "b"]
+    d = dict(zip(chaves, [1, 2]))
+    print(d)
+  expect: []
+
+- id: R-62-dict-call-before-list-L3
+  rule: R-62
+  list: 3
+  code: |
+    d = dict()
+    print(d, [1])
+  expect: [R-62 FORA_DA_LISTA 1]
+
+- id: R-62-dict-keyword-arguments-L5
+  rule: R-62
+  list: 5
+  code: |
+    d = dict(a=1)
+    print(d)
+  # Argumento nomeado só consta no end= do print (Q-02 c): caso a observar no mapeamento.
+  expect: [R-04 NAO_CONSTA 1]
+
+- id: R-63-enumerate-unpacking-L5
+  rule: R-63
+  list: 5
+  code: |
+    nomes = ["ana", "bia"]
+    posicao = {}
+    for i, nome in enumerate(nomes):
+        posicao[nome] = i
+    print(posicao)
+  expect: []
+
+- id: R-63-enumerate-without-unpacking-L5
+  rule: R-63
+  list: 5
+  code: |
+    d = {}
+    for par in enumerate("ab"):
+        d[par[0]] = par[1]
+    print(d)
+  expect: []
+
+- id: R-63-enumerate-before-list-L4
+  rule: R-63
+  list: 4
+  code: |
+    def mostra(v):
+        for i, x in enumerate(v):
+            print(i, x)
+    mostra([1])
+  # Na Lista 4, vários nomes no for só valem com zip (R-37), e enumerate() é da Lista 5.
+  expect: [R-37 NAO_CONSTA 2, R-63 FORA_DA_LISTA 2]
+
+- id: R-63-enumerate-start-keyword-L5
+  rule: R-63
+  list: 5
+  code: |
+    d = {}
+    for i, x in enumerate("ab", start=1):
+        d[i] = x
+    print(d)
+  # start= não consta (Q-02 c); enumerate("ab", 1) é permitido.
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-63-unpacking-a-list-of-pairs-L5
+  rule: R-63
+  list: 5
+  code: |
+    d = {}
+    for a, b in [(1, 2)]:
+        d[a] = b
+    print(d)
+  # O for não percorre zip(), enumerate() nem .items(): caso a observar no mapeamento.
+  expect: [R-63 NAO_CONSTA 2]
+
+- id: R-64-zip-in-for-L5
+  rule: R-64
+  list: 5
+  code: |
+    d = {}
+    for chave, valor in zip("ab", [1, 2]):
+        d[chave] = valor
+    print(d)
+  expect: []
+
+- id: R-64-zip-outside-for-L5
+  rule: R-64
+  list: 5
+  code: |
+    pares = list(zip([1, 2], [3, 4]))
+    print(pares, {})
+  # Livre a partir da Lista 5 (Q-04), sem a condição da R-37.
+  expect: []
+
+- id: R-64-zip-in-comprehension-L5
+  rule: R-64
+  list: 5
+  code: |
+    somas = [a + b for a, b in zip([1], [2])]
+    print(somas, {})
+  expect: []
+
+- id: R-64-zip-outside-for-L4
+  rule: R-64
+  list: 4
+  code: |
+    def junta():
+        return list(zip([1], [2]))
+    print(junta())
+  # Até a Lista 4 vale a condição da R-37.
+  expect: [R-37 NAO_CONSTA 2]
+
+- id: R-65-items-unpacking-L5
+  rule: R-65
+  list: 5
+  code: |
+    estoque = {"maçã": 3}
+    for fruta, qtd in estoque.items():
+        print(fruta, qtd)
+  expect: []
+
+- id: R-65-keys-and-values-L5
+  rule: R-65
+  list: 5
+  code: |
+    d = {"a": 1, "b": 2}
+    print(sorted(d.keys()), sum(d.values()))
+  expect: []
+
+- id: R-65-items-before-list-L4
+  rule: R-65
+  list: 4
+  code: |
+    def pares(d):
+        return d.items()
+    print(pares([]))
+  expect: [R-65 FORA_DA_LISTA 2]
+
+- id: R-65-unpacking-values-L5
+  rule: R-65
+  list: 5
+  code: |
+    d = {"a": (1, 2)}
+    for x, y in d.values():
+        print(x, y)
+  # Só .items() libera vários nomes no for; .values() não.
+  expect: [R-63 NAO_CONSTA 2]
+
+- id: R-66-get-and-update-L5
+  rule: R-66
+  list: 5
+  code: |
+    d = {"a": 1}
+    d.update({"b": 2})
+    print(d.get("c", 0))
+  expect: []
+
+- id: R-66-get-counting-L5
+  rule: R-66
+  list: 5
+  code: |
+    contagem = {}
+    for letra in input():
+        contagem[letra] = contagem.get(letra, 0) + 1
+    print(contagem)
+  expect: []
+
+- id: R-66-get-before-list-L3
+  rule: R-66
+  list: 3
+  code: |
+    v = [1]
+    print(v.get(0))
+  expect: [R-66 FORA_DA_LISTA 2]
+
+- id: R-66-update-keyword-arguments-L5
+  rule: R-66
+  list: 5
+  code: |
+    d = {}
+    d.update(a=1)
+    print(d)
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-67-lambda-L5
+  rule: R-67
+  list: 5
+  code: |
+    d = {}
+    dobro = lambda x: x * 2
+    d["a"] = dobro(3)
+    print(d)
+  expect: []
+
+- id: R-67-lambda-before-list-L4
+  rule: R-67
+  list: 4
+  code: |
+    def f():
+        return 1
+    g = lambda x: x
+    print(f(), g(1))
+  expect: [R-67 FORA_DA_LISTA 3]
+
+- id: R-67-lambda-as-sort-key-L5
+  rule: R-67
+  list: 5
+  code: |
+    d = {"a": 2, "b": 1}
+    print(sorted(d.items(), key=lambda p: p[1]))
+  # key= não consta, nem com lambda (Q-02 c).
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-67-lambda-default-parameter-L5
+  rule: R-67
+  list: 5
+  code: |
+    d = {}
+    f = lambda x=1: x
+    print(f(), d)
+  # Valor padrão de parâmetro não consta, também no lambda (Q-02 f).
+  expect: [R-04 NAO_CONSTA 2]

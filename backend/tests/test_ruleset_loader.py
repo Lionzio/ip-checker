@@ -130,6 +130,13 @@ INVALID_CASES: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
         "parâmetro desconhecido",
     ),
     (
+        "enumerate_in_for_header com parâmetro",
+        lambda d: _second_rule(d).update(
+            match=[_conditional("target:for_unpack", "enumerate_in_for_header", {"min": 1})]
+        ),
+        "parâmetro desconhecido",
+    ),
+    (
         "parâmetro desconhecido",
         lambda d: _second_rule(d).update(match=[_conditional("builtin:type", params={"n": 1})]),
         "parâmetro desconhecido",

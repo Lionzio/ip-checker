@@ -33,6 +33,8 @@ export type Role = Account["role"];
 /** Uma conta vista no gerenciamento (Sprint 15). Nunca traz o tratamento. */
 export type ManagedAccount = Schemas["ManagedAccount"];
 export type MembersResponse = Schemas["MembersResponse"];
+/** Uma ação do registro de gerenciamento (Sprint 23, REC-06). */
+export type ManagementLogEntry = Schemas["ManagementLogEntry"];
 export type AccountStatus = ManagedAccount["status"];
 
 export type Category = Violation["category"];

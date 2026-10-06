@@ -8,6 +8,7 @@ import type {
   GoogleSignup,
   ListInfo,
   ManagedAccount,
+  ManagementLogEntry,
   MembersResponse,
   ProfileUpdate,
   RegisterRequest,
@@ -58,6 +59,8 @@ export interface AdminClient {
   changeRole(id: string, role: Role): Promise<void>;
   remove(id: string): Promise<void>;
   reactivate(id: string, role: Role): Promise<void>;
+  /** Registro das ações (Sprint 23, REC-06), da mais recente: só desenvolvedor e professores. */
+  managementLog(signal?: AbortSignal): Promise<ManagementLogEntry[]>;
 }
 
 /** Painel de plágio (Sprint 17): compara duas soluções no analisador isolado. */

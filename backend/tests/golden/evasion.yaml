@@ -160,7 +160,7 @@
   list: 1
   code: |
     f = lambda: 1
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-67 FORA_DA_LISTA 1]
 
 - id: E23-list-literal
   rule: R-04
@@ -295,4 +295,44 @@
     a = {1: 2}
     b = {**a}
   # O dicionário (R-61, Lista 5) e o '**' dentro dele, que não consta em nenhuma lista.
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-61 FORA_DA_LISTA 1, R-61 FORA_DA_LISTA 2, R-04 NAO_CONSTA 2]
+
+- id: E38-builtin-hidden-by-comprehension-target
+  rule: R-04
+  list: 4
+  code: |
+    def f(s):
+        return [v for map in [map(int, s)] for v in map]
+    print(f("12"))
+  # O iterável do 1º for de uma compreensão roda fora dela: o map(...) ainda é o built-in.
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: E39-eval-hidden-by-comprehension-target
+  rule: R-04
+  list: 5
+  code: |
+    d = {}
+    x = [eval for eval in eval(input())]
+    print(x, d)
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: E40-parameter-named-like-the-function
+  rule: R-68
+  list: 6
+  code: |
+    def f(f):
+        return f(1)
+    print(f(abs))
+  # f(1) chama o parâmetro, não o def: não há recursão.
+  expect: [R-68 EXIGENCIA 1]
+
+- id: E41-builtin-in-default-of-lambda
+  rule: R-04
+  list: 5
+  code: |
+    d = {}
+    g = lambda eval=eval: eval
+    print(g, d)
+  # O valor padrão roda fora do lambda, então eval é o built-in. O valor padrão em si (Q-02 f)
+  # está na mesma posição e sai na mesma violação R-04.
+  expect: [R-04 NAO_CONSTA 2]

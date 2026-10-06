@@ -29,7 +29,7 @@
   code: |
     if 1 < 2:
         print("ok")
-  expect: []
+  expect: [R-68 EXIGENCIA 1]
 
 - id: R-16-assignments-L1
   rule: R-16
