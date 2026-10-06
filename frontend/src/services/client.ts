@@ -13,6 +13,8 @@ import type {
   ProfileUpdate,
   RegisterRequest,
   Role,
+  ClassSolution,
+  SimilarityClassResponse,
   SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
@@ -70,6 +72,8 @@ export interface AdminClient {
 /** Painel de plágio (Sprint 17): compara duas soluções no analisador isolado. */
 export interface PlagiarismClient {
   compare(codeA: string, codeB: string, signal?: AbortSignal): Promise<SimilarityResponse>;
+  /** Uma solução contra até 100 da turma (Sprint 27): o que todos escrevem quase não conta. */
+  compareClass(code: string, solutions: ClassSolution[], signal?: AbortSignal): Promise<SimilarityClassResponse>;
 }
 
 /**

@@ -18,6 +18,7 @@ import type {
   MembersResponse,
   ProfileUpdate,
   RegisterRequest,
+  SimilarityClassResponse,
   SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
@@ -137,6 +138,13 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
       return call<SimilarityResponse>(
         "/api/v1/similarity",
         json("POST", { code_a: codeA, code_b: codeB }),
+        signal,
+      );
+    },
+    compareClass(code, solutions, signal) {
+      return call<SimilarityClassResponse>(
+        "/api/v1/similarity/batch",
+        json("POST", { code, solutions }),
         signal,
       );
     },

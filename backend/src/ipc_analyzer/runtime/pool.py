@@ -29,8 +29,16 @@ from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.feedback import FeedbackInput, feedback_input
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
+from ipc_analyzer.engine.parse import SyntaxProblem
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
-from ipc_analyzer.engine.similarity import InvalidSide, Similarity, compare_sources
+from ipc_analyzer.engine.similarity import (
+    ClassMatch,
+    ClassRejected,
+    InvalidSide,
+    Similarity,
+    compare_class,
+    compare_sources,
+)
 from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits, forbid_new_processes
 from ipc_analyzer.runtime.sandbox import SandboxMode, enforce
 
@@ -48,6 +56,8 @@ class PoolConfig:
     max_tasks: int = 500
     #: Tempo de parede máximo de uma análise, em segundos.
     timeout_s: float = 2.0
+    #: A comparação com a turma (S27-02) analisa até 101 códigos de uma vez.
+    class_timeout_s: float = 10.0
     limits: ResourceLimits = field(default_factory=ResourceLimits)
     #: Filtro seccomp do worker (S11-01). As imagens usam REQUIRED.
     sandbox: SandboxMode = SandboxMode.OPTIONAL
@@ -109,6 +119,14 @@ def _compare_in_worker(first: str, second: str) -> Similarity | InvalidSide:
     return compare_sources(first, second, target=_RULESET.target_version)
 
 
+def _compare_class_in_worker(
+    code: str, others: list[str]
+) -> SyntaxProblem | list[ClassMatch | SyntaxProblem | ClassRejected]:
+    if _RULESET is None:
+        raise RuntimeError("worker sem ruleset carregado")
+    return compare_class(code, others, target=_RULESET.target_version)
+
+
 # ---------------------------------------------------------------------------
 # Lado do processo principal.
 # ---------------------------------------------------------------------------
@@ -135,14 +153,18 @@ class AnalyzerPool:
         return bool(self._pool.active)
 
     async def run[T](
-        self, function: Callable[..., T], *args: Any, deadline: float | None = None
+        self,
+        function: Callable[..., T],
+        *args: Any,
+        deadline: float | None = None,
+        timeout_s: float | None = None,
     ) -> T:
         """Executa ``function(*args)`` num worker, com tempo limite e tradução de falhas.
 
         ``deadline`` (``time.time``) é quando quem pediu desiste: sem tempo, o pedido é recusado
         com ``DeadlineExpired`` antes, durante a fila ou no meio da análise.
         """
-        timeout = self.config.timeout_s
+        timeout = timeout_s if timeout_s is not None else self.config.timeout_s
         if deadline is None:
             future = self._pool.schedule(function, args=args, timeout=timeout)
         else:
@@ -159,9 +181,9 @@ class AnalyzerPool:
             if deadline is not None and time.time() >= deadline:
                 logger.warning("análise interrompida no prazo de quem pediu; worker substituído")
                 raise DeadlineExpired from None
-            logger.warning("análise excedeu %.1f s; worker substituído", self.config.timeout_s)
+            logger.warning("análise excedeu %.1f s; worker substituído", timeout)
             raise AnalysisLimitError(
-                f"A análise excedeu o tempo limite de {self.config.timeout_s:g} s."
+                f"A análise excedeu o tempo limite de {timeout:g} s."
             ) from None
         except MemoryError:
             logger.warning("análise excedeu o limite de memória do worker")
@@ -202,6 +224,18 @@ class AnalyzerPool:
     ) -> Similarity | InvalidSide:
         """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento."""
         return await self.run(_compare_in_worker, first, second, deadline=deadline)
+
+    async def compare_class(
+        self, code: str, others: list[str], *, deadline: float | None = None
+    ) -> SyntaxProblem | list[ClassMatch | SyntaxProblem | ClassRejected]:
+        """Uma solução contra a turma (S27-02), num worker só, com prazo próprio."""
+        return await self.run(
+            _compare_class_in_worker,
+            code,
+            others,
+            deadline=deadline,
+            timeout_s=self.config.class_timeout_s,
+        )
 
     def close(self) -> None:
         self._pool.close()  # type: ignore[no-untyped-call]

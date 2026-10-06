@@ -5,6 +5,16 @@ export interface CodeEditorHandle {
   focus(): void;
   /** Seleciona as linhas (a partir de 1), rola até elas e põe o foco no editor. */
   selectLines(first: number, last: number): void;
+  /** Rola até as linhas sem mexer no foco (o outro lado do painel de plágio, S27-03). */
+  scrollToLine(line: number): void;
+  /** A rolagem sincronizada do painel de plágio (S27-03). */
+  setScrollTop(top: number): void;
+}
+
+/** Um intervalo de linhas, a partir de 1, inclusivo. */
+export interface LineRange {
+  first: number;
+  last: number;
 }
 
 interface CodeEditorProps {
@@ -17,8 +27,12 @@ interface CodeEditorProps {
   placeholder?: string;
   /** Ctrl+Enter (Cmd+Enter no Mac): verificar sem sair do teclado. */
   onSubmitShortcut?: () => void;
-  /** Linhas marcadas no gutter, como as de uma violação escolhida no relatório. */
-  marked?: { first: number; last: number } | null;
+  /** Linhas marcadas no gutter: a violação escolhida no relatório ou os trechos em comum. */
+  marked?: LineRange | readonly LineRange[] | null;
+  /** O trecho em destaque entre os marcados (o par escolhido no painel de plágio). */
+  current?: LineRange | null;
+  /** Avisa a rolagem, para o painel de plágio rolar o outro código junto. */
+  onScrollTop?: (top: number) => void;
   ref?: Ref<CodeEditorHandle>;
 }
 
@@ -46,6 +60,8 @@ export function CodeEditor({
   placeholder = "Cole aqui a sua solução em Python",
   onSubmitShortcut,
   marked = null,
+  current = null,
+  onScrollTop,
   ref,
 }: CodeEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -54,6 +70,8 @@ export function CodeEditor({
   const escapedRef = useRef(false);
   const [notice, setNotice] = useState<string | null>(null);
   const lineCount = Math.max(value.split("\n").length, 1);
+  const ranges: readonly LineRange[] = marked === null ? [] : "first" in marked ? [marked] : marked;
+  const inRange = (line: number, range: LineRange | null) => range !== null && line >= range.first && line <= range.last;
 
   useImperativeHandle(ref, () => ({
     focus: () => areaRef.current?.focus(),
@@ -67,6 +85,18 @@ export function CodeEditor({
       area.focus();
       area.setSelectionRange(start, end);
       area.scrollTop = Math.max(0, (first - 3) * LINE_HEIGHT_PX);
+      if (gutterRef.current) gutterRef.current.scrollTop = area.scrollTop;
+    },
+    scrollToLine(line) {
+      const area = areaRef.current;
+      if (area === null) return;
+      area.scrollTop = Math.max(0, (line - 3) * LINE_HEIGHT_PX);
+      if (gutterRef.current) gutterRef.current.scrollTop = area.scrollTop;
+    },
+    setScrollTop(top) {
+      const area = areaRef.current;
+      if (area === null || area.scrollTop === top) return;
+      area.scrollTop = top;
       if (gutterRef.current) gutterRef.current.scrollTop = area.scrollTop;
     },
   }));
@@ -128,13 +158,15 @@ export function CodeEditor({
         >
           {Array.from({ length: lineCount }, (_, index) => {
             const line = index + 1;
-            const on = marked !== null && line >= marked.first && line <= marked.last;
+            const on = ranges.some((range) => inRange(line, range));
+            const active = inRange(line, current);
+            const style = active
+              ? "bg-amber-300 px-2 font-semibold text-slate-900 dark:bg-amber-600 dark:text-white"
+              : on
+                ? "bg-amber-100 px-2 font-semibold text-slate-900 dark:bg-amber-900 dark:text-amber-50"
+                : "px-2";
             return (
-              <div
-                key={line}
-                data-marked={on || undefined}
-                className={on ? "bg-amber-200 px-2 font-semibold text-slate-900 dark:bg-amber-700 dark:text-white" : "px-2"}
-              >
+              <div key={line} data-marked={on || active || undefined} data-current={active || undefined} className={style}>
                 {line}
               </div>
             );
@@ -149,6 +181,7 @@ export function CodeEditor({
           onKeyDown={keyDown}
           onScroll={(event) => {
             if (gutterRef.current) gutterRef.current.scrollTop = event.currentTarget.scrollTop;
+            onScrollTop?.(event.currentTarget.scrollTop);
           }}
           readOnly={readOnly}
           aria-busy={readOnly || undefined}

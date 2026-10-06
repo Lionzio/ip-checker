@@ -2,7 +2,10 @@
 #
 # Cada par tem dois códigos (a e b) e a faixa esperada de similaridade, em porcentagem:
 #   minimo / maximo: limites inclusivos; exato: valor exato.
-# Os pesos, o k e a janela do winnowing (engine/similarity.py) só mudam junto com este corpus.
+# Os pesos, o k e a janela do winnowing (engine/similarity.py) e as camadas da árvore canonizada
+# (engine/similarity_tree.py, ADR-07) só mudam junto com este corpus. Desde a Sprint 27, cada
+# reescrita da tabela da ADR-07 tem um par com mínimo de 95%, e soluções independentes de cada
+# lista ficam abaixo de 80%.
 # Os códigos imitam soluções reais das listas; nenhum deles é de um aluno.
 
 pares:
@@ -176,6 +179,481 @@ pares:
       else:
           extra = 0
       print(salario + extra - imposto)
+
+  - nome: adr07_linhas_independentes_trocadas
+    descricao: "ADR-07: duas linhas sem dependência entre si trocadas de lugar (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          quantidade = 0
+          soma = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_if_invertido
+    descricao: "ADR-07: o if com a condição negada e os ramos trocados (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado < 7:
+          print("Reprovado", resultado)
+      else:
+          print("Aprovado", resultado)
+
+  - nome: adr07_if_not
+    descricao: "ADR-07: if not com os ramos trocados (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if not resultado >= 7:
+          print("Reprovado", resultado)
+      else:
+          print("Aprovado", resultado)
+
+  - nome: adr07_atribuicao_aumentada
+    descricao: "ADR-07: x += y reescrito como x = x + y, com os operandos trocados (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma = soma + nota
+              quantidade = 1 + quantidade
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_operandos_trocados
+    descricao: "ADR-07: operandos de == e de comparações trocados (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if 0 == quantidade:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if 7 <= resultado:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_codigo_morto
+    descricao: "ADR-07: cópia com código morto acrescentado; a contenção denuncia o enchimento (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+      def inutil(x):
+          y = x * 2
+          z = y - 3
+          for i in range(10):
+              z = z + i
+          return z
+
+      lixo = [1, 2, 3]
+      for k in lixo:
+          k = k * 2
+
+  - nome: adr07_for_para_while
+    descricao: "ADR-07: for x in v reescrito como while com índice (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          i = 0
+          while i < len(notas):
+              nota = notas[i]
+              soma += nota
+              quantidade += 1
+              i += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_for_range_len
+    descricao: "ADR-07: for x in v reescrito como for i in range(len(v)) com v[i] (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for i in range(len(notas)):
+              soma += notas[i]
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_retorno_antecipado
+    descricao: "ADR-07: if c: return seguido do resto, reescrito com else (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade != 0:
+              return soma / quantidade
+          else:
+              return 0
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+
+  - nome: adr07_varias_reescritas
+    descricao: "ADR-07: nomes trocados, linhas reordenadas, while com índice e if invertido juntos (≥ 95%)."
+    minimo: 95.0
+    a: |
+      def media(notas):
+          soma = 0
+          quantidade = 0
+          for nota in notas:
+              soma += nota
+              quantidade += 1
+          if quantidade == 0:
+              return 0
+          return soma / quantidade
+
+      valores = [float(x) for x in input().split()]
+      resultado = media(valores)
+      if resultado >= 7:
+          print("Aprovado", resultado)
+      else:
+          print("Reprovado", resultado)
+    b: |
+      def calcula(lista):
+          n = 0
+          total = 0
+          k = 0
+          while k < len(lista):
+              total = total + lista[k]
+              n = n + 1
+              k += 1
+          if 0 != n:
+              return total / n
+          else:
+              return 0
+
+      entrada = [float(t) for t in input().split()]
+      m = calcula(entrada)
+      if 7 > m:
+          print("Reprovado", m)
+      else:
+          print("Aprovado", m)
+
+  - nome: independentes_soma_dos_digitos
+    descricao: "Lista 2: soma dos dígitos pelo texto e pela aritmética; não pode parecer plágio."
+    maximo: 79.9
+    a: |
+      numero = input()
+      soma = 0
+      for digito in numero:
+          soma += int(digito)
+      print(soma)
+    b: |
+      n = int(input())
+      total = 0
+      while n > 0:
+          total = total + n % 10
+          n = n // 10
+      print("Soma:", total)
+
+  - nome: independentes_fatorial
+    descricao: "Lista 6: fatorial por laço e por recursão; não pode parecer plágio."
+    maximo: 79.9
+    a: |
+      def fatorial(n):
+          resultado = 1
+          for i in range(2, n + 1):
+              resultado *= i
+          return resultado
+
+      print(fatorial(int(input())))
+    b: |
+      def fat(n):
+          if n <= 1:
+              return 1
+          return n * fat(n - 1)
+
+      valor = int(input())
+      print(f"{valor}! = {fat(valor)}")
+
+  - nome: independentes_vogais
+    descricao: "Lista 3: contar vogais com laço e com compreensão; não pode parecer plágio."
+    maximo: 79.9
+    a: |
+      frase = input().lower()
+      contagem = 0
+      for letra in frase:
+          if letra in "aeiou":
+              contagem += 1
+      print(contagem)
+    b: |
+      texto = input()
+      vogais = [c for c in texto.lower() if c in ("a", "e", "i", "o", "u")]
+      print("Vogais:", len(vogais))
+
+  - nome: independentes_frequencia
+    descricao: "Lista 5: frequência de palavras com get e com if/else; não pode parecer plágio."
+    maximo: 79.9
+    a: |
+      palavras = input().split()
+      frequencia = {}
+      for p in palavras:
+          frequencia[p] = frequencia.get(p, 0) + 1
+      for p, n in frequencia.items():
+          print(p, n)
+    b: |
+      texto = input()
+      contagem = dict()
+      lista = texto.split(" ")
+      i = 0
+      while i < len(lista):
+          w = lista[i]
+          if w in contagem:
+              contagem[w] += 1
+          else:
+              contagem[w] = 1
+          i += 1
+      maior = max(contagem, key=contagem.get)
+      print("Mais frequente:", maior, contagem[maior])
 
   - nome: solucoes_independentes
     descricao: O mesmo exercício resolvido de dois jeitos diferentes; não pode parecer plágio.

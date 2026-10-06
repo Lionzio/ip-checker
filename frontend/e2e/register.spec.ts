@@ -65,7 +65,9 @@ test("esqueci minha senha: o link do e-mail define a senha nova (S24-04)", async
 
   await page.goto("/entrar");
   await page.getByRole("link", { name: "Esqueci minha senha" }).click();
-  await page.getByLabel("E-mail institucional").fill(email);
+  // Espera a tela nova: sem isso, o e-mail podia cair no "Nome ou e-mail institucional" de Entrar.
+  await expect(page.getByRole("heading", { name: "Esqueci minha senha" })).toBeVisible();
+  await page.getByLabel("E-mail institucional", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Enviar o link" }).click();
   await expect(page.getByRole("status")).toContainText(`Se houver uma conta com ${email}`);
 

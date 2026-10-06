@@ -15,6 +15,7 @@ import httpx2
 from pydantic import BaseModel, ValidationError
 
 from ipc_api.schemas import (
+    AnalyzerClass,
     AnalyzerErrorResponse,
     AnalyzerFeedbackInput,
     AnalyzerHealth,
@@ -25,6 +26,8 @@ from ipc_api.schemas import (
 
 #: Teto de uma resposta do analyzer. 200 violações com mensagens longas ficam bem abaixo disso.
 MAX_RESPONSE_BYTES = 256 * 1024
+#: A comparação com a turma (S27-02) analisa até 101 códigos: o analyzer tem 10 s para ela.
+CLASS_TIMEOUT_S = 12.0
 #: O manifesto só muda quando o analyzer é reimplantado com outro ruleset.
 MANIFEST_TTL_S = 60.0
 #: O analyzer descarta o pedido quando este tempo acaba (S25-04).
@@ -76,17 +79,23 @@ class AnalyzerClient:
         await self._http.aclose()
 
     async def _request(
-        self, method: str, path: str, payload: Any = None, request_id: str | None = None
+        self,
+        method: str,
+        path: str,
+        payload: Any = None,
+        request_id: str | None = None,
+        timeout_s: float | None = None,
     ) -> tuple[int, bytes]:
+        timeout = timeout_s if timeout_s is not None else self._timeout_s
         # O mesmo request_id nos logs dos dois serviços liga a requisição à análise.
-        headers = {BUDGET_HEADER: str(int(self._timeout_s * 1000))}
+        headers = {BUDGET_HEADER: str(int(timeout * 1000))}
         if request_id:
             headers["X-Request-Id"] = request_id
         try:
             # O prazo vale para a chamada inteira, não para cada leitura: depois dele, a API
             # desiste, e o analyzer, que recebeu o mesmo prazo, também.
             async with (
-                asyncio.timeout(self._timeout_s),
+                asyncio.timeout(timeout),
                 self._http.stream(method, path, json=payload, headers=headers) as response,
             ):
                 body = bytearray()
@@ -153,6 +162,27 @@ class AnalyzerClient:
         )
         if status == 200:
             return _parse(AnalyzerSimilarity, body)
+        if status in (413, 422):
+            error = _parse(AnalyzerErrorResponse, body).error
+            raise AnalyzerRejected(status, error.code, error.message)
+        raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
+
+    async def similarity_class(
+        self, code: str, others: list[str], request_id: str | None = None
+    ) -> AnalyzerClass:
+        """Uma solução contra a turma (S27-02), com um prazo maior que o das outras chamadas."""
+        status, body = await self._request(
+            "POST",
+            "/internal/similarity/class",
+            {"code": code, "others": others},
+            request_id,
+            timeout_s=CLASS_TIMEOUT_S,
+        )
+        if status == 200:
+            result = _parse(AnalyzerClass, body)
+            if result.status == "compared" and len(result.results) != len(others):
+                raise AnalyzerUnavailable("o analyzer respondeu sobre outra turma")
+            return result
         if status in (413, 422):
             error = _parse(AnalyzerErrorResponse, body).error
             raise AnalyzerRejected(status, error.code, error.message)

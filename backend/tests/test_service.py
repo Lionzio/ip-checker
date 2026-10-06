@@ -202,6 +202,12 @@ def test_similarity_compares_in_a_worker(client: TestClient) -> None:
     assert (body["status"], body["percent"]) == ("compared", 100.0)
     assert body["token_counts"][0] == body["token_counts"][1] > 0
     assert (body["syntax_error_side"], body["syntax_error"]) == (None, None)
+    # S27: as métricas por trás da porcentagem e os trechos em comum.
+    assert body["metrics"]["tree_dice"] == body["metrics"]["tree_containment"] == 100.0
+    assert body["matches"] == [
+        {"a_first": 1, "a_last": 1, "b_first": 1, "b_last": 1},
+        {"a_first": 2, "a_last": 3, "b_first": 2, "b_last": 3},
+    ]
 
 
 def test_similarity_points_to_the_code_with_a_syntax_error(client: TestClient) -> None:
@@ -288,3 +294,57 @@ def test_feedback_input_refuses_inputs_like_the_analysis(client: TestClient) -> 
 
     assert (big.status_code, big.json()["error"]["code"]) == (413, "PAYLOAD_TOO_LARGE")
     assert (nested.status_code, nested.json()["error"]["code"]) == (422, "ANALYSIS_LIMIT")
+
+
+# --- Plágio contra a turma (S27-02) ---------------------------------------------------------------
+
+
+def test_similarity_against_the_class(client: TestClient) -> None:
+    code = "valor = int(input())\nif valor > 10:\n    print('grande')\n"
+    others = [
+        code.replace("valor", "numero"),
+        "if True\n    pass\n",
+        "",
+        "n = int(input())\nfor i in range(n):\n    print(i)\n",
+    ]
+
+    response = client.post("/internal/similarity/class", json={"code": code, "others": others})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "compared"
+    copy, broken, empty, other = body["results"]
+    assert (copy["status"], copy["percent"]) == ("compared", 100.0)
+    assert copy["metrics"]["sequence"] is None
+    assert broken["status"] == "syntax_error"
+    assert broken["syntax_error"]["line"] == 1
+    assert (empty["status"], empty["message"]) == ("rejected", "O código está vazio.")
+    assert other["status"] == "compared"
+    assert other["percent"] < copy["percent"]
+
+
+def test_similarity_against_the_class_with_a_broken_target(client: TestClient) -> None:
+    response = client.post(
+        "/internal/similarity/class", json={"code": "if x\n", "others": ["x = 1\n"]}
+    )
+
+    body = response.json()
+    assert (body["status"], body["results"]) == ("syntax_error", [])
+    assert body["syntax_error"]["line"] == 1
+
+
+def test_similarity_against_the_class_refuses_a_too_big_target_and_too_many(
+    client: TestClient,
+) -> None:
+    big = client.post(
+        "/internal/similarity/class", json={"code": "#" + "a" * 51_200, "others": ["x = 1\n"]}
+    )
+    many = client.post(
+        "/internal/similarity/class", json={"code": "x = 1\n", "others": ["x = 1\n"] * 101}
+    )
+    none = client.post("/internal/similarity/class", json={"code": "x = 1\n", "others": []})
+
+    assert (big.status_code, big.json()["error"]["code"]) == (413, "PAYLOAD_TOO_LARGE")
+    assert big.json()["error"]["message"].startswith("Solução comparada: ")
+    assert many.status_code == 422
+    assert none.status_code == 422

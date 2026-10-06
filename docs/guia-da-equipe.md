@@ -155,10 +155,32 @@ mostra a similaridade, com uma casa decimal, e a faixa:
 | de 80% a menos de 90% | Ligeiramente suspeito |
 | menos de 80% | Sem suspeitas |
 
-A comparação resiste a nomes de variáveis trocados, espaços, comentários e trechos reordenados.
+A comparação resiste a nomes de variáveis trocados, espaços, comentários, funções e linhas
+reordenadas e formas equivalentes: `x += 1` e `x = x + 1`, `a > b` e `b < a`, um `if` com a
+condição negada e os ramos trocados, e um `for` reescrito como `while` com índice. Abaixo da
+porcentagem aparecem três números:
+
+- **Estrutura**: o quanto as duas árvores de código coincidem;
+- **Contenção**: o quanto do código menor está dentro do maior. Contenção alta com estrutura mais
+  baixa costuma ser uma cópia com código acrescentado para disfarçar;
+- **Sequência**: a medida antiga, pela ordem dos tokens.
+
+A similaridade é a maior delas. **Trechos em comum** lista os pares de linhas com a mesma estrutura
+("A: linhas 3–5 ↔ B: linhas 10–12"); clicar num par realça as linhas nos dois códigos e rola os
+dois até elas. Com **Rolar os dois códigos juntos** marcado, rolar um rola o outro. **Trocar A e
+B** inverte os lados, e **Limpar os dois** esvazia tudo.
+
 **O resultado é um indício, não uma prova**: leia os dois códigos antes de concluir. Em questões
 simples, soluções independentes tendem a se parecer, e a página avisa quando um dos códigos é
 curto. Os dois precisam ser Python válido; se um tiver erro de sintaxe, a página diz qual e onde.
+
+### Contra a turma
+
+Em **Contra a turma**, cole a solução que você quer conferir e, no outro campo, as soluções da
+turma, cada uma começando por uma linha `### nome` (até 100 soluções, somando até 120 KB). A
+página lista as soluções da mais parecida para a menos. Aqui, cada trecho pesa pela raridade na
+turma: o que todo mundo escreve (ler a entrada, o laço óbvio) quase não conta, então só sobe o que
+for incomum e igual. **Comparar lado a lado** abre a dupla em **Dois códigos**, com os trechos.
 
 ## Gerenciar a equipe
 

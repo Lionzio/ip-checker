@@ -34,9 +34,16 @@ from ipc_analyzer.engine.guards import (
     thousands,
 )
 from ipc_analyzer.engine.models import AnalysisResult
-from ipc_analyzer.engine.parse import require_runtime
+from ipc_analyzer.engine.parse import SyntaxProblem, require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
-from ipc_analyzer.engine.similarity import InvalidSide, Similarity
+from ipc_analyzer.engine.similarity import (
+    MAX_CLASS,
+    ClassMatch,
+    ClassRejected,
+    InvalidSide,
+    Similarity,
+)
+from ipc_analyzer.engine.similarity_tree import TreeScores
 from ipc_analyzer.logging import configure_logging
 from ipc_analyzer.runtime.pool import AnalyzerPool, DeadlineExpired
 from ipc_analyzer.service.access_log import AccessLogMiddleware
@@ -116,6 +123,31 @@ class SimilarityRequest(BaseModel):
     second: str
 
 
+class MetricsOut(BaseModel):
+    """As métricas por trás da porcentagem (S27-01), de 0 a 100, com uma casa."""
+
+    sequence: float | None
+    tree_dice: float
+    tree_containment: float
+
+    @classmethod
+    def of(cls, sequence: float | None, tree: TreeScores) -> MetricsOut:
+        return cls(
+            sequence=None if sequence is None else round(100 * sequence, 1),
+            tree_dice=round(100 * tree.dice, 1),
+            tree_containment=round(100 * tree.containment, 1),
+        )
+
+
+class MatchOut(BaseModel):
+    """Um trecho do código A com a mesma estrutura de um trecho do código B (S27-03)."""
+
+    a_first: int
+    a_last: int
+    b_first: int
+    b_last: int
+
+
 class SimilarityResponse(BaseModel):
     """Plágio (S17-02): a porcentagem, ou qual dos dois códigos tem erro de sintaxe."""
 
@@ -124,6 +156,8 @@ class SimilarityResponse(BaseModel):
     token_counts: list[int] | None
     syntax_error_side: Literal[1, 2] | None
     syntax_error: SyntaxErrorOut | None
+    metrics: MetricsOut | None = None
+    matches: list[MatchOut] = []
 
     @classmethod
     def from_result(cls, result: Similarity | InvalidSide) -> SimilarityResponse:
@@ -144,7 +178,61 @@ class SimilarityResponse(BaseModel):
             token_counts=list(result.token_counts),
             syntax_error_side=None,
             syntax_error=None,
+            metrics=MetricsOut.of(result.sequence_score, result.tree),
+            matches=[
+                MatchOut(a_first=m.a.first, a_last=m.a.last, b_first=m.b.first, b_last=m.b.last)
+                for m in result.matches
+            ],
         )
+
+
+class ClassRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    others: list[str] = Field(min_length=1, max_length=MAX_CLASS)
+
+
+class ClassItemOut(BaseModel):
+    status: Literal["compared", "syntax_error", "rejected"]
+    percent: float | None = None
+    token_count: int | None = None
+    metrics: MetricsOut | None = None
+    syntax_error: SyntaxErrorOut | None = None
+    message: str | None = None
+
+
+class ClassResponse(BaseModel):
+    """Uma solução contra a turma (S27-02): um item por solução da turma, na ordem enviada."""
+
+    status: Literal["compared", "syntax_error"]
+    syntax_error: SyntaxErrorOut | None
+    results: list[ClassItemOut]
+
+    @classmethod
+    def from_result(
+        cls, result: SyntaxProblem | list[ClassMatch | SyntaxProblem | ClassRejected]
+    ) -> ClassResponse:
+        if isinstance(result, SyntaxProblem):
+            problem = SyntaxErrorOut(line=result.line, col=result.col, message=result.message)
+            return cls(status="syntax_error", syntax_error=problem, results=[])
+        items: list[ClassItemOut] = []
+        for item in result:
+            if isinstance(item, SyntaxProblem):
+                problem = SyntaxErrorOut(line=item.line, col=item.col, message=item.message)
+                items.append(ClassItemOut(status="syntax_error", syntax_error=problem))
+            elif isinstance(item, ClassRejected):
+                items.append(ClassItemOut(status="rejected", message=item.message))
+            else:
+                items.append(
+                    ClassItemOut(
+                        status="compared",
+                        percent=item.percent,
+                        token_count=item.token_count,
+                        metrics=MetricsOut.of(None, item.tree),
+                    )
+                )
+        return cls(status="compared", syntax_error=None, results=items)
 
 
 class FeedbackItemOut(BaseModel):
@@ -366,6 +454,21 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 )
         result = await pool.compare(body.first, body.second, deadline=_deadline(request))
         response = SimilarityResponse.from_result(result)
+        request.state.outcome = response.status
+        return response
+
+    @app.post("/internal/similarity/class")
+    async def similarity_class(
+        body: ClassRequest,
+        request: Request,
+        pool: Annotated[AnalyzerPool, Depends(_pool)],
+    ) -> ClassResponse:
+        codes = [body.code, *body.others]
+        request.state.payload_bytes = sum(
+            len(code.encode("utf-8", errors="surrogatepass")) for code in codes
+        )
+        result = await pool.compare_class(body.code, body.others, deadline=_deadline(request))
+        response = ClassResponse.from_result(result)
         request.state.outcome = response.status
         return response
 

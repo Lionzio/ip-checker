@@ -1766,6 +1766,102 @@
         ]
       }
     },
+    "/api/v1/similarity/batch": {
+      "post": {
+        "tags": [
+          "plágio"
+        ],
+        "summary": "Compara uma solução com até 100 da turma (S27-02): o que toda a turma escreve quase não conta",
+        "operationId": "similarity_batch_api_v1_similarity_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimilarityClassRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarityClassResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: a solução comparada acima de 51.200 bytes, ou corpo acima de 128 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (solução comparada complexa demais).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/feedback": {
       "post": {
         "tags": [
@@ -2120,6 +2216,29 @@
           "feedback_ai"
         ],
         "title": "AuthOptions"
+      },
+      "ClassSolution": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label",
+            "description": "Como a solução aparece no resultado (um nome ou um número)."
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Uma solução da turma. Nunca é executada nem guardada."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "code"
+        ],
+        "title": "ClassSolution"
       },
       "ErrorCode": {
         "type": "string",
@@ -3140,6 +3259,245 @@
         ],
         "title": "SimilarityBand"
       },
+      "SimilarityClassItem": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "syntax_error",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityBand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "short_code": {
+            "type": "boolean",
+            "title": "Short Code"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "syntax_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyntaxErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Por que a solução foi recusada (tamanho, linhas)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "status",
+          "similarity",
+          "band",
+          "short_code",
+          "metrics",
+          "syntax_error",
+          "message"
+        ],
+        "title": "SimilarityClassItem"
+      },
+      "SimilarityClassRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "A solução a comparar com a turma."
+          },
+          "solutions": {
+            "items": {
+              "$ref": "#/components/schemas/ClassSolution"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Solutions",
+            "description": "Até 100 soluções da turma, somando até 128 KB."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "solutions"
+        ],
+        "title": "SimilarityClassRequest"
+      },
+      "SimilarityClassResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "syntax_error"
+            ],
+            "title": "Status"
+          },
+          "syntax_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyntaxErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Erro na solução comparada."
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarityClassItem"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Da mais parecida para a menos; as recusadas e com erro de sintaxe no fim."
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "status",
+          "syntax_error",
+          "results",
+          "notice"
+        ],
+        "title": "SimilarityClassResponse"
+      },
+      "SimilarityMatch": {
+        "properties": {
+          "a_first": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "A First"
+          },
+          "a_last": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "A Last"
+          },
+          "b_first": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "B First"
+          },
+          "b_last": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "B Last"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "a_first",
+          "a_last",
+          "b_first",
+          "b_last"
+        ],
+        "title": "SimilarityMatch",
+        "description": "Linhas do código A com a mesma estrutura de linhas do código B (S27-03)."
+      },
+      "SimilarityMetrics": {
+        "properties": {
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence",
+            "description": "ADR-05: tokens e estrutura em sequência. Vazia na comparação com a turma."
+          },
+          "tree_dice": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Tree Dice",
+            "description": "ADR-07: Dice das subárvores da árvore canonizada."
+          },
+          "tree_containment": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Tree Containment",
+            "description": "ADR-07: quanto do menor código está no maior (denuncia código morto)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sequence",
+          "tree_dice",
+          "tree_containment"
+        ],
+        "title": "SimilarityMetrics",
+        "description": "As métricas por trás da similaridade (S27-01, ADR-07), em porcentagem."
+      },
       "SimilarityRequest": {
         "properties": {
           "code_a": {
@@ -3218,6 +3576,25 @@
             "type": "string",
             "title": "Notice",
             "description": "O aviso de que o resultado é um indício (FR-29)."
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vazia com erro de sintaxe. A similaridade é a maior delas."
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarityMatch"
+            },
+            "type": "array",
+            "title": "Matches",
+            "description": "Os trechos em comum, na ordem do código A."
           }
         },
         "additionalProperties": false,
