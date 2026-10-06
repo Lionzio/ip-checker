@@ -102,6 +102,31 @@ async def ready(
 
 
 @router.get(
+    "/health/service",
+    tags=["operação"],
+    summary=(
+        "A API e o analisador respondem, sem consultar o banco (health check do Render): uma "
+        "oscilação do banco não derruba a instância nem trava o deploy"
+    ),
+    responses=error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não respondeu."}),
+)
+async def service_health(
+    response: Response,
+    analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
+) -> ReadyResponse:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        status = await analyzer.health()
+    except AnalyzerUnavailable as exc:
+        logger.warning("analyzer indisponível: %s", exc)
+        raise analyzer_unavailable() from None
+    return ReadyResponse(
+        status="ready", ruleset_version=status.ruleset_version, release=settings.release
+    )
+
+
+@router.get(
     "/health/slo",
     tags=["operação"],
     summary=(

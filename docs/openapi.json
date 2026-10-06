@@ -1964,6 +1964,37 @@
         }
       }
     },
+    "/health/service": {
+      "get": {
+        "tags": [
+          "operação"
+        ],
+        "summary": "A API e o analisador respondem, sem consultar o banco (health check do Render): uma oscilação do banco não derruba a instância nem trava o deploy",
+        "operationId": "service_health_health_service_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ANALYZER_UNAVAILABLE: o analisador não respondeu.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health/slo": {
       "get": {
         "tags": [

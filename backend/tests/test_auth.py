@@ -123,6 +123,8 @@ OPEN_ROUTES = {
     ("GET", "/ready"),
     # Sprint 21: o alerta de latência e erro do UptimeRobot, que não traz dado de ninguém.
     ("GET", "/health/slo"),
+    # Sprint 25: o health check do Render (API e analisador, sem o banco).
+    ("GET", "/health/service"),
     ("POST", "/api/v1/auth/login"),
     ("POST", "/api/v1/auth/logout"),
     ("POST", "/api/v1/auth/register"),

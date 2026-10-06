@@ -33,12 +33,26 @@ _ROLE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 #: Chave do advisory lock das migrações ("IPCMIGR" em hexadecimal).
 _LOCK_KEY = 0x4950434D494752
 
+#: Controle das migrações num esquema próprio, sem acesso para ninguém além do administrador.
+#: Até a Sprint 25 a tabela ficava em ``public``, que o Supabase expõe pela Data API às chaves
+#: anônimas; um banco antigo tem a tabela movida para cá na primeira execução (S25-02).
 _TRACKING = """
-CREATE TABLE IF NOT EXISTS public.ipc_schema_migrations (
+CREATE SCHEMA IF NOT EXISTS ipc_meta;
+REVOKE ALL ON SCHEMA ipc_meta FROM PUBLIC;
+DO $$
+BEGIN
+  IF to_regclass('public.ipc_schema_migrations') IS NOT NULL
+     AND to_regclass('ipc_meta.schema_migrations') IS NULL THEN
+    ALTER TABLE public.ipc_schema_migrations SET SCHEMA ipc_meta;
+    ALTER TABLE ipc_meta.ipc_schema_migrations RENAME TO schema_migrations;
+  END IF;
+END
+$$;
+CREATE TABLE IF NOT EXISTS ipc_meta.schema_migrations (
   version text PRIMARY KEY,
   name text NOT NULL,
   applied_at timestamptz NOT NULL DEFAULT now()
-)
+);
 """
 
 
@@ -73,7 +87,7 @@ def discover(directory: Path) -> list[Migration]:
 
 async def applied_versions(connection: Any) -> list[str]:
     await connection.execute(_TRACKING)
-    rows = await connection.fetch("SELECT version FROM public.ipc_schema_migrations ORDER BY 1")
+    rows = await connection.fetch("SELECT version FROM ipc_meta.schema_migrations ORDER BY 1")
     return [str(row["version"]) for row in rows]
 
 
@@ -86,7 +100,7 @@ async def migrate_up(connection: Any, migrations: Sequence[Migration]) -> list[s
         async with connection.transaction():
             await connection.execute(migration.up.read_text(encoding="utf-8"))
             await connection.execute(
-                "INSERT INTO public.ipc_schema_migrations (version, name) VALUES ($1, $2)",
+                "INSERT INTO ipc_meta.schema_migrations (version, name) VALUES ($1, $2)",
                 migration.version,
                 migration.name,
             )
@@ -107,7 +121,7 @@ async def migrate_down(connection: Any, migrations: Sequence[Migration], target:
         async with connection.transaction():
             await connection.execute(migration.down.read_text(encoding="utf-8"))
             await connection.execute(
-                "DELETE FROM public.ipc_schema_migrations WHERE version = $1", version
+                "DELETE FROM ipc_meta.schema_migrations WHERE version = $1", version
             )
         reverted.append(version)
     return reverted

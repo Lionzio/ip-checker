@@ -153,7 +153,12 @@ def _new_password() -> str:
 
 # --- Item 16: sem sessão, nada ------------------------------------------------------------------
 
-OPEN = {("GET", "/health"), ("GET", "/ready"), ("GET", "/health/slo")}
+OPEN = {
+    ("GET", "/health"),
+    ("GET", "/ready"),
+    ("GET", "/health/slo"),
+    ("GET", "/health/service"),
+}
 
 
 def test_without_a_session_every_route_answers_401_and_no_data(fresh_client: Client) -> None:

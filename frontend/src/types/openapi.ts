@@ -500,6 +500,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A API e o analisador respondem, sem consultar o banco (health check do Render): uma oscilação do banco não derruba a instância nem trava o deploy */
+        get: operations["service_health_health_service_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/slo": {
         parameters: {
             query?: never;
@@ -2795,6 +2812,35 @@ export interface operations {
                 };
             };
             /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    service_health_health_service_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. */
             503: {
                 headers: {
                     [name: string]: unknown;

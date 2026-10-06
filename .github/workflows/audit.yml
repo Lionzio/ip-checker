@@ -1,0 +1,58 @@
+name: Auditoria de segurança
+
+# Varreduras do item 14 da DoD (S25-01): segredos no histórico, vulnerabilidades conhecidas nas
+# dependências Python e npm e na imagem do piloto. Roda toda segunda-feira e à mão; por enquanto
+# não bloqueia nada (cada passo continua mesmo com achados), até a primeira triagem dos resultados.
+# Ferramentas por versão fixa e imagens por digest, como o resto da CI.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Segredos, dependências e imagem do piloto
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Segredos no histórico (gitleaks)
+        continue-on-error: true
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro"
+          zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
+          git /repo --redact --no-banner --exit-code 1
+
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          version: "0.12.21"
+      - name: Dependências Python (pip-audit)
+        continue-on-error: true
+        working-directory: backend
+        run: |
+          uv export --locked --no-hashes --no-emit-project --format requirements-txt > "$RUNNER_TEMP/requirements.txt"
+          uvx --from pip-audit==2.9.0 pip-audit --strict -r "$RUNNER_TEMP/requirements.txt"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Dependências npm (npm audit)
+        continue-on-error: true
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+      - name: Imagem do piloto (trivy)
+        continue-on-error: true
+        run: |
+          docker build -f deploy/render/Dockerfile -t ip-checker-pilot:audit .
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08 \
+            image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 ip-checker-pilot:audit

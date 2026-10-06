@@ -51,10 +51,18 @@ confere tudo isso na CI, inclusive o pior caso de 50 KB dentro dos 160 MiB por w
 
 ```
 develop ──(release: fast-forward)──> main ──> CI ──(verde)──> deploy.yml
-    migrações no banco do piloto ──> deploy hooks do Render e da Vercel
-    ──> espera a versão nova em /ready e /version.json
+    instala as ferramentas (sem segredos) ──> confere que o commit é a ponta da main
+    ──> migrações no banco do piloto ──> hook do Render ──> espera /ready com a versão nova
+    ──> hook da Vercel ──> espera /version.json com a versão nova
     ──> confere mesma origem, cabeçalhos, TLS e login (backend/tests/pilot) ──> smoke e2e com login
 ```
+
+A página só é publicada depois que a API nova está no ar (S25-02): se o Render falhar, a página
+antiga continua conversando com a API antiga. Se outra release chegar à `main` durante o deploy,
+o deploy anterior para antes de publicar, e o novo segue na fila. O deploy também pode ser
+disparado à mão em **Actions > Deploy do piloto > Run workflow** (só na `main` e só com a CI daquele
+commit verde): é assim que se faz o primeiro deploy depois de configurar as contas. O rollback está
+em [`docs/runbook.md`](../docs/runbook.md).
 
 O Render e a Vercel estão com o deploy automático desligado (`render.yaml` e `frontend/vercel.json`):
 nada vai ao ar sem a CI verde na `main`. Enquanto o piloto não estiver configurado no GitHub, o
@@ -80,9 +88,29 @@ repositório.
    Virginia), a mesma da API no Render (Q-20). Em **Project Settings > Database**, copie a
    *connection string* do **Session pooler** (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
    `postgres`: ela é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o
-   usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração do pipeline cria esse usuário.
+   usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração cria esse usuário.
    A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando `postgres` por `ipc_api`
    e a senha pela do `ipc_api`.
+
+   Ainda no Supabase, em **Project Settings > API**, desligue a **Data API**: o IP-Checker fala
+   com o banco só pela *connection string*, e a Data API exporia o esquema `public` às chaves
+   anônimas. O controle das migrações já fica num esquema próprio, `ipc_meta`, sem acesso público.
+   O plano gratuito pausa um projeto sem atividade por 7 dias; o monitor do `/ready` do passo 9
+   consulta o banco a cada 5 minutos e evita a pausa.
+
+2b. **Migrar o banco antes de criar o serviço no Render.** O `/ready` do Render consulta o banco, e o
+   primeiro build do Render acontece logo que o serviço é criado. Rode a migração da sua máquina
+   (Git Bash, na pasta do repositório), com os valores do passo 2:
+
+   ```bash
+   cd backend
+   IPC_DATABASE_ADMIN_URL='<connection string do Session pooler, usuário postgres>' \
+   IPC_DB_LOGIN_PASSWORD='<senha escolhida para o ipc_api>' \
+   uv run python -m ipc_api.db.migrate up --login-role ipc_api
+   ```
+
+   A saída lista as migrações aplicadas e não mostra nenhuma senha. Depois disso, o pipeline aplica
+   só as migrações novas a cada release.
 
 3. **E-mail (Brevo).** Em <https://www.brevo.com>, verifique o remetente (o endereço que vai em
    `IPC_EMAIL_FROM`) e crie uma chave de API em **SMTP & API > API Keys**. Antes de usar um
@@ -91,8 +119,11 @@ repositório.
 
 4. **Render.** Em <https://dashboard.render.com>, **New > Blueprint**, conecte o repositório
    `Lionzio/ip-checker` e confirme o `render.yaml`. Ele cria o serviço `ip-checker-api` (Docker,
-   plano Free, região Virginia). Anote o endereço, por exemplo `https://ip-checker-api.onrender.com`.
-   Em **Settings > Deploy Hook**, copie a URL do hook.
+   plano Free, região Virginia). O assistente pede as variáveis marcadas com `sync: false`:
+   preencha-as já ali, com os valores do passo 7, para o primeiro build subir completo. Anote o
+   endereço, por exemplo `https://ip-checker-api.onrender.com` (se o nome estiver ocupado, o Render
+   acrescenta um sufixo: use o endereço que ele mostrar). Em **Settings > Deploy Hook**, copie a URL
+   do hook.
 
 5. **Vercel.** Em <https://vercel.com/new>, importe o mesmo repositório com **Root Directory**
    `frontend` e **Framework Preset** "Other" (o `vercel.json` define instalação e build). Em
@@ -127,12 +158,33 @@ repositório.
      mais nada);
    - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel).
 
-   A partir daí, toda release na `main` migra o banco, faz o deploy e as verificações sozinha.
+   A partir daí, toda release na `main` migra o banco, faz o deploy e as verificações sozinha. Para
+   o primeiro deploy, sem esperar outra release, use **Actions > Deploy do piloto > Run workflow**,
+   escolhendo a branch `main`.
 
 9. **UptimeRobot.** Em <https://uptimerobot.com>, crie três monitores HTTP(S) com intervalo de 5 min
    e alerta por e-mail: `<endereço do Render>/ready`, `<endereço do Render>/health/slo` e
    `<endereço da Vercel>/`. O primeiro também mantém o plano gratuito do Render acordado (ADR-03);
    o segundo é o alerta de latência e de erro (seção "Telemetria e alertas").
+
+### Lista de conferência do primeiro deploy
+
+- [ ] Supabase em us-east-1, Data API desligada e migração do passo 2b aplicada.
+- [ ] Serviço do Render com todas as variáveis do passo 7; o build terminou e `/health/service`
+      responde 200.
+- [ ] `/ready` responde 200 com o `release` do commit da `main`.
+- [ ] A página da Vercel abre, e `/version.json` traz o mesmo `release`.
+- [ ] Entrar com a conta do desenvolvedor pela página da Vercel funciona: o cookie da sessão é da
+      origem da página e o *rewrite* de `/api/*` chega ao Render (P-15 a).
+- [ ] O limite por IP vê o IP real: depois de algumas verificações, o `/health/slo` conta as
+      requisições, e nenhuma pessoa da equipe recebe 429 sem motivo (P-15 b,
+      `IPC_TRUSTED_PROXY_HOPS=2`).
+- [ ] O e-mail de verificação de um cadastro de teste chega à caixa de entrada, e o link abre a
+      página da Vercel.
+- [ ] O workflow "Deploy do piloto" ficou verde, com as verificações e o smoke e2e.
+- [ ] Os três monitores do UptimeRobot estão verdes.
+
+Se algo falhar, o [`docs/runbook.md`](../docs/runbook.md) diz como voltar para a versão anterior.
 
 ### Para conferir à mão depois do deploy
 
