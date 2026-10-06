@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "./client";
 import { createMockClient, DEMO_ACCOUNT } from "./mockClient";
 
-const client = createMockClient({ latencyMs: 0 });
+const client = createMockClient({ latencyMs: 0, signedIn: true });
 const request = (code: string, list_number = 1) => ({ code, list_number, question_id: null });
 
 describe("cliente simulado", () => {
@@ -158,5 +158,38 @@ describe("cliente simulado", () => {
 
   it("pode começar com sessão", async () => {
     await expect(createMockClient({ latencyMs: 0, signedIn: true }).me()).resolves.toEqual(DEMO_ACCOUNT);
+  });
+
+  it("exige a sessão, como a API (S26-04)", async () => {
+    const anonymous = createMockClient({ latencyMs: 0 });
+    const unauthenticated = { status: 401, code: "UNAUTHENTICATED" };
+
+    await expect(anonymous.listLists()).rejects.toMatchObject(unauthenticated);
+    await expect(anonymous.validate(request("x = 1"))).rejects.toMatchObject(unauthenticated);
+    await expect(anonymous.compare("x = 1", "y = 2")).rejects.toMatchObject(unauthenticated);
+    await expect(
+      anonymous.feedback({ code: "x = 1", list_number: 1, question_id: null, student_name: "Ana", annotation: null }),
+    ).rejects.toMatchObject(unauthenticated);
+  });
+
+  it("simula o relatório cortado, o limite de análise e o texto da IA (S26-04)", async () => {
+    const truncated = await client.validate(request("# simular: truncado"));
+    expect(truncated.truncated).toBe(true);
+    expect(truncated.violations).toHaveLength(200);
+
+    await expect(client.validate(request("# simular: limite_analise"))).rejects.toMatchObject({
+      status: 422,
+      code: "ANALYSIS_LIMIT",
+    });
+
+    const ai = await client.feedback({
+      code: "# simular: ia\nif True:\n    print(1)\n",
+      list_number: 1,
+      question_id: null,
+      student_name: "Ana",
+      annotation: null,
+    });
+    expect(ai.source).toBe("llm");
+    expect(ai.provider).toBe("primary");
   });
 });

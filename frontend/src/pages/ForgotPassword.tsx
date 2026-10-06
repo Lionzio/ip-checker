@@ -2,12 +2,15 @@ import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import type { AuthClient } from "../services/client";
 import { BUTTON, errorMessage, INPUT } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * "Esqueci minha senha" (S24-04, Q-19 b): pede o link de redefinição. A resposta é sempre a
  * mesma, exista a conta ou não, para a página não revelar quem tem conta.
  */
 export function ForgotPassword({ client }: { client: AuthClient }) {
+  useDocumentTitle(PAGE_TITLES.forgot);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);

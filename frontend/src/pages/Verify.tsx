@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { AuthClient } from "../services/client";
 import { BUTTON, errorMessage } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Página do link do e-mail (S14-02). Abrir o link não confirma nada: o antivírus do e-mail costuma
  * abrir os links que recebe. Só o botão, que faz um POST, gasta o token (ameaça 21).
  */
 export function Verify({ client }: { client: AuthClient }) {
+  useDocumentTitle(PAGE_TITLES.verify);
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");

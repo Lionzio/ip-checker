@@ -5,12 +5,15 @@ import { TreatmentField } from "../components/TreatmentField";
 import type { AuthClient } from "../services/client";
 import type { GooglePending, Treatment } from "../types/api";
 import { BUTTON, errorMessage, INPUT } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Formulário complementar do Google (S16-01, FR-24): nome (sugerido pelo Google, editável e
  * único), curso e tratamento, sem senha. Ao enviar, o cadastro vai direto para a aprovação.
  */
 export function GoogleComplete({ client }: { client: AuthClient }) {
+  useDocumentTitle(PAGE_TITLES.google);
   const [pending, setPending] = useState<GooglePending | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState("");

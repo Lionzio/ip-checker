@@ -4,12 +4,15 @@ import { PasswordRequirements } from "../components/PasswordRequirements";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
 import { BUTTON, errorMessage, INPUT } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Página do link de "esqueci minha senha" (S24-04). Como na verificação, abrir o link não gasta
  * nada: só o envio do formulário, um POST, usa o token. Definir a senha encerra as sessões.
  */
 export function ResetPassword({ client }: { client: AuthClient }) {
+  useDocumentTitle(PAGE_TITLES.reset);
   const [params] = useSearchParams();
   const token = params.get("token") ?? "";
   const [password, setPassword] = useState("");

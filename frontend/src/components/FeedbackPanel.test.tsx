@@ -176,7 +176,7 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
     await user.type(within(panel()).getByLabelText("Nome do aluno"), "Caio");
     await user.click(within(panel()).getByRole("button", { name: "Gerar feedback" }));
 
-    expect(await screen.findByRole("link", { name: "Entrar" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
   it("o cliente simulado monta o texto pela apresentação de quem avalia", async () => {

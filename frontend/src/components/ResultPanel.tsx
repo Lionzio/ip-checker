@@ -1,20 +1,40 @@
-import { useEffect, useState } from "react";
+import { type Ref, useEffect, useState } from "react";
 import type { ValidationState } from "../hooks/useValidateCode";
 import { BUSY_TITLES, CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
-import type { ValidateResponse, Violation } from "../types/api";
+import { announcement, groupViolations, type RuleGroup, summarize } from "../report";
+import type { Category, ValidateResponse } from "../types/api";
 
 interface ResultPanelProps {
   state: ValidationState;
   onRetry: () => void;
+  /** O código que foi verificado: de onde saem os trechos de cada violação (S26-03). */
+  code?: string;
+  /** O editor mudou depois da verificação: o resultado pode não valer mais. */
+  stale?: boolean;
+  /** Clique numa linha do relatório: o editor seleciona o trecho (S26-03). */
+  onSelectLines?: (first: number, last: number) => void;
+  /** O título do resultado, que recebe o foco quando a verificação termina (S26-02). */
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
-const CATEGORY_STYLES: Record<Violation["category"], string> = {
-  ANULACAO: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
-  PROIBIDO_NA_QUESTAO: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
-  FORA_DA_LISTA: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100",
-  NAO_CONSTA: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100",
-  EXIGENCIA: "bg-purple-100 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100",
+// Uma cor por categoria: a anulação (vermelho) nunca se confunde com o fora da lista (âmbar).
+const CATEGORY_STYLES: Record<Category, string> = {
+  ANULACAO: "bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-100",
+  PROIBIDO_NA_QUESTAO: "bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-900/50 dark:text-fuchsia-100",
+  EXIGENCIA: "bg-purple-100 text-purple-900 dark:bg-purple-900/50 dark:text-purple-100",
+  FORA_DA_LISTA: "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100",
+  NAO_CONSTA: "bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100",
 };
+
+const CARD_BORDERS: Record<Category, string> = {
+  ANULACAO: "border-l-red-600",
+  PROIBIDO_NA_QUESTAO: "border-l-fuchsia-600",
+  EXIGENCIA: "border-l-purple-600",
+  FORA_DA_LISTA: "border-l-amber-500",
+  NAO_CONSTA: "border-l-sky-600",
+};
+
+const HEADING = "text-lg font-semibold focus:outline-none";
 
 function RetryButton({ onRetry, disabled = false }: { onRetry: () => void; disabled?: boolean }) {
   return (
@@ -22,36 +42,122 @@ function RetryButton({ onRetry, disabled = false }: { onRetry: () => void; disab
       type="button"
       onClick={onRetry}
       disabled={disabled}
-      className="mt-3 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:hover:bg-slate-800"
+      className="mt-3 inline-flex min-h-11 items-center rounded-md border border-slate-300 px-3 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
     >
       Tentar novamente
     </button>
   );
 }
 
+/** Os avisos (como o das regras de questão) aparecem uma vez só, no fim do relatório. */
 function Notices({ response }: { response: ValidateResponse }) {
   if (response.notices.length === 0) return null;
   return (
     <ul className="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300">
-      {response.notices.map((notice) => (
+      {[...new Set(response.notices)].map((notice) => (
         <li key={notice}>{NOTICE_TEXTS[notice]}</li>
       ))}
     </ul>
   );
 }
 
-function SuccessResult({ response }: { response: ValidateResponse }) {
+function Snippet({ code, line }: { code: string | undefined; line: number }) {
+  const text = code?.split("\n")[line - 1]?.trim();
+  if (text === undefined || text === "") return null;
+  return (
+    <pre className="mt-2 overflow-x-auto rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-800 dark:bg-slate-800 dark:text-slate-100">
+      <code>
+        <span className="mr-2 text-slate-600 select-none dark:text-slate-300" aria-hidden="true">
+          {line}
+        </span>
+        {text}
+      </code>
+    </pre>
+  );
+}
+
+function RuleCard({
+  group,
+  code,
+  onSelectLines,
+}: {
+  group: RuleGroup;
+  code: string | undefined;
+  onSelectLines?: (first: number, last: number) => void;
+}) {
+  // Uma exigência (R-02, R-68) fala da solução inteira, não de um trecho.
+  const whole = group.category === "EXIGENCIA";
+  const first = group.occurrences[0];
+  return (
+    <li className={`rounded-md border border-l-4 border-slate-200 p-3 dark:border-slate-700 ${CARD_BORDERS[group.category]}`}>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className={`rounded px-2 py-0.5 font-medium ${CATEGORY_STYLES[group.category]}`}>
+          {CATEGORY_LABELS[group.category]}
+        </span>
+        <span className="text-slate-600 dark:text-slate-300">{group.ruleId}</span>
+        {whole && <span className="font-mono text-slate-600 dark:text-slate-300">Solução inteira</span>}
+      </div>
+      <p className="mt-1">{group.message}</p>
+      {!whole && (
+        <>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {group.occurrences.map((item) => {
+              const where = `Linha ${item.line}, coluna ${item.col}`;
+              return onSelectLines ? (
+                <button
+                  key={`${item.line}-${item.col}`}
+                  type="button"
+                  onClick={() => onSelectLines(item.line, Math.max(item.line, item.end_line))}
+                  aria-label={`${where}: selecionar no editor`}
+                  className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 font-mono text-xs hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
+                >
+                  {where}
+                </button>
+              ) : (
+                <span key={`${item.line}-${item.col}`} className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                  {where}
+                </span>
+              );
+            })}
+          </div>
+          {first !== undefined && <Snippet code={code} line={first.line} />}
+        </>
+      )}
+    </li>
+  );
+}
+
+function SuccessResult({
+  response,
+  code,
+  onSelectLines,
+  headingRef,
+}: {
+  response: ValidateResponse;
+  code: string | undefined;
+  onSelectLines?: (first: number, last: number) => void;
+  headingRef?: Ref<HTMLHeadingElement>;
+}) {
   if (response.status === "syntax_error" && response.syntax_error !== null) {
     const { line, col, message } = response.syntax_error;
     return (
       <div>
-        <h2 className="text-lg font-semibold text-red-700 dark:text-red-300">Erro de sintaxe</h2>
+        <h2 ref={headingRef} tabIndex={-1} className={`${HEADING} text-red-700 dark:text-red-300`}>
+          Erro de sintaxe
+        </h2>
         <p className="mt-1">
           Linha {line}, coluna {col}: {message}
         </p>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Corrija a sintaxe: as permissões só são verificadas depois.
-        </p>
+        {onSelectLines && (
+          <button
+            type="button"
+            onClick={() => onSelectLines(line, line)}
+            className="mt-2 inline-flex min-h-11 items-center rounded border border-slate-300 px-2 text-sm hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
+          >
+            Mostrar a linha {line} no editor
+          </button>
+        )}
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Corrija a sintaxe: as permissões só são verificadas depois.</p>
       </div>
     );
   }
@@ -59,7 +165,7 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
   if (response.status === "valid") {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-green-700 dark:text-green-300">
+        <h2 ref={headingRef} tabIndex={-1} className={`${HEADING} text-green-700 dark:text-green-300`}>
           Nenhuma violação encontrada
         </h2>
         <Notices response={response} />
@@ -69,31 +175,16 @@ function SuccessResult({ response }: { response: ValidateResponse }) {
   }
 
   const count = response.violations.length;
+  const groups = groupViolations(response.violations);
   return (
     <div>
-      <h2 className="text-lg font-semibold text-red-700 dark:text-red-300">
+      <h2 ref={headingRef} tabIndex={-1} className={`${HEADING} text-red-700 dark:text-red-300`}>
         {count === 1 ? "1 violação encontrada" : `${count} violações encontradas`}
       </h2>
+      <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{summarize(response.violations)}</p>
       <ul className="mt-3 space-y-2">
-        {response.violations.map((violation) => (
-          <li
-            key={`${violation.rule_id}-${violation.line}-${violation.col}`}
-            className="rounded-md border border-slate-200 p-3 dark:border-slate-700"
-          >
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className={`rounded px-2 py-0.5 font-medium ${CATEGORY_STYLES[violation.category]}`}>
-                {CATEGORY_LABELS[violation.category]}
-              </span>
-              <span className="font-mono text-slate-600 dark:text-slate-300">
-                {/* Uma exigência (R-02) fala da solução inteira, não de um trecho. */}
-                {violation.category === "EXIGENCIA"
-                  ? "Solução inteira"
-                  : `Linha ${violation.line}, coluna ${violation.col}`}
-              </span>
-              <span className="text-slate-500">{violation.rule_id}</span>
-            </div>
-            <p className="mt-1">{violation.message}</p>
-          </li>
+        {groups.map((group) => (
+          <RuleCard key={`${group.category}-${group.ruleId}-${group.message}`} group={group} code={code} onSelectLines={onSelectLines} />
         ))}
       </ul>
       {response.truncated && (
@@ -126,7 +217,7 @@ function BusyResult({ state, onRetry }: { state: BusyState; onRetry: () => void 
   const remaining = deadline === null ? 0 : Math.max(0, Math.ceil((deadline - now) / 1000));
   return (
     <div>
-      <h2 className="text-lg font-semibold">{BUSY_TITLES[state.code] ?? "Serviço ocupado"}</h2>
+      <h2 className={HEADING}>{BUSY_TITLES[state.code] ?? "Serviço ocupado"}</h2>
       <p className="mt-1">{state.message}</p>
       {deadline !== null && (
         // Sem aria-live: um leitor de tela não deve anunciar cada segundo da contagem.
@@ -141,22 +232,18 @@ function BusyResult({ state, onRetry }: { state: BusyState; onRetry: () => void 
   );
 }
 
-function Content({ state, onRetry }: ResultPanelProps) {
+function Content({ state, onRetry, code, onSelectLines, headingRef }: ResultPanelProps) {
   switch (state.kind) {
     case "idle":
-      return (
-        <p className="text-slate-600 dark:text-slate-300">
-          Cole o código, escolha a lista e clique em Verificar.
-        </p>
-      );
+      return <p className="text-slate-600 dark:text-slate-300">Cole o código, escolha a lista e clique em Verificar.</p>;
     case "loading":
       return <p className="text-slate-600 dark:text-slate-300">Verificando…</p>;
     case "success":
-      return <SuccessResult response={state.response} />;
+      return <SuccessResult response={state.response} code={code} onSelectLines={onSelectLines} headingRef={headingRef} />;
     case "rejected":
       return (
         <div>
-          <h2 className="text-lg font-semibold">
+          <h2 className={HEADING}>
             {state.code === "PAYLOAD_TOO_LARGE" ? "O código excede 50 KB" : "O código não pôde ser verificado"}
           </h2>
           <p className="mt-1">{state.message}</p>
@@ -175,7 +262,7 @@ function Content({ state, onRetry }: ResultPanelProps) {
     case "timeout":
       return (
         <div>
-          <h2 className="text-lg font-semibold">Sem resposta do servidor</h2>
+          <h2 className={HEADING}>Sem resposta do servidor</h2>
           <p className="mt-1">{state.message}</p>
           <RetryButton onRetry={onRetry} />
         </div>
@@ -183,15 +270,24 @@ function Content({ state, onRetry }: ResultPanelProps) {
   }
 }
 
-export function ResultPanel({ state, onRetry }: ResultPanelProps) {
+export function ResultPanel(props: ResultPanelProps) {
+  const { state, stale = false } = props;
   return (
     <section
       aria-label="Resultado da verificação"
-      aria-live="polite"
       aria-busy={state.kind === "loading"}
       className="rounded-md border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
     >
-      <Content state={state} onRetry={onRetry} />
+      {/* Só o resumo vai para o leitor de tela; o relatório fica para ler no próprio ritmo. */}
+      <p className="sr-only" aria-live="polite">
+        {announcement(state)}
+      </p>
+      {stale && state.kind === "success" && (
+        <p role="note" className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          O código mudou desde a verificação: este resultado é do código anterior. Verifique de novo.
+        </p>
+      )}
+      <Content {...props} />
     </section>
   );
 }
@@ -199,7 +295,7 @@ export function ResultPanel({ state, onRetry }: ResultPanelProps) {
 /** A versão das regras e, se houver, a questão cujas regras valeram (R-01). */
 function RulesLine({ response }: { response: ValidateResponse }) {
   return (
-    <p className="mt-3 text-xs text-slate-500">
+    <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
       Regras {response.ruleset_version}
       {response.question_id !== null && ` · questão ${response.question_id}`}
     </p>

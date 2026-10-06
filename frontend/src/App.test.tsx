@@ -260,7 +260,8 @@ describe("App com sessão", () => {
     await user.click(screen.getByLabelText("Código Python"));
     await user.paste("a = 1\nb = 2\nc = 3");
 
-    expect(screen.getByTestId("line-numbers").textContent).toBe("1\n2\n3");
+    const gutter = screen.getByTestId("line-numbers");
+    expect([...gutter.children].map((line) => line.textContent)).toEqual(["1", "2", "3"]);
   });
 
   it("sai e volta para a tela inicial", async () => {
@@ -272,7 +273,7 @@ describe("App com sessão", () => {
     expect(screen.queryByLabelText("Código Python")).not.toBeInTheDocument();
   });
 
-  it("volta para a tela inicial com aviso quando a sessão termina durante o uso", async () => {
+  it("vai para Entrar com aviso quando a sessão termina durante o uso (S26-04)", async () => {
     const client = createMockClient({ latencyMs: 0, signedIn: true });
     client.validate = () =>
       Promise.reject(new ApiError(401, "UNAUTHENTICATED", "Entre com a sua conta da equipe."));
@@ -285,7 +286,8 @@ describe("App com sessão", () => {
     await user.click(screen.getByRole("button", { name: "Verificar" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("A sua sessão terminou.");
-    expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Código Python")).not.toBeInTheDocument();
   });
 
   it("também volta quando as listas respondem 401", async () => {

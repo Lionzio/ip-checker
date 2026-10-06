@@ -1,8 +1,11 @@
 import { type FormEvent, useState } from "react";
 import { CodeEditor } from "../components/CodeEditor";
-import { ApiError, type PlagiarismClient } from "../services/client";
+import { Button, ErrorText } from "../components/ui";
+import { useApiCall } from "../hooks/useApiCall";
+import type { PlagiarismClient } from "../services/client";
 import type { SimilarityBand, SimilarityResponse } from "../types/api";
-import { BUTTON, errorMessage } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Painel de plágio (S17-03, FR-29): duas soluções lado a lado (empilhadas em telas estreitas),
@@ -21,6 +24,9 @@ const BAND_STYLES: Record<SimilarityBand["id"], string> = {
     "border-green-400 bg-green-100 text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-100",
 };
 
+/** A comparação de dois códigos de 50 KB leva menos de 1 s; o resto cobre a fila e a rede. */
+export const PLAGIARISM_TIMEOUT_MS = 15_000;
+
 const PERCENT = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 interface PlagiarismProps {
@@ -30,28 +36,21 @@ interface PlagiarismProps {
 }
 
 export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
+  useDocumentTitle(PAGE_TITLES.plagiarism);
   const [codeA, setCodeA] = useState("");
   const [codeB, setCodeB] = useState("");
   const [result, setResult] = useState<SimilarityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { run, cancel, loading } = useApiCall(PLAGIARISM_TIMEOUT_MS, onUnauthenticated);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setError(null);
     setResult(null);
-    try {
-      setResult(await client.compare(codeA, codeB));
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        onUnauthenticated();
-        return;
-      }
-      setError(errorMessage(caught));
-    } finally {
-      setLoading(false);
-    }
+    const outcome = await run((signal) => client.compare(codeA, codeB, signal));
+    if (outcome === null) return;
+    if (outcome.ok) setResult(outcome.value);
+    else setError(outcome.message);
   }
 
   const ready = codeA.trim() !== "" && codeB.trim() !== "" && !loading;
@@ -67,22 +66,25 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="font-medium">Código A</h3>
-          <CodeEditor value={codeA} onChange={setCodeA} disabled={loading} label="Código A" placeholder="Cole aqui a primeira solução" />
+          <CodeEditor value={codeA} onChange={setCodeA} readOnly={loading} label="Código A" placeholder="Cole aqui a primeira solução" />
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="font-medium">Código B</h3>
-          <CodeEditor value={codeB} onChange={setCodeB} disabled={loading} label="Código B" placeholder="Cole aqui a segunda solução" />
+          <CodeEditor value={codeB} onChange={setCodeB} readOnly={loading} label="Código B" placeholder="Cole aqui a segunda solução" />
         </div>
       </div>
-      <button type="submit" disabled={!ready} className={`${BUTTON} self-start`}>
-        {loading ? "Verificando…" : "Verificar"}
-      </button>
-      <section aria-live="polite" aria-label="Resultado da comparação" className="flex flex-col gap-3">
-        {error !== null && (
-          <p role="alert" className="text-red-700 dark:text-red-300">
-            {error}
-          </p>
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={!ready}>
+          {loading ? "Verificando…" : "Verificar"}
+        </Button>
+        {loading && (
+          <Button variant="secondary" onClick={cancel}>
+            Cancelar
+          </Button>
         )}
+      </div>
+      <section aria-live="polite" aria-label="Resultado da comparação" className="flex flex-col gap-3">
+        {error !== null && <ErrorText>{error}</ErrorText>}
         {result !== null && <Result result={result} />}
       </section>
     </form>

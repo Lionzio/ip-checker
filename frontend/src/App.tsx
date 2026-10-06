@@ -1,6 +1,9 @@
-import { Navigate, Route, Routes, useNavigate } from "react-router";
+import { useCallback, useEffect, useRef } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
+import { DraftProvider } from "./draft";
+import { useDraft } from "./draftContext";
 import { Admin } from "./pages/Admin";
 import { Checker } from "./pages/Checker";
 import { GoogleComplete } from "./pages/GoogleComplete";
@@ -26,25 +29,48 @@ interface AppProps {
 /** A página inteira. O roteador fica no `main.tsx`, para os testes usarem um em memória. */
 export function App({ client, demoMode = false }: AppProps) {
   return (
-    <SessionProvider client={client}>
-      <Shell client={client} demoMode={demoMode} />
-    </SessionProvider>
+    // O rascunho fica acima da sessão: sobrevive a um novo login depois de ela vencer (S26-02).
+    <DraftProvider>
+      <SessionProvider client={client}>
+        <Shell client={client} demoMode={demoMode} />
+      </SessionProvider>
+    </DraftProvider>
   );
 }
 
+/** As telas abertas sem sessão: nelas, uma sessão vencida não leva a Entrar. */
+const PUBLIC_PATHS = new Set(["/entrar", "/registrar", "/verificar", "/esqueci-senha", "/redefinir-senha", "/privacidade", "/google/concluir"]);
+
 function Shell({ client, demoMode }: Required<AppProps>) {
   const { state, signIn, signOut, expire, retry, setAccount } = useSession();
+  const { clear } = useDraft();
   const navigate = useNavigate();
+  const location = useLocation();
   const account = state.status === "signed-in" ? state.account : null;
+  // De onde a sessão vencida tirou a pessoa: depois de entrar de novo, ela volta para lá.
+  const from = (location.state as { from?: string } | null)?.from;
+  const pathRef = useRef(location.pathname);
+  useEffect(() => {
+    pathRef.current = location.pathname;
+  }, [location.pathname]);
 
   async function enter(login: string, password: string) {
     await signIn(login, password);
-    void navigate("/");
+    void navigate(from !== undefined && !PUBLIC_PATHS.has(from) ? from : "/");
   }
 
   function leave() {
+    // Sair apaga o rascunho (código, nome e anotação): o próximo a usar o computador não os vê.
+    clear();
     void signOut().finally(() => void navigate("/"));
   }
+
+  // Uma 401 em qualquer tela (S26-04): a sessão acaba e a pessoa vai a Entrar, com o aviso.
+  const expireToLogin = useCallback(() => {
+    const path = pathRef.current;
+    expire();
+    if (!PUBLIC_PATHS.has(path)) void navigate("/entrar", { replace: true, state: { from: path } });
+  }, [expire, navigate]);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -82,7 +108,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/"
               element={
                 state.status === "signed-in" ? (
-                  <Checker client={client} onUnauthenticated={expire} />
+                  <Checker client={client} onUnauthenticated={expireToLogin} />
                 ) : (
                   <Landing notice={state.notice} />
                 )
@@ -91,7 +117,11 @@ function Shell({ client, demoMode }: Required<AppProps>) {
             <Route
               path="/entrar"
               element={
-                state.status === "signed-in" ? <Navigate to="/" replace /> : <Login client={client} onSignIn={enter} />
+                state.status === "signed-in" ? (
+                  <Navigate to="/" replace />
+                ) : (
+                  <Login client={client} onSignIn={enter} notice={state.notice} />
+                )
               }
             />
             <Route
@@ -111,7 +141,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/perfil"
               element={
                 state.status === "signed-in" ? (
-                  <Profile client={client} account={state.account} onUpdated={setAccount} />
+                  <Profile client={client} account={state.account} onUpdated={setAccount} onUnauthenticated={expireToLogin} />
                 ) : (
                   <Navigate to="/entrar" replace />
                 )
@@ -121,7 +151,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/plagio"
               element={
                 state.status === "signed-in" ? (
-                  <Plagiarism client={client} onUnauthenticated={expire} />
+                  <Plagiarism client={client} onUnauthenticated={expireToLogin} />
                 ) : (
                   <Navigate to="/entrar" replace />
                 )
@@ -131,7 +161,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               path="/gerenciar"
               element={
                 state.status === "signed-in" && state.account.can_manage ? (
-                  <Admin client={client} canViewLog={state.account.can_view_log} />
+                  <Admin client={client} canViewLog={state.account.can_view_log} onUnauthenticated={expireToLogin} />
                 ) : (
                   <Navigate to={state.status === "signed-in" ? "/" : "/entrar"} replace />
                 )

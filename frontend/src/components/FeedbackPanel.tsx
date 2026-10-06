@@ -1,7 +1,9 @@
-import { type FormEvent, useState } from "react";
-import { ApiError, type FeedbackClient } from "../services/client";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import type { FeedbackForm } from "../draftContext";
+import { useApiCall } from "../hooks/useApiCall";
+import type { FeedbackClient } from "../services/client";
 import type { FeedbackResponse, ValidateRequest, ValidationStatus } from "../types/api";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { BUTTON, INPUT } from "../ui";
 
 /** O servidor tem até 28 s para as IAs; o resto cobre a análise e a rede. */
 export const FEEDBACK_TIMEOUT_MS = 40_000;
@@ -17,11 +19,9 @@ interface FeedbackPanelProps {
   /** Nome e anotação ficam com o verificador: sobrevivem a uma nova verificação do mesmo aluno. */
   form: FeedbackForm;
   onFormChange: (form: FeedbackForm) => void;
-}
-
-export interface FeedbackForm {
-  student: string;
-  annotation: string;
+  /** O último feedback gerado na página: para avisar quando o código mudou e o nome não (S26-02). */
+  previous?: { student: string; code: string } | null;
+  onGenerated?: (generated: { student: string; code: string }) => void;
 }
 
 interface Generated {
@@ -48,48 +48,50 @@ export function FeedbackPanel({
   onUnauthenticated,
   form,
   onFormChange,
+  previous = null,
+  onGenerated,
 }: FeedbackPanelProps) {
   const { student, annotation } = form;
   const [generated, setGenerated] = useState<Generated | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const { run, cancel, loading } = useApiCall(FEEDBACK_TIMEOUT_MS, onUnauthenticated);
+  const copyRef = useRef<HTMLButtonElement>(null);
 
   const current = generated !== null && generated.verificationId === verificationId ? generated : null;
+  // O nome é o do feedback anterior, mas o código é outro: provavelmente é outro aluno (S26-02).
+  const sameName =
+    previous !== null && student.trim() !== "" && student.trim() === previous.student && request.code !== previous.code;
+
+  // Gerado o texto, o foco vai a Copiar: o próximo passo é colá-lo no Dikastis (S26-02).
+  useEffect(() => {
+    if (current !== null) copyRef.current?.focus();
+  }, [current?.verificationId, current?.source]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setError(null);
     setCopied(null);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FEEDBACK_TIMEOUT_MS);
-    try {
-      const response = await client.feedback(
+    const name = student.trim();
+    const outcome = await run((signal) =>
+      client.feedback(
         {
           code: request.code,
           list_number: request.list_number,
           question_id: request.question_id ?? null,
-          student_name: student.trim(),
+          student_name: name,
           annotation: annotation.trim() === "" ? null : annotation,
         },
-        controller.signal,
-      );
-      setGenerated({ verificationId, text: response.text, source: response.source });
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.status === 401) {
-        onUnauthenticated();
-        return;
-      }
-      setError(
-        controller.signal.aborted
-          ? "O servidor não respondeu a tempo. Tente de novo em alguns segundos."
-          : errorMessage(caught),
-      );
-    } finally {
-      clearTimeout(timer);
-      setLoading(false);
+        signal,
+      ),
+    );
+    if (outcome === null) return;
+    if (!outcome.ok) {
+      setError(outcome.message);
+      return;
     }
+    setGenerated({ verificationId, text: outcome.value.text, source: outcome.value.source });
+    onGenerated?.({ student: name, code: request.code });
   }
 
   async function copy() {
@@ -146,9 +148,26 @@ export function FeedbackPanel({
               Observações e dicas para o aluno. O nome dele nunca é enviado a uma IA.
             </span>
           </div>
-          <button type="submit" disabled={loading || student.trim().length < 2} className={`${BUTTON} self-start`}>
-            {loading ? "Gerando…" : "Gerar feedback"}
-          </button>
+          {sameName && (
+            <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+              O código mudou, mas o nome do aluno é o mesmo do último feedback ({previous?.student}). Confira o
+              nome antes de gerar.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" disabled={loading || student.trim().length < 2} className={BUTTON}>
+              {loading ? "Gerando…" : "Gerar feedback"}
+            </button>
+            {loading && (
+              <button
+                type="button"
+                onClick={cancel}
+                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       )}
       {error !== null && (
@@ -171,9 +190,10 @@ export function FeedbackPanel({
           <p className="text-sm text-slate-600 dark:text-slate-300">{SOURCE_NOTES[current.source]}</p>
           <div className="flex items-center gap-3">
             <button
+              ref={copyRef}
               type="button"
               onClick={() => void copy()}
-              className="rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium hover:bg-slate-100 dark:border-slate-600 dark:hover:bg-slate-800"
+              className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
             >
               Copiar
             </button>

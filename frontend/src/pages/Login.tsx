@@ -4,14 +4,19 @@ import { GoogleButton } from "../components/GoogleButton";
 import { googleMessage } from "../google";
 import type { AuthClient } from "../services/client";
 import { BUTTON, errorMessage, INPUT } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 interface LoginProps {
   client: AuthClient;
   onSignIn: (login: string, password: string) => Promise<void>;
+  /** Por que a pessoa está aqui, quando a sessão venceu durante o uso (S26-04). */
+  notice?: string | null;
 }
 
 /** Entrar com nome ou e-mail institucional e senha (FR-25), ou com o Google (FR-24). */
-export function Login({ client, onSignIn }: LoginProps) {
+export function Login({ client, onSignIn, notice = null }: LoginProps) {
+  useDocumentTitle(PAGE_TITLES.login);
   const [params] = useSearchParams();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -34,6 +39,14 @@ export function Login({ client, onSignIn }: LoginProps) {
 
   return (
     <form onSubmit={(event) => void submit(event)} className="mx-auto flex max-w-md flex-col gap-4 py-10">
+      {notice !== null && (
+        <p
+          role="status"
+          className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+        >
+          {notice} O que você estava fazendo continua na página.
+        </p>
+      )}
       <h2 className="text-xl font-semibold">Entrar</h2>
       <GoogleButton client={client} label="Entrar com o Google" />
       <label className="flex flex-col gap-1">

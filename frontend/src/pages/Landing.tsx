@@ -1,7 +1,10 @@
 import { Link } from "react-router";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /** Sem sessão, a página só oferece Registrar e Entrar (FR-22). */
 export function Landing({ notice }: { notice: string | null }) {
+  useDocumentTitle(PAGE_TITLES.landing);
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 py-10">
       {notice !== null && (

@@ -5,20 +5,30 @@ import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
 import type { Account, Treatment } from "../types/api";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { BUTTON, errorMessage, INPUT, sessionExpired } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 interface ProfileProps {
   client: AuthClient;
   account: Account;
   onUpdated: (account: Account) => void;
+  /** A API respondeu 401: a sessão venceu ou foi encerrada. */
+  onUnauthenticated?: () => void;
 }
 
 /** Perfil (FR-26): nome, curso, tratamento e senha. O cargo não se altera por aqui. */
-export function Profile({ client, account, onUpdated }: ProfileProps) {
+export function Profile({ client, account, onUpdated, onUnauthenticated }: ProfileProps) {
+  useDocumentTitle(PAGE_TITLES.profile);
   return (
     <div className="mx-auto flex max-w-md flex-col gap-10 py-10">
-      <ProfileForm client={client} account={account} onUpdated={onUpdated} />
-      <PasswordForm client={client} hasPassword={account.has_password} onChanged={() => onUpdated({ ...account, has_password: true })} />
+      <ProfileForm client={client} account={account} onUpdated={onUpdated} onUnauthenticated={onUnauthenticated} />
+      <PasswordForm
+        client={client}
+        hasPassword={account.has_password}
+        onChanged={() => onUpdated({ ...account, has_password: true })}
+        onUnauthenticated={onUnauthenticated}
+      />
       <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
         Voltar ao painel
       </Link>
@@ -26,7 +36,7 @@ export function Profile({ client, account, onUpdated }: ProfileProps) {
   );
 }
 
-function ProfileForm({ client, account, onUpdated }: ProfileProps) {
+function ProfileForm({ client, account, onUpdated, onUnauthenticated }: ProfileProps) {
   const [name, setName] = useState(account.name);
   const [course, setCourse] = useState(account.course);
   const [treatment, setTreatment] = useState<Treatment>(account.treatment);
@@ -39,6 +49,10 @@ function ProfileForm({ client, account, onUpdated }: ProfileProps) {
       onUpdated(await client.updateProfile({ name, course, treatment }));
       setMessage({ ok: true, text: "Perfil salvo." });
     } catch (caught) {
+      if (sessionExpired(caught) && onUnauthenticated) {
+        onUnauthenticated();
+        return;
+      }
       setMessage({ ok: false, text: errorMessage(caught) });
     }
   }
@@ -72,7 +86,17 @@ function ProfileForm({ client, account, onUpdated }: ProfileProps) {
   );
 }
 
-function PasswordForm({ client, hasPassword, onChanged }: { client: AuthClient; hasPassword: boolean; onChanged: () => void }) {
+function PasswordForm({
+  client,
+  hasPassword,
+  onChanged,
+  onUnauthenticated,
+}: {
+  client: AuthClient;
+  hasPassword: boolean;
+  onChanged: () => void;
+  onUnauthenticated?: () => void;
+}) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -91,6 +115,10 @@ function PasswordForm({ client, hasPassword, onChanged }: { client: AuthClient; 
       onChanged();
       setMessage({ ok: true, text: "Senha alterada. As outras sessões desta conta foram encerradas." });
     } catch (caught) {
+      if (sessionExpired(caught) && onUnauthenticated) {
+        onUnauthenticated();
+        return;
+      }
       setMessage({ ok: false, text: errorMessage(caught) });
     }
   }

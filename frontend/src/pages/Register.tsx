@@ -8,6 +8,8 @@ import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
 import type { Treatment } from "../types/api";
 import { BUTTON, errorMessage, INPUT } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 const COURSES = [
   "Ciência da Computação",
@@ -18,6 +20,7 @@ const COURSES = [
 
 /** Registro por e-mail institucional e senha (FR-23), ou pelo Google (FR-24, S16-01). */
 export function Register({ client }: { client: AuthClient }) {
+  useDocumentTitle(PAGE_TITLES.register);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
