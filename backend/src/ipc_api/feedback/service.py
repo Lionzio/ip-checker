@@ -1,7 +1,9 @@
 """O feedback de ponta a ponta (S18-02; FR-30, ADR-06, NFR-26).
 
 Cada pedido gasta uma unidade da cota diária da conta e do teto diário do servidor, que limitam
-o custo das IAs. A ordem é:
+o custo das IAs. Desde a S25-05 a cota fica no banco (não zera num deploy) e só é cobrada depois
+de a análise dar certo: um código com erro de sintaxe ou um analisador fora do ar não gastam
+nada. A ordem é:
 
 1. a IA principal;
 2. a IA de reserva, se houver; sem ela, uma nova tentativa da principal;
@@ -16,10 +18,12 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Literal
+from uuid import UUID
 
+from ipc_api.accounts.store import AccountStore, MemoryAccountStore
 from ipc_api.errors import ApiError, ErrorCode
 from ipc_api.feedback.compose import (
     Evaluator,
@@ -68,13 +72,6 @@ class Ai:
     config: LlmConfig
 
 
-@dataclass(slots=True)
-class _Quota:
-    day: date | None = None
-    total: int = 0
-    accounts: dict[bytes, int] = field(default_factory=dict)
-
-
 class FeedbackService:
     def __init__(
         self,
@@ -82,38 +79,41 @@ class FeedbackService:
         settings: LlmSettings,
         limits: FeedbackLimits,
         *,
+        store: AccountStore | None = None,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self.ais = tuple(ais)
         self.settings = settings
         self.limits = limits
+        #: Onde fica a cota do dia (``app.feedback_quota``).
+        self.store: AccountStore = store if store is not None else MemoryAccountStore()
         self._now = now
         self._monotonic = monotonic
-        self._quota = _Quota()
 
     @property
     def ai_enabled(self) -> bool:
         return bool(self.ais)
 
-    def take_quota(self, account: bytes) -> None:
-        """Gasta uma unidade da cota do dia ou recusa com 429 até o dia seguinte (UTC)."""
-        now = self._now()
-        if self._quota.day != now.date():
-            self._quota = _Quota(day=now.date())
-        quota = self._quota
-        used = quota.accounts.get(account, 0)
-        if used >= self.limits.per_account_day or quota.total >= self.limits.daily_cap:
-            tomorrow = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), UTC)
-            wait = max(1, int((tomorrow - now).total_seconds()))
-            message = (
-                "Você chegou ao limite de feedbacks de hoje."
-                if used >= self.limits.per_account_day
-                else "O IP-Checker chegou ao limite de feedbacks de hoje."
-            )
-            raise ApiError(429, ErrorCode.RATE_LIMITED, message, retry_after_s=wait)
-        quota.accounts[account] = used + 1
-        quota.total += 1
+    async def take_quota(self, account_id: UUID) -> None:
+        """Gasta uma unidade da cota do dia ou recusa com 429 até o dia seguinte (UTC).
+
+        Levanta ``StoreUnavailable`` quando o banco não responde.
+        """
+        now = self._now().astimezone(UTC)
+        exceeded = await self.store.take_feedback_quota(
+            account_id, now.date(), self.limits.per_account_day, self.limits.daily_cap
+        )
+        if exceeded is None:
+            return
+        tomorrow = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), UTC)
+        wait = max(1, int((tomorrow - now).total_seconds()))
+        message = (
+            "Você chegou ao limite de feedbacks de hoje."
+            if exceeded == "conta"
+            else "O IP-Checker chegou ao limite de feedbacks de hoje."
+        )
+        raise ApiError(429, ErrorCode.RATE_LIMITED, message, retry_after_s=wait)
 
     def _plan(self) -> tuple[Ai, ...]:
         # Com uma IA só, ela tem uma nova tentativa (NFR-26); com a reserva, cada uma tem uma.

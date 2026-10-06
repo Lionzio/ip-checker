@@ -4,10 +4,12 @@ feedback montado sem IA e as cotas diárias."""
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.errors import ApiError
 from ipc_api.feedback.compose import VALID_SENTENCE, Evaluator, Item
 from ipc_api.feedback.providers import (
@@ -168,22 +170,39 @@ async def test_the_deadline_bounds_the_attempts() -> None:
 # --- Cotas -------------------------------------------------------------------------------------
 
 
-def test_each_account_has_a_daily_quota_and_the_server_a_daily_cap() -> None:
+async def test_each_account_has_a_daily_quota_and_the_server_a_daily_cap() -> None:
     now = [datetime(2026, 10, 2, 23, 59, 0, tzinfo=UTC)]
+    store = MemoryAccountStore()
     svc = FeedbackService(
-        [], LlmSettings(), FeedbackLimits(per_account_day=2, daily_cap=3), now=lambda: now[0]
+        [],
+        LlmSettings(),
+        FeedbackLimits(per_account_day=2, daily_cap=3),
+        store=store,
+        now=lambda: now[0],
     )
+    ana, bia, caio = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
 
-    svc.take_quota(b"ana")
-    svc.take_quota(b"ana")
+    await svc.take_quota(ana)
+    await svc.take_quota(ana)
     with pytest.raises(ApiError) as own:
-        svc.take_quota(b"ana")
-    svc.take_quota(b"bia")
+        await svc.take_quota(ana)
+    await svc.take_quota(bia)
     with pytest.raises(ApiError) as server:
-        svc.take_quota(b"caio")
+        await svc.take_quota(caio)
 
     assert (own.value.status, own.value.retry_after_s) == (429, 60)
     assert "Você chegou ao limite" in str(own.value)
     assert "O IP-Checker chegou ao limite" in str(server.value)
     now[0] += timedelta(minutes=1)  # dia seguinte (UTC)
-    svc.take_quota(b"ana")
+    await svc.take_quota(ana)
+
+
+async def test_the_quota_survives_a_restart() -> None:
+    """S25-05: a cota fica no repositório, não no serviço; um deploy não a zera."""
+    store = MemoryAccountStore()
+    limits = FeedbackLimits(per_account_day=1, daily_cap=10)
+    ana = uuid.uuid4()
+    await FeedbackService([], LlmSettings(), limits, store=store).take_quota(ana)
+
+    with pytest.raises(ApiError):
+        await FeedbackService([], LlmSettings(), limits, store=store).take_quota(ana)

@@ -600,7 +600,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "INTERNAL_ERROR";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -1060,6 +1060,41 @@ export interface components {
             message: string;
         };
         /**
+         * SloHousekeeping
+         * @description A limpeza diária do banco desde que a API subiu (S25-03): só contagens.
+         */
+        SloHousekeeping: {
+            /** Runs */
+            runs: number;
+            /** Failures */
+            failures: number;
+            /**
+             * Sessions
+             * @description Sessões vencidas apagadas.
+             */
+            sessions: number;
+            /**
+             * Tokens
+             * @description Links de e-mail usados ou vencidos apagados.
+             */
+            tokens: number;
+            /**
+             * Unverified
+             * @description Cadastros não confirmados em 48 horas apagados.
+             */
+            unverified: number;
+            /**
+             * Inactive
+             * @description Contas fora do status ativo, 365 dias sem atividade, apagadas (Q-19 d).
+             */
+            inactive: number;
+            /**
+             * Log
+             * @description Ações do registro de gerenciamento com mais de 12 meses.
+             */
+            log: number;
+        };
+        /**
          * SloResponse
          * @description Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém.
          */
@@ -1088,6 +1123,7 @@ export interface components {
             /** Reasons */
             reasons: ("latencia" | "erros")[];
             telemetry: components["schemas"]["SloTelemetry"];
+            housekeeping: components["schemas"]["SloHousekeeping"];
         };
         /** SloTelemetry */
         SloTelemetry: {

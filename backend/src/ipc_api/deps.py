@@ -6,6 +6,7 @@ from fastapi import Request
 
 from ipc_api.admission import Admission
 from ipc_api.clients.analyzer import AnalyzerClient
+from ipc_api.housekeeping import Housekeeping
 from ipc_api.settings import ApiSettings
 from ipc_api.slo import SloMonitor
 from ipc_api.telemetry import Telemetry
@@ -34,6 +35,11 @@ def get_request_id(request: Request) -> str:
 def get_telemetry(request: Request) -> Telemetry:
     telemetry: Telemetry = request.app.state.telemetry
     return telemetry
+
+
+def get_housekeeping(request: Request) -> Housekeeping:
+    housekeeping: Housekeeping = request.app.state.housekeeping
+    return housekeeping
 
 
 def get_slo(request: Request) -> SloMonitor:

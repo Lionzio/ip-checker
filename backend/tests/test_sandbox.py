@@ -14,7 +14,7 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from concurrent.futures.process import BrokenProcessPool
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from fastapi.testclient import TestClient
@@ -86,6 +86,56 @@ def test_blocked_syscalls_cover_network_and_program_execution() -> None:
     assert set(sandbox.BLOCKED_SYSCALLS) == {"socket", "socketpair", "execve", "execveat"}
 
 
+def test_hardening_covers_kernel_escape_routes() -> None:
+    assert set(sandbox.HARDENING_SYSCALLS) == {
+        "io_uring_setup",
+        "io_uring_enter",
+        "io_uring_register",
+        "ptrace",
+        "process_vm_readv",
+        "process_vm_writev",
+        "bpf",
+        "userfaultfd",
+        "unshare",
+        "setns",
+    }
+
+
+class FakeSeccomp:
+    """Uma libseccomp antiga, que não conhece o io_uring."""
+
+    ALLOW = "allow"
+    rules: ClassVar[list[str]] = []
+    loaded: ClassVar[list[bool]] = []
+
+    @staticmethod
+    def ERRNO(code: int) -> int:  # noqa: N802 - o nome da libseccomp
+        return code
+
+    class SyscallFilter:
+        def __init__(self, defaction: str) -> None:
+            self.defaction = defaction
+
+        def add_rule(self, _action: int, name: str) -> None:
+            if name.startswith("io_uring"):
+                raise ValueError(name)
+            FakeSeccomp.rules.append(name)
+
+        def load(self) -> None:
+            FakeSeccomp.loaded.append(True)
+
+
+def test_an_old_libseccomp_still_gets_the_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeSeccomp.rules, FakeSeccomp.loaded = [], []
+    monkeypatch.setitem(sys.modules, "pyseccomp", FakeSeccomp)
+
+    assert sandbox.apply_sandbox() is True
+    assert FakeSeccomp.loaded == [True]
+    assert FakeSeccomp.rules[:4] == list(sandbox.BLOCKED_SYSCALLS)
+    assert "ptrace" in FakeSeccomp.rules
+    assert not any(name.startswith("io_uring") for name in FakeSeccomp.rules)
+
+
 @pytest.mark.parametrize(
     ("value", "mode"),
     [(None, SandboxMode.OPTIONAL), ("off", SandboxMode.OFF), ("required", SandboxMode.REQUIRED)],
@@ -114,6 +164,7 @@ def _try_everything() -> dict[str, str]:
         "socketpair": socket.socketpair,
         "subprocess": lambda: subprocess.run(["/bin/true"], check=True),
         "exec": lambda: os.execv("/bin/true", ["true"]),  # noqa: S606
+        "unshare": lambda: os.unshare(os.CLONE_NEWUSER),
     }
     for name, attempt in attempts.items():
         try:
@@ -150,8 +201,10 @@ def test_worker_cannot_open_sockets_or_run_programs(sandboxed_pool: AnalyzerPool
         "udp": "EPERM",
         "unix": "EPERM",
         "socketpair": "EPERM",
-        "subprocess": "EPERM",
+        # RLIMIT_NPROC = 0 (S25-04): o fork falha antes mesmo do execve.
+        "subprocess": "EAGAIN",
         "exec": "EPERM",
+        "unshare": "EPERM",
         # O worker tem um filtro a mais que o processo que o criou: o do IP-Checker.
         "filters": str(_seccomp_filters() + 1),
     }

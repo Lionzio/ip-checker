@@ -12,6 +12,8 @@ Para rodar localmente::
 
 from __future__ import annotations
 
+import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
@@ -36,7 +38,7 @@ from ipc_analyzer.engine.parse import require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
 from ipc_analyzer.engine.similarity import InvalidSide, Similarity
 from ipc_analyzer.logging import configure_logging
-from ipc_analyzer.runtime.pool import AnalyzerPool
+from ipc_analyzer.runtime.pool import AnalyzerPool, DeadlineExpired
 from ipc_analyzer.service.access_log import AccessLogMiddleware
 from ipc_analyzer.service.settings import AnalyzerSettings
 
@@ -204,6 +206,26 @@ class HealthResponse(BaseModel):
     workers: int
 
 
+logger = logging.getLogger(__name__)
+
+#: Cabeçalho com o tempo, em milissegundos, que a API ainda espera pela resposta (S25-04).
+BUDGET_HEADER = "X-IPC-Budget-Ms"
+#: Um prazo acima disso é tratado como este (nenhuma análise dura tanto).
+MAX_BUDGET_S = 60.0
+
+
+def _deadline(request: Request) -> float | None:
+    """Quando a API desiste deste pedido (``time.time``); ``None`` sem o cabeçalho."""
+    raw = request.headers.get(BUDGET_HEADER)
+    if raw is None:
+        return None
+    try:
+        budget_s = int(raw) / 1000
+    except ValueError:
+        return None
+    return time.time() + min(max(budget_s, 0.0), MAX_BUDGET_S)
+
+
 def _error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
 
@@ -263,6 +285,13 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             "Requisição inválida: envie code, list_number (1 a 6) e, se houver, question_id.",
         )
 
+    @app.exception_handler(DeadlineExpired)
+    async def deadline_expired(request: Request, _exc: DeadlineExpired) -> JSONResponse:
+        # A API já desistiu: ninguém lê esta resposta, mas o log mostra a fila vencida.
+        request.state.outcome = "DEADLINE_EXCEEDED"
+        logger.warning("pedido descartado: o prazo da API venceu antes do fim da análise")
+        return _error(503, "DEADLINE_EXCEEDED", "O prazo de quem pediu a análise venceu.")
+
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> Response:
         # O FastAPI responde 400 genérico quando o corpo não é UTF-8 válido (DoD, item 3).
@@ -290,7 +319,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             )
         # A questão é conferida aqui, antes do worker: uma questão inexistente nem entra na fila.
         resolve_question(ruleset, body.list_number, body.question_id)
-        result = await pool.analyze(body.code, body.list_number, body.question_id)
+        result = await pool.analyze(
+            body.code, body.list_number, body.question_id, deadline=_deadline(request)
+        )
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
         return AnalyzeResponse.from_result(result)
@@ -311,7 +342,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
         resolve_question(ruleset, body.list_number, body.question_id)
-        data = await pool.feedback_input(body.code, body.list_number, body.question_id)
+        data = await pool.feedback_input(
+            body.code, body.list_number, body.question_id, deadline=_deadline(request)
+        )
         request.state.outcome = data.status
         return FeedbackInputResponse.from_input(data)
 
@@ -331,7 +364,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                     f"Código {label}: o código tem {thousands(size)} bytes; o limite é "
                     f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
                 )
-        result = await pool.compare(body.first, body.second)
+        result = await pool.compare(body.first, body.second, deadline=_deadline(request))
         response = SimilarityResponse.from_result(result)
         request.state.outcome = response.status
         return response

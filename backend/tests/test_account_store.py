@@ -19,6 +19,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    HousekeepingCounts,
     ManagementRecord,
     NewAccount,
     NewGoogleAccount,
@@ -553,6 +554,210 @@ async def test_the_log_is_newest_first_limited_and_keeps_twelve_months(
     assert [entry.at for entry in log] == [moments[2], moments[1]]
     assert [entry.to_role for entry in log] == [Role.MONITOR_CHEFE, Role.MONITOR]
     assert [entry.at for entry in await store.management_log(1, NOW)] == [moments[2]]
+
+
+# --- Limpeza diária (S25-03; Q-19 d) -------------------------------------------------------------
+
+
+async def age(store: AccountStore, account_id: uuid.UUID, when: datetime) -> None:
+    """Põe o cadastro e a última atividade da conta em ``when``, como se o tempo tivesse passado."""
+    if isinstance(store, MemoryAccountStore):
+        store.accounts[account_id] = replace(store.accounts[account_id], created_at=when)
+        store.activity[account_id] = when
+        return
+    assert isinstance(store, PostgresAccountStore)
+    pool: Any = store._pool
+    await pool.execute(
+        "UPDATE app.account SET created_at = $2, last_activity_at = $2 WHERE id = $1",
+        account_id,
+        when,
+    )
+
+
+async def test_housekeeping_drops_expired_sessions_and_spent_links(store: AccountStore) -> None:
+    dev = await store.ensure_developer(DEV, NOW - timedelta(days=30))
+    await store.create_session(
+        b"\x0a" * 32, dev.id, NOW - timedelta(days=8), NOW - timedelta(days=1)
+    )
+    await store.create_session(b"\x0b" * 32, dev.id, NOW, NOW + timedelta(days=7))
+    ana = await store.register(NEW, NOW)
+    hour = timedelta(hours=1)
+    await store.add_email_token(b"\x01" * 32, ana.id, VERIFICATION, NOW, NOW + hour)
+    # O pedido novo invalida o anterior (usado); o de redefinição já venceu.
+    await store.add_email_token(b"\x02" * 32, ana.id, VERIFICATION, NOW, NOW + hour)
+    await store.add_email_token(b"\x03" * 32, ana.id, RESET, NOW - 2 * hour, NOW - hour)
+
+    counts = await store.housekeeping(NOW)
+
+    assert counts == HousekeepingCounts(sessions=1, tokens=2)
+    assert await store.get_session(b"\x0a" * 32) is None
+    assert await store.get_session(b"\x0b" * 32) is not None
+    assert await store.verify_email(b"\x02" * 32, NOW) is not None  # o link vivo continua valendo
+    assert await store.housekeeping(NOW) == HousekeepingCounts(tokens=1)  # agora usado
+
+
+async def test_unconfirmed_signups_go_after_48_hours_and_free_the_email(
+    store: AccountStore,
+) -> None:
+    old = await store.register(NEW, NOW - timedelta(hours=49))
+    recent = await store.register(
+        replace(NEW, name="Bia Recente", email="bia@cin.ufpe.br"), NOW - timedelta(hours=47)
+    )
+    # Pediu o cadastro de novo com o mesmo e-mail: o prazo recomeça.
+    again = replace(NEW, name="Caio de Novo", email="caio@cin.ufpe.br")
+    await store.register(again, NOW - timedelta(hours=60))
+    await store.register(again, NOW - timedelta(hours=1))
+
+    counts = await store.housekeeping(NOW)
+
+    assert counts.unverified == 1
+    assert await store.get_account(old.id) is None
+    assert await store.get_account(recent.id) is not None
+    assert await store.find_by_login("caio@cin.ufpe.br") is not None
+    fresh = await store.register(NEW, NOW)  # nome e e-mail livres
+    assert fresh.id != old.id
+
+
+async def test_inactive_accounts_go_after_365_days_but_never_the_developer(
+    store: AccountStore,
+) -> None:
+    dev = await store.ensure_developer(DEV, NOW - timedelta(days=800))
+    # Mesmo inativa e esquecida, a conta do desenvolvedor fica (P-14).
+    retired = await store.transition(
+        dev.id,
+        expected=(Status.ATIVO, Role.DESENVOLVEDOR),
+        status=Status.INATIVO,
+        role=Role.DESENVOLVEDOR,
+        decided_by=None,
+        now=NOW - timedelta(days=700),
+        end_sessions=False,
+    )
+    assert retired is not None
+    await age(store, dev.id, NOW - timedelta(days=700))
+    gone = await insert(store, "Ex Antiga", "ex@cin.ufpe.br", Status.EX_MONITOR)
+    kept = await insert(store, "Ex Recente", "recente@cin.ufpe.br", Status.EX_MONITOR)
+    active = await insert(store, "Ativa Calada", "ativa@cin.ufpe.br")
+    refused = await insert(store, "Recusada", "recusada@cin.ufpe.br", Status.RECUSADO)
+    # A conta que some aprovou outra e aparece no registro: os dois ficam, sem o vínculo.
+    bia = await insert(store, "Bia", "bia@cin.ufpe.br", Status.AGUARDANDO_APROVACAO)
+    moment = NOW - timedelta(days=200)
+    entry = replace(record(moment, "aprovar", bia, Role.MONITOR), actor_id=gone.id)
+    approved = await store.transition(
+        bia.id,
+        expected=(Status.AGUARDANDO_APROVACAO, None),
+        status=Status.ATIVO,
+        role=Role.MONITOR,
+        decided_by=gone.id,
+        now=moment,
+        end_sessions=False,
+        record=entry,
+    )
+    assert approved is not None
+    await age(store, gone.id, NOW - timedelta(days=366))
+    await age(store, refused.id, NOW - timedelta(days=365))
+    await age(store, kept.id, NOW - timedelta(days=364))
+    await age(store, active.id, NOW - timedelta(days=900))
+
+    counts = await store.housekeeping(NOW)
+
+    assert counts.inactive == 2
+    for account in (gone, refused):
+        assert await store.get_account(account.id) is None
+    for account in (dev, kept, active, bia):
+        assert await store.get_account(account.id) is not None
+    assert await store.find_by_login("ex@cin.ufpe.br") is None  # o e-mail ficou livre (Q-19 d)
+    await store.register(replace(NEW, name="Ex Antiga", email="ex@cin.ufpe.br"), NOW)
+    assert await store.management_log(10, NOW) == [replace(entry, actor_id=None)]
+
+
+async def test_activity_keeps_an_account_from_the_purge(store: AccountStore) -> None:
+    login = await insert(store, "Volta Sempre", "volta@cin.ufpe.br", Status.CONSELHEIRO)
+    await age(store, login.id, NOW - timedelta(days=500))
+    await store.create_session(
+        b"\x0c" * 32, login.id, NOW - timedelta(days=10), NOW - timedelta(days=3)
+    )
+    moved = await insert(store, "Mudou", "mudou@cin.ufpe.br", Status.INATIVO)
+    await age(store, moved.id, NOW - timedelta(days=500))
+    changed = await store.transition(
+        moved.id,
+        expected=(Status.INATIVO, None),
+        status=Status.AGUARDANDO_APROVACAO,
+        role=None,
+        decided_by=None,
+        now=NOW - timedelta(days=5),
+        end_sessions=False,
+    )
+    assert changed is not None
+    reset = await insert(store, "Lembrou", "lembrou@cin.ufpe.br", Status.EX_MONITOR)
+    await age(store, reset.id, NOW - timedelta(days=500))
+    await store.add_email_token(b"\x06" * 32, reset.id, RESET, NOW - timedelta(days=2), NOW)
+    assert await store.reset_password(b"\x06" * 32, "$argon2id$nova", NOW - timedelta(days=2))
+
+    counts = await store.housekeeping(NOW)
+
+    assert counts.inactive == 0
+    for account in (login, moved, reset):
+        assert await store.get_account(account.id) is not None
+
+
+async def test_the_purge_keeps_twelve_months_of_log(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    old = NOW - timedelta(days=400)
+    changed = await store.transition(
+        ana.id,
+        expected=(Status.ATIVO, Role.MONITOR),
+        status=Status.ATIVO,
+        role=Role.MONITOR_CHEFE,
+        decided_by=None,
+        now=old,
+        end_sessions=False,
+        record=record(old, "alterar_cargo", ana, Role.MONITOR_CHEFE),
+    )
+    assert changed is not None
+
+    assert (await store.housekeeping(NOW)).log == 1
+    assert await store.management_log(10, NOW) == []
+
+
+async def test_the_feedback_quota_counts_per_account_and_per_day(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    bia = await insert(store, "Bia", "bia@cin.ufpe.br")
+    today = NOW.date()
+
+    taken = [await store.take_feedback_quota(ana.id, today, 2, 3) for _ in range(3)]
+    other = await store.take_feedback_quota(bia.id, today, 2, 3)
+    full = await store.take_feedback_quota(bia.id, today, 2, 3)
+    tomorrow = await store.take_feedback_quota(ana.id, today + timedelta(days=1), 2, 3)
+
+    assert taken == [None, None, "conta"]
+    assert (other, full, tomorrow) == (None, "servidor", None)
+
+
+async def test_old_quota_days_and_removed_accounts_leave_the_quota(store: AccountStore) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    gone = await insert(store, "Ex", "ex@cin.ufpe.br", Status.EX_MONITOR)
+    for days in (0, 1, 2):
+        await store.take_feedback_quota(ana.id, NOW.date() - timedelta(days=days), 1, 100)
+    await store.take_feedback_quota(gone.id, NOW.date(), 1, 100)
+    await age(store, gone.id, NOW - timedelta(days=400))
+
+    await store.housekeeping(NOW)
+
+    # Hoje e ontem ficam; anteontem saiu, e a conta apagada levou a dela.
+    assert await store.take_feedback_quota(ana.id, NOW.date(), 1, 100) == "conta"
+    assert (
+        await store.take_feedback_quota(ana.id, NOW.date() - timedelta(days=1), 1, 100) == "conta"
+    )
+    assert await store.take_feedback_quota(ana.id, NOW.date() - timedelta(days=2), 1, 100) is None
+    assert await store.take_feedback_quota(ana.id, NOW.date(), 1, 2) == "conta"
+
+
+async def test_housekeeping_needs_the_database() -> None:
+    store = MemoryAccountStore()
+    store.available = False
+
+    with pytest.raises(StoreUnavailable):
+        await store.housekeeping(NOW)
 
 
 # --- Google (S16-01) ------------------------------------------------------------------------------

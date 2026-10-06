@@ -126,7 +126,7 @@ class BrevoSender:
             raise EmailUnavailable("IPC_EMAIL_API_KEY não definida")
         try:
             async with httpx2.AsyncClient(
-                transport=self._transport, timeout=self.config.timeout_s
+                transport=self._transport, timeout=self.config.timeout_s, trust_env=False
             ) as client:
                 response = await client.post(
                     BREVO_URL,

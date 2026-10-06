@@ -93,9 +93,9 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
     migrations = discover(DEFAULT_DIR)
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
-    assert await migrate_down(admin, migrations, "0000") == ["0004", "0003", "0002", "0001"]
+    assert await migrate_down(admin, migrations, "0000") == ["0005", "0004", "0003", "0002", "0001"]
     assert not await _schema_exists(admin)
-    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004"]
+    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004", "0005"]
     assert await _schema_exists(admin)
 
 
@@ -108,7 +108,8 @@ def test_cli_up_and_status(
 
     assert migrate.main(["status"]) == 0
     assert (
-        capsys.readouterr().out.strip() == "aplicadas: 0001, 0002, 0003, 0004; pendentes: nenhuma"
+        capsys.readouterr().out.strip()
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"

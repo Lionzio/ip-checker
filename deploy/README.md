@@ -381,12 +381,32 @@ Use provedores diferentes na principal e na reserva, para as duas não caírem j
 configuração incompleta (provedor sem modelo ou sem chave, URL sem HTTPS, reserva sem principal)
 impede a API de subir, com a mensagem dizendo o que falta. `GET /api/v1/auth/options` diz à página
 se há IA (`feedback_ai`). Cada conta tem até 60 feedbacks por dia e o servidor até 1.000
-(`IPC_FEEDBACK_PER_ACCOUNT_DAY` e `IPC_FEEDBACK_DAILY_CAP`), para limitar o custo.
+(`IPC_FEEDBACK_PER_ACCOUNT_DAY` e `IPC_FEEDBACK_DAILY_CAP`), para limitar o custo. Desde a
+Sprint 25 a cota fica no banco (não zera num deploy) e só é cobrada depois da análise.
 
-O que vai ao provedor: só o código sem comentários, a anotação e o resultado do motor, com o nome
-do aluno trocado por `[ALUNO]`; o nome e o cargo de quem avalia não vão. Antes de usar dados reais
+O que vai ao provedor: só o código sem comentários nem docstrings, a anotação e o resultado do
+motor, com o nome do aluno trocado por `[ALUNO]` e e-mails, CPFs e números com 8 ou mais dígitos
+trocados por `[EMAIL]`, `[CPF]` e `[MATRICULA]`; o nome e o cargo de quem avalia não vão. Antes de usar dados reais
 de alunos, confira os termos do plano (retenção e uso dos dados para treinar modelos) e a
 política da UFPE (Q-16).
+
+### Limpeza diária e robustez (S25)
+
+Nada a configurar: os padrões abaixo valem no piloto e no compose. As variáveis só existem para
+um ajuste pontual.
+
+| O quê | Padrão | Variável |
+|---|---|---|
+| Limpeza diária do banco (sessões e links vencidos, cadastros não confirmados em 48 h, contas fora do status ativo com 365 dias sem atividade, registro com mais de 12 meses, cota de feedbacks antiga) | ligada, ao subir e a cada 24 h | `IPC_HOUSEKEEPING=0` desliga; `IPC_HOUSEKEEPING_INTERVAL_S` |
+| Limite geral por IP em todo `/api/*`, antes da sessão | 600 por minuto; 6.000 nas faixas do campus | `IPC_RATE_LIMIT_API_IP_PER_MIN`, `IPC_RATE_LIMIT_API_CAMPUS_PER_MIN` |
+| Prazo de uma análise no worker | 2 s | `IPC_TIMEOUT_S` (no analisador) |
+| Prazo da API para o analisador | o da análise + 1 s | `IPC_ANALYZER_TIMEOUT_S` |
+| Workers do analisador e análises simultâneas | 2 e 4 no compose; 1 e 1 no Render | `IPC_WORKERS` (no analisador) e `IPC_ADMISSION_CAPACITY` (na API) |
+
+As contagens da limpeza desde a subida aparecem em `/health/slo` (`housekeeping`). Uma falha da
+limpeza (banco fora do ar) não derruba a API: ela fica no log e em `failures`, e a próxima rodada
+tenta de novo. A API não sobe com `IPC_PUBLIC_BASE_URL` em `http://` fora do `localhost` enquanto
+o cookie for seguro (`IPC_SESSION_COOKIE_SECURE=1`, o padrão).
 
 ### Telemetria e alertas (S21)
 

@@ -118,8 +118,8 @@ o feedback é sobre o código que foi verificado, mesmo que você mude o editor 
 
 - Com **erro de sintaxe**, não há feedback: corrija o código e verifique de novo.
 - O **nome do aluno nunca vai para a IA**: no envio, ele vira `[ALUNO]` e volta no texto pronto. Os
-  comentários do código também não vão.
-- Cada conta gera até **60 feedbacks por dia**.
+  comentários e as docstrings do código também não vão, e e-mails, CPFs e matrículas viram marcas.
+- Cada conta gera até **60 feedbacks por dia**. Um código com erro de sintaxe não gasta a cota.
 
 ## Painel de plágio
 

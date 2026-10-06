@@ -15,10 +15,18 @@ from ipc_api.accounts.models import StoreUnavailable
 from ipc_api.auth.deps import get_authenticator, require_active_account
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
-from ipc_api.deps import get_analyzer, get_settings, get_slo, get_telemetry
+from ipc_api.deps import get_analyzer, get_housekeeping, get_settings, get_slo, get_telemetry
 from ipc_api.errors import analyzer_unavailable, database_unavailable
+from ipc_api.housekeeping import Housekeeping
 from ipc_api.routes import error_docs
-from ipc_api.schemas import HealthResponse, ListInfo, ReadyResponse, SloResponse, SloTelemetry
+from ipc_api.schemas import (
+    HealthResponse,
+    ListInfo,
+    ReadyResponse,
+    SloHousekeeping,
+    SloResponse,
+    SloTelemetry,
+)
 from ipc_api.settings import ApiSettings
 from ipc_api.slo import SloMonitor
 from ipc_api.telemetry import Telemetry
@@ -139,6 +147,7 @@ async def slo(
     response: Response,
     monitor: Annotated[SloMonitor, Depends(get_slo)],
     telemetry: Annotated[Telemetry, Depends(get_telemetry)],
+    housekeeping: Annotated[Housekeeping, Depends(get_housekeeping)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> SloResponse:
     response.headers["Cache-Control"] = "no-store"
@@ -159,5 +168,14 @@ async def slo(
             dropped=stats.dropped,
             failed_batches=stats.failed_batches,
             queued=telemetry.queued,
+        ),
+        housekeeping=SloHousekeeping(
+            runs=housekeeping.stats.runs,
+            failures=housekeeping.stats.failures,
+            sessions=housekeeping.stats.removed.sessions,
+            tokens=housekeeping.stats.removed.tokens,
+            unverified=housekeeping.stats.removed.unverified,
+            inactive=housekeeping.stats.removed.inactive,
+            log=housekeeping.stats.removed.log,
         ),
     )

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IP-Checker",
-    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nO acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready`, `/health/slo`\ne as de autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n",
+    "description": "Confere, **sem executar o código**, se a solução em Python de um aluno de Introdução à\nProgramação respeita as permissões da lista antes do envio ao Dikastis.\n\nO acesso é restrito à equipe da disciplina: as rotas, exceto `/health`, `/ready`, `/health/slo`\ne as de autenticação, exigem a sessão de uma conta ativa, aberta por `POST /api/v1/auth/login`.\n\nTodo erro segue o formato `{\"error\": {\"code\", \"message\", \"retry_after_s\"}}`. Toda resposta traz\no cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.\n\nAlém dos limites de cada rota, qualquer rota em `/api/*` responde 429 `RATE_LIMITED` quando um IP\npassa de 600 requisições por minuto (6.000 nas faixas do campus). Uma falha inesperada responde\n500 `INTERNAL_ERROR`, com o `X-Request-Id` na mensagem.\n",
     "version": "1.0.0"
   },
   "paths": {
@@ -2148,7 +2148,8 @@
           "EMAIL_UNAVAILABLE",
           "FORBIDDEN",
           "ACCOUNT_NOT_FOUND",
-          "ACCOUNT_STATE_CHANGED"
+          "ACCOUNT_STATE_CHANGED",
+          "INTERNAL_ERROR"
         ],
         "title": "ErrorCode"
       },
@@ -3272,6 +3273,63 @@
         ],
         "title": "SimilaritySyntaxError"
       },
+      "SloHousekeeping": {
+        "properties": {
+          "runs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Runs"
+          },
+          "failures": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Failures"
+          },
+          "sessions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sessions",
+            "description": "Sessões vencidas apagadas."
+          },
+          "tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tokens",
+            "description": "Links de e-mail usados ou vencidos apagados."
+          },
+          "unverified": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unverified",
+            "description": "Cadastros não confirmados em 48 horas apagados."
+          },
+          "inactive": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Inactive",
+            "description": "Contas fora do status ativo, 365 dias sem atividade, apagadas (Q-19 d)."
+          },
+          "log": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Log",
+            "description": "Ações do registro de gerenciamento com mais de 12 meses."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runs",
+          "failures",
+          "sessions",
+          "tokens",
+          "unverified",
+          "inactive",
+          "log"
+        ],
+        "title": "SloHousekeeping",
+        "description": "A limpeza diária do banco desde que a API subiu (S25-03): só contagens."
+      },
       "SloResponse": {
         "properties": {
           "status": {
@@ -3327,6 +3385,9 @@
           },
           "telemetry": {
             "$ref": "#/components/schemas/SloTelemetry"
+          },
+          "housekeeping": {
+            "$ref": "#/components/schemas/SloHousekeeping"
           }
         },
         "additionalProperties": false,
@@ -3339,7 +3400,8 @@
           "p95_ms",
           "error_rate_pct",
           "reasons",
-          "telemetry"
+          "telemetry",
+          "housekeeping"
         ],
         "title": "SloResponse",
         "description": "Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém."

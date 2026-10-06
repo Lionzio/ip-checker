@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
+
 import pytest
 
-from ipc_analyzer.engine.feedback import feedback_input, strip_comments
+from ipc_analyzer.engine.feedback import feedback_input, strip_comments, strip_docstrings
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.ruleset import CompiledRuleset
 
@@ -52,3 +54,47 @@ def test_zip_outside_the_for_is_named_in_the_feedback(base_ruleset: CompiledRule
     result = feedback_input(code, list_number=2, ruleset=base_ruleset)
 
     assert [(item.kind, item.label) for item in result.items] == [("uso", "zip()")]
+
+
+def test_docstrings_and_loose_strings_leave_the_code() -> None:
+    """S25-05: o texto solto é onde o aluno escreve nome e matrícula, como nos comentários."""
+    code = (
+        '"""Isabella, 20231234567"""\n'
+        "def f(x):\n"
+        '    """Soma.\n'
+        '    Linha 2."""\n'
+        "    return x\n"
+        "class C:\n"
+        "    'só a docstring'\n"
+        's = "isto é dado e fica"; "solto"; y = "ção"\n'
+    )
+
+    out = strip_docstrings(code)
+
+    assert out == (
+        "...\n"
+        "def f(x):\n"
+        "    ...\n"
+        "    return x\n"
+        "class C:\n"
+        "    ...\n"
+        's = "isto é dado e fica"; ...; y = "ção"\n'
+    )
+    ast.parse(out)
+
+
+def test_a_code_without_text_stays_the_same() -> None:
+    code = 'x = 1\nprint(f"{x}")\n'
+
+    assert strip_docstrings(code) == code
+
+
+def test_feedback_input_has_no_docstrings(base_ruleset: CompiledRuleset) -> None:
+    data = feedback_input(
+        '"""Ana Lima"""\nx = int(input())  # Ana\nif x > 0:\n    print(x)\n',
+        list_number=1,
+        ruleset=base_ruleset,
+    )
+
+    assert "Ana" not in data.code
+    assert data.code.startswith("...\n")

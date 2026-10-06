@@ -193,7 +193,10 @@ class GoogleOidc:
         )
 
     async def _client(self) -> httpx2.AsyncClient:
-        return httpx2.AsyncClient(transport=self._transport, timeout=self.config.timeout_s)
+        # Proxies do ambiente nunca valem para a troca do código (S25-04).
+        return httpx2.AsyncClient(
+            transport=self._transport, timeout=self.config.timeout_s, trust_env=False
+        )
 
     async def _exchange(self, code: str, flow: Flow, redirect_uri: str) -> str:
         data = {

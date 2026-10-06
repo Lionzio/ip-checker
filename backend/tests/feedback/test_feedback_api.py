@@ -254,6 +254,51 @@ def test_the_daily_quota_is_per_account(
     assert second.headers["Retry-After"] == str(second.json()["error"]["retry_after_s"])
 
 
+def test_a_refused_code_does_not_spend_the_quota(
+    stack: tuple[TestClient, MemoryAccountStore], provider: Recorder
+) -> None:
+    """S25-05: a cota só é cobrada depois da análise."""
+    api, store = stack
+    api.app.state.feedback.limits = FeedbackLimits(per_account_day=1, daily_cap=100)  # type: ignore[attr-defined]
+    ana = member(store)
+
+    broken = ask(stack, ana, code="if True print(1)\n")
+    fine = ask(stack, ana)
+
+    assert broken.status_code == 422
+    assert fine.status_code == 200
+    assert sum(store.feedback_quota.values()) == 1
+
+
+def test_personal_data_never_reaches_the_ai(
+    stack: tuple[TestClient, MemoryAccountStore], provider: Recorder
+) -> None:
+    code = (
+        "def soma(a, b):\n"
+        '    """Isabella Schultz, matrícula 20231234567, isa@cin.ufpe.br"""\n'
+        '    cpf = "123.456.789-09"\n'
+        "    return a + b\n"
+        "x = int(input())\n"
+        "if x > 0:\n"
+        "    print(soma(x, 1))\n"
+    )
+    response = ask(
+        stack,
+        member(stack[1]),
+        code=code,
+        annotation="Falei com ela pelo isa@cin.ufpe.br, matrícula 20231234567.",
+    )
+
+    assert response.status_code == 200
+    sent = provider.prompts[0].user
+    for secret in ("20231234567", "isa@cin.ufpe.br", "123.456.789-09", "Schultz"):
+        assert secret not in sent
+    assert "[EMAIL]" in sent
+    assert "[MATRICULA]" in sent
+    assert '"[CPF]"' in sent
+    assert "def soma(a, b):\n    ...\n" in sent
+
+
 def test_without_any_ai_the_feedback_is_assembled_without_ai(analyzer: TestClient) -> None:
     store = MemoryAccountStore()
     app, _ = make_app(

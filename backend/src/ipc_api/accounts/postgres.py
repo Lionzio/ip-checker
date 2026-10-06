@@ -6,9 +6,10 @@ Toda falha de conexão ou do servidor vira ``StoreUnavailable``, que a API trans
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Collection
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -18,9 +19,11 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    HousekeepingCounts,
     ManagementRecord,
     NewAccount,
     NewGoogleAccount,
+    QuotaExceeded,
     Role,
     SessionRecord,
     SignupMethod,
@@ -56,7 +59,8 @@ UPDATE app.account SET
     status = $2::app.status,
     role = $3::app.role,
     decided_by = CASE WHEN $4::uuid IS NULL THEN decided_by ELSE $4::uuid END,
-    decided_at = CASE WHEN $4::uuid IS NULL THEN decided_at ELSE $5 END
+    decided_at = CASE WHEN $4::uuid IS NULL THEN decided_at ELSE $5 END,
+    last_activity_at = $5
 WHERE id = $1 AND status = $6::app.status AND role IS NOT DISTINCT FROM $7::app.role
 RETURNING id
 """
@@ -73,10 +77,17 @@ SELECT at, action, actor_id, actor_name, actor_role::text AS actor_role, target_
        from_role::text AS from_role, to_role::text AS to_role
 FROM app.management_log ORDER BY at DESC, id DESC LIMIT $1
 """
-_SESSION = """
-SELECT s.account_id, s.created_at, s.last_seen_at, s.expires_at
-FROM app.session s WHERE s.token_hash = $1
-"""
+# A sessão e a conta numa consulta só (S25-04): cada requisição autenticada faz uma ida ao banco.
+_SESSION = (
+    _SELECT_ACCOUNT.replace(
+        "FROM app.account a",
+        "FROM app.session s JOIN app.account a ON a.id = s.account_id",
+    ).replace(
+        "SELECT\n",
+        "SELECT\n    s.created_at AS session_created_at, s.last_seen_at, s.expires_at,\n",
+    )
+    + "WHERE s.token_hash = $1"
+)
 
 
 def _account(row: Any) -> Account:
@@ -127,10 +138,22 @@ def _conflict_field(exc: asyncpg.UniqueViolationError) -> str:
     return "google" if "google_sub" in constraint else "nome"
 
 
+#: Prazo de uma operação no banco, incluindo a espera por uma conexão livre do pool (S25-04):
+#: com o banco lento ou o pool esgotado, a requisição recebe DATABASE_UNAVAILABLE em vez de esperar.
+DB_DEADLINE_S = 5.0
+#: Chave da trava da cota de feedbacks (``pg_advisory_xact_lock``), só desta aplicação.
+_QUOTA_LOCK = 0x1C_25_05
+#: A limpeza diária pode apagar muitas linhas de uma vez; roda fora das requisições.
+HOUSEKEEPING_DEADLINE_S = 60.0
+
+
 @asynccontextmanager
-async def _guard() -> AsyncIterator[None]:
+async def _guard(deadline_s: float = DB_DEADLINE_S) -> AsyncIterator[None]:
     try:
-        yield
+        async with asyncio.timeout(deadline_s):
+            yield
+    except TimeoutError:
+        raise StoreUnavailable("TimeoutError") from None
     except (OSError, asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
         raise StoreUnavailable(type(exc).__name__) from exc
 
@@ -143,7 +166,9 @@ class PostgresAccountStore:
     async def connect(cls, dsn: str) -> PostgresAccountStore:
         # Poucas conexões: uma instância da API (ADR-03) e consultas curtas.
         async with _guard():
-            pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5, command_timeout=5)
+            pool = await asyncpg.create_pool(
+                dsn, min_size=1, max_size=5, command_timeout=5, timeout=5
+            )
         return cls(pool)
 
     async def ping(self) -> None:
@@ -184,8 +209,9 @@ class PostgresAccountStore:
                 try:
                     account_id = await connection.fetchval(
                         "INSERT INTO app.account (name, course, treatment, role, status, "
-                        "password_hash, signup_method, created_at) VALUES ($1, $2, 'masculino', "
-                        "'desenvolvedor', 'ativo', $3, 'seed', $4) RETURNING id",
+                        "password_hash, signup_method, created_at, last_activity_at) VALUES "
+                        "($1, $2, 'masculino', 'desenvolvedor', 'ativo', $3, 'seed', $4, $4) "
+                        "RETURNING id",
                         seed.name,
                         seed.course,
                         seed.password_hash,
@@ -226,12 +252,13 @@ class PostgresAccountStore:
                     account_id = existing["id"]
                     await connection.execute(
                         "UPDATE app.account SET name = $2, course = $3, treatment = $4, "
-                        "password_hash = $5 WHERE id = $1",
+                        "password_hash = $5, last_activity_at = $6 WHERE id = $1",
                         account_id,
                         new.name,
                         new.course,
                         new.treatment.value,
                         new.password_hash,
+                        now,
                     )
                     await connection.execute(
                         "UPDATE app.email_token SET used_at = $2 "
@@ -242,8 +269,8 @@ class PostgresAccountStore:
                 else:
                     account_id = await connection.fetchval(
                         "INSERT INTO app.account (name, course, treatment, status, password_hash, "
-                        "signup_method, created_at) VALUES ($1, $2, $3, 'aguardando_verificacao', "
-                        "$4, 'senha', $5) RETURNING id",
+                        "signup_method, created_at, last_activity_at) VALUES ($1, $2, $3, "
+                        "'aguardando_verificacao', $4, 'senha', $5, $5) RETURNING id",
                         new.name,
                         new.course,
                         new.treatment.value,
@@ -307,12 +334,13 @@ class PostgresAccountStore:
                     await connection.execute(
                         "UPDATE app.account SET name = $2, course = $3, treatment = $4, "
                         "password_hash = NULL, google_sub = $5, signup_method = 'google', "
-                        "status = 'aguardando_aprovacao' WHERE id = $1",
+                        "status = 'aguardando_aprovacao', last_activity_at = $6 WHERE id = $1",
                         account_id,
                         new.name,
                         new.course,
                         new.treatment.value,
                         new.google_sub,
+                        now,
                     )
                     await connection.execute(
                         "UPDATE app.email_token SET used_at = $2 "
@@ -328,8 +356,8 @@ class PostgresAccountStore:
                 else:
                     account_id = await connection.fetchval(
                         "INSERT INTO app.account (name, course, treatment, status, google_sub, "
-                        "signup_method, created_at) VALUES ($1, $2, $3, 'aguardando_aprovacao', "
-                        "$4, 'google', $5) RETURNING id",
+                        "signup_method, created_at, last_activity_at) VALUES ($1, $2, $3, "
+                        "'aguardando_aprovacao', $4, 'google', $5, $5) RETURNING id",
                         new.name,
                         new.course,
                         new.treatment.value,
@@ -377,7 +405,8 @@ class PostgresAccountStore:
                 "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
                 "AND purpose = 'verificacao' AND used_at IS NULL AND expires_at > $2 "
                 "RETURNING account_id) "
-                "UPDATE app.account a SET status = 'aguardando_aprovacao' FROM t "
+                "UPDATE app.account a SET status = 'aguardando_aprovacao', "
+                "last_activity_at = $2 FROM t "
                 "WHERE a.id = t.account_id AND a.status = 'aguardando_verificacao' RETURNING a.id",
                 token_hash,
                 now,
@@ -401,7 +430,7 @@ class PostgresAccountStore:
                 "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
                 "AND purpose = 'redefinicao' AND used_at IS NULL AND expires_at > $2 "
                 "RETURNING account_id) "
-                "UPDATE app.account a SET password_hash = $3 FROM t "
+                "UPDATE app.account a SET password_hash = $3, last_activity_at = $2 FROM t "
                 "WHERE a.id = t.account_id RETURNING a.id",
                 token_hash,
                 now,
@@ -492,6 +521,45 @@ class PostgresAccountStore:
             row = await connection.fetchrow(_BY_ID, account_id)
         return _account(row)
 
+    async def housekeeping(self, now: datetime) -> HousekeepingCounts:
+        async with _guard(HOUSEKEEPING_DEADLINE_S):
+            row = await self._pool.fetchrow(
+                "SELECT * FROM app.housekeeping($1)", now, timeout=HOUSEKEEPING_DEADLINE_S
+            )
+        return HousekeepingCounts(
+            sessions=row["sessions"],
+            tokens=row["tokens"],
+            unverified=row["unverified"],
+            inactive=row["inactive"],
+            log=row["log"],
+        )
+
+    async def take_feedback_quota(
+        self, account_id: UUID, day: date, per_account: int, daily_cap: int
+    ) -> QuotaExceeded | None:
+        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            # Uma trava da transação: a soma do dia e o gasto não se cruzam entre pedidos.
+            await connection.execute("SELECT pg_advisory_xact_lock($1)", _QUOTA_LOCK)
+            used = await connection.fetchval(
+                "SELECT used FROM app.feedback_quota WHERE day = $1 AND account_id = $2",
+                day,
+                account_id,
+            )
+            total = await connection.fetchval(
+                "SELECT coalesce(sum(used), 0) FROM app.feedback_quota WHERE day = $1", day
+            )
+            if (used or 0) >= per_account:
+                return "conta"
+            if total >= daily_cap:
+                return "servidor"
+            await connection.execute(
+                "INSERT INTO app.feedback_quota (day, account_id, used) VALUES ($1, $2, 1) "
+                "ON CONFLICT (day, account_id) DO UPDATE SET used = app.feedback_quota.used + 1",
+                day,
+                account_id,
+            )
+        return None
+
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         async with _guard(), self._pool.acquire() as connection, connection.transaction():
             await connection.fetchval("SELECT app.purge_management_log($1)", now)
@@ -512,8 +580,9 @@ class PostgresAccountStore:
     ) -> None:
         async with _guard():
             await self._pool.execute(
-                "INSERT INTO app.session (token_hash, account_id, created_at, last_seen_at, "
-                "expires_at) VALUES ($1, $2, $3, $3, $4)",
+                "WITH s AS (INSERT INTO app.session (token_hash, account_id, created_at, "
+                "last_seen_at, expires_at) VALUES ($1, $2, $3, $3, $4)) "
+                "UPDATE app.account SET last_activity_at = $3 WHERE id = $2",
                 token_hash,
                 account_id,
                 now,
@@ -522,17 +591,14 @@ class PostgresAccountStore:
 
     async def get_session(self, token_hash: bytes) -> SessionRecord | None:
         async with _guard():
-            session = await self._pool.fetchrow(_SESSION, token_hash)
-            if session is None:
-                return None
-            row = await self._pool.fetchrow(_BY_ID, session["account_id"])
+            row = await self._pool.fetchrow(_SESSION, token_hash)
         if row is None:
             return None
         return SessionRecord(
             account=_account(row),
-            created_at=session["created_at"],
-            last_seen_at=session["last_seen_at"],
-            expires_at=session["expires_at"],
+            created_at=row["session_created_at"],
+            last_seen_at=row["last_seen_at"],
+            expires_at=row["expires_at"],
         )
 
     async def touch_session(self, token_hash: bytes, now: datetime) -> None:

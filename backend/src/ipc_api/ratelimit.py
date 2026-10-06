@@ -14,6 +14,12 @@ ninguém, para um cliente abusivo não esgotar o IP que divide com os colegas.
 Privacidade (NFR-11): IP e conta existem só na memória deste processo, como hash com um sal
 sorteado na subida, e somem até 2 min depois da última requisição. Nunca vão para o log.
 
+Além desses, um limite folgado por IP vale para todo ``/api/*`` (S25-04): 600 por minuto, ou
+6.000 do campus, contados antes de resolver a sessão. Um cliente que dispara tokens aleatórios
+para adivinhar uma sessão para nele, e o banco nunca recebe mais consultas do que isso. Ele usa
+uma janela fixa de 1 minuto, com um contador por chave: o gasto de memória não cresce com o
+limite.
+
 O estado é local ao processo: vale porque há uma única instância da API (ADR-03).
 """
 
@@ -71,6 +77,10 @@ class RateLimitConfig:
     trusted_proxy_hops: int = 0
     #: Teto de chaves em memória. Cheio, clientes novos recebem 429 até a varredura liberar espaço.
     max_keys: int = 50_000
+    #: Limite folgado de todo ``/api/*``, por IP, antes da sessão (S25-04). Uma página aberta faz
+    #: poucas chamadas por minuto; o teto só pega quem dispara requisições sem parar.
+    api_ip_per_min: int = 600
+    api_campus_per_min: int = 6_000
 
 
 # ---------------------------------------------------------------------------------------------
@@ -147,6 +157,41 @@ class SlidingWindowLimiter:
             del self._events[key]
 
 
+class FixedWindowCounter:
+    """Contagem por chave numa janela fixa de 60 s: um inteiro por chave, para o limite geral."""
+
+    def __init__(
+        self,
+        max_keys: int = 50_000,
+        window_s: float = WINDOW_S,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._counts: dict[bytes, int] = {}
+        self._max_keys = max_keys
+        self._window_s = window_s
+        self._clock = clock
+        self._window = math.floor(clock() / window_s)
+
+    def __len__(self) -> int:
+        return len(self._counts)
+
+    def acquire(self, key: bytes, limit: int) -> Rejection | None:
+        now = self._clock()
+        window = math.floor(now / self._window_s)
+        if window != self._window:
+            # Uma janela nova recomeça todas as contagens.
+            self._window = window
+            self._counts.clear()
+        retry = max(1, math.ceil((window + 1) * self._window_s - now))
+        count = self._counts.get(key)
+        if count is None and len(self._counts) >= self._max_keys:
+            return Rejection("capacity", retry)
+        if count is not None and count >= limit:
+            return Rejection("ip", retry)
+        self._counts[key] = (count or 0) + 1
+        return None
+
+
 # ---------------------------------------------------------------------------------------------
 # Quem é o cliente
 # ---------------------------------------------------------------------------------------------
@@ -201,19 +246,29 @@ class ClientIdentifier:
             for network in self._config.campus_networks
         )
 
-    def limits(self, scope: Scope) -> list[tuple[bytes, int, LimitScope]]:
-        config = self._config
-        address = client_ip(scope, config.trusted_proxy_hops)
+    def _ip(self, scope: Scope) -> tuple[bytes, bool]:
+        """O valor que identifica o IP (o prefixo /64 no IPv6) e se ele é do campus."""
+        address = client_ip(scope, self._config.trusted_proxy_hops)
         if address is None:
             # Sem IP reconhecível (não acontece atrás do uvicorn): todos dividem uma chave.
-            ip_value, ip_limit = b"desconhecido", config.ip_per_min
-        else:
-            ip_limit = config.campus_per_min if self._is_campus(address) else config.ip_per_min
-            if isinstance(address, ipaddress.IPv6Address):
-                # Um assinante IPv6 recebe um /64 inteiro: o limite vale para o prefixo.
-                ip_value = ipaddress.ip_network((address, 64), strict=False).network_address.packed
-            else:
-                ip_value = address.packed
+            return b"desconhecido", False
+        if isinstance(address, ipaddress.IPv6Address):
+            # Um assinante IPv6 recebe um /64 inteiro: o limite vale para o prefixo.
+            prefix = ipaddress.ip_network((address, 64), strict=False).network_address.packed
+            return prefix, self._is_campus(address)
+        return address.packed, self._is_campus(address)
+
+    def gate(self, scope: Scope) -> tuple[bytes, int]:
+        """A chave e o limite folgado de todo ``/api/*`` (S25-04)."""
+        config = self._config
+        ip_value, campus = self._ip(scope)
+        limit = config.api_campus_per_min if campus else config.api_ip_per_min
+        return self._key(b"g", ip_value), limit
+
+    def limits(self, scope: Scope) -> list[tuple[bytes, int, LimitScope]]:
+        config = self._config
+        ip_value, campus = self._ip(scope)
+        ip_limit = config.campus_per_min if campus else config.ip_per_min
         ip_key = self._key(b"i", ip_value)
 
         account_id = scope.get("state", {}).get("account_id")
@@ -257,6 +312,44 @@ _MESSAGES: dict[LimitScope, str] = {
 }
 
 
+async def _reject(
+    scope: Scope, receive: Receive, send: Send, rejection: Rejection, route_path: str
+) -> None:
+    state = scope.setdefault("state", {})
+    state["outcome"] = ErrorCode.RATE_LIMITED
+    state["rate_limit"] = rejection.scope
+    state["route_path"] = route_path
+    # O tempo de espera vai só em retry_after_s e no Retry-After: a página mostra uma
+    # contagem regressiva, e um número fixo no texto ficaria desatualizado.
+    response = error_response(
+        429,
+        ErrorCode.RATE_LIMITED,
+        _MESSAGES[rejection.scope],
+        retry_after_s=rejection.retry_after_s,
+    )
+    await response(scope, receive, send)
+
+
+class ApiGateMiddleware:
+    """Limite folgado por IP em todo ``/api/*``, antes da sessão e do corpo (S25-04)."""
+
+    def __init__(self, app: ASGIApp, config: RateLimitConfig, counter: FixedWindowCounter) -> None:
+        self.app = app
+        self.counter = counter
+        self.identifier = ClientIdentifier(config)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not scope["path"].startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+        rejection = self.counter.acquire(*self.identifier.gate(scope))
+        if rejection is None:
+            await self.app(scope, receive, send)
+            return
+        # Recusado antes do roteamento: um caminho inventado não chega ao log.
+        await _reject(scope, receive, send, rejection, "/api/*")
+
+
 class RateLimitMiddleware:
     """Responde 429 ``RATE_LIMITED`` antes de ler o corpo da requisição (5.2.2, passo 3)."""
 
@@ -277,17 +370,5 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        state = scope.setdefault("state", {})
-        state["outcome"] = ErrorCode.RATE_LIMITED
-        state["rate_limit"] = rejection.scope
         # A recusa acontece antes do roteamento; o caminho é um dos de LIMITED_ROUTES.
-        state["route_path"] = scope["path"]
-        # O tempo de espera vai só em retry_after_s e no Retry-After: a página mostra uma
-        # contagem regressiva, e um número fixo no texto ficaria desatualizado.
-        response = error_response(
-            429,
-            ErrorCode.RATE_LIMITED,
-            _MESSAGES[rejection.scope],
-            retry_after_s=rejection.retry_after_s,
-        )
-        await response(scope, receive, send)
+        await _reject(scope, receive, send, rejection, scope["path"])

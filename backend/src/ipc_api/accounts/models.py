@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 #: Domínios aceitos, comparados exatamente depois do @ e sem diferenciar maiúsculas (P-13).
@@ -135,6 +136,38 @@ class ManagementRecord:
     to_status: Status
     from_role: Role | None
     to_role: Role | None
+
+
+#: Cadastros que não confirmaram o e-mail somem depois de 48 horas (o link vale 24; S25-03).
+UNVERIFIED_TTL = timedelta(hours=48)
+#: Contas fora do status ativo somem depois de 365 dias sem atividade (Q-19 d).
+INACTIVE_TTL = timedelta(days=365)
+#: Status de quem pode ser apagado por falta de atividade: todos, menos ativo e aguardando
+#: verificação (que tem o próprio prazo, acima).
+PURGEABLE = frozenset(
+    {
+        Status.AGUARDANDO_APROVACAO,
+        Status.RECUSADO,
+        Status.EX_MONITOR,
+        Status.CONSELHEIRO,
+        Status.INATIVO,
+    }
+)
+
+
+#: Quem estourou a cota de feedbacks do dia (S25-05): a conta ou o servidor inteiro.
+QuotaExceeded = Literal["conta", "servidor"]
+
+
+@dataclass(frozen=True, slots=True)
+class HousekeepingCounts:
+    """Quanto a limpeza diária apagou (S25-03), sem dado de ninguém."""
+
+    sessions: int = 0
+    tokens: int = 0
+    unverified: int = 0
+    inactive: int = 0
+    log: int = 0
 
 
 @dataclass(frozen=True, slots=True)

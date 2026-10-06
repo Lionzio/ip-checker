@@ -13,12 +13,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
-from ipc_api.accounts.models import Account
+from ipc_api.accounts.models import Account, StoreUnavailable
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
 from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings
-from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
+from ipc_api.errors import (
+    ApiError,
+    ErrorCode,
+    analyzer_unavailable,
+    database_unavailable,
+    overloaded,
+)
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
 from ipc_api.questions import check_question
@@ -92,7 +98,6 @@ async def feedback(
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
     await check_question(analyzer, body.list_number, body.question_id)
-    service.take_quota(account.id.bytes)
     try:
         async with admission.slot():
             data = await analyzer.feedback_input(
@@ -116,6 +121,11 @@ async def feedback(
             f"O código tem um erro de sintaxe{where}: as permissões não foram verificadas, "
             "então não há feedback. Corrija o código e verifique de novo.",
         )
+    # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
+    try:
+        await service.take_quota(account.id)
+    except StoreUnavailable:
+        raise database_unavailable() from None
     role = account.role
     assert role is not None  # noqa: S101 - conta ativa sempre tem cargo (CHECK no banco)
     evaluator = Evaluator(name=account.name, role=role.value, treatment=account.treatment.value)
