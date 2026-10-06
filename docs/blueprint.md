@@ -1241,6 +1241,8 @@ Situação: a Sprint 27 (S27-01 a S27-03) foi concluída em 06/10/2026, com esta
 
 No stack local, o e2e completo passou com a cópia disfarçada (funções e linhas reordenadas, nomes trocados e o `for` virando `while`) aparecendo como Plágio, com o par de trechos certo nos dois lados, e com a comparação contra a turma pondo a cópia em primeiro lugar.
 
+Manutenção (06/10/2026): o Dependabot (S25-01) abriu na primeira rodada saltos de versão principal que quebrariam o projeto, misturados a atualizações seguras: Postgres 17 → 18 (a imagem muda o caminho dos dados, e o banco do compose não sobe; o Supabase do piloto está na 17), TypeScript 6 → 7 (o typescript-eslint ainda não aceita) e @types/node 24 → 26 (tipos de um Node que o projeto não usa). O `dependabot.yml` passou a ignorar esses saltos, e também o do Python além de 3.13 e o do Node além de 24 nas imagens, para não deixar o analisador e o build fora do ar; correções e versões menores continuam chegando. Cada salto vira uma tarefa feita de propósito, com o seu gatilho: Postgres 18 quando o Supabase do piloto subir, junto com o volume do compose; TypeScript 7 quando o typescript-eslint aceitar; Node e `@types/node` juntos, com o `engines`, as imagens e a CI; Python 3.14 junto com o ruleset (`target_python`), o `pyproject.toml` e as imagens.
+
 ## 8. Definition of Done (DoD)
 
 Cada item é verificado como sim ou não. Uma task ou história só está pronta quando todos os itens aplicáveis estão marcados como "sim".
