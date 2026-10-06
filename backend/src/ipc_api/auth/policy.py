@@ -18,7 +18,9 @@ Além da tabela:
 - ao aprovar, o cargo é um dos que quem aprova pode atribuir;
 - remover não apaga o registro: professor fica ``inativo``; quem já foi monitor-chefe vira
   ``conselheiro``; os demais, ``ex_monitor``;
-- uma conta removida é reativada por quem pode atribuir o cargo que ela vai receber.
+- uma conta removida é reativada por quem pode atribuir o cargo que ela vai receber;
+- o registro das ações de gerenciamento só é visto pelo desenvolvedor e pelos professores
+  (REC-06).
 """
 
 from __future__ import annotations
@@ -67,6 +69,11 @@ def assignable_roles(actor: Account) -> tuple[Role, ...]:
 def can_manage(actor: Account) -> bool:
     """Acesso à tela de gerenciamento: desenvolvedor, professor e monitor-chefe ativos."""
     return bool(assignable_roles(actor))
+
+
+def can_view_log(actor: Account) -> bool:
+    """O registro das ações de gerenciamento (REC-06): desenvolvedor e professores ativos."""
+    return actor.status is Status.ATIVO and actor.role in (Role.DESENVOLVEDOR, Role.PROFESSOR)
 
 
 def state_allows(action: Action, target: Account) -> bool:

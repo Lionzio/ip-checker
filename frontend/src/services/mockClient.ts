@@ -12,6 +12,7 @@ import type {
   Account,
   ListInfo,
   ManagedAccount,
+  ManagementLogEntry,
   Role,
   SimilarityBand,
   ValidateRequest,
@@ -39,6 +40,7 @@ export const DEMO_ACCOUNT: Account = {
   role_label: "Monitor",
   has_password: true,
   can_manage: false,
+  can_view_log: false,
 };
 /** Uma conta que gerencia a equipe, para os testes da tela de gerenciamento (Sprint 15). */
 export const DEMO_MANAGER: Account = {
@@ -48,6 +50,7 @@ export const DEMO_MANAGER: Account = {
   role: "professor",
   role_label: "Professor",
   can_manage: true,
+  can_view_log: true,
 };
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -349,6 +352,38 @@ export function createMockClient({
     }
   }
 
+  // Registro das ações (REC-06): o simulado anota cada ação, como o backend faz na transação.
+  const log: ManagementLogEntry[] = [];
+  const ACTION_LABELS: Record<ManagementLogEntry["action"], string> = {
+    aprovar: "Aprovou",
+    recusar: "Recusou",
+    alterar_cargo: "Alterou o cargo de",
+    remover: "Removeu",
+    reativar: "Reativou",
+  };
+
+  function record(action: ManagementLogEntry["action"], id: string, change: () => void) {
+    const member = find(id);
+    const before = { status: member.status, role: member.role };
+    change();
+    log.unshift({
+      at: new Date().toISOString(),
+      action,
+      action_label: ACTION_LABELS[action],
+      actor_name: account?.name ?? "",
+      actor_role_label: account?.role_label ?? null,
+      target_name: member.name,
+      from_status: before.status,
+      from_status_label: STATUS_LABELS[before.status],
+      to_status: member.status,
+      to_status_label: STATUS_LABELS[member.status],
+      from_role: before.role,
+      from_role_label: before.role === null ? null : ROLE_LABELS[before.role],
+      to_role: member.role,
+      to_role_label: member.role === null ? null : ROLE_LABELS[member.role],
+    });
+  }
+
   const client: ApiClient = {
     async me(signal) {
       await wait(latencyMs, signal);
@@ -470,34 +505,48 @@ export function createMockClient({
     async approve(id, role) {
       await wait(latencyMs);
       requireManager();
-      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
+      record("aprovar", id, () => Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] }));
     },
 
     async reject(id) {
       await wait(latencyMs);
       requireManager();
-      find(id).status = "recusado";
+      record("recusar", id, () => {
+        find(id).status = "recusado";
+      });
     },
 
     async changeRole(id, role) {
       await wait(latencyMs);
       requireManager();
-      const member = find(id);
-      Object.assign(member, { role, role_label: ROLE_LABELS[role] });
-      member.wasHeadMonitor ||= role === "monitor_chefe";
+      record("alterar_cargo", id, () => {
+        const member = find(id);
+        Object.assign(member, { role, role_label: ROLE_LABELS[role] });
+        member.wasHeadMonitor ||= role === "monitor_chefe";
+      });
     },
 
     async remove(id) {
       await wait(latencyMs);
       requireManager();
-      const member = find(id);
-      member.status = asSeen(member).removal_status ?? "ex_monitor";
+      record("remover", id, () => {
+        const member = find(id);
+        member.status = asSeen(member).removal_status ?? "ex_monitor";
+      });
+    },
+
+    async managementLog(signal) {
+      await wait(latencyMs, signal);
+      if (account === null || !account.can_view_log) {
+        throw new ApiError(403, "FORBIDDEN", "Você não tem permissão para esta ação.");
+      }
+      return [...log];
     },
 
     async reactivate(id, role) {
       await wait(latencyMs);
       requireManager();
-      Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] });
+      record("reativar", id, () => Object.assign(find(id), { status: "ativo", role, role_label: ROLE_LABELS[role] }));
     },
 
     async listLists(signal) {

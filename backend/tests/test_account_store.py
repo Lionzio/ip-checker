@@ -19,6 +19,7 @@ from ipc_api.accounts.models import (
     Account,
     AccountConflict,
     DeveloperSeed,
+    ManagementRecord,
     NewAccount,
     NewGoogleAccount,
     Role,
@@ -451,6 +452,73 @@ async def test_transition_can_end_the_sessions_of_the_account(
     )
 
     assert (await store.get_session(b"\x0d" * 32) is None) is end_sessions
+
+
+# --- Registro de gerenciamento (S23-03, REC-06) ---------------------------------------------------
+
+
+def record(at: datetime, action: str, target: Account, to_role: Role | None) -> ManagementRecord:
+    return ManagementRecord(
+        at=at,
+        action=action,
+        actor_id=None,
+        actor_name="Professora Ana",
+        actor_role=Role.PROFESSOR,
+        target_id=target.id,
+        target_name=target.name,
+        from_status=target.status,
+        to_status=Status.ATIVO,
+        from_role=target.role,
+        to_role=to_role,
+    )
+
+
+async def test_the_record_is_written_only_when_the_transition_happens(store: AccountStore) -> None:
+    bia = await insert(store, "Bia", "bia@cin.ufpe.br", Status.AGUARDANDO_APROVACAO)
+    approve: dict[str, Any] = {
+        "expected": (Status.AGUARDANDO_APROVACAO, None),
+        "status": Status.ATIVO,
+        "role": Role.MONITOR,
+        "decided_by": None,
+        "now": NOW,
+        "end_sessions": False,
+        "record": record(NOW, "aprovar", bia, Role.MONITOR),
+    }
+
+    assert await store.transition(bia.id, **approve) is not None
+    # Outra pessoa já agiu: a transição não acontece, e nada entra no registro.
+    assert await store.transition(bia.id, **approve) is None
+
+    assert await store.management_log(10, NOW) == [record(NOW, "aprovar", bia, Role.MONITOR)]
+
+
+async def test_the_log_is_newest_first_limited_and_keeps_twelve_months(
+    store: AccountStore,
+) -> None:
+    ana = await insert(store, "Ana", "ana@cin.ufpe.br")
+    roles = [Role.MONITOR_CHEFE, Role.MONITOR, Role.MONITOR_CHEFE]
+    moments = [NOW - timedelta(days=400), NOW - timedelta(days=300), NOW - timedelta(days=1)]
+    current = ana
+    for moment, role in zip(moments, roles, strict=True):
+        changed = await store.transition(
+            ana.id,
+            expected=(Status.ATIVO, current.role),
+            status=Status.ATIVO,
+            role=role,
+            decided_by=None,
+            now=moment,
+            end_sessions=False,
+            record=record(moment, "alterar_cargo", current, role),
+        )
+        assert changed is not None
+        current = changed
+
+    log = await store.management_log(10, NOW)
+
+    # A de 400 dias saiu pelo expurgo; as outras vêm da mais recente para a mais antiga.
+    assert [entry.at for entry in log] == [moments[2], moments[1]]
+    assert [entry.to_role for entry in log] == [Role.MONITOR_CHEFE, Role.MONITOR]
+    assert [entry.at for entry in await store.management_log(1, NOW)] == [moments[2]]
 
 
 # --- Google (S16-01) ------------------------------------------------------------------------------

@@ -1389,6 +1389,63 @@
         }
       }
     },
+    "/api/v1/admin/log": {
+      "get": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Registro das ações de gerenciamento dos últimos 12 meses (REC-06)",
+        "description": "Quem aprovou, recusou, alterou o cargo, removeu ou reativou cada conta, e quando. Só o desenvolvedor e os professores veem; o monitor-chefe recebe 403.",
+        "operationId": "management_log_api_v1_admin_log_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementLogResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
     "/api/v1/validate": {
       "post": {
         "tags": [
@@ -1861,6 +1918,11 @@
             "type": "boolean",
             "title": "Can Manage",
             "description": "Verdadeiro para quem acessa o gerenciamento da equipe (FR-28)."
+          },
+          "can_view_log": {
+            "type": "boolean",
+            "title": "Can View Log",
+            "description": "Verdadeiro para quem vê o registro das ações de gerenciamento: desenvolvedor e professores (REC-06)."
           }
         },
         "additionalProperties": false,
@@ -1873,7 +1935,8 @@
           "role",
           "role_label",
           "has_password",
-          "can_manage"
+          "can_manage",
+          "can_view_log"
         ],
         "title": "AccountResponse",
         "description": "A conta de quem está logado. O tratamento só aparece para o próprio titular (FR-26)."
@@ -2361,6 +2424,182 @@
         ],
         "title": "ManagedAccount",
         "description": "Uma conta vista no gerenciamento (FR-28). Nunca traz o tratamento (FR-26)."
+      },
+      "ManagementLogEntry": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At",
+            "description": "Quando a ação foi aplicada."
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "aprovar",
+              "recusar",
+              "alterar_cargo",
+              "remover",
+              "reativar"
+            ],
+            "title": "Action"
+          },
+          "action_label": {
+            "type": "string",
+            "title": "Action Label",
+            "description": "Como a ação aparece na tela, por exemplo \"Aprovou\"."
+          },
+          "actor_name": {
+            "type": "string",
+            "title": "Actor Name",
+            "description": "Quem fez a ação."
+          },
+          "actor_role_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Role Label",
+            "description": "O cargo de quem fez, na hora da ação."
+          },
+          "target_name": {
+            "type": "string",
+            "title": "Target Name",
+            "description": "A conta sobre a qual a ação foi feita."
+          },
+          "from_status": {
+            "type": "string",
+            "enum": [
+              "aguardando_verificacao",
+              "aguardando_aprovacao",
+              "ativo",
+              "recusado",
+              "ex_monitor",
+              "conselheiro",
+              "inativo"
+            ],
+            "title": "From Status"
+          },
+          "from_status_label": {
+            "type": "string",
+            "title": "From Status Label"
+          },
+          "to_status": {
+            "type": "string",
+            "enum": [
+              "aguardando_verificacao",
+              "aguardando_aprovacao",
+              "ativo",
+              "recusado",
+              "ex_monitor",
+              "conselheiro",
+              "inativo"
+            ],
+            "title": "To Status"
+          },
+          "to_status_label": {
+            "type": "string",
+            "title": "To Status Label"
+          },
+          "from_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "desenvolvedor",
+                  "professor",
+                  "monitor_chefe",
+                  "monitor"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Role"
+          },
+          "from_role_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Role Label"
+          },
+          "to_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "desenvolvedor",
+                  "professor",
+                  "monitor_chefe",
+                  "monitor"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Role"
+          },
+          "to_role_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Role Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "at",
+          "action",
+          "action_label",
+          "actor_name",
+          "actor_role_label",
+          "target_name",
+          "from_status",
+          "from_status_label",
+          "to_status",
+          "to_status_label",
+          "from_role",
+          "from_role_label",
+          "to_role",
+          "to_role_label"
+        ],
+        "title": "ManagementLogEntry",
+        "description": "Uma ação de gerenciamento (REC-06). Nomes e cargos são os do momento da ação."
+      },
+      "ManagementLogResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManagementLogEntry"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "As ações dos últimos 12 meses, da mais recente para a mais antiga (até 500)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ManagementLogResponse"
       },
       "MembersResponse": {
         "properties": {

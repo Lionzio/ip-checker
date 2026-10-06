@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from ipc_api import openapi
+from ipc_api.accounts.models import months_before
 from ipc_api.ids import new_request_id
 from ipc_api.settings import ApiSettings, parse_lists
 from ipc_api.validation import count_lines
@@ -73,3 +75,19 @@ def test_openapi_export_writes_the_contract(tmp_path: Path) -> None:
 def test_openapi_export_requires_a_target(capsys: pytest.CaptureFixture[str]) -> None:
     assert openapi.main([]) == 2
     assert "uso:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("moment", "months", "expected"),
+    [
+        (datetime(2026, 10, 6, 9, 30, tzinfo=UTC), 12, datetime(2025, 10, 6, 9, 30, tzinfo=UTC)),
+        (datetime(2027, 3, 31, tzinfo=UTC), 1, datetime(2027, 2, 28, tzinfo=UTC)),
+        (datetime(2028, 2, 29, tzinfo=UTC), 12, datetime(2027, 2, 28, tzinfo=UTC)),
+        (datetime(2027, 1, 15, tzinfo=UTC), 1, datetime(2026, 12, 15, tzinfo=UTC)),
+    ],
+)
+def test_months_before_follows_the_postgres_interval(
+    moment: datetime, months: int, expected: datetime
+) -> None:
+    # O registro de gerenciamento guarda 12 meses (REC-06), contados como o interval do banco.
+    assert months_before(moment, months) == expected

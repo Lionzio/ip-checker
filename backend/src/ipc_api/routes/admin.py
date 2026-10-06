@@ -1,7 +1,8 @@
 """Gerenciamento da equipe (S15-02; FR-27, FR-28): só desenvolvedor, professor e monitor-chefe.
 
 Um monitor recebe 403 em todas as rotas, inclusive por chamada direta. Cada item das listas traz
-as ações que quem consulta pode fazer, calculadas pela mesma política que confere as ações.
+as ações que quem consulta pode fazer, calculadas pela mesma política que confere as ações. O
+registro das ações (REC-06) só é visto pelo desenvolvedor e pelos professores.
 """
 
 from __future__ import annotations
@@ -11,7 +12,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
 
-from ipc_api.accounts.models import ROLE_LABELS, STATUS_LABELS, Account, Role, StoreUnavailable
+from ipc_api.accounts.models import (
+    ROLE_LABELS,
+    STATUS_LABELS,
+    Account,
+    ManagementRecord,
+    Role,
+    StoreUnavailable,
+)
 from ipc_api.auth.deps import require_active_account
 from ipc_api.auth.management import Management, forbidden
 from ipc_api.auth.policy import (
@@ -26,7 +34,14 @@ from ipc_api.auth.policy import (
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.routes.auth import FORBIDDEN_ORIGIN, UNAVAILABLE
-from ipc_api.schemas import ManagedAccount, MembersResponse, RequestsResponse, RoleChoice
+from ipc_api.schemas import (
+    ManagedAccount,
+    ManagementLogEntry,
+    ManagementLogResponse,
+    MembersResponse,
+    RequestsResponse,
+    RoleChoice,
+)
 
 
 def require_manager(account: Annotated[Account, Depends(require_active_account)]) -> Account:
@@ -81,6 +96,40 @@ def managed(actor: Account, account: Account) -> ManagedAccount:
         removal_status=(
             removal_status(account).value if can(actor, Action.REMOVE, account) else None
         ),
+    )
+
+
+#: Como cada ação aparece no registro (REC-06), antes do nome da conta: "Aprovou Bia Souza".
+ACTION_LABELS = {
+    Action.APPROVE: "Aprovou",
+    Action.REJECT: "Recusou",
+    Action.CHANGE_ROLE: "Alterou o cargo de",
+    Action.REMOVE: "Removeu",
+    Action.REACTIVATE: "Reativou",
+}
+
+
+def _role_label(role: Role | None) -> str | None:
+    return ROLE_LABELS[role] if role is not None else None
+
+
+def log_entry(record: ManagementRecord) -> ManagementLogEntry:
+    action = Action(record.action)
+    return ManagementLogEntry(
+        at=record.at,
+        action=action.value,
+        action_label=ACTION_LABELS[action],
+        actor_name=record.actor_name,
+        actor_role_label=_role_label(record.actor_role),
+        target_name=record.target_name,
+        from_status=record.from_status.value,
+        from_status_label=STATUS_LABELS[record.from_status],
+        to_status=record.to_status.value,
+        to_status_label=STATUS_LABELS[record.to_status],
+        from_role=record.from_role.value if record.from_role is not None else None,
+        from_role_label=_role_label(record.from_role),
+        to_role=record.to_role.value if record.to_role is not None else None,
+        to_role_label=_role_label(record.to_role),
     )
 
 
@@ -182,3 +231,23 @@ async def reactivate(
     account_id: UUID, body: RoleChoice, actor: Manager, service: Service
 ) -> Response:
     return await _act(service, actor, Action.REACTIVATE, account_id, Role(body.role))
+
+
+@router.get(
+    "/log",
+    summary="Registro das ações de gerenciamento dos últimos 12 meses (REC-06)",
+    description=(
+        "Quem aprovou, recusou, alterou o cargo, removeu ou reativou cada conta, e quando. "
+        "Só o desenvolvedor e os professores veem; o monitor-chefe recebe 403."
+    ),
+    responses=error_docs(READ_ERRORS),
+)
+async def management_log(
+    actor: Manager, service: Service, response: Response
+) -> ManagementLogResponse:
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        records = await service.log(actor)
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return ManagementLogResponse(items=[log_entry(record) for record in records])

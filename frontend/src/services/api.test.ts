@@ -12,6 +12,7 @@ const ACCOUNT: Account = {
   role_label: "Monitor e desenvolvedor",
   has_password: true,
   can_manage: true,
+  can_view_log: true,
 };
 
 const RESPONSE: ValidateResponse = {

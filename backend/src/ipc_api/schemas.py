@@ -306,6 +306,12 @@ class AccountResponse(_Strict):
     can_manage: bool = Field(
         description="Verdadeiro para quem acessa o gerenciamento da equipe (FR-28)."
     )
+    can_view_log: bool = Field(
+        description=(
+            "Verdadeiro para quem vê o registro das ações de gerenciamento: desenvolvedor e "
+            "professores (REC-06)."
+        )
+    )
 
 
 class ManagedAccount(_Strict):
@@ -338,6 +344,31 @@ class RequestsResponse(_Strict):
 class MembersResponse(_Strict):
     active: list[ManagedAccount]
     removed: list[ManagedAccount] = Field(description="Ex-monitores, conselheiros e inativos.")
+
+
+class ManagementLogEntry(_Strict):
+    """Uma ação de gerenciamento (REC-06). Nomes e cargos são os do momento da ação."""
+
+    at: datetime = Field(description="Quando a ação foi aplicada.")
+    action: ActionName
+    action_label: str = Field(description='Como a ação aparece na tela, por exemplo "Aprovou".')
+    actor_name: str = Field(description="Quem fez a ação.")
+    actor_role_label: str | None = Field(description="O cargo de quem fez, na hora da ação.")
+    target_name: str = Field(description="A conta sobre a qual a ação foi feita.")
+    from_status: StatusName
+    from_status_label: str
+    to_status: StatusName
+    to_status_label: str
+    from_role: RoleName | None
+    from_role_label: str | None
+    to_role: RoleName | None
+    to_role_label: str | None
+
+
+class ManagementLogResponse(_Strict):
+    items: list[ManagementLogEntry] = Field(
+        description="As ações dos últimos 12 meses, da mais recente para a mais antiga (até 500)."
+    )
 
 
 class RoleChoice(_Strict):

@@ -344,6 +344,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Registro das ações de gerenciamento dos últimos 12 meses (REC-06)
+         * @description Quem aprovou, recusou, alterou o cargo, removeu ou reativou cada conta, e quando. Só o desenvolvedor e os professores veem; o monitor-chefe recebe 403.
+         */
+        get: operations["management_log_api_v1_admin_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate": {
         parameters: {
             query?: never;
@@ -506,6 +526,11 @@ export interface components {
              * @description Verdadeiro para quem acessa o gerenciamento da equipe (FR-28).
              */
             can_manage: boolean;
+            /**
+             * Can View Log
+             * @description Verdadeiro para quem vê o registro das ações de gerenciamento: desenvolvedor e professores (REC-06).
+             */
+            can_view_log: boolean;
         };
         /** AuthOptions */
         AuthOptions: {
@@ -706,6 +731,73 @@ export interface components {
              * @description O status que a conta recebe se for removida (ex_monitor, conselheiro ou inativo); vazio se quem consulta não pode removê-la.
              */
             removal_status: ("aguardando_verificacao" | "aguardando_aprovacao" | "ativo" | "recusado" | "ex_monitor" | "conselheiro" | "inativo") | null;
+        };
+        /**
+         * ManagementLogEntry
+         * @description Uma ação de gerenciamento (REC-06). Nomes e cargos são os do momento da ação.
+         */
+        ManagementLogEntry: {
+            /**
+             * At
+             * Format: date-time
+             * @description Quando a ação foi aplicada.
+             */
+            at: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "aprovar" | "recusar" | "alterar_cargo" | "remover" | "reativar";
+            /**
+             * Action Label
+             * @description Como a ação aparece na tela, por exemplo "Aprovou".
+             */
+            action_label: string;
+            /**
+             * Actor Name
+             * @description Quem fez a ação.
+             */
+            actor_name: string;
+            /**
+             * Actor Role Label
+             * @description O cargo de quem fez, na hora da ação.
+             */
+            actor_role_label: string | null;
+            /**
+             * Target Name
+             * @description A conta sobre a qual a ação foi feita.
+             */
+            target_name: string;
+            /**
+             * From Status
+             * @enum {string}
+             */
+            from_status: "aguardando_verificacao" | "aguardando_aprovacao" | "ativo" | "recusado" | "ex_monitor" | "conselheiro" | "inativo";
+            /** From Status Label */
+            from_status_label: string;
+            /**
+             * To Status
+             * @enum {string}
+             */
+            to_status: "aguardando_verificacao" | "aguardando_aprovacao" | "ativo" | "recusado" | "ex_monitor" | "conselheiro" | "inativo";
+            /** To Status Label */
+            to_status_label: string;
+            /** From Role */
+            from_role: ("desenvolvedor" | "professor" | "monitor_chefe" | "monitor") | null;
+            /** From Role Label */
+            from_role_label: string | null;
+            /** To Role */
+            to_role: ("desenvolvedor" | "professor" | "monitor_chefe" | "monitor") | null;
+            /** To Role Label */
+            to_role_label: string | null;
+        };
+        /** ManagementLogResponse */
+        ManagementLogResponse: {
+            /**
+             * Items
+             * @description As ações dos últimos 12 meses, da mais recente para a mais antiga (até 500).
+             */
+            items: components["schemas"]["ManagementLogEntry"][];
         };
         /** MembersResponse */
         MembersResponse: {
@@ -2142,6 +2234,53 @@ export interface operations {
             };
             /** @description INVALID_INPUT: identificador ou cargo inválido. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    management_log_api_v1_admin_log_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManagementLogResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27). */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

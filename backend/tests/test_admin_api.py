@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterator
+from dataclasses import replace
 from typing import Any
 
 import httpx2
@@ -38,6 +39,7 @@ ROUTES: list[tuple[str, str, dict[str, Any] | None]] = [
     ("PATCH", "/api/v1/admin/members/{id}/role", {"role": "monitor_chefe"}),
     ("POST", "/api/v1/admin/members/{id}/remove", None),
     ("POST", "/api/v1/admin/members/{id}/reactivate", {"role": "monitor"}),
+    ("GET", "/api/v1/admin/log", None),
 ]
 
 
@@ -498,6 +500,7 @@ def test_database_outage_is_503(
 
     store.list_accounts = down  # type: ignore[assignment,method-assign]
     store.transition = down  # type: ignore[method-assign]
+    store.management_log = down  # type: ignore[assignment,method-assign]
     response = api.request(method, path.format(id=target.id), json=body, headers=headers)
 
     assert error_of(response) == (503, "DATABASE_UNAVAILABLE")
@@ -531,3 +534,88 @@ async def test_the_service_refuses_who_does_not_manage(store: MemoryAccountStore
         with pytest.raises(ApiError) as caught:
             await call_service
         assert caught.value.code is ErrorCode.FORBIDDEN
+
+
+# --- Registro das ações (S23-03, REC-06) --------------------------------------------------------
+
+
+def log_of(api: TestClient, store: MemoryAccountStore, actor: Account) -> list[dict[str, Any]]:
+    response = call(api, store, actor, "GET", "/api/v1/admin/log")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    items: list[dict[str, Any]] = response.json()["items"]
+    return items
+
+
+@pytest.mark.parametrize(
+    ("role", "sees"),
+    [(Role.PROFESSOR, True), (Role.MONITOR_CHEFE, False), (Role.MONITOR, False)],
+)
+def test_only_the_developer_and_professors_see_the_log(
+    api: TestClient, store: MemoryAccountStore, developer: Account, role: Role, sees: bool
+) -> None:
+    actor = member(store, role=role)
+
+    me = api.get("/api/v1/auth/me", headers=as_(store, actor))
+    response = call(api, store, actor, "GET", "/api/v1/admin/log")
+
+    assert me.json()["can_view_log"] is sees
+    assert response.status_code == (200 if sees else 403)
+    assert api.get("/api/v1/auth/me", headers=as_(store, developer)).json()["can_view_log"]
+
+
+def test_every_action_enters_the_log_with_who_did_it_and_when(
+    api: TestClient, store: MemoryAccountStore, developer: Account
+) -> None:
+    professor = member(store, name="Professora Ana", role=Role.PROFESSOR)
+    chefe = member(store, name="Chefe Caio", role=Role.MONITOR_CHEFE)
+    bia = pending(store, "Bia Souza")
+    davi = pending(store, "Davi Lima")
+
+    assert act(api, store, chefe, "approve", bia, "monitor").status_code == 204
+    assert act(api, store, chefe, "reject", davi).status_code == 204
+    assert act(api, store, professor, "role", bia, "monitor_chefe").status_code == 204
+    assert act(api, store, professor, "remove", bia).status_code == 204
+    assert act(api, store, developer, "reactivate", bia, "monitor").status_code == 204
+
+    log = log_of(api, store, professor)
+
+    assert [(e["actor_name"], e["action_label"], e["target_name"]) for e in log] == [
+        (developer.name, "Reativou", "Bia Souza"),
+        ("Professora Ana", "Removeu", "Bia Souza"),
+        ("Professora Ana", "Alterou o cargo de", "Bia Souza"),
+        ("Chefe Caio", "Recusou", "Davi Lima"),
+        ("Chefe Caio", "Aprovou", "Bia Souza"),
+    ]
+    assert log[0]["actor_role_label"] == "Monitor e desenvolvedor"
+    assert (log[1]["from_status_label"], log[1]["to_status_label"]) == ("Ativo", "Conselheiro")
+    assert (log[2]["from_role_label"], log[2]["to_role_label"]) == ("Monitor", "Monitor-chefe")
+    assert (log[3]["to_status"], log[3]["to_role"]) == ("recusado", None)
+    assert (log[4]["from_status"], log[4]["to_role"]) == ("aguardando_aprovacao", "monitor")
+    # Nada do tratamento nem do e-mail de ninguém (FR-26): só nomes e cargos.
+    assert all("treatment" not in entry and "email" not in entry for entry in log)
+
+
+def test_refused_actions_do_not_enter_the_log(
+    api: TestClient, store: MemoryAccountStore, developer: Account
+) -> None:
+    monitor = member(store, role=Role.MONITOR)
+    bia = pending(store)
+
+    assert act(api, store, monitor, "approve", bia, "monitor").status_code == 403
+    assert act(api, store, developer, "approve", bia, "monitor").status_code == 204
+    assert act(api, store, developer, "approve", bia, "monitor").status_code == 409
+
+    assert [entry["action"] for entry in log_of(api, store, developer)] == ["aprovar"]
+
+
+def test_the_log_keeps_the_names_of_the_moment(
+    api: TestClient, store: MemoryAccountStore, developer: Account
+) -> None:
+    bia = pending(store, "Bia Souza")
+    assert act(api, store, developer, "approve", bia, "monitor").status_code == 204
+
+    # A pessoa troca o nome no perfil depois: o registro continua com o nome da época.
+    store.accounts[bia.id] = replace(store.accounts[bia.id], name="Beatriz Souza")
+
+    assert [entry["target_name"] for entry in log_of(api, store, developer)] == ["Bia Souza"]

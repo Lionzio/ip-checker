@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { RoleBadge } from "../components/RoleBadge";
 import type { AdminClient } from "../services/client";
-import type { AccountStatus, ManagedAccount, MembersResponse, Role } from "../types/api";
+import type { AccountStatus, ManagedAccount, ManagementLogEntry, MembersResponse, Role } from "../types/api";
 import { errorMessage } from "../ui";
 
 /**
  * Tela de gerenciamento (S15-03, FR-28): fila de pedidos, membros ativos e contas removidas. Cada
- * linha mostra só os botões que quem está logado pode usar; o backend confere de novo.
+ * linha mostra só os botões que quem está logado pode usar; o backend confere de novo. O registro
+ * das ações (S23-03, REC-06) só aparece para o desenvolvedor e os professores.
  */
 const ROLE_NAMES: Record<Role, string> = {
   desenvolvedor: "Monitor e desenvolvedor",
@@ -35,11 +36,12 @@ const SELECT = "rounded-md border border-slate-300 bg-white px-2 py-1 text-sm da
 interface Lists {
   requests: ManagedAccount[];
   members: MembersResponse;
+  log: ManagementLogEntry[] | null;
 }
 
 type Notice = { ok: boolean; text: string } | null;
 
-export function Admin({ client }: { client: AdminClient }) {
+export function Admin({ client, canViewLog = false }: { client: AdminClient; canViewLog?: boolean }) {
   const [lists, setLists] = useState<Lists | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -50,9 +52,13 @@ export function Admin({ client }: { client: AdminClient }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([client.listRequests(controller.signal), client.listMembers(controller.signal)]).then(
-      ([requests, members]) => {
-        setLists({ requests, members });
+    Promise.all([
+      client.listRequests(controller.signal),
+      client.listMembers(controller.signal),
+      canViewLog ? client.managementLog(controller.signal) : Promise.resolve(null),
+    ]).then(
+      ([requests, members, log]) => {
+        setLists({ requests, members, log });
         setLoadError(null);
         setBusy(false);
       },
@@ -63,7 +69,7 @@ export function Admin({ client }: { client: AdminClient }) {
       },
     );
     return () => controller.abort();
-  }, [client, version]);
+  }, [client, canViewLog, version]);
 
   async function run(action: () => Promise<void>, success: string) {
     setBusy(true);
@@ -138,6 +144,15 @@ export function Admin({ client }: { client: AdminClient }) {
           >
             <AccountTable kind="removed" accounts={lists.members.removed} busy={busy} handlers={handlers} />
           </Section>
+          {lists.log !== null && (
+            <Section title="Registro de ações" empty="Nenhuma ação registrada nos últimos 12 meses." count={lists.log.length}>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Quem aprovou, recusou, alterou o cargo, removeu ou reativou cada conta nos últimos 12 meses, da ação mais
+                recente para a mais antiga. Só o desenvolvedor e os professores veem este registro.
+              </p>
+              <LogTable entries={lists.log} />
+            </Section>
+          )}
         </>
       )}
     </div>
@@ -292,6 +307,49 @@ function Actions({ account, busy, handlers }: { account: ManagedAccount; busy: b
           Remover
         </button>
       )}
+    </div>
+  );
+}
+
+/** "Pendente → Ativo (Monitor)" ou, na mudança de cargo, "Monitor → Monitor-chefe". */
+function change(entry: ManagementLogEntry): string {
+  if (entry.action === "alterar_cargo") return `${entry.from_role_label ?? "—"} → ${entry.to_role_label ?? "—"}`;
+  const role = entry.to_status === "ativo" && entry.to_role_label !== null ? ` (${entry.to_role_label})` : "";
+  return `${entry.from_status_label} → ${entry.to_status_label}${role}`;
+}
+
+function LogTable({ entries }: { entries: ManagementLogEntry[] }) {
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <tr>
+            <th scope="col" className="px-3 py-2 font-semibold">Quando</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Quem</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Ação</th>
+            <th scope="col" className="px-3 py-2 font-semibold">Mudança</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry, index) => (
+            <tr key={`${entry.at}-${index}`} className="border-t border-slate-200 align-top dark:border-slate-700">
+              <td className="px-3 py-2 whitespace-nowrap">
+                <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</time>
+              </td>
+              <td className="px-3 py-2">
+                {entry.actor_name}
+                {entry.actor_role_label !== null && (
+                  <span className="block text-xs text-slate-600 dark:text-slate-300">{entry.actor_role_label}</span>
+                )}
+              </td>
+              <td className="px-3 py-2">
+                {entry.action_label} <span className="font-medium">{entry.target_name}</span>
+              </td>
+              <td className="px-3 py-2">{change(entry)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

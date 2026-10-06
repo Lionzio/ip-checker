@@ -192,6 +192,7 @@ def test_developer_enters_with_either_email_or_the_name(api: TestClient) -> None
             "role_label": "Monitor e desenvolvedor",
             "has_password": True,
             "can_manage": True,
+            "can_view_log": True,
         }
 
 
@@ -508,6 +509,7 @@ def test_me_shows_the_treatment_only_to_its_owner(
         "has_password": False,
         # Monitor não gerencia a equipe (FR-27).
         "can_manage": False,
+        "can_view_log": False,
     }
     assert response.headers["Cache-Control"] == "no-store"
 

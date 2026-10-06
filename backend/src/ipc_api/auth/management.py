@@ -3,7 +3,7 @@
 Cada ação é conferida na política (``auth/policy.py``) contra o estado atual da conta e aplicada
 por uma transição condicional no banco: se outra pessoa agiu antes, a segunda recebe 409 em vez de
 sobrescrever a primeira. Recusar, alterar o cargo, remover e reativar encerram as sessões da conta
-(Q-19 c).
+(Q-19 c). Cada ação aplicada entra no registro de gerenciamento na mesma transação (REC-06).
 """
 
 from __future__ import annotations
@@ -12,10 +12,20 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ipc_api.accounts.models import REMOVED, Account, Role, Status
+from ipc_api.accounts.models import REMOVED, Account, ManagementRecord, Role, Status
 from ipc_api.accounts.store import AccountStore
-from ipc_api.auth.policy import Action, can, can_manage, removal_status, state_allows
+from ipc_api.auth.policy import (
+    Action,
+    can,
+    can_manage,
+    can_view_log,
+    removal_status,
+    state_allows,
+)
 from ipc_api.errors import ApiError, ErrorCode
+
+#: Quantas ações a tela mostra: as mais recentes de até 12 meses.
+LOG_LIMIT = 500
 
 
 def forbidden() -> ApiError:
@@ -65,18 +75,37 @@ class Management:
         if not can(actor, action, target, role):
             raise forbidden()
         status, new_role = self._result(action, target, role)
+        now = self.clock()
         updated = await self.store.transition(
             target.id,
             expected=(target.status, target.role),
             status=status,
             role=new_role,
             decided_by=actor.id if action in (Action.APPROVE, Action.REJECT) else None,
-            now=self.clock(),
+            now=now,
             end_sessions=action is not Action.APPROVE,
+            record=ManagementRecord(
+                at=now,
+                action=action.value,
+                actor_id=actor.id,
+                actor_name=actor.name,
+                actor_role=actor.role,
+                target_id=target.id,
+                target_name=target.name,
+                from_status=target.status,
+                to_status=status,
+                from_role=target.role,
+                to_role=new_role,
+            ),
         )
         if updated is None:
             raise state_changed()
         return updated
+
+    async def log(self, actor: Account) -> list[ManagementRecord]:
+        if not can_view_log(actor):
+            raise forbidden()
+        return await self.store.management_log(LOG_LIMIT, self.clock())
 
     @staticmethod
     def _result(action: Action, target: Account, role: Role | None) -> tuple[Status, Role | None]:

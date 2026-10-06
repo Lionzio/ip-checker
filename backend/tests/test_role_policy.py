@@ -20,6 +20,7 @@ from ipc_api.auth.policy import (
     assignable_roles,
     can,
     can_manage,
+    can_view_log,
     removal_status,
     roles_for,
 )
@@ -117,6 +118,14 @@ def test_an_account_that_is_not_active_manages_nobody(role: Role, status: Status
 
 def test_only_developer_professor_and_head_monitor_manage() -> None:
     assert [r for r in Role if can_manage(account(r))] == [DEV, PROF, CHEFE]
+
+
+def test_only_developer_and_professors_see_the_management_log() -> None:
+    # REC-06: o monitor-chefe gerencia, mas não vê o registro das ações.
+    assert [r for r in Role if can_view_log(account(r))] == [DEV, PROF]
+    assert not any(
+        can_view_log(account(r, s)) for r in Role for s in Status if s is not Status.ATIVO
+    )
 
 
 @pytest.mark.parametrize("role", list(Role))

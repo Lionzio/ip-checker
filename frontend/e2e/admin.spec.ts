@@ -90,6 +90,16 @@ test("aprova, remove e reativa um membro pela tela de gerenciamento", async ({ p
   await signIn(again, email, password);
   await expect(again.getByLabel("Código Python")).toBeVisible();
 
+  // O registro de ações (REC-06) mostra as três ações, da mais recente, com quem as fez.
+  const log = page.getByRole("region", { name: /Registro de ações/ }).getByRole("row").filter({ hasText: name });
+  await expect(log).toHaveText([
+    new RegExp(`Reativou ${name}.*Ex-monitor → Ativo \\(Monitor\\)`),
+    new RegExp(`Removeu ${name}.*Ativo → Ex-monitor`),
+    new RegExp(`Aprovou ${name}.*Pendente → Ativo \\(Monitor\\)`),
+  ]);
+  await expect(log.first()).toContainText("Monitor e desenvolvedor");
+  expect((await pageFetch(again, "/api/v1/admin/log")).status).toBe(403);
+
   await Promise.all([person.context().close(), again.context().close()]);
 });
 

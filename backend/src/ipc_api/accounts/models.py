@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -100,6 +101,40 @@ class Account:
     @property
     def primary_email(self) -> str:
         return self.emails[0]
+
+
+#: Por quanto tempo o registro de gerenciamento fica guardado, como a telemetria (REC-06, P-06).
+LOG_RETENTION_MONTHS = 12
+
+
+def months_before(moment: datetime, months: int) -> datetime:
+    """``moment`` menos ``months`` meses, como o ``interval`` do PostgreSQL (31/03 - 1 = 28/02)."""
+    total = moment.year * 12 + (moment.month - 1) - months
+    year, month = divmod(total, 12)
+    day = min(moment.day, calendar.monthrange(year, month + 1)[1])
+    return moment.replace(year=year, month=month + 1, day=day)
+
+
+@dataclass(frozen=True, slots=True)
+class ManagementRecord:
+    """Uma ação de gerenciamento (REC-06): quem fez o quê sobre quem, e quando.
+
+    Nomes e cargos são cópias do momento da ação, para que o histórico sobreviva à edição do
+    perfil e ao expurgo de contas (Q-19 d); os identificadores ficam vazios quando a conta some.
+    """
+
+    at: datetime
+    #: Uma das ações de ``auth/policy.py`` (aprovar, recusar, alterar_cargo, remover, reativar).
+    action: str
+    actor_id: UUID | None
+    actor_name: str
+    actor_role: Role | None
+    target_id: UUID | None
+    target_name: str
+    from_status: Status
+    to_status: Status
+    from_role: Role | None
+    to_role: Role | None
 
 
 @dataclass(frozen=True, slots=True)
