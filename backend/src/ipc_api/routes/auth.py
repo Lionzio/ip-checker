@@ -17,10 +17,12 @@ from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     AccountResponse,
     AuthOptions,
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
     ResendRequest,
+    ResetPasswordRequest,
     VerifyRequest,
     VerifyResponse,
 )
@@ -226,3 +228,51 @@ async def resend(
     except StoreUnavailable:
         raise database_unavailable() from None
     return Response(status_code=202, headers={"Cache-Control": "no-store"})
+
+
+@router.post(
+    "/password/forgot",
+    status_code=202,
+    response_class=Response,
+    summary='Envia o link de "esqueci minha senha"; a resposta é a mesma, exista a conta ou não',
+    responses=error_docs(
+        {
+            403: FORBIDDEN_ORIGIN,
+            422: "DOMAIN_NOT_ALLOWED ou INVALID_INPUT.",
+            429: "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            503: UNAVAILABLE,
+        }
+    ),
+)
+async def forgot_password(
+    body: ForgotPasswordRequest, accounts: Annotated[AccountService, Depends(get_accounts)]
+) -> Response:
+    try:
+        await accounts.forgot_password(body.email)
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return Response(status_code=202, headers={"Cache-Control": "no-store"})
+
+
+@router.post(
+    "/password/reset",
+    status_code=204,
+    response_class=Response,
+    summary="Define a senha nova pelo token do link; encerra todas as sessões da conta",
+    responses=error_docs(
+        {
+            403: FORBIDDEN_ORIGIN,
+            422: "INVALID_TOKEN (inválido, já usado ou vencido), WEAK_PASSWORD ou INVALID_INPUT.",
+            429: "RATE_LIMITED: muitas requisições da mesma rede. Veja retry_after_s.",
+            503: UNAVAILABLE,
+        }
+    ),
+)
+async def reset_password(
+    body: ResetPasswordRequest, accounts: Annotated[AccountService, Depends(get_accounts)]
+) -> Response:
+    try:
+        await accounts.reset_password(body.token, body.new_password)
+    except StoreUnavailable:
+        raise database_unavailable() from None
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})

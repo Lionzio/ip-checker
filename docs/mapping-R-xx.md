@@ -50,7 +50,7 @@ que o motor extrai do código (blueprint, seção 5.2.3). Decisões tomadas pelo
 
 As Listas 3 e 4 entraram na Sprint 22 e as Listas 5 e 6 na Sprint 23 sem essas respostas. Todos
 os casos ficam do lado mais restritivo, que a equipe pode relevar quando o enunciado liberar (vale
-o enunciado); a partir da Sprint 24, uma questão poderá liberá-los pela R-01.
+o enunciado); desde a Sprint 24, uma questão cadastrada pode liberá-los pela R-01.
 
 | Caso | Hoje | Pergunta |
 |---|---|---|
@@ -90,7 +90,7 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 
 | Regra | Fatos | Situação |
 |---|---|---|
-| R-01 | Override por questão (`questions/<id>.yaml`) | Sprint 24 |
+| R-01 | Regras por questão em `questions/L<n>-Q<m>.yaml`: `allow` (regras, com as condições delas), `allow_facts` e `deny` (regras ou fatos); a proibição sai como `PROIBIDO_NA_QUESTAO` com o ID R-01 | No motor (Sprint 24); nenhuma questão real cadastrada |
 | R-02 | Bloco `requirements` por lista (Q-05) | L1 na Sprint 12; L2 na 20; L3 e L4 na 22; L5 na 23 (na L6, a exigência é a R-68) |
 | R-03 | Semântica do motor: `since_list ≤ lista ≤ until_list` | Meta-regra no `base.yaml` |
 | R-04 | Semântica do motor: fato sem regra → violação `NAO_CONSTA` | Meta-regra no `base.yaml` |

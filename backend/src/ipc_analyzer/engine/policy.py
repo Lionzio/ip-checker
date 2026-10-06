@@ -1,20 +1,23 @@
 """Avaliador de política v1 (5.2.3): transforma fatos em violações.
 
-Para cada fato, na lista ``n``, vale a primeira situação verdadeira:
+Para cada fato, na lista ``n`` e na questão ``q`` (se houver), vale a primeira situação verdadeira:
 
 1. fato estrutural: aceito;
-2. casa uma proibição geral cuja condição vale: ``ANULACAO`` (R-05 a R-14);
-3. casa uma permissão válida na lista (``since_list <= n <= until_list``) cuja condição vale:
+2. a questão proíbe o fato (``deny``): ``PROIBIDO_NA_QUESTAO`` pela R-01;
+3. a questão libera o fato (``allow`` com a condição da regra, ou ``allow_facts``): aceito, acima
+   até das proibições gerais (R-01, C-02);
+4. casa uma proibição geral cuja condição vale: ``ANULACAO`` (R-05 a R-14);
+5. casa uma permissão válida na lista (``since_list <= n <= until_list``) cuja condição vale:
    aceito (cumulatividade, R-03);
-4. casa uma permissão válida na lista, mas a condição não vale: ``NAO_CONSTA`` com o ID e a
+6. casa uma permissão válida na lista, mas a condição não vale: ``NAO_CONSTA`` com o ID e a
    mensagem dessa regra (ex.: ``type()`` com 2 argumentos, R-33);
-5. casa uma permissão de lista posterior: ``FORA_DA_LISTA``, com a primeira lista que permite;
-6. nada casa: ``NAO_CONSTA`` pela R-04 (*default deny*).
+7. casa uma permissão de lista posterior: ``FORA_DA_LISTA``, com a primeira lista que permite;
+8. nada casa: ``NAO_CONSTA`` pela R-04 (*default deny*).
 
 Depois, cada exigência da lista (R-02, Q-05; R-68, C-03) pede pelo menos um dos seus fatos no
 código; se nenhum aparece, a solução inteira recebe uma violação ``EXIGENCIA`` (5.2.3, passo 6).
 
-Overrides de questão (R-01) entram na Sprint 24.
+As exigências não mudam com a questão: uma questão não dispensa o assunto da lista (Sprint 24).
 """
 
 from __future__ import annotations
@@ -27,12 +30,17 @@ from ipc_analyzer.engine.facts import Fact
 from ipc_analyzer.engine.models import MAX_VIOLATIONS, Violation
 from ipc_analyzer.engine.ruleset import (
     Category,
+    CompiledQuestion,
     CompiledRuleset,
     Effect,
     Requirement,
     Rule,
     RuleMatch,
 )
+
+#: A regra específica da questão (catálogo R-01), em nome da qual a questão proíbe.
+QUESTION_RULE = "R-01"
+QUESTION_DENY_MESSAGE = "'{construct}' é proibido nesta questão ({question_id}), pelo enunciado."
 
 #: Uma exigência fala da solução inteira, e não de um trecho: aponta para o início do código.
 REQUIREMENT_POSITION = (1, 1, 1, 1)
@@ -68,10 +76,26 @@ def _in_range(rule: Rule, list_number: int) -> bool:
     return since <= list_number <= until
 
 
-def judge(fact: Fact, ruleset: CompiledRuleset, list_number: int) -> Violation | None:
-    """Decide um único fato; ``None`` quando ele é permitido na lista."""
+def judge(
+    fact: Fact,
+    ruleset: CompiledRuleset,
+    list_number: int,
+    question: CompiledQuestion | None = None,
+) -> Violation | None:
+    """Decide um único fato; ``None`` quando ele é permitido na lista (e na questão)."""
     if ruleset.is_structural(fact.name):
         return None
+    if question is not None:
+        if fact.name in question.denied:
+            template = question.question.message or QUESTION_DENY_MESSAGE
+            return _violation(
+                fact,
+                QUESTION_RULE,
+                Category.PROIBIDO_NA_QUESTAO,
+                template.replace("{question_id}", question.id),
+            )
+        if any(holds(condition, fact) for condition in question.allowed.get(fact.name, ())):
+            return None
     matches = ruleset.matches_for(fact.name)
 
     for match in matches:
@@ -138,6 +162,7 @@ def evaluate(
     ruleset: CompiledRuleset,
     list_number: int,
     *,
+    question: CompiledQuestion | None = None,
     max_violations: int = MAX_VIOLATIONS,
 ) -> tuple[tuple[Violation, ...], bool]:
     """Violações ordenadas e sem repetição por (regra, linha, coluna); indica se houve corte.
@@ -149,7 +174,7 @@ def evaluate(
     for unmet in unmet_requirements(facts, ruleset, list_number):
         found[(unmet.rule_id, unmet.line, unmet.col)] = unmet
     for fact in facts:
-        violation = judge(fact, ruleset, list_number)
+        violation = judge(fact, ruleset, list_number, question)
         if violation is not None:
             found.setdefault((violation.rule_id, violation.line, violation.col), violation)
     ordered = sorted(found.values(), key=lambda v: (v.line, v.col, v.rule_id))

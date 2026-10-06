@@ -21,6 +21,7 @@ from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settin
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
+from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import FeedbackRequest, FeedbackResponse
 from ipc_api.settings import ApiSettings
@@ -90,10 +91,13 @@ async def feedback(
             ErrorCode.LIST_NOT_ENABLED,
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
+    await check_question(analyzer, body.list_number, body.question_id)
     service.take_quota(account.id.bytes)
     try:
         async with admission.slot():
-            data = await analyzer.feedback_input(body.code, body.list_number, request_id=request_id)
+            data = await analyzer.feedback_input(
+                body.code, body.list_number, request_id=request_id, question_id=body.question_id
+            )
     except Overloaded:
         raise overloaded() from None
     except AnalyzerRejected as exc:

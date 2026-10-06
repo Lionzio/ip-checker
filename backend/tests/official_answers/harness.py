@@ -7,8 +7,11 @@ separado, que a CI baixa com um token só de leitura para ``IPC_GABARITOS_DIR``.
     ├── <período>/lista-<n>/<questão>.py      ex.: 2025.2/lista-2/q03.py
     └── excecoes.yaml                          opcional
 
-Até as regras por questão (Sprint 24), um gabarito pode usar algo que só o enunciado libera. Nesse
-caso, o ``excecoes.yaml`` diz quais regras o enunciado libera naquele arquivo, e por quê:
+Um gabarito pode usar algo que só o enunciado libera. Desde a Sprint 24, um gabarito do período do
+ruleset ativo cujo nome é a questão (``2026.2/lista-3/L3-Q2.py``) é analisado com as regras dela,
+cadastradas em ``rulesets/<período>/questions/`` (R-01). Como a numeração reinicia a cada período
+(P-07), as questões de períodos anteriores não ficam cadastradas; para eles, o ``excecoes.yaml``
+diz quais regras o enunciado libera naquele arquivo, e por quê:
 
     "2025.2/lista-2/q03.py":
       regras: ["R-37"]
@@ -26,11 +29,12 @@ from pathlib import Path
 import yaml
 
 from ipc_analyzer.engine.analysis import analyze_source
-from ipc_analyzer.engine.ruleset import CompiledRuleset
+from ipc_analyzer.engine.ruleset import QUESTION_ID, CompiledRuleset
 
 EXCEPTIONS_FILE = "excecoes.yaml"
 _LIST_DIR = re.compile(r"lista-([1-6])")
 _RULE_ID = re.compile(r"R-\d{2}")
+_PERIOD = re.compile(r"\d{4}\.[12]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +43,16 @@ class Gabarito:
     path: str
     list_number: int
     file: Path
+
+    @property
+    def period(self) -> str | None:
+        first = self.path.split("/", 1)[0]
+        return first if _PERIOD.fullmatch(first) else None
+
+    @property
+    def question_id(self) -> str | None:
+        """A questão, quando o nome do arquivo é a numeração oficial (``L3-Q2.py``)."""
+        return self.file.stem if QUESTION_ID.fullmatch(self.file.stem) else None
 
 
 def discover(root: Path) -> tuple[list[Gabarito], list[str]]:
@@ -87,7 +101,14 @@ def unexpected(
 ) -> list[str]:
     """O que o motor aponta no gabarito, fora das regras que o enunciado libera; vazio se passa."""
     source = gabarito.file.read_text(encoding="utf-8-sig")
-    result = analyze_source(source, list_number=gabarito.list_number, ruleset=ruleset)
+    question = gabarito.question_id
+    same_period = gabarito.period == ruleset.ruleset.period
+    result = analyze_source(
+        source,
+        list_number=gabarito.list_number,
+        ruleset=ruleset,
+        question_id=question if same_period and question in ruleset.questions else None,
+    )
     if result.syntax_error is not None:
         return [f"erro de sintaxe na linha {result.syntax_error.line}"]
     return [

@@ -7,7 +7,7 @@
 #
 # Situação na Sprint 23: o catálogo inteiro, R-02 a R-68 (proibições gerais e Listas 1 a 6, com o
 # zip condicional nas Listas 2 a 4), e as exigências R-02 das Listas 1 a 5 e R-68 da Lista 6.
-# Só a R-01 (regras por questão) fica para a Sprint 24.
+# A R-01 (regras por questão) fica em questions/, um arquivo por questão (RULES.md).
 
 schema_version: 2
 ruleset_version: "2026.2.3"

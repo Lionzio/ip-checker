@@ -54,6 +54,10 @@ class FeedbackRequest(_Strict):
     annotation: Annotated[str, StringConstraints(max_length=1_000)] | None = Field(
         default=None, description="Anotação para o aluno (opcional)."
     )
+    question_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,32}$")] | None = Field(
+        default=None,
+        description="Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).",
+    )
 
 
 class FeedbackResponse(_Strict):
@@ -143,9 +147,23 @@ class ValidateResponse(_Strict):
     truncated: bool = Field(description="Verdadeiro quando havia mais de 200 violações.")
 
 
+class QuestionInfo(_Strict):
+    id: Annotated[str, StringConstraints(pattern=r"^L[1-6]-Q[1-9]\d?$")] = Field(
+        description="Numeração oficial da questão no período (P-07), como L3-Q2."
+    )
+    title: Annotated[str, StringConstraints(min_length=1, max_length=80)]
+
+
 class ListInfo(_Strict):
     number: ListNumber
     title: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    questions: list[QuestionInfo] = Field(
+        default_factory=list,
+        description=(
+            "Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando "
+            "a lista não tem nenhuma."
+        ),
+    )
 
 
 class ErrorDetail(_Strict):
@@ -271,6 +289,15 @@ class GoogleSignupResponse(_Strict):
 
 class ResendRequest(_Strict):
     email: Email
+
+
+class ForgotPasswordRequest(_Strict):
+    email: Email
+
+
+class ResetPasswordRequest(_Strict):
+    token: SessionToken = Field(description="O token do link de redefinição enviado por e-mail.")
+    new_password: Password
 
 
 class ProfileUpdate(_Strict):

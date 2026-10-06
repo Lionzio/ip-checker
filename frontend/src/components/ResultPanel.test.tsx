@@ -40,7 +40,7 @@ describe("ResultPanel", () => {
     renderState({ kind: "success", response: BASE });
 
     expect(screen.getByRole("heading", { name: "Nenhuma violação encontrada" })).toBeInTheDocument();
-    expect(screen.getByText(/permissões específicas da questão não foram consideradas/)).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma questão foi escolhida: valeram só as permissões da lista/)).toBeInTheDocument();
     expect(screen.getByText("Regras 2026.2.0")).toBeInTheDocument();
   });
 

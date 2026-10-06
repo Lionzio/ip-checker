@@ -10,11 +10,22 @@ describe("cliente simulado", () => {
     await expect(client.listLists()).resolves.toEqual([
       { number: 1, title: "Comandos condicionais" },
       { number: 2, title: "Laços de repetição" },
-      { number: 3, title: "Listas e tuplas" },
+      { number: 3, title: "Listas e tuplas", questions: [{ id: "L3-Q1", title: "Questão de demonstração" }] },
       { number: 4, title: "Funções e escopo de variável" },
       { number: 5, title: "Dicionários" },
       { number: 6, title: "Recursão" },
     ]);
+  });
+
+  it("aplica a questão escolhida e recusa uma questão que não existe (R-01)", async () => {
+    const withQuestion = await client.validate({ code: "v = [1]\nprint(v)\n", list_number: 3, question_id: "L3-Q1" });
+
+    // Com a questão, o aviso de regras da questão não aplicadas some (FR-11).
+    expect(withQuestion.question_id).toBe("L3-Q1");
+    expect(withQuestion.notices).toEqual([]);
+    await expect(
+      client.validate({ code: "x = 1", list_number: 3, question_id: "L3-Q9" }),
+    ).rejects.toMatchObject({ status: 422, code: "UNKNOWN_QUESTION" });
   });
 
   it("nas Listas 5 e 6, o assunto exigido é um dicionário e a recursão (R-68)", async () => {

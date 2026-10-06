@@ -8,8 +8,10 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Plagiarism } from "./pages/Plagiarism";
 import { Privacy } from "./pages/Privacy";
+import { ForgotPassword } from "./pages/ForgotPassword";
 import { Profile } from "./pages/Profile";
 import { Register } from "./pages/Register";
+import { ResetPassword } from "./pages/ResetPassword";
 import { Verify } from "./pages/Verify";
 import type { ApiClient } from "./services/client";
 import { SessionProvider } from "./session";
@@ -97,6 +99,9 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
             />
             <Route path="/verificar" element={<Verify client={client} />} />
+            {/* Esqueci minha senha (S24-04): abertas, porque quem esqueceu a senha não tem sessão. */}
+            <Route path="/esqueci-senha" element={<ForgotPassword client={client} />} />
+            <Route path="/redefinir-senha" element={<ResetPassword client={client} />} />
             <Route path="/privacidade" element={<Privacy />} />
             <Route
               path="/google/concluir"

@@ -33,8 +33,10 @@ from ipc_api.accounts.models import (
     normalize_email,
 )
 
-#: Finalidade dos tokens de e-mail (5.2.5). A redefinição de senha não existe nesta versão.
+#: Finalidades dos tokens de e-mail (5.2.5): a verificação do cadastro (S14-02) e a redefinição
+#: de senha pelo "esqueci minha senha" (S24-04, Q-19 b).
 VERIFICATION = "verificacao"
+RESET = "redefinicao"
 
 
 class AccountStore(Protocol):
@@ -90,6 +92,14 @@ class AccountStore(Protocol):
     ) -> Account: ...
 
     async def set_password(self, account_id: UUID, password_hash: str) -> None: ...
+
+    async def reset_password(
+        self, token_hash: bytes, password_hash: str, now: datetime
+    ) -> Account | None:
+        """Consome um token de redefinição válido, troca a senha e encerra todas as sessões.
+
+        Devolve ``None`` se o token não existe, já foi usado, venceu ou é de outra finalidade.
+        """
 
     async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
         """Contas nesses status, da mais antiga para a mais nova (gerenciamento, S15-02)."""
@@ -369,6 +379,25 @@ class MemoryAccountStore:
     async def set_password(self, account_id: UUID, password_hash: str) -> None:
         self._check()
         self.accounts[account_id] = replace(self.accounts[account_id], password_hash=password_hash)
+
+    async def reset_password(
+        self, token_hash: bytes, password_hash: str, now: datetime
+    ) -> Account | None:
+        self._check()
+        async with self._lock:
+            token = self.email_tokens.get(token_hash)
+            if (
+                token is None
+                or token.purpose != RESET
+                or token.used_at is not None
+                or token.expires_at <= now
+            ):
+                return None
+            token.used_at = now
+            account = replace(self.accounts[token.account_id], password_hash=password_hash)
+            self.accounts[account.id] = account
+            await self.delete_sessions(account.id)
+            return account
 
     async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
         self._check()

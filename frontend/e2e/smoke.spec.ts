@@ -28,6 +28,13 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   await expect(page.getByRole("option", { name: "Lista 5: Dicionários" })).toBeAttached();
   await expect(page.getByRole("option", { name: "Lista 6: Recursão" })).toBeAttached();
   await expect(page.getByRole("note")).toHaveCount(0);
+
+  // R-01 (Sprint 24): a questão é escolhida depois da lista. O ruleset ainda não tem questões
+  // reais cadastradas, então o seletor diz isso.
+  const question = page.getByLabel("Questão");
+  await expect(question).toBeDisabled();
+  await page.getByLabel("Lista").selectOption("3");
+  await expect(question).toHaveText("Nenhuma questão com regra específica cadastrada");
 });
 
 test("Lista 5: dicionário com items no for passa, e o dicionário na Lista 4 é da Lista 5", async ({ page }) => {

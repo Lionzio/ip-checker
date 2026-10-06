@@ -58,7 +58,13 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
     expect(text).toHaveValue("Olá, Isabella, sou a monitora Ana e seu código estava muito bom.");
     expect(panel()).toHaveTextContent("Escrito com IA a partir do resultado do IP-Checker.");
     expect(sent).toEqual([
-      { code: VALID, list_number: 1, student_name: "Isabella Schultz", annotation: "Testar o zero." },
+      {
+        code: VALID,
+        list_number: 1,
+        question_id: null,
+        student_name: "Isabella Schultz",
+        annotation: "Testar o zero.",
+      },
     ]);
   });
 

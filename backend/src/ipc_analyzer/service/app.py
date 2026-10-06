@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException
 
+from ipc_analyzer.engine.analysis import resolve_question
 from ipc_analyzer.engine.feedback import FeedbackInput
 from ipc_analyzer.engine.guards import (
     DEFAULT_LIMITS,
@@ -45,6 +46,8 @@ class AnalyzeRequest(BaseModel):
 
     code: str
     list_number: int = Field(ge=1, le=6)
+    #: Questão do período (R-01), como L3-Q2; sem ela, valem só as regras da lista.
+    question_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,32}$")
 
 
 class ViolationOut(BaseModel):
@@ -171,9 +174,16 @@ class FeedbackInputResponse(BaseModel):
         )
 
 
+class QuestionOut(BaseModel):
+    id: str
+    title: str
+
+
 class ListOut(BaseModel):
     number: int
     title: str
+    #: Questões com regra específica cadastrada no período (R-01), em ordem.
+    questions: list[QuestionOut] = []
 
 
 class ManifestResponse(BaseModel):
@@ -248,7 +258,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
     async def validation_error(request: Request, _exc: RequestValidationError) -> JSONResponse:
         request.state.outcome = "INVALID_INPUT"
         return _error(
-            422, "INVALID_INPUT", "Requisição inválida: envie code e list_number (1 a 6)."
+            422,
+            "INVALID_INPUT",
+            "Requisição inválida: envie code, list_number (1 a 6) e, se houver, question_id.",
         )
 
     @app.exception_handler(HTTPException)
@@ -276,7 +288,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 f"O código tem {thousands(size)} bytes; o limite é "
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
-        result = await pool.analyze(body.code, body.list_number)
+        # A questão é conferida aqui, antes do worker: uma questão inexistente nem entra na fila.
+        resolve_question(ruleset, body.list_number, body.question_id)
+        result = await pool.analyze(body.code, body.list_number, body.question_id)
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
         return AnalyzeResponse.from_result(result)
@@ -286,6 +300,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         body: AnalyzeRequest,
         request: Request,
         pool: Annotated[AnalyzerPool, Depends(_pool)],
+        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
     ) -> FeedbackInputResponse:
         size = len(body.code.encode("utf-8", errors="surrogatepass"))
         request.state.payload_bytes = size
@@ -295,7 +310,8 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 f"O código tem {thousands(size)} bytes; o limite é "
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
-        data = await pool.feedback_input(body.code, body.list_number)
+        resolve_question(ruleset, body.list_number, body.question_id)
+        data = await pool.feedback_input(body.code, body.list_number, body.question_id)
         request.state.outcome = data.status
         return FeedbackInputResponse.from_input(data)
 
@@ -330,7 +346,17 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             ruleset_sha256=ruleset.sha256,
             period=data.period,
             target_python=data.target_python,
-            lists=[ListOut(number=n, title=title) for n, title in sorted(data.lists.items())],
+            lists=[
+                ListOut(
+                    number=n,
+                    title=title,
+                    questions=[
+                        QuestionOut(id=q.id, title=q.question.title)
+                        for q in ruleset.questions_for(n)
+                    ],
+                )
+                for n, title in sorted(data.lists.items())
+            ],
         )
 
     @app.get("/internal/health", response_model=None)

@@ -68,16 +68,20 @@ def _init_worker(ruleset_path: str, limits: ResourceLimits, sandbox: SandboxMode
         logger.warning("filtro seccomp indisponível neste sistema; use Linux em produção")
 
 
-def _analyze_in_worker(source: str, list_number: int) -> AnalysisResult:
+def _analyze_in_worker(source: str, list_number: int, question_id: str | None) -> AnalysisResult:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
-    return analyze_source(source, list_number=list_number, ruleset=_RULESET)
+    return analyze_source(
+        source, list_number=list_number, ruleset=_RULESET, question_id=question_id
+    )
 
 
-def _feedback_in_worker(source: str, list_number: int) -> FeedbackInput:
+def _feedback_in_worker(source: str, list_number: int, question_id: str | None) -> FeedbackInput:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
-    return feedback_input(source, list_number=list_number, ruleset=_RULESET)
+    return feedback_input(
+        source, list_number=list_number, ruleset=_RULESET, question_id=question_id
+    )
 
 
 def _compare_in_worker(first: str, second: str) -> Similarity | InvalidSide:
@@ -130,12 +134,16 @@ class AnalyzerPool:
                 "A análise foi interrompida e não pôde ser concluída."
             ) from None
 
-    async def analyze(self, source: str, list_number: int) -> AnalysisResult:
-        return await self.run(_analyze_in_worker, source, list_number)
+    async def analyze(
+        self, source: str, list_number: int, question_id: str | None = None
+    ) -> AnalysisResult:
+        return await self.run(_analyze_in_worker, source, list_number, question_id)
 
-    async def feedback_input(self, source: str, list_number: int) -> FeedbackInput:
+    async def feedback_input(
+        self, source: str, list_number: int, question_id: str | None = None
+    ) -> FeedbackInput:
         """Feedback (S18-02): o resultado com os nomes legíveis e o código sem comentários."""
-        return await self.run(_feedback_in_worker, source, list_number)
+        return await self.run(_feedback_in_worker, source, list_number, question_id)
 
     async def compare(self, first: str, second: str) -> Similarity | InvalidSide:
         """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento."""

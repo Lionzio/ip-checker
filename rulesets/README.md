@@ -9,7 +9,7 @@ lê e valida estes arquivos: mudar uma regra nunca exige mudar código (ADR-02, 
 rulesets/
 └── <período>/            ex.: 2026.2 — a numeração das questões reinicia a cada período (P-07)
     ├── base.yaml         regras das listas, traduzidas do documento de permissões
-    └── questions/        (Sprint 24) permissões e proibições explícitas de cada questão
+    └── questions/        regras de cada questão (R-01), uma por arquivo: L<lista>-Q<número>.yaml
 ```
 
 Gabaritos **nunca** entram aqui nem em nenhuma pasta deste repositório: ficam num repositório
@@ -49,17 +49,33 @@ Predicados disponíveis (lista fechada; um predicado novo exige código e ADR):
 | Predicado | Parâmetros | Verdadeiro quando |
 |---|---|---|
 | `call_args` | `min`, `max` | O fato é a função de uma chamada com esse número de argumentos |
-| `zip_in_for_header` | `min` | O fato é o `zip()` que serve de iterável ao comando `for`, ou o alvo desse `for` (`for a, b in zip(x, y)`), com `min` ou mais sequências (R-37) |
+| `zip_in_for_header` | `min` | O fato é o `zip()` que serve de iterável ao comando `for`, ou o alvo desse `for` (`for a, b in zip(x, y)`), com `min` ou mais sequências (R-37 e R-64) |
+| `enumerate_in_for_header` | nenhum | O fato é o alvo de um `for` cujo iterável é `enumerate(...)` (R-63) |
+| `items_in_for_header` | nenhum | O fato é o alvo de um `for` cujo iterável é `x.items()` (R-65) |
+
+Os predicados ficam num registro único, `backend/src/ipc_analyzer/engine/predicates.py`, que o
+carregador usa para validar os parâmetros e o motor usa para conferir a condição.
 
 Numa regra `allow`, `when.message` é a mensagem mostrada quando a regra vale na lista, mas a
 condição não é atendida (ex.: `type()` com 2 argumentos).
+
+## Regras de uma questão (R-01)
+
+O que o enunciado de uma questão permite ou proíbe explicitamente fica em
+`questions/L<lista>-Q<número>.yaml`, cadastrado por monitores e aprovado por monitor-chefe ou
+professor. O passo a passo, com um exemplo comentado, está em [`RULES.md`](../RULES.md).
 
 ## Como validar uma mudança
 
 ```bash
 cd backend
+uv run ipc-rules validate ../rulesets/2026.2 --golden tests/golden
 uv run pytest
 ```
+
+O `ipc-rules validate` carrega o `base.yaml` e as questões exatamente como o analisador, mostra o
+caminho de cada erro e avisa das questões que liberam proibições gerais (só com professor, C-02).
+O mesmo comando roda na CI e bloqueia o PR.
 
 Toda regra criada ou alterada precisa de casos em `backend/tests/golden/` (pelo menos 3 por
 regra: permitido na lista certa, proibido antes dela e evasão quando couber). Cada caso traz o
@@ -67,7 +83,7 @@ código, a lista e as violações esperadas, comparadas de forma exata.
 
 O teste falha, com o caminho do campo, se o arquivo tiver ID repetido, fato inexistente (ex.:
 `node:Fro`), marcador desconhecido na mensagem, fato permitido e proibido ao mesmo tempo, entre
-outros. A CLI `ipc-rules validate` entra na Sprint 24.
+outros.
 
 ## Gabaritos de períodos anteriores (Q-14, Sprint 20)
 
@@ -83,8 +99,10 @@ configuração, o job fica como *skipped* e o resto da CI segue normal.
 excecoes.yaml                          opcional
 ```
 
-Até as regras por questão (Sprint 24), um gabarito pode usar algo que só o enunciado libera. Nesse
-caso, registre no `excecoes.yaml` as regras que o enunciado libera naquele arquivo e o motivo:
+Um gabarito do período do ruleset ativo cujo nome é a questão (`2026.2/lista-3/L3-Q2.py`) é
+analisado com as regras dela, de `questions/`. Como a numeração reinicia a cada período (P-07), as
+questões de períodos anteriores não ficam cadastradas: para elas, registre no `excecoes.yaml` as
+regras que o enunciado libera naquele arquivo e o motivo:
 
 ```yaml
 "2025.2/lista-2/q03.py":

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
 
-from ipc_analyzer.engine.ruleset import CompiledRuleset
+from conftest import BASE_RULESET
+from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
 from official_answers.harness import EXCEPTIONS_FILE, discover, load_exceptions, unexpected
 
 SOLUTIONS = {
@@ -95,3 +97,27 @@ def test_malformed_exceptions_are_refused(tmp_path: Path, content: str, message:
 
     with pytest.raises(ValueError, match=message):
         load_exceptions(tmp_path)
+
+
+def test_a_gabarito_of_the_active_period_uses_its_registered_question(tmp_path: Path) -> None:
+    # Ruleset com a questão L2-Q3, que libera zip() fora do for (o que só o enunciado permite).
+    rules = tmp_path / "rulesets"
+    (rules / "questions").mkdir(parents=True)
+    shutil.copy(BASE_RULESET, rules / "base.yaml")
+    (rules / "questions" / "L2-Q3.yaml").write_text(
+        "question_id: L2-Q3\nlist: 2\ntitle: Pares\nsource: o enunciado pede zip() fora do for\n"
+        "allow_facts: ['builtin:zip']\n",
+        encoding="utf-8",
+    )
+    ruleset = load_ruleset(rules / "base.yaml")
+    code = "a = input()\nb = input()\nz = zip(a, b)\nfor par in z:\n    print(par)\n"
+    answers = tmp_path / "gabaritos"
+    for name in ("2026.2/lista-2/L2-Q3.py", "2025.2/lista-2/L2-Q3.py", "2026.2/lista-2/q03.py"):
+        (answers / name).parent.mkdir(parents=True, exist_ok=True)
+        (answers / name).write_text(code, encoding="utf-8")
+    found = {g.path: g for g in discover(answers)[0]}
+
+    # Só o do período ativo, com o nome da questão, usa a regra dela (P-07).
+    assert unexpected(found["2026.2/lista-2/L2-Q3.py"], ruleset) == []
+    assert unexpected(found["2025.2/lista-2/L2-Q3.py"], ruleset) == ["R-37 linha 3"]
+    assert unexpected(found["2026.2/lista-2/q03.py"], ruleset) == ["R-37 linha 3"]

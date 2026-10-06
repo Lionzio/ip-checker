@@ -45,6 +45,12 @@ class AnalysisLimitError(InputError):
     code = "ANALYSIS_LIMIT"
 
 
+class UnknownQuestionError(InputError):
+    """A questão não está cadastrada no período, ou não é da lista escolhida (R-01)."""
+
+    code = "UNKNOWN_QUESTION"
+
+
 # Quebras de linha reconhecidas pelo tokenizador do Python.
 _LINE_BREAK = re.compile(r"\r\n|\r|\n")
 # Caracteres de controle recusados. Tab, \n, \r e form feed (\x0c) são válidos em código Python.

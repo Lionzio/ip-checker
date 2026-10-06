@@ -36,6 +36,10 @@ export interface AuthClient {
   verifyEmail(token: string): Promise<void>;
   /** Reenvia o link; a resposta é a mesma, exista a conta ou não. */
   resendVerification(email: string): Promise<void>;
+  /** Pede o link de "esqueci minha senha"; a resposta é a mesma, exista a conta ou não. */
+  forgotPassword(email: string): Promise<void>;
+  /** Define a senha nova pelo token do link; todas as sessões da conta caem. */
+  resetPassword(token: string, newPassword: string): Promise<void>;
   updateProfile(update: ProfileUpdate): Promise<Account>;
   /** Troca a senha (ou define uma, numa conta só do Google); as outras sessões caem. */
   changePassword(currentPassword: string | null, newPassword: string): Promise<void>;

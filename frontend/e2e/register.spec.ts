@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { verificationLink } from "./mailpit";
+import { resetLink, verificationLink } from "./mailpit";
 
 /**
  * Registro por e-mail e senha (S14-01, S14-02, FR-23): o formulário, o e-mail que chega ao Mailpit
@@ -41,6 +41,45 @@ test("registra, confirma o e-mail pelo link e espera a aprovação", async ({ pa
   await page.goto("/entrar");
   await page.getByLabel("Nome ou e-mail institucional").fill(name);
   await page.getByLabel("Senha", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("alert")).toContainText("aguardando a aprovação");
+});
+
+test("esqueci minha senha: o link do e-mail define a senha nova (S24-04)", async ({ page, request }) => {
+  const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const email = `e2e.senha.${stamp}@cin.ufpe.br`;
+  const name = `Pessoa Senha ${stamp}`;
+
+  // Um cadastro confirmado, ainda na fila de aprovação.
+  await page.goto("/registrar");
+  await page.getByLabel("Nome", { exact: true }).fill(name);
+  await page.getByLabel("E-mail institucional", { exact: true }).fill(email);
+  await page.getByLabel("Senha", { exact: true }).fill(`Antiga-${stamp}!`);
+  await page.getByLabel("Curso", { exact: true }).fill("Ciência da Computação");
+  await page.getByLabel(/Neutro/).check();
+  await page.getByRole("button", { name: "Registrar" }).click();
+  const verify = await verificationLink(request, email);
+  await page.goto(verify.pathname + verify.search);
+  await page.getByRole("button", { name: "Confirmar meu e-mail" }).click();
+  await expect(page.getByRole("status")).toContainText("E-mail confirmado");
+
+  await page.goto("/entrar");
+  await page.getByRole("link", { name: "Esqueci minha senha" }).click();
+  await page.getByLabel("E-mail institucional").fill(email);
+  await page.getByRole("button", { name: "Enviar o link" }).click();
+  await expect(page.getByRole("status")).toContainText(`Se houver uma conta com ${email}`);
+
+  const link = await resetLink(request, email);
+  await page.goto(link.pathname + link.search);
+  await page.getByLabel("Senha nova", { exact: true }).fill(`Nova-${stamp}!`);
+  await page.getByLabel("Repita a senha nova").fill(`Nova-${stamp}!`);
+  await page.getByRole("button", { name: "Definir a senha nova" }).click();
+  await expect(page.getByRole("status")).toContainText("Senha nova definida.");
+
+  // A senha nova é a que vale: o cadastro aparece como aguardando a aprovação.
+  await page.goto("/entrar");
+  await page.getByLabel("Nome ou e-mail institucional").fill(email);
+  await page.getByLabel("Senha", { exact: true }).fill(`Nova-${stamp}!`);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("alert")).toContainText("aguardando a aprovação");
 });

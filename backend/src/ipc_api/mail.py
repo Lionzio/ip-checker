@@ -200,3 +200,28 @@ def verification_message(sender: str, to: str, name: str, link: str) -> EmailMes
         subtype="html",
     )
     return message
+
+
+def reset_message(sender: str, to: str, name: str, link: str) -> EmailMessage:
+    """O e-mail do "esqueci minha senha" (S24-04): link de uso único, válido por 1 hora."""
+    message = EmailMessage()
+    message["Subject"] = "Redefina a sua senha do IP-Checker"
+    message["From"] = sender
+    message["To"] = to
+    message.set_content(
+        f"Olá, {name}.\n\n"
+        "Recebemos um pedido para redefinir a senha da sua conta no IP-Checker. Para escolher uma "
+        f"senha nova, abra o link abaixo (vale por 1 hora e só uma vez):\n\n{link}\n\n"
+        "Ao definir a senha nova, as sessões abertas da sua conta são encerradas.\n\n"
+        "Se você não pediu isso, ignore esta mensagem: a sua senha continua a mesma.\n"
+    )
+    message.add_alternative(
+        f"<p>Olá, {escape(name)}.</p>"
+        "<p>Recebemos um pedido para redefinir a senha da sua conta no IP-Checker.</p>"
+        f'<p><a href="{escape(link, quote=True)}">Clique aqui para escolher uma senha nova.</a></p>'
+        "<p>O link vale por 1 hora e só uma vez. Ao definir a senha nova, as sessões abertas "
+        "da sua conta são encerradas.</p>"
+        "<p>Se você não pediu isso, ignore esta mensagem: a sua senha continua a mesma.</p>",
+        subtype="html",
+    )
+    return message
