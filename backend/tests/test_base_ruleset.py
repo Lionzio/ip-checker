@@ -19,10 +19,12 @@ def test_base_ruleset_metadata(base_ruleset: CompiledRuleset) -> None:
     assert len(base_ruleset.sha256) == 64
 
 
-def test_sprint_22_scope_is_r03_to_r60(base_ruleset: CompiledRuleset) -> None:
+def test_sprint_23_scope_is_the_whole_catalog(base_ruleset: CompiledRuleset) -> None:
     ruleset = base_ruleset.ruleset
 
-    assert {rule.id for rule in ruleset.rules} == _ids(5, 60)
+    # R-01 (questão) fica para a Sprint 24; R-02 e R-68 são exigências, e R-03 e R-04, meta-regras.
+    assert {rule.id for rule in ruleset.rules} == _ids(5, 67)
+    assert {requirement.id for requirement in ruleset.requirements} == {"R-02", "R-68"}
     assert {meta.id for meta in ruleset.meta_rules} == {"R-03", "R-04"}
     assert {meta.kind for meta in ruleset.meta_rules} == {
         MetaKind.CUMULATIVE,
@@ -40,7 +42,7 @@ def test_general_prohibitions_annul_the_question(base_ruleset: CompiledRuleset) 
 
 
 @pytest.mark.parametrize(
-    ("first", "last", "since"), [(15, 33, 1), (34, 36, 2), (38, 58, 3), (59, 60, 4)]
+    ("first", "last", "since"), [(15, 33, 1), (34, 36, 2), (38, 58, 3), (59, 60, 4), (61, 67, 5)]
 )
 def test_permissions_start_at_their_list(
     base_ruleset: CompiledRuleset, first: int, last: int, since: int
@@ -71,8 +73,11 @@ def test_permissions_start_at_their_list(
         ("op:Add", {"R-18", "R-21"}),
         ("kwarg:print.end", {"R-32"}),
         ("node:For", {"R-34"}),
-        ("builtin:zip", {"R-37"}),  # Q-04: até a Lista 4; a R-64 libera da Lista 5 em diante
-        ("target:for_unpack", {"R-37"}),  # Q-02 (d): só com zip no for
+        ("builtin:zip", {"R-37", "R-64"}),  # Q-04: condicional até a Lista 4, livre depois
+        ("target:for_unpack", {"R-37", "R-63", "R-64", "R-65"}),  # Q-02 (d): zip, enumerate, items
+        ("node:Dict", {"R-61"}),
+        ("node:Lambda", {"R-67"}),
+        ("method:items", {"R-65"}),
     ],
 )
 def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: set[str]) -> None:
@@ -89,8 +94,8 @@ def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: s
         "builtin:eval",
         "builtin:getattr",
         "builtin:__import__",
-        "node:Lambda",  # só a partir da Lista 5
-        "builtin:enumerate",  # só a partir da Lista 5 (R-63)
+        "kwarg:sorted.key",  # Q-02 (c): key= não consta, nem com lambda (R-67)
+        "kwarg:enumerate.start",  # Q-02 (c): só end= consta
     ],
 )
 def test_not_yet_permitted_facts_fall_to_default_deny(
@@ -120,15 +125,27 @@ def test_conditions_of_the_ruleset(base_ruleset: CompiledRuleset) -> None:
         ("R-33", "builtin:type", "call_args"),
         ("R-37", "builtin:zip", "zip_in_for_header"),  # Q-04
         ("R-37", "target:for_unpack", "zip_in_for_header"),  # Q-02 (d)
+        ("R-63", "target:for_unpack", "enumerate_in_for_header"),
+        ("R-64", "target:for_unpack", "zip_in_for_header"),
+        ("R-65", "target:for_unpack", "items_in_for_header"),
     }
 
 
 def test_zip_condition_holds_from_list_2_to_4(base_ruleset: CompiledRuleset) -> None:
-    (rule,) = base_ruleset.rules_for("builtin:zip")
+    conditional, free = base_ruleset.rules_for("builtin:zip")
 
-    assert (rule.since_list, rule.until_list) == (2, 4)
-    assert all(condition is not None for _, condition in rule.matches())
-    assert all(condition.params == {"min": 2} for _, condition in rule.matches() if condition)
+    assert (conditional.id, conditional.since_list, conditional.until_list) == ("R-37", 2, 4)
+    assert all(condition is not None for _, condition in conditional.matches())
+    assert all(c.params == {"min": 2} for _, c in conditional.matches() if c)
+    # Q-04: a partir da Lista 5, zip() é livre; o alvo "a, b" ainda pede o zip no for.
+    assert (free.id, free.since_list, free.until_list) == ("R-64", 5, None)
+    assert dict(free.matches())["builtin:zip"] is None
+
+
+def test_recursion_is_decided_by_the_function_rules(base_ruleset: CompiledRuleset) -> None:
+    # derived:recursion só serve à exigência da R-68; o def e a chamada são da R-59.
+    assert base_ruleset.is_structural("derived:recursion")
+    assert {rule.id for rule in base_ruleset.rules_for("call:user")} == {"R-59"}
 
 
 def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:
@@ -142,4 +159,6 @@ def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:
         2: {"node:For", "node:While"},
         3: {"node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple"},
         4: {"node:FunctionDef"},
+        5: {"node:Dict", "builtin:dict"},
+        6: {"derived:recursion"},  # R-68, recursão direta ou mútua (C-03)
     }

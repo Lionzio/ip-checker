@@ -160,7 +160,7 @@
   list: 1
   code: |
     f = lambda: 1
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1]
+  expect: [R-02 EXIGENCIA 1, R-67 FORA_DA_LISTA 1]
 
 - id: E23-list-literal
   rule: R-04
@@ -295,4 +295,4 @@
     a = {1: 2}
     b = {**a}
   # O dicionário (R-61, Lista 5) e o '**' dentro dele, que não consta em nenhuma lista.
-  expect: [R-02 EXIGENCIA 1, R-04 NAO_CONSTA 1, R-04 NAO_CONSTA 2, R-04 NAO_CONSTA 2]
+  expect: [R-02 EXIGENCIA 1, R-61 FORA_DA_LISTA 1, R-61 FORA_DA_LISTA 2, R-04 NAO_CONSTA 2]

@@ -5,11 +5,12 @@
 # este arquivo só traduz o documento para o vocabulário de fatos do motor
 # (ver docs/mapping-R-xx.md e o guia em rulesets/README.md).
 #
-# Situação na Sprint 22: R-03 a R-60 (proibições gerais e Listas 1 a 4, com o zip condicional)
-# e a exigência R-02 das Listas 1 a 4. As Listas 5 e 6 entram na Sprint 23.
+# Situação na Sprint 23: o catálogo inteiro, R-02 a R-68 (proibições gerais e Listas 1 a 6, com o
+# zip condicional nas Listas 2 a 4), e as exigências R-02 das Listas 1 a 5 e R-68 da Lista 6.
+# Só a R-01 (regras por questão) fica para a Sprint 24.
 
 schema_version: 2
-ruleset_version: "2026.2.2"
+ruleset_version: "2026.2.3"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -24,6 +25,7 @@ lists:
 
 # Fatos sempre aceitos: sua presença já é controlada pelo nó pai ou por um fato mais específico
 # (ex.: node:Attribute é decidido pelo fato method:<nome>; node:alias só existe dentro de import).
+# derived:recursion só serve à exigência da R-68: o def e a chamada já são decididos pela R-59.
 structural_facts:
   - "node:Module"
   - "node:Expr"
@@ -39,6 +41,7 @@ structural_facts:
   - "node:comprehension"
   - "node:alias"
   - "node:ExceptHandler"
+  - "derived:recursion"
 
 meta_rules:
   - id: "R-03"
@@ -516,6 +519,7 @@ rules:
     since_list: 4
     # Parâmetro com valor padrão e função dentro de função não constam (decisão Q-02, item f);
     # argumento nomeado na chamada (f(x=1)) é um caso em aberto no mapeamento e segue na R-04.
+    # A recursão é uma chamada de função (call:user): permitida desde a Lista 4 e obrigatória na 6.
     match: ["node:FunctionDef", "node:Return", "call:user"]
     message: "Funções (def, return e a chamada de uma função sua) só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 4: Funções com def, parâmetros e return"
@@ -527,10 +531,88 @@ rules:
     message: "Retornar mais de um valor (return a, b) só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 4: Retornar mais de um valor"
 
+  # ---------------------------------------------------------------------------
+  # Lista 5 - Dicionários (R-61 a R-67). A R-68 (Lista 6) é uma exigência, mais abaixo.
+  # ---------------------------------------------------------------------------
+  - id: "R-61"
+    name: "Dicionários"
+    effect: allow
+    since_list: 5
+    # Dict comprehension e ** dentro de um dicionário não constam (decisão Q-02, item e; S7-01).
+    match: ["node:Dict"]
+    # Chaves literais na mensagem são escritas duplicadas ({{ e }}), porque { } marca campos como {construct}.
+    message: "Dicionários ({{chave: valor}}) só são permitidos a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: Dicionários"
+  - id: "R-62"
+    name: "dict()"
+    effect: allow
+    since_list: 5
+    match: ["builtin:dict"]
+    message: "dict() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: dict()"
+  - id: "R-63"
+    name: "enumerate()"
+    effect: allow
+    since_list: 5
+    # O alvo "i, x" do for só é permitido quando o iterável do comando for é enumerate(...).
+    match:
+      - "builtin:enumerate"
+      - fact: "target:for_unpack"
+        when:
+          predicate: enumerate_in_for_header
+          message: "Vários nomes no for (for a, b in ...) só são permitidos quando o for percorre zip(), enumerate() ou .items()."
+    message: "enumerate() só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: enumerate()"
+  - id: "R-64"
+    name: "zip()"
+    effect: allow
+    since_list: 5
+    # Livre, sem a condição da R-37 (decisão Q-04). O alvo "a, b" do for continua exigindo que o
+    # iterável do comando for seja zip(...), agora com qualquer número de sequências.
+    match:
+      - "builtin:zip"
+      - fact: "target:for_unpack"
+        when:
+          predicate: zip_in_for_header
+          params: { min: 1 }
+          message: "Vários nomes no for (for a, b in ...) só são permitidos quando o for percorre zip(), enumerate() ou .items()."
+    message: "zip() sem restrição só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: zip() (livre a partir da Lista 5, decisão Q-04)"
+  - id: "R-65"
+    name: "keys(), values() e items()"
+    effect: allow
+    since_list: 5
+    # O alvo "k, v" do for só é permitido quando o iterável do comando for é x.items().
+    match:
+      - "method:keys"
+      - "method:values"
+      - "method:items"
+      - fact: "target:for_unpack"
+        when:
+          predicate: items_in_for_header
+          message: "Vários nomes no for (for a, b in ...) só são permitidos quando o for percorre zip(), enumerate() ou .items()."
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: keys(), values(), items()"
+  - id: "R-66"
+    name: "get() e update()"
+    effect: allow
+    since_list: 5
+    match: ["method:get", "method:update"]
+    message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: get(), update()"
+  - id: "R-67"
+    name: "Função lambda"
+    effect: allow
+    since_list: 5
+    # key= continua sem constar (decisão Q-02, item c), inclusive com lambda: sorted(v, key=...).
+    match: ["node:Lambda"]
+    message: "A função lambda só é permitida a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 5: Função lambda"
+
 # -----------------------------------------------------------------------------
 # Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).
 # A falta vira uma violação EXIGENCIA da solução inteira. Os fatos que comprovam cada
-# assunto seguem a decisão Q-05. As Listas 5 e 6 entram na Sprint 23.
+# assunto seguem a decisão Q-05; na Lista 6, o assunto é a recursão direta ou mútua (R-68, C-03).
 # -----------------------------------------------------------------------------
 requirements:
   - id: "R-02"
@@ -553,3 +635,13 @@ requirements:
     require_any: ["node:FunctionDef"]
     message: "A solução não usa o assunto da Lista 4: é obrigatório definir uma função com def. Sem ela, a questão é anulada."
     source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+  - id: "R-02"
+    list: 5
+    require_any: ["node:Dict", "builtin:dict"]
+    message: "A solução não usa o assunto da Lista 5: é obrigatório usar um dicionário (literal ou dict()). Sem ele, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+  - id: "R-68"
+    list: 6
+    require_any: ["derived:recursion"]
+    message: "A solução não usa o assunto da Lista 6: é obrigatória a recursão, uma função que chama a si mesma, direta ou indiretamente. Sem ela, a questão é anulada."
+    source: "Permissões, p.3, Lista 6: Recursão (permitida e obrigatória em todas as questões); decisão C-03"

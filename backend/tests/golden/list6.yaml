@@ -1,0 +1,136 @@
+# Corpus golden: Lista 6, recursão (R-68). A recursão é permitida desde a Lista 4, como chamada de
+# função (R-59), e obrigatória na Lista 6: a solução precisa de uma função que chama a si mesma,
+# direta ou indiretamente (ciclo no grafo de chamadas entre funções do aluno, C-03). Sem ela, a
+# solução inteira recebe EXIGENCIA (linha 1). As permissões das Listas 1 a 5 continuam valendo.
+
+- id: R-68-direct-recursion-L6
+  rule: R-68
+  list: 6
+  code: |
+    def fatorial(n):
+        if n <= 1:
+            return 1
+        return n * fatorial(n - 1)
+    print(fatorial(5))
+  expect: []
+
+- id: R-68-mutual-recursion-L6
+  rule: R-68
+  list: 6
+  code: |
+    def eh_par(n):
+        if n == 0:
+            return True
+        return eh_impar(n - 1)
+    def eh_impar(n):
+        if n == 0:
+            return False
+        return eh_par(n - 1)
+    print(eh_par(4))
+  expect: []
+
+- id: R-68-three-function-cycle-L6
+  rule: R-68
+  list: 6
+  code: |
+    def a(n):
+        return b(n) if n > 0 else 0
+    def b(n):
+        return c(n - 1)
+    def c(n):
+        return a(n)
+    print(a(3))
+  expect: []
+
+- id: R-68-recursion-with-lists-and-dicts-L6
+  rule: R-68
+  list: 6
+  code: |
+    memo = {}
+    def fib(n):
+        if n in memo:
+            return memo[n]
+        resultado = n if n < 2 else fib(n - 1) + fib(n - 2)
+        memo[n] = resultado
+        return resultado
+    print([fib(i) for i in range(10)])
+  expect: []
+
+- id: R-68-without-recursion-L6
+  rule: R-68
+  list: 6
+  code: |
+    def dobro(x):
+        return x * 2
+    print(dobro(3))
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-iterative-solution-L6
+  rule: R-68
+  list: 6
+  code: |
+    n = int(input())
+    resultado = 1
+    for i in range(2, n + 1):
+        resultado *= i
+    print(resultado)
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-nested-calls-from-the-module-L6
+  rule: R-68
+  list: 6
+  code: |
+    def f(n):
+        return n + 1
+    print(f(f(2)))
+  # Chamar a função duas vezes no módulo não é recursão: nenhuma função chama a si mesma.
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-reference-without-call-L6
+  rule: R-68
+  list: 6
+  code: |
+    def f(n):
+        return f
+    print(f(1))
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-calling-a-parameter-L6
+  rule: R-68
+  list: 6
+  code: |
+    def aplica(g, x):
+        return g(x)
+    def dobro(x):
+        return x * 2
+    print(aplica(dobro, 2))
+  # g é um parâmetro, não uma função do aluno com esse nome: não há ciclo.
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-lambda-recursion-does-not-count-L6
+  rule: R-68
+  list: 6
+  code: |
+    f = lambda n: f(n - 1) if n > 0 else 0
+    print(f(3))
+  # Só funções com def entram no grafo de chamadas (C-03): caso a observar no mapeamento.
+  expect: [R-68 EXIGENCIA 1]
+
+- id: R-68-not-required-in-L4
+  rule: R-68
+  list: 4
+  code: |
+    def dobro(x):
+        return x * 2
+    print(dobro(3))
+  expect: []
+
+- id: R-68-recursion-before-list-L3
+  rule: R-68
+  list: 3
+  code: |
+    def f(v):
+        return f(v[1:]) if v else 0
+    print(f([1, 2]))
+  # A recursão é chamada de função: só a partir da Lista 4 (R-59), e aparece como o def.
+  expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3]

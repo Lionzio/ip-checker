@@ -33,7 +33,7 @@
     x = 0
     while x < 3:
         x += 1
-  expect: []
+  expect: [R-68 EXIGENCIA 1]
 
 - id: R-35-range-L2
   rule: R-35
@@ -80,7 +80,7 @@
   list: 6
   code: |
     print(7 not in range(5))
-  expect: []
+  expect: [R-68 EXIGENCIA 1]
 
 - id: R-37-zip-in-for-header-L2
   rule: R-37

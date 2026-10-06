@@ -40,6 +40,9 @@ class Fact:
     #: Número de sequências do ``zip()`` que é o iterável de um ``for``, no próprio ``builtin:zip``
     #: e no ``target:for_unpack`` desse ``for``; ``None`` fora desse caso (predicado da R-37).
     zip_header_args: int | None = None
+    #: No ``target:for_unpack``: ``"enumerate"`` ou ``"items"`` quando o iterável do ``for`` é
+    #: ``enumerate(...)`` (built-in) ou ``x.items()`` (predicados das R-63 e R-65, Sprint 23).
+    for_header: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +81,7 @@ class _SourceMap:
         end: Position,
         call_args: int | None = None,
         zip_header_args: int | None = None,
+        for_header: str | None = None,
     ) -> Fact:
         return Fact(
             name,
@@ -87,6 +91,7 @@ class _SourceMap:
             self.column(*end),
             call_args,
             zip_header_args,
+            for_header,
         )
 
 
@@ -121,6 +126,11 @@ class _Extractor:
         #: ``id`` do nome ``zip`` e do alvo de cada ``for`` cujo iterável é ``zip(...)`` -> número
         #: de sequências. O ``for`` é visitado antes dos filhos, então a marca chega a tempo.
         self._zip_header: dict[int, int] = {}
+        #: ``id`` do alvo de cada ``for`` cujo iterável é ``enumerate(...)`` ou ``x.items()``.
+        self._for_header: dict[int, str] = {}
+        #: Funções do aluno (``def``) e as chamadas de cada uma, para achar a recursão (C-03).
+        self._defs: dict[str, list[ast.AST]] = {}
+        self._calls: list[tuple[ast.AST, str]] = []
         self.facts: list[Fact] = []
 
     def emit(
@@ -130,10 +140,16 @@ class _Extractor:
         start: Position | None = None,
         call_args: int | None = None,
         zip_header_args: int | None = None,
+        for_header: str | None = None,
     ) -> None:
         self.facts.append(
             self._map.fact(
-                name, start or start_of(anchor), end_of(anchor), call_args, zip_header_args
+                name,
+                start or start_of(anchor),
+                end_of(anchor),
+                call_args,
+                zip_header_args,
+                for_header,
             )
         )
 
@@ -146,6 +162,7 @@ class _Extractor:
             visit = stack.pop()
             self._visit(visit)
             stack.extend(self._children(visit))
+        self._mark_recursion()
         return tuple(
             sorted(self.facts, key=lambda f: (f.line, f.col, f.end_line, f.end_col, f.name))
         )
@@ -161,7 +178,12 @@ class _Extractor:
         elif visit.role == "call_arg":
             self.emit("call:star_args", node)
         elif visit.role == "for_target":
-            self.emit("target:for_unpack", node, zip_header_args=self._zip_header.get(id(node)))
+            self.emit(
+                "target:for_unpack",
+                node,
+                zip_header_args=self._zip_header.get(id(node)),
+                for_header=self._for_header.get(id(node)),
+            )
         else:
             self.emit(f"node:{type(node).__name__}", anchor)
         self._specific_facts(visit)
@@ -195,6 +217,9 @@ class _Extractor:
                     self.emit(f"kwarg:{visit.callee}.{node.arg}", node)
             case ast.Call(func=ast.Name(id=name)) if self.is_student(name, visit, node):
                 self.emit("call:user", node)
+                caller = _enclosing_function(visit.scopes)
+                if caller is not None:
+                    self._calls.append((caller, name))
             case ast.Return(value=ast.Tuple()):
                 self.emit("return:multi", node)
             case (
@@ -205,6 +230,8 @@ class _Extractor:
                 # O 'else' do laço não é nó na AST; o fato aponta para o 1º comando dele (Q-02 g).
                 self.emit("derived:loop_else", first)
             case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                if not isinstance(node, ast.ClassDef):
+                    self._defs.setdefault(node.name, []).append(node)
                 if not isinstance(node, ast.ClassDef) and any(
                     isinstance(scope, _FUNCTION_SCOPES) for scope in visit.scopes
                 ):
@@ -255,7 +282,7 @@ class _Extractor:
             if isinstance(node.target, (ast.Tuple, ast.List)):
                 for_target = id(node.target)
             if isinstance(node, ast.For):
-                self._mark_zip_header(node, visit)
+                self._mark_for_header(node, visit)
 
         children: list[_Visit] = []
         for child in ast.iter_child_nodes(node):
@@ -279,19 +306,101 @@ class _Extractor:
             )
         return children
 
-    def _mark_zip_header(self, loop: ast.For, visit: _Visit) -> None:
-        """Marca o ``zip()`` built-in que é o iterável do ``for`` e o alvo desse ``for`` (R-37).
+    def _mark_for_header(self, loop: ast.For, visit: _Visit) -> None:
+        """Marca o iterável do ``for`` que libera vários nomes no alvo.
 
-        Só o comando ``for`` conta: ``zip()`` numa compreensão ou como argumento de outra chamada
-        dentro do cabeçalho não é marcado.
+        ``zip()`` built-in (R-37 e R-64): o próprio ``zip`` e o alvo levam o número de sequências.
+        ``enumerate()`` built-in (R-63) e ``x.items()`` (R-65): o alvo leva o nome. Só o comando
+        ``for`` conta: numa compreensão ou dentro de outra chamada do cabeçalho, nada é marcado.
         """
         match loop.iter:
-            case ast.Call(func=ast.Name(id="zip") as func, args=args, keywords=keywords):
-                if self.is_student(func.id, visit, func):
+            case ast.Call(func=ast.Name(id="zip" | "enumerate" as name) as func, args=args):
+                if self.is_student(name, visit, func):
                     return
-                count = len(args) + len(keywords)
-                self._zip_header[id(func)] = count
-                self._zip_header[id(loop.target)] = count
+                if name == "zip":
+                    count = len(args) + len(loop.iter.keywords)
+                    self._zip_header[id(func)] = count
+                    self._zip_header[id(loop.target)] = count
+                else:
+                    self._for_header[id(loop.target)] = name
+            case ast.Call(func=ast.Attribute(attr="items"), args=[], keywords=[]):
+                self._for_header[id(loop.target)] = "items"
+
+    def _mark_recursion(self) -> None:
+        """Cada ``def`` num ciclo do grafo de chamadas leva ``derived:recursion`` (R-68, C-03).
+
+        O ciclo pode ser direto (``f`` chama ``f``) ou mútuo (``f`` chama ``g``, que chama ``f``).
+        As chamadas são pelo nome, como ``call:user``; um ``lambda`` não entra no grafo.
+        """
+        graph: dict[int, set[int]] = {}
+        nodes: dict[int, ast.AST] = {}
+        for definitions in self._defs.values():
+            for definition in definitions:
+                nodes[id(definition)] = definition
+                graph.setdefault(id(definition), set())
+        for caller, name in self._calls:
+            for callee in self._defs.get(name, ()):
+                graph[id(caller)].add(id(callee))
+        for component in _strongly_connected(graph):
+            first = component[0]
+            if len(component) > 1 or first in graph[first]:
+                for member in component:
+                    self.emit("derived:recursion", nodes[member])
+
+
+def _enclosing_function(scopes: tuple[ast.AST, ...]) -> ast.AST | None:
+    """O ``def`` mais interno em volta da chamada; ``None`` no módulo ou dentro de um ``lambda``."""
+    for scope in reversed(scopes):
+        if isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return scope
+        if isinstance(scope, ast.Lambda):
+            return None
+    return None
+
+
+def _strongly_connected(graph: dict[int, set[int]]) -> list[list[int]]:
+    """Componentes fortemente conexos (Tarjan, iterativo): linear no tamanho do grafo."""
+    index: dict[int, int] = {}
+    low: dict[int, int] = {}
+    on_stack: set[int] = set()
+    stack: list[int] = []
+    components: list[list[int]] = []
+    counter = 0
+    for root in graph:
+        if root in index:
+            continue
+        work: list[tuple[int, list[int]]] = [(root, sorted(graph[root]))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, pending = work[-1]
+            if pending:
+                target = pending.pop()
+                if target not in index:
+                    index[target] = low[target] = counter
+                    counter += 1
+                    stack.append(target)
+                    on_stack.add(target)
+                    work.append((target, sorted(graph[target])))
+                elif target in on_stack:
+                    low[node] = min(low[node], index[target])
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                component: list[int] = []
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.append(member)
+                    if member == node:
+                        break
+                components.append(component)
+    return components
 
 
 def extract_facts(parsed: ParsedSource) -> tuple[Fact, ...]:

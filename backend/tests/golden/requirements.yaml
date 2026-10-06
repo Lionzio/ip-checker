@@ -1,7 +1,7 @@
 # Corpus golden: exigências (R-02, Q-05). A solução precisa usar o assunto da lista; sem ele, a
 # solução inteira recebe EXIGENCIA (linha 1). Lista 1: if (com ou sem elif/else) ou ternário;
 # Lista 2: for ou while; Lista 3: lista ou tupla (literal, list(), tuple() ou list comprehension);
-# Lista 4: def. As exigências das Listas 5 e 6 entram na Sprint 23.
+# Lista 4: def; Lista 5: dicionário (literal ou dict()); Lista 6: recursão direta ou mútua (R-68, C-03).
 
 - id: R-02-without-conditional-L1
   rule: R-02
@@ -188,4 +188,45 @@
     def f():
         return 1
     print(f())
+  expect: []
+
+- id: R-02-without-dict-L5
+  rule: R-02
+  list: 5
+  code: |
+    v = [1, 2]
+    print(sum(v))
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-dict-literal-satisfies-L5
+  rule: R-02
+  list: 5
+  code: |
+    d = {"a": 1}
+    print(d)
+  expect: []
+
+- id: R-02-dict-call-satisfies-L5
+  rule: R-02
+  list: 5
+  code: |
+    d = dict()
+    print(d)
+  expect: []
+
+- id: R-02-dict-in-string-does-not-count-L5
+  rule: R-02
+  list: 5
+  code: |
+    print("{'a': 1}")
+  expect: [R-02 EXIGENCIA 1]
+
+- id: R-02-not-required-in-L6
+  rule: R-02
+  list: 6
+  code: |
+    def conta(n):
+        return 0 if n == 0 else 1 + conta(n - 1)
+    print(conta(3))
+  # Na Lista 6, o assunto é a recursão (R-68); o dicionário da Lista 5 não é exigido.
   expect: []
