@@ -123,5 +123,9 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (falta o terceiro monitor do UptimeRobot, `deploy/README.md`) |
 | 22 | Listas 3 e 4: S22-01 regras R-38 a R-60, exigência das Listas 3 (lista ou tupla) e 4 (`def`) e função aninhada na R-04 (Q-02 f); S22-02 Listas 3 e 4 habilitadas e e2e | Concluída (os casos em aberto do mapeamento seguem para o Marco 2) |
 | 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06) | Concluída |
-| 24 | Regras por questão, governança e "esqueci minha senha" | Próxima |
-| 25 | Carga, eficácia, expurgo de contas e passagem de bastão | Planejada |
+| 24 | Regras por questão, governança sem o Pro e "esqueci minha senha" | Próxima (aguarda autorização) |
+| 25 | Endurecimento para o primeiro deploy: CI fixada e Dependabot, deploy seguro, limpeza diária do banco, robustez no plano gratuito | Planejada |
+| 26 | Correção em lote e relatório: "Próximo aluno", atalhos, celular, relatório agrupado e clique na linha | Planejada |
+| 27 | Plágio por árvore canonizada, insensível à ordem (ADR-07) | Planejada |
+| 28 | Carga, eficácia e passagem de bastão: k6 com login, relatório de eficácia, runbook, onboarding e releases | Planejada |
+| 29 | Indícios de uso de IA (ADR-08), se aprovados (Q-21) | Proposta |

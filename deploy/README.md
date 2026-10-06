@@ -169,7 +169,7 @@ precisa do **Starter** (cerca de US$ 7 por mês) antes do primeiro prazo da List
 
 **Depois da P-13 (02/10/2026):** só a equipe da disciplina usa a ferramenta, e o pico esperado fica
 bem abaixo das 150 verificações por minuto que o gratuito atende. O piloto começa no gratuito, com o
-Starter de reserva; a S25-01 mede de novo no Render de verdade, já com login.
+Starter de reserva; a S28-01 mede de novo no Render de verdade, já com login.
 
 Para confirmar no Render de verdade, com o piloto no ar, aumente por alguns minutos
 `IPC_RATE_LIMIT_IP_PER_MIN` no painel (o k6 sai de um único IP) e rode:
