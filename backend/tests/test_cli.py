@@ -72,7 +72,7 @@ def test_releasing_a_general_prohibition_is_a_warning_not_a_failure(
     assert main(["validate", str(period)]) == 0
 
     out = capsys.readouterr().out
-    assert "1 questões" in out
+    assert "1 questão" in out
     # Na CI, vira uma anotação de aviso no PR (C-02: só com aprovação de professor).
     assert "::warning file=" in out
     assert "L2-Q4 libera proibição geral (R-11)" in out

@@ -53,9 +53,11 @@ def _validate(path: Path, golden: Path | None) -> int:
         _error(str(exc), base)
         return 1
     data = ruleset.ruleset
+    questions = len(ruleset.questions)
     print(
         f"ruleset {data.ruleset_version} válido: {len(data.rules)} regras, "
-        f"{len(data.requirements)} exigências e {len(ruleset.questions)} questões"
+        f"{len(data.requirements)} exigências e {questions} "
+        f"{'questão' if questions == 1 else 'questões'}"
     )
     for question in sorted(ruleset.questions.values(), key=lambda q: q.id):
         if question.releases:

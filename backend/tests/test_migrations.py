@@ -100,7 +100,9 @@ def test_cli_up_and_status(
     monkeypatch.setenv("IPC_DATABASE_ADMIN_URL", DATABASE_URL)
 
     assert migrate.main(["status"]) == 0
-    assert capsys.readouterr().out.strip() == "aplicadas: 0001, 0002, 0003, 0004; pendentes: nenhuma"
+    assert (
+        capsys.readouterr().out.strip() == "aplicadas: 0001, 0002, 0003, 0004; pendentes: nenhuma"
+    )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
 

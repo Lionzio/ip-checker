@@ -16,7 +16,7 @@ e descarta tudo depois. O acesso é só da equipe; alunos não têm conta.
 | Faz | Não faz |
 |---|---|
 | Aponta construções proibidas em todas as listas (`import`, `try`, `break`, `None`, sets, classes...) | Não testa se a resposta está certa: isso continua com o Dikastis |
-| Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Não considera ainda as regras específicas de cada questão: **se o enunciado liberar algo, vale o enunciado** |
+| Aponta o que só é liberado numa lista posterior (por exemplo, `for` na Lista 1) | Só conhece as regras de uma questão que foi cadastrada: **se o enunciado liberar algo que não foi cadastrado, vale o enunciado** |
 | Aponta o que não consta no documento de permissões (por exemplo, `eval`) | Não decide se houve plágio: a porcentagem é um indício, e a decisão é da equipe |
 | Exige o assunto da lista (Lista 1: `if` ou ternário; Lista 2: `for` ou `while`; Lista 3: uma lista ou tupla; Lista 4: um `def`; Lista 5: um dicionário; Lista 6: recursão) | Não guarda nem registra o código de ninguém |
 | Mostra erros de sintaxe com linha e coluna, em português | Não substitui a leitura do documento de permissões |
@@ -58,6 +58,11 @@ recursão, e um `lambda` que chama a si mesmo não conta.
    escolhe o seu cargo. Até lá, a tela de entrada mostra "aguardando a aprovação".
 4. Aprovado, entre com o nome ou o e-mail e a senha, ou com o Google.
 
+Esqueceu a senha? Em **Entrar**, clique em **Esqueci minha senha** e informe o e-mail
+institucional. Se houver uma conta com ele, chega o e-mail **"Redefina a sua senha do
+IP-Checker"**, com um link que vale por 1 hora e uma vez só. Ao definir a senha nova, as sessões
+abertas da conta são encerradas.
+
 O **nome** é único e também serve para entrar. O **tratamento** (masculino, feminino ou neutro)
 define como você se apresenta no feedback ("sou o monitor...", "sou a monitora...", "aqui é ...,
 da monitoria"); só você o vê.
@@ -74,8 +79,10 @@ a senha, muda de cargo ou é removido da equipe.
 ## Verificar uma solução
 
 1. Escolha a lista.
-2. Cole a solução (até 50 KB e 1.000 linhas).
-3. Clique em **Verificar**.
+2. Escolha a questão, se ela tiver regras cadastradas (veja abaixo). Sem questão, valem só as
+   permissões da lista, e o resultado avisa isso.
+3. Cole a solução (até 50 KB e 1.000 linhas).
+4. Clique em **Verificar**.
 
 Cada violação mostra a categoria, a linha e a coluna, a regra do catálogo (R-xx) e uma explicação.
 
@@ -176,9 +183,19 @@ na própria página, no link **Aviso de privacidade** do rodapé.
 
 Se ele apontar algo que o documento permite (**falso positivo**) ou deixar passar algo proibido
 (**falso negativo**), avise o desenvolvedor com o código e a lista. Cada caso confirmado vira um
-teste novo, e a meta é corrigir falsos positivos em até 2 dias úteis (P-09). As regras específicas
-de cada questão entram na Sprint 24, cadastradas pelos monitores e aprovadas por monitor-chefe ou
-professor.
+teste novo, e a meta é corrigir falsos positivos em até 2 dias úteis (P-09).
+
+### Regras de uma questão
+
+Quando o enunciado de uma questão permite ou proíbe algo explicitamente (por exemplo, "use
+`map()`" ou "não use `append()`"), a questão pode ser cadastrada. Escolhida no seletor **Questão**,
+ela prevalece sobre as permissões da lista: o que ela libera deixa de ser apontado, e o que ela
+proíbe aparece como **Proibido nesta questão**. A exigência do assunto da lista continua valendo.
+Se a lista não tiver nenhuma questão cadastrada, o seletor diz isso.
+
+O cadastro é feito por monitores, por PR, e aprovado por monitor-chefe ou professor; o passo a
+passo está no [`RULES.md`](../RULES.md). Uma questão que libera uma proibição geral (por exemplo,
+`break`) só entra com a aprovação de um professor.
 
 ## Perguntas frequentes
 
@@ -192,13 +209,15 @@ ou tupla; na Lista 4, uma função com `def`; na Lista 5, um dicionário; na Lis
 Um `if` ou um `for` dentro de um texto ou de um comentário não conta.
 
 **O enunciado da questão libera algo que o IP-Checker aponta. E agora?**
-Vale o enunciado. Nesse caso, a violação pode ser ignorada, inclusive no feedback, que você pode
-editar antes de copiar.
+Se a questão estiver cadastrada, escolha-a no seletor **Questão** e verifique de novo. Se não
+estiver, vale o enunciado: a violação pode ser ignorada, inclusive no feedback, que você pode
+editar antes de copiar. Peça o cadastro da questão a um monitor (ou cadastre seguindo o
+`RULES.md`), para a próxima pessoa não passar pelo mesmo.
 
 **O feedback saiu "montado sem IA". Está errado?**
 Não. A abertura e a frase obrigatória são as mesmas; só o trecho final é mais simples. Isso
 acontece quando nenhuma IA está configurada ou nenhuma respondeu a tempo.
 
 **Esqueci a senha.**
-Se a conta tiver o Google ligado, entre pelo Google e defina uma senha nova no perfil. Ainda não há
-recuperação de senha por e-mail (é a proposta Q-19 b do blueprint); até lá, fale com o desenvolvedor.
+Em **Entrar**, clique em **Esqueci minha senha** e siga o link do e-mail, que vale por 1 hora. Se a
+conta tiver o Google ligado, também dá para entrar pelo Google e definir uma senha nova no perfil.
