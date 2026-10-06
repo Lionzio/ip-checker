@@ -141,7 +141,8 @@ describe("Gerenciamento da equipe (S15-03, FR-28)", () => {
     await user.click(await screen.findByRole("button", { name: "Aprovar Ana Pereira" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Você não tem permissão para esta ação.");
-    expect(screen.getByRole("button", { name: "Aprovar Ana Pereira" })).toBeEnabled();
+    // Depois da recusa, as listas são recarregadas; o botão volta quando o recarregamento termina.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Aprovar Ana Pereira" })).toBeEnabled());
   });
 
   it("mostra no registro de ações quem aprovou e o que mudou (REC-06)", async () => {

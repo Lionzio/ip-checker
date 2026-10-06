@@ -252,6 +252,56 @@ a questão Q-17 do blueprint: com um remetente `@cin.ufpe.br` enviado por tercei
 NTI se a política de e-mail do CIn (SPF, DKIM e DMARC) aceita o envio, para os e-mails não caírem
 no spam.
 
+#### Enviar de verdade a partir do compose (Gmail, Outlook e outros)
+
+Por padrão, o compose entrega tudo ao Mailpit, e ninguém além de quem está na máquina vê o
+e-mail. Para que o e-mail chegue à caixa de entrada (Gmail, Outlook, o webmail da UFPE...), ponha
+um dos blocos abaixo no `deploy/.env` (modelo em `deploy/.env.example`) e suba de novo com
+`docker compose -f deploy/compose.yaml up -d`. Sem essas linhas, volta o Mailpit.
+
+**Opção A, uma conta Gmail (bom para testar da sua máquina):**
+
+1. Na conta Google que vai enviar, ligue a **Verificação em duas etapas** (Conta Google >
+   Segurança).
+2. Em **Conta Google > Segurança > Senhas de app**, crie uma senha de app chamada "IP-Checker" e
+   copie os 16 caracteres, sem espaços. Ela só serve para enviar e pode ser revogada ali.
+3. No `deploy/.env`:
+
+   ```
+   IPC_SMTP_HOST=smtp.gmail.com
+   IPC_SMTP_PORT=587
+   IPC_SMTP_SECURITY=starttls
+   IPC_SMTP_USERNAME=sua.conta@gmail.com
+   IPC_SMTP_PASSWORD=a-senha-de-app
+   IPC_EMAIL_FROM=IP-Checker <sua.conta@gmail.com>
+   ```
+
+O remetente precisa ser a própria conta (ou um alias dela); senão o Gmail o troca. O limite do
+Gmail é de cerca de 500 e-mails por dia, de sobra para a equipe. Uma conta `@cin.ufpe.br` ou
+`@ufpe.br` hospedada no Google funciona do mesmo jeito se a instituição permitir senhas de app
+[PREMISSA: confirmar com o NTI].
+
+**Opção B, Brevo (o mesmo transporte do piloto, porque o Render gratuito bloqueia SMTP):**
+
+1. Crie uma conta gratuita em <https://www.brevo.com> (300 e-mails por dia).
+2. Em **Senders, Domains & Dedicated IPs > Senders**, cadastre e confirme o remetente (por
+   exemplo o Gmail do projeto).
+3. Em **SMTP & API > API Keys**, gere uma chave.
+4. No `deploy/.env`:
+
+   ```
+   IPC_EMAIL_TRANSPORT=brevo
+   IPC_EMAIL_API_KEY=a-chave-do-brevo
+   IPC_EMAIL_FROM=IP-Checker <remetente.confirmado@gmail.com>
+   ```
+
+**O link do e-mail precisa abrir onde a pessoa está.** No compose, o link é
+`http://127.0.0.1:8180/verificar...`, que só abre na sua própria máquina: um monitor que recebe o
+e-mail no celular ou no computador dele não chega a ela. Com o e-mail real configurado, o compose
+serve para você testar a entrega e o clique; para a equipe se registrar, o IP-Checker precisa
+estar no ar no piloto (seção "Piloto"), com `IPC_PUBLIC_BASE_URL` apontando para o endereço público
+da página (por exemplo `https://ip-checker.vercel.app`), que o `render.yaml` já recebe.
+
 ### Feedback por IA (S18): onde ficam as chaves
 
 O botão **Gerar feedback** funciona sempre. A ordem é: a **IA principal**; se ela falhar, demorar

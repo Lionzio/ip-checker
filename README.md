@@ -6,6 +6,12 @@ soluções em busca de plágio e redige o feedback para o aluno. O código é an
 sintática (AST), num serviço isolado. O acesso é restrito à equipe da disciplina, com login,
 aprovação manual e cargos (P-13 do blueprint).
 
+Hoje (06/10/2026, Sprint 23 concluída), as seis listas estão habilitadas, com as exigências do
+assunto de cada uma (R-02 e a recursão da R-68), o painel de plágio, o feedback por IA ou por
+modelos de texto, o gerenciamento da equipe com registro das ações e a telemetria anônima. O
+piloto com a equipe é em 2027.1; o primeiro deploy depende das contas externas do autor
+(seção "Pendências do autor").
+
 O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
 O guia de uso, para a equipe da disciplina, está em [`docs/guia-da-equipe.md`](docs/guia-da-equipe.md).
 
@@ -18,7 +24,7 @@ O guia de uso, para a equipe da disciplina, está em [`docs/guia-da-equipe.md`](
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
 | `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
 | `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; imagem do piloto no Render (`deploy/render/`) | Sprint 6 |
-| `database/` | Migrações SQL das contas e sessões e da telemetria (PostgreSQL/Supabase) | Sprints 13 e 21 |
+| `database/` | Migrações SQL das contas e sessões, da telemetria e do registro de gerenciamento (PostgreSQL/Supabase) | Sprints 13, 21 e 23 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
 (NFR-17). `database/` também é separada: o esquema é usado pela API e pelas consultas dos
@@ -56,7 +62,18 @@ A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e 
 - backend: ruff, mypy strict, import-linter e pytest, com o contrato OpenAPI;
 - segurança: build das imagens, isolamento do NFR-07, submissões maliciosas contra o analyzer e ataques à API pública pela borda;
 - frontend: tipos gerados do OpenAPI em dia, ESLint, TypeScript, Vitest e build;
-- e2e: o compose completo, o login e o smoke do Marco 1 no Playwright.
+- e2e: o compose completo no Playwright, com login, registro e verificação de e-mail (Mailpit),
+  gerenciamento e registro de ações, as seis listas, plágio, feedback com a IA falsa e o limite
+  por conta; uma pausa de 61 s separa os projetos, porque todos dividem as 30 verificações por
+  minuto da conta do desenvolvedor;
+- gabaritos: as respostas oficiais de períodos anteriores com zero violação, só quando o
+  repositório privado está configurado (`rulesets/README.md`);
+- branch-policy: na `main`, falha se ela tiver algum commit que não esteja na `develop`.
+
+No compose, os e-mails de verificação vão para o Mailpit (<http://127.0.0.1:8125>). Para
+entregar de verdade (Gmail ou Brevo), veja "Enviar de verdade a partir do compose" em
+[`deploy/README.md`](deploy/README.md); o link do e-mail só abre na própria máquina até o piloto
+estar no ar.
 
 ### Portas locais
 
@@ -122,10 +139,39 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (falta o repositório privado dos gabaritos, `rulesets/README.md`) |
 | 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (falta o terceiro monitor do UptimeRobot, `deploy/README.md`) |
 | 22 | Listas 3 e 4: S22-01 regras R-38 a R-60, exigência das Listas 3 (lista ou tupla) e 4 (`def`) e função aninhada na R-04 (Q-02 f); S22-02 Listas 3 e 4 habilitadas e e2e | Concluída (os casos em aberto do mapeamento seguem para o Marco 2) |
-| 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06) | Concluída |
+| 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06); duas evasões do motor corrigidas na revisão de fim de sprint | Concluída |
 | 24 | Regras por questão, governança e "esqueci minha senha" | Próxima (aguarda autorização) |
 | 25 | Endurecimento para o primeiro deploy: CI fixada e Dependabot, deploy seguro, limpeza diária do banco, robustez no plano gratuito | Planejada |
 | 26 | Correção em lote e relatório: "Próximo aluno", atalhos, celular, relatório agrupado e clique na linha | Planejada |
 | 27 | Plágio por árvore canonizada, insensível à ordem (ADR-07) | Planejada |
 | 28 | Carga, eficácia e passagem de bastão: k6 com login, relatório de eficácia, runbook, onboarding e releases | Planejada |
 | 29 | Indícios de uso de IA (ADR-08): múltiplas violações, semelhança com referências geradas por IA e marcadores de estilo | Planejada |
+
+O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
+documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com a autorização do autor.
+
+## Decisões recentes (06/10/2026)
+
+| ID | Decisão |
+|---|---|
+| P-10 | Sem calendário fixo: as datas dependem da UFPE; cada lista é habilitada antes de ser liberada aos alunos |
+| Q-15 | Novos critérios de eficácia: uso por pelo menos 70% dos membros ativos em cada lista; apoio à correção só informativo; satisfação de pelo menos 70% da equipe |
+| Q-18 | Toda violação anula a questão, inclusive "fora da lista", "não consta" e a falta do assunto |
+| Q-19 | Sessão de 12 h sem uso e até 7 dias; contas removidas guardam os dados para a volta; contas fora do status ativo com 365 dias sem atividade são apagadas (Sprint 25); "esqueci minha senha" por e-mail (Sprint 24) |
+| REC-06 | Registro das ações de gerenciamento, visto pelo desenvolvedor e pelos professores, por 12 meses (feito na Sprint 23) |
+| Q-20 | Supabase em us-east-1, na mesma região da API no Render |
+| Q-21 | Indícios de uso de IA, nunca veredito (ADR-08, Sprint 29), com as múltiplas violações como indício (por exemplo `break`, `pass` e `continue` juntos ou recursos da Lista 6 na Lista 3) |
+| Q-22 | Governança das regras por fork e check de aprovação: adiada para depois da release |
+| ADR-07 | Plágio por árvore canonizada, insensível à ordem dos blocos e às formas equivalentes (Sprint 27) |
+
+## Pendências do autor
+
+Passos que dependem de contas e segredos do autor (o passo a passo está em
+[`deploy/README.md`](deploy/README.md)):
+
+- [ ] Supabase em us-east-1 (Q-20), Render, Vercel e UptimeRobot (com o terceiro monitor, de `/health/slo`)
+- [ ] Envio de e-mail do piloto: Brevo com um remetente confirmado (Q-17)
+- [ ] Cliente OAuth do Google (opcional) e provedor de IA do feedback (opcional, Q-16)
+- [ ] Primeiro deploy com login, que confirma a P-12 e a P-15, e o fast-forward da `main`
+- [ ] Repositório privado dos gabaritos e o token só de leitura (Q-14)
+- [ ] Revisão do guia da equipe e data da apresentação do Marco 2

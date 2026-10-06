@@ -126,14 +126,21 @@ services:
       IPC_DATABASE_URL: postgresql://ipc_api:${IPC_DB_API_PASSWORD}@db:5432/ipchecker
       # Senha inicial da conta do desenvolvedor (P-14): usada só na criação da conta.
       IPC_DEV_INITIAL_PASSWORD: ${IPC_DEV_INITIAL_PASSWORD:?defina IPC_DEV_INITIAL_PASSWORD em deploy/.env}
-      # E-mail de verificação (S14-02): o Mailpit captura tudo, sem enviar nada para fora. Na
-      # Fase 2, o SMTP do provedor entra por estas mesmas variáveis (Q-17).
-      IPC_SMTP_HOST: mailpit
-      IPC_SMTP_PORT: "1025"
-      IPC_SMTP_SECURITY: none
-      IPC_EMAIL_FROM: IP-Checker <nao-responda@ip-checker.local>
-      # De onde sai o link do e-mail; nunca do Host da requisição (ameaça 21).
-      IPC_PUBLIC_BASE_URL: http://127.0.0.1:${IPC_HTTP_PORT:-8180}
+      # E-mail de verificação (S14-02). Sem nada no deploy/.env, o Mailpit captura tudo, sem
+      # enviar nada para fora (o padrão dos testes e da CI). Para entregar de verdade (Gmail,
+      # Outlook...), o deploy/.env troca o transporte: SMTP de uma conta (ex.: Gmail com senha de
+      # app) ou a API HTTPS do Brevo, o mesmo do piloto (Q-17; passo a passo no deploy/README.md).
+      IPC_EMAIL_TRANSPORT: ${IPC_EMAIL_TRANSPORT:-smtp}
+      IPC_SMTP_HOST: ${IPC_SMTP_HOST:-mailpit}
+      IPC_SMTP_PORT: ${IPC_SMTP_PORT:-1025}
+      IPC_SMTP_SECURITY: ${IPC_SMTP_SECURITY:-none}
+      IPC_SMTP_USERNAME: ${IPC_SMTP_USERNAME:-}
+      IPC_SMTP_PASSWORD: ${IPC_SMTP_PASSWORD:-}
+      IPC_EMAIL_API_KEY: ${IPC_EMAIL_API_KEY:-}
+      IPC_EMAIL_FROM: ${IPC_EMAIL_FROM:-IP-Checker <nao-responda@ip-checker.local>}
+      # De onde sai o link do e-mail; nunca do Host da requisição (ameaça 21). Localmente, o link
+      # só abre na própria máquina: para a equipe, ele precisa ser o endereço público do piloto.
+      IPC_PUBLIC_BASE_URL: ${IPC_PUBLIC_BASE_URL:-http://127.0.0.1:${IPC_HTTP_PORT:-8180}}
       # Feedback (S18): IA principal e de reserva, do deploy/.env. Vazias, o feedback é montado
       # por modelos de texto, sem IA. Só a api recebe as chaves; o analyzer nunca.
       IPC_LLM_PROVIDER: ${IPC_LLM_PROVIDER:-}
