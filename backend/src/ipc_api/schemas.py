@@ -195,6 +195,20 @@ class SloTelemetry(_Strict):
     queued: int = Field(ge=0)
 
 
+class SloHousekeeping(_Strict):
+    """A limpeza diária do banco desde que a API subiu (S25-03): só contagens."""
+
+    runs: int = Field(ge=0)
+    failures: int = Field(ge=0)
+    sessions: int = Field(ge=0, description="Sessões vencidas apagadas.")
+    tokens: int = Field(ge=0, description="Links de e-mail usados ou vencidos apagados.")
+    unverified: int = Field(ge=0, description="Cadastros não confirmados em 48 horas apagados.")
+    inactive: int = Field(
+        ge=0, description="Contas fora do status ativo, 365 dias sem atividade, apagadas (Q-19 d)."
+    )
+    log: int = Field(ge=0, description="Ações do registro de gerenciamento com mais de 12 meses.")
+
+
 class SloResponse(_Strict):
     """Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém."""
 
@@ -206,6 +220,7 @@ class SloResponse(_Strict):
     error_rate_pct: float = Field(ge=0)
     reasons: list[Literal["latencia", "erros"]]
     telemetry: SloTelemetry
+    housekeeping: SloHousekeeping
 
 
 # ---------------------------------------------------------------------------------------------

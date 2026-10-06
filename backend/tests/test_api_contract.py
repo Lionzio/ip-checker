@@ -54,7 +54,9 @@ OPENAPI_FILE = REPO_ROOT / "docs" / "openapi.json"
 #: Desde a Sprint 23 todas as listas vêm habilitadas; aqui a Lista 6 fica de fora para cobrir o
 #: LIST_NOT_ENABLED.
 UNLIMITED = ApiSettings(
-    rate_limit=RateLimitConfig(client_per_min=1_000_000, ip_per_min=1_000_000),
+    rate_limit=RateLimitConfig(
+        client_per_min=1_000_000, ip_per_min=1_000_000, api_ip_per_min=1_000_000
+    ),
     enabled_lists=frozenset({1, 2, 3, 4, 5}),
 )
 

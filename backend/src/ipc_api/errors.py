@@ -36,6 +36,8 @@ class ErrorCode(StrEnum):
     FORBIDDEN = "FORBIDDEN"
     ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND"
     ACCOUNT_STATE_CHANGED = "ACCOUNT_STATE_CHANGED"
+    # Sprint 25: uma falha inesperada da API vira um 500 em JSON, com o identificador (S25-04).
+    INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 #: Espera sugerida ao cliente quando o analyzer não responde.

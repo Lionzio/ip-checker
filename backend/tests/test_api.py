@@ -502,6 +502,29 @@ def test_ready_is_unavailable_when_the_analyzer_is_not(
     _unavailable(client.get("/ready"))
 
 
+def test_the_render_check_ignores_the_database(analyzer: FakeAnalyzer) -> None:
+    # S25-02: o health check do Render olha a API e o analisador; o banco fica no /ready.
+    app, store = make_app(SETTINGS, analyzer_transport=httpx2.MockTransport(analyzer))
+    with TestClient(app) as client:
+        store.available = False
+
+        service = client.get("/health/service")
+        ready = client.get("/ready")
+
+    assert service.status_code == 200
+    assert service.json() == {"status": "ready", "ruleset_version": "2026.2.0", "release": None}
+    assert service.headers["Cache-Control"] == "no-store"
+    assert error_of(ready) == (503, "DATABASE_UNAVAILABLE")
+
+
+def test_the_render_check_fails_without_the_analyzer(
+    client: TestClient, analyzer: FakeAnalyzer
+) -> None:
+    analyzer.routes["/internal/health"] = fail(httpx2.ConnectError)
+
+    _unavailable(client.get("/health/service"))
+
+
 @pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/internal/analyze"])
 def test_no_documentation_or_internal_routes_are_exposed(client: TestClient, path: str) -> None:
     response = client.get(path)

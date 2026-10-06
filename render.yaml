@@ -14,8 +14,10 @@ services:
     dockerfilePath: ./deploy/render/Dockerfile
     dockerContext: .
     autoDeployTrigger: "off"
-    # O Render só troca a versão no ar quando a nova responde /ready (API e analisador prontos).
-    healthCheckPath: /ready
+    # O Render só troca a versão no ar quando a nova responde /health/service (API e analisador
+    # prontos). O banco fica de fora (S25-02): uma oscilação do Supabase não derruba a instância;
+    # o /ready, com o banco, continua no UptimeRobot e no pipeline de deploy.
+    healthCheckPath: /health/service
     # Os valores com "sync: false" são definidos no painel do Render (Environment), nunca no Git.
     envVars:
       # Endereço da página na Vercel. A Vercel repassa /api/* para cá (S16-02, ADR-04): é a origem

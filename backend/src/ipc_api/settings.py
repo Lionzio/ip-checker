@@ -16,12 +16,18 @@ from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
 from ipc_api.feedback.providers import LlmSettings
 from ipc_api.feedback.service import FeedbackLimits
+from ipc_api.housekeeping import HousekeepingConfig
 from ipc_api.mail import EmailConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
 from ipc_api.slo import SloConfig
 from ipc_api.telemetry import TelemetryConfig
 
 KIB = 1024
+#: Tempo máximo de uma análise no pool do analyzer (``IPC_TIMEOUT_S``, o mesmo nome dos dois
+#: lados). Um teste garante que ele acompanha o padrão do pool.
+ANALYSIS_TIMEOUT_S = 2.0
+#: A ida e a volta até o analyzer, somadas ao tempo da análise (S25-04).
+ANALYZER_MARGIN_S = 1.0
 
 
 def parse_lists(value: str) -> frozenset[int]:
@@ -68,8 +74,9 @@ class ApiSettings:
     #: 3 e a 4 desde a 22 e a 5 e a 6 desde a 23. Uma lista só é habilitada depois que as regras
     #: dela estão no ruleset e testadas.
     enabled_lists: frozenset[int] = field(default_factory=lambda: frozenset(range(1, 7)))
-    #: Tempo máximo de uma chamada ao analyzer: 2 s de análise mais a ida e a volta.
-    analyzer_timeout_s: float = 3.0
+    #: Prazo de uma chamada ao analyzer: o tempo da análise mais a ida e a volta. Derivado do
+    #: prazo do pool (``IPC_TIMEOUT_S``) quando ``IPC_ANALYZER_TIMEOUT_S`` não é definida.
+    analyzer_timeout_s: float = ANALYSIS_TIMEOUT_S + ANALYZER_MARGIN_S
     #: Corpo máximo aceito antes de ler a requisição. Nas Fases 0 e 2 o Caddy também aplica esse
     #: limite; na Fase 1 (Render) não há Caddy, e a API é a primeira barreira (DoD, item 1).
     max_body_bytes: int = 128 * KIB
@@ -106,8 +113,26 @@ class ApiSettings:
     accounts: AccountsConfig = field(default_factory=AccountsConfig)
     #: Telemetria anônima (S21-01): grava no mesmo banco, com o usuário da API (ipc_writer).
     telemetry: TelemetryConfig = field(default_factory=TelemetryConfig)
+    #: Limpeza diária do banco e expurgo de contas sem atividade (S25-03).
+    housekeeping: HousekeepingConfig = field(default_factory=HousekeepingConfig)
     #: Limites dos alertas de latência e de erro em /health/slo (S21-02, NFR-15).
     slo: SloConfig = field(default_factory=SloConfig)
+
+    def check(self) -> None:
+        """Recusa configurações perigosas na subida (S25-04).
+
+        Com o cookie de sessão ``Secure``, o endereço público tem de ser ``https://``: um link de
+        e-mail em ``http://`` levaria a uma página sem a sessão (e ao token em texto claro). Só o
+        endereço local (``localhost``, ``127.0.0.1``, ``::1``) fica de fora, porque o navegador o
+        trata como seguro.
+        """
+        parts = urlsplit(self.accounts.public_base_url)
+        local = (parts.hostname or "") in {"localhost", "127.0.0.1", "::1"}
+        if self.session.cookie_secure and parts.scheme != "https" and not local:
+            raise ValueError(
+                "IPC_PUBLIC_BASE_URL precisa começar com https:// quando o cookie de sessão é "
+                f"seguro (IPC_SESSION_COOKIE_SECURE=1); recebido: {parts.scheme}://{parts.netloc}"
+            )
 
     @property
     def page_origin(self) -> str:
@@ -128,7 +153,10 @@ class ApiSettings:
             analyzer_url=env.get("IPC_ANALYZER_URL", defaults.analyzer_url),
             enabled_lists=parse_lists(lists) if lists is not None else defaults.enabled_lists,
             analyzer_timeout_s=float(
-                env.get("IPC_ANALYZER_TIMEOUT_S", defaults.analyzer_timeout_s)
+                env.get(
+                    "IPC_ANALYZER_TIMEOUT_S",
+                    float(env.get("IPC_TIMEOUT_S", ANALYSIS_TIMEOUT_S)) + ANALYZER_MARGIN_S,
+                )
             ),
             max_body_bytes=int(env.get("IPC_MAX_BODY_BYTES", defaults.max_body_bytes)),
             json_logs=env.get("IPC_JSON_LOGS", "1") != "0",
@@ -151,6 +179,7 @@ class ApiSettings:
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)
             ),
             telemetry=TelemetryConfig.from_env(env),
+            housekeeping=HousekeepingConfig.from_env(env),
             slo=SloConfig.from_env(env),
         )
 
@@ -198,6 +227,10 @@ def _rate_limit_from_env(env: Mapping[str, str]) -> RateLimitConfig:
         campus_networks=parse_networks(cidrs) if cidrs is not None else defaults.campus_networks,
         trusted_proxy_hops=int(env.get("IPC_TRUSTED_PROXY_HOPS", defaults.trusted_proxy_hops)),
         max_keys=int(env.get("IPC_RATE_LIMIT_MAX_KEYS", defaults.max_keys)),
+        api_ip_per_min=int(env.get("IPC_RATE_LIMIT_API_IP_PER_MIN", defaults.api_ip_per_min)),
+        api_campus_per_min=int(
+            env.get("IPC_RATE_LIMIT_API_CAMPUS_PER_MIN", defaults.api_campus_per_min)
+        ),
     )
 
 

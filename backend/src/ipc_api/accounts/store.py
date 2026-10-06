@@ -11,18 +11,23 @@ import asyncio
 import uuid
 from collections.abc import Collection
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Protocol
 from uuid import UUID
 
 from ipc_api.accounts.models import (
+    INACTIVE_TTL,
     LOG_RETENTION_MONTHS,
+    PURGEABLE,
+    UNVERIFIED_TTL,
     Account,
     AccountConflict,
     DeveloperSeed,
+    HousekeepingCounts,
     ManagementRecord,
     NewAccount,
     NewGoogleAccount,
+    QuotaExceeded,
     Role,
     SessionRecord,
     SignupMethod,
@@ -124,6 +129,21 @@ class AccountStore(Protocol):
         ``ja_foi_monitor_chefe`` para sempre (FR-27).
         """
 
+    async def housekeeping(self, now: datetime) -> HousekeepingCounts:
+        """A limpeza diária (S25-03): sessões vencidas, links usados ou vencidos, cadastros não
+        confirmados há 48 horas, contas fora do status ativo sem atividade há 365 dias (Q-19 d,
+        nunca a do desenvolvedor) e o registro de gerenciamento com mais de 12 meses.
+        """
+
+    async def take_feedback_quota(
+        self, account_id: UUID, day: date, per_account: int, daily_cap: int
+    ) -> QuotaExceeded | None:
+        """Gasta um feedback da cota do dia (S25-05), ou diz quem já chegou ao limite.
+
+        A conta tem ``per_account`` por dia, e o servidor, ``daily_cap`` somando todas. A
+        conferência e o gasto acontecem juntos: dois pedidos ao mesmo tempo não passam do teto.
+        """
+
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         """As ações de gerenciamento, da mais recente para a mais antiga (REC-06).
 
@@ -176,9 +196,13 @@ class MemoryAccountStore:
         self.sessions: dict[bytes, _Session] = {}
         self.email_tokens: dict[bytes, _EmailToken] = {}
         #: Quem decidiu cada pedido e quando (``decided_by`` e ``decided_at`` no banco).
-        self.decisions: dict[UUID, tuple[UUID, datetime]] = {}
+        self.decisions: dict[UUID, tuple[UUID | None, datetime]] = {}
         #: Registro das ações de gerenciamento (``app.management_log``), na ordem em que entraram.
         self.log: list[ManagementRecord] = []
+        #: Última atividade de cada conta (``last_activity_at``); sem registro, vale o cadastro.
+        self.activity: dict[UUID, datetime] = {}
+        #: Feedbacks gastos por dia e conta (``app.feedback_quota``).
+        self.feedback_quota: dict[tuple[date, UUID], int] = {}
         self.available = True
         self._lock = asyncio.Lock()
 
@@ -255,6 +279,7 @@ class MemoryAccountStore:
                 google_sub=new.google_sub,
             )
             self.accounts[account.id] = account
+            self.activity[account.id] = now
             return account
 
     def add(self, account: Account) -> Account:
@@ -328,6 +353,7 @@ class MemoryAccountStore:
                 created_at=now if existing is None else existing.created_at,
             )
             self.accounts[account.id] = account
+            self.activity[account.id] = now
             return account
 
     async def add_email_token(
@@ -360,6 +386,7 @@ class MemoryAccountStore:
                 return None
             verified = replace(account, status=Status.AGUARDANDO_APROVACAO)
             self.accounts[verified.id] = verified
+            self.activity[verified.id] = now
             return verified
 
     async def update_profile(
@@ -396,6 +423,7 @@ class MemoryAccountStore:
             token.used_at = now
             account = replace(self.accounts[token.account_id], password_hash=password_hash)
             self.accounts[account.id] = account
+            self.activity[account.id] = now
             await self.delete_sessions(account.id)
             return account
 
@@ -436,7 +464,89 @@ class MemoryAccountStore:
             if record is not None:
                 self._purge_log(now)
                 self.log.append(record)
+            self.activity[account_id] = now
             return updated
+
+    async def housekeeping(self, now: datetime) -> HousekeepingCounts:
+        self._check()
+        async with self._lock:
+            expired = [h for h, s in self.sessions.items() if s.expires_at <= now]
+            for token_hash in expired:
+                del self.sessions[token_hash]
+            spent = [
+                h
+                for h, t in self.email_tokens.items()
+                if t.used_at is not None or t.expires_at <= now
+            ]
+            for token_hash in spent:
+                del self.email_tokens[token_hash]
+            unverified = [
+                a.id
+                for a in self.accounts.values()
+                if a.status is Status.AGUARDANDO_VERIFICACAO
+                and self.activity.get(a.id, a.created_at) <= now - UNVERIFIED_TTL
+            ]
+            inactive = [
+                a.id
+                for a in self.accounts.values()
+                if a.status in PURGEABLE
+                and self.activity.get(a.id, a.created_at) <= now - INACTIVE_TTL
+                and a.signup_method is not SignupMethod.SEED
+                and a.role is not Role.DESENVOLVEDOR
+            ]
+            for account_id in unverified + inactive:
+                self._delete_account(account_id)
+            yesterday = now.astimezone(UTC).date() - timedelta(days=1)
+            for key in [key for key in self.feedback_quota if key[0] < yesterday]:
+                del self.feedback_quota[key]
+            before = len(self.log)
+            self._purge_log(now)
+            return HousekeepingCounts(
+                sessions=len(expired),
+                tokens=len(spent),
+                unverified=len(unverified),
+                inactive=len(inactive),
+                log=before - len(self.log),
+            )
+
+    def _delete_account(self, account_id: UUID) -> None:
+        """Como o ``ON DELETE`` do banco: e-mails, sessões e links vão junto; quem foi aprovado
+        por ela fica sem "quem decidiu"."""
+        del self.accounts[account_id]
+        self.activity.pop(account_id, None)
+        for key in [key for key in self.feedback_quota if key[1] == account_id]:
+            del self.feedback_quota[key]
+        self.decisions.pop(account_id, None)
+        for other, (decided_by, decided_at) in list(self.decisions.items()):
+            if decided_by == account_id:
+                self.decisions[other] = (None, decided_at)
+        # O registro guarda os nomes; só perde o vínculo com a conta (ON DELETE SET NULL).
+        self.log = [
+            replace(
+                entry,
+                actor_id=None if entry.actor_id == account_id else entry.actor_id,
+                target_id=None if entry.target_id == account_id else entry.target_id,
+            )
+            for entry in self.log
+        ]
+        for token_hash in [h for h, s in self.sessions.items() if s.account_id == account_id]:
+            del self.sessions[token_hash]
+        for token_hash in [h for h, t in self.email_tokens.items() if t.account_id == account_id]:
+            del self.email_tokens[token_hash]
+
+    async def take_feedback_quota(
+        self, account_id: UUID, day: date, per_account: int, daily_cap: int
+    ) -> QuotaExceeded | None:
+        self._check()
+        async with self._lock:
+            used = self.feedback_quota.get((day, account_id), 0)
+            total = sum(n for (when, _), n in self.feedback_quota.items() if when == day)
+            if used >= per_account:
+                return "conta"
+            if total >= daily_cap:
+                return "servidor"
+            self.feedback_quota[(day, account_id)] = used + 1
+            return None
 
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         self._check()
@@ -466,6 +576,7 @@ class MemoryAccountStore:
     ) -> None:
         self._check()
         self.add_session(token_hash, account_id, now, expires_at)
+        self.activity[account_id] = now
 
     async def get_session(self, token_hash: bytes) -> SessionRecord | None:
         self._check()

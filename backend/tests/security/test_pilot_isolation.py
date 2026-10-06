@@ -63,6 +63,7 @@ ANALYZER_ENV = frozenset(
         "IPC_RULESET_PATH",
         "IPC_SANDBOX",
         "IPC_MEMORY_MB",
+        "IPC_WORKERS",
         "LC_CTYPE",
     }
 )
@@ -101,7 +102,7 @@ print(json.dumps(found))
 #: Roda como o usuário do analisador e se fecha como um worker; depois tenta escapar.
 ESCAPE_PROBE = r"""
 import errno, json, os, socket, subprocess, sys
-from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits
+from ipc_analyzer.runtime.limits import ResourceLimits, apply_limits, forbid_new_processes
 from ipc_analyzer.runtime.sandbox import SandboxMode, enforce
 api_pid = int(sys.argv[1])
 results = {}
@@ -114,6 +115,7 @@ for name, path in {"api": f"/proc/{api_pid}/environ", "supervisord": "/proc/1/en
 target = "/tmp/ipc-canario-%d" % os.getpid()
 apply_limits(ResourceLimits(memory_bytes=160 * 1024 * 1024))
 enforce(SandboxMode.REQUIRED)
+forbid_new_processes()
 
 def write_file():
     # RLIMIT_FSIZE = 0: criar um arquivo vazio ainda é possível, gravar um byte não.
@@ -268,7 +270,7 @@ def test_each_process_runs_as_its_own_user(processes: list[dict[str, Any]]) -> N
     assert [p["pid"] for p in roles["supervisord"]] == [1]
     assert roles["supervisord"][0]["uid"] == 0
     assert {p["uid"] for p in roles["api"]} == {API_UID}
-    assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e 2 workers
+    assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e o worker
     assert {p["uid"] for p in roles["analyzer"]} == {ANALYZER_UID}
 
 
@@ -294,13 +296,15 @@ def test_workers_are_sandboxed_and_limited(processes: list[dict[str, Any]]) -> N
     )
     workers = [p for p in analyzer if p["ppid"] == forkserver["pid"]]
 
-    assert len(workers) == 2
+    assert len(workers) == 1  # um worker no plano gratuito (S25-04)
     for worker in workers:
         # Um filtro a mais que o processo que o criou: o seccomp do IP-Checker.
         assert worker["filters"] == service["filters"] + 1
         assert _soft_limit(worker["limits"], "Max address space") == str(160 * MIB)
         assert _soft_limit(worker["limits"], "Max file size") == "0"
         assert _soft_limit(worker["limits"], "Max open files") == "32"
+        assert _soft_limit(worker["limits"], "Max processes") == "0"
+        assert _soft_limit(worker["limits"], "Max core file size") == "0"
     assert service["filters"] == forkserver["filters"]  # o serviço não é filtrado
 
 
@@ -316,7 +320,8 @@ def test_analyzer_user_cannot_read_other_environments_or_escape(
         "environ_supervisord": "EACCES",
         "socket": "EPERM",
         "loopback": "EPERM",
-        "exec": "EPERM",
+        # RLIMIT_NPROC = 0 (S25-04): o fork falha antes mesmo do execve.
+        "exec": "EAGAIN",
         "write": "EFBIG",
     }
 

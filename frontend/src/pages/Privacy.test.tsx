@@ -23,7 +23,10 @@ describe("Aviso de privacidade (S19-02, Q-19 d)", () => {
 
     expect(await screen.findByRole("heading", { name: "Aviso de privacidade" })).toBeInTheDocument();
     expect(screen.getByText(/não vai para o banco, para o disco nem para os logs/)).toBeInTheDocument();
-    expect(screen.getByText(/O nome do aluno é trocado por \[ALUNO\]/)).toBeInTheDocument();
+    expect(screen.getByText(/o nome do aluno é trocado\s+por \[ALUNO\]/)).toBeInTheDocument();
+    // S25-05 e Q-19 d: dados pessoais mascarados antes da IA e contas paradas apagadas.
+    expect(screen.getByText(/e-mails, CPFs e números com 8 ou mais dígitos/)).toBeInTheDocument();
+    expect(screen.getByText(/365 dias sem nenhuma atividade é apagada/)).toBeInTheDocument();
     // Telemetria (S21-01): anônima, agregada e apagada em 12 meses.
     expect(screen.getByText(/não guarda o código, a conta, o nome de ninguém nem\s+o IP/)).toBeInTheDocument();
     expect(screen.getByText(/apagados depois de 12 meses/)).toBeInTheDocument();

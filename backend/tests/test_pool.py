@@ -47,13 +47,15 @@ def _allocate(megabytes: int) -> int:
     return len(bytearray(megabytes * MIB))
 
 
-def _limits() -> tuple[int, int, int]:
+def _limits() -> tuple[int, int, int, int, int]:
     import resource
 
     return (
         resource.getrlimit(resource.RLIMIT_AS)[0],
         resource.getrlimit(resource.RLIMIT_FSIZE)[0],
         resource.getrlimit(resource.RLIMIT_NOFILE)[0],
+        resource.getrlimit(resource.RLIMIT_NPROC)[0],
+        resource.getrlimit(resource.RLIMIT_CORE)[0],
     )
 
 
@@ -132,7 +134,7 @@ def test_workers_are_recycled_after_max_tasks() -> None:
 def test_resource_limits_are_applied(pool: AnalyzerPool) -> None:
     defaults = ResourceLimits()
 
-    assert run(pool, _limits) == (defaults.memory_bytes, 0, defaults.max_open_files)
+    assert run(pool, _limits) == (defaults.memory_bytes, 0, defaults.max_open_files, 0, 0)
 
 
 @linux_only

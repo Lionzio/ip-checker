@@ -14,6 +14,9 @@
     "e2e": "playwright test",
     "gen:api": "npx --yes openapi-typescript@7.13.0 ../docs/openapi.json -o src/types/openapi.ts"
   },
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

@@ -1,4 +1,5 @@
-"""Middleware ASGI da API: identificador, limite de corpo e a linha de log de cada requisição."""
+"""Middleware ASGI da API: identificador, limite de corpo, erro inesperado e a linha de log de
+cada requisição."""
 
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from ipc_api.logging import get_logger
 from ipc_api.slo import SloMonitor
 
 log = get_logger("ipc_api.access")
+errors = get_logger("ipc_api.errors")
 
 
 class RequestContextMiddleware:
@@ -24,6 +26,10 @@ class RequestContextMiddleware:
     Um ``Content-Length`` acima do limite é recusado sem ler um byte do corpo. Sem
     ``Content-Length`` (corpo em partes), a contagem acontece durante a leitura. A linha de log
     traz o caminho da rota, nunca o caminho pedido: uma URL inventada pelo cliente não chega ao log.
+
+    Uma exceção que escapa da aplicação vira um 500 ``INTERNAL_ERROR`` em JSON, com o
+    ``request_id`` na mensagem e no cabeçalho (S25-04); o log guarda o tipo da exceção e o
+    rastro, nunca o corpo da requisição.
     """
 
     def __init__(self, app: ASGIApp, max_body_bytes: int, slo: SloMonitor | None = None) -> None:
@@ -42,10 +48,12 @@ class RequestContextMiddleware:
         state["request_id"] = request_id
         status = 500
         received = 0
+        started_response = False
 
         async def send_with_id(message: Message) -> None:
-            nonlocal status
+            nonlocal status, started_response
             if message["type"] == "http.response.start":
+                started_response = True
                 status = message["status"]
                 MutableHeaders(scope=message).append("X-Request-Id", request_id)
             await send(message)
@@ -70,7 +78,25 @@ class RequestContextMiddleware:
                 )
                 await response(scope, receive, send_with_id)
                 return
-            await self.app(scope, limited_receive, send_with_id)
+            try:
+                await self.app(scope, limited_receive, send_with_id)
+            except Exception as exc:
+                errors.error(
+                    "erro inesperado",
+                    request_id=request_id,
+                    error_type=type(exc).__name__,
+                    exc_info=True,
+                )
+                if started_response:
+                    raise
+                state["outcome"] = ErrorCode.INTERNAL_ERROR
+                response = error_response(
+                    500,
+                    ErrorCode.INTERNAL_ERROR,
+                    "Erro inesperado no serviço. Se continuar, informe à equipe o código "
+                    f"{request_id}.",
+                )
+                await response(scope, receive, send_with_id)
         finally:
             route = scope.get("route")
             path = getattr(route, "path", state.get("route_path", "outra"))

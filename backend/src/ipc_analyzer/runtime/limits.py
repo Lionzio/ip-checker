@@ -32,7 +32,23 @@ def apply_limits(limits: ResourceLimits) -> bool:
     # Tamanho máximo de arquivo 0: o worker não consegue gravar nada em disco.
     resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
     resource.setrlimit(resource.RLIMIT_NOFILE, (limits.max_open_files, limits.max_open_files))
+    # S25-04: nenhum core dump, que gravaria a memória do worker, com o código do aluno, em disco.
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     # Sem isto, tentar gravar um arquivo mataria o worker com SIGXFSZ; assim, a gravação falha
     # com erro e o restante do worker continua previsível.
     signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+    return True
+
+
+def forbid_new_processes() -> bool:
+    """Nenhum processo ou thread novo no worker (S25-04): qualquer ``fork`` falha com EAGAIN.
+
+    O limite conta os processos do usuário inteiro, e o worker não precisa de nenhum. Vem por
+    último no initializer: carregar a libseccomp procura a biblioteca com um subprocesso.
+    """
+    try:
+        import resource  # só existe em Unix
+    except ImportError:
+        return False
+    resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
     return True

@@ -500,6 +500,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A API e o analisador respondem, sem consultar o banco (health check do Render): uma oscilação do banco não derruba a instância nem trava o deploy */
+        get: operations["service_health_health_service_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/slo": {
         parameters: {
             query?: never;
@@ -583,7 +600,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "INTERNAL_ERROR";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -1043,6 +1060,41 @@ export interface components {
             message: string;
         };
         /**
+         * SloHousekeeping
+         * @description A limpeza diária do banco desde que a API subiu (S25-03): só contagens.
+         */
+        SloHousekeeping: {
+            /** Runs */
+            runs: number;
+            /** Failures */
+            failures: number;
+            /**
+             * Sessions
+             * @description Sessões vencidas apagadas.
+             */
+            sessions: number;
+            /**
+             * Tokens
+             * @description Links de e-mail usados ou vencidos apagados.
+             */
+            tokens: number;
+            /**
+             * Unverified
+             * @description Cadastros não confirmados em 48 horas apagados.
+             */
+            unverified: number;
+            /**
+             * Inactive
+             * @description Contas fora do status ativo, 365 dias sem atividade, apagadas (Q-19 d).
+             */
+            inactive: number;
+            /**
+             * Log
+             * @description Ações do registro de gerenciamento com mais de 12 meses.
+             */
+            log: number;
+        };
+        /**
          * SloResponse
          * @description Latência e erros dos últimos minutos (S21-02, NFR-15), sem dado de ninguém.
          */
@@ -1071,6 +1123,7 @@ export interface components {
             /** Reasons */
             reasons: ("latencia" | "erros")[];
             telemetry: components["schemas"]["SloTelemetry"];
+            housekeeping: components["schemas"]["SloHousekeeping"];
         };
         /** SloTelemetry */
         SloTelemetry: {
@@ -2795,6 +2848,35 @@ export interface operations {
                 };
             };
             /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    service_health_health_service_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. */
             503: {
                 headers: {
                     [name: string]: unknown;

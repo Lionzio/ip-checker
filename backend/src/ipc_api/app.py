@@ -40,10 +40,16 @@ from ipc_api.edge import SecurityHeadersMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.feedback.providers import LlmConfig, Provider, Slot, build_provider
 from ipc_api.feedback.service import Ai, FeedbackService
+from ipc_api.housekeeping import Housekeeping
 from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
-from ipc_api.ratelimit import RateLimitMiddleware, SlidingWindowLimiter
+from ipc_api.ratelimit import (
+    ApiGateMiddleware,
+    FixedWindowCounter,
+    RateLimitMiddleware,
+    SlidingWindowLimiter,
+)
 from ipc_api.routes import admin, auth, feedback, google, meta, profile, similarity, validate
 from ipc_api.settings import ApiSettings, DeveloperSettings
 from ipc_api.slo import SloMonitor
@@ -62,6 +68,10 @@ e as de autenticação, exigem a sessão de uma conta ativa, aberta por `POST /a
 
 Todo erro segue o formato `{"error": {"code", "message", "retry_after_s"}}`. Toda resposta traz
 o cabeçalho `X-Request-Id`. As respostas 429 e 503 trazem também o cabeçalho `Retry-After`.
+
+Além dos limites de cada rota, qualquer rota em `/api/*` responde 429 `RATE_LIMITED` quando um IP
+passa de 600 requisições por minuto (6.000 nas faixas do campus). Uma falha inesperada responde
+500 `INTERNAL_ERROR`, com o `X-Request-Id` na mensagem.
 """
 
 
@@ -172,6 +182,7 @@ def create_app(
     repositório de contas em memória, um Argon2 mais barato, um e-mail em memória e um relógio
     controlável."""
     config = settings or ApiSettings.from_env()
+    config.check()
     if config.json_logs:
         configure_logging()
     hasher = passwords or Passwords()
@@ -204,7 +215,11 @@ def create_app(
             )
             app.state.management = Management(store, clock=clock)
             app.state.feedback = FeedbackService(
-                _ais(config, llm_providers), config.llm, config.feedback_limits, now=clock
+                _ais(config, llm_providers),
+                config.llm,
+                config.feedback_limits,
+                store=store,
+                now=clock,
             )
             google_config = config.google
             app.state.google = google.GoogleLogin(
@@ -220,8 +235,13 @@ def create_app(
             app.state.telemetry = await _start_telemetry(
                 config, telemetry_sink, client, production=account_store is None
             )
+            app.state.housekeeping = Housekeeping(store, config.housekeeping, clock=clock)
+            app.state.housekeeping.start()
             yield
         finally:
+            housekeeping = getattr(app.state, "housekeeping", None)
+            if housekeeping is not None:
+                await housekeeping.stop()
             telemetry = getattr(app.state, "telemetry", None)
             if telemetry is not None:
                 await telemetry.stop()
@@ -241,14 +261,16 @@ def create_app(
     )
     app.state.settings = config
     app.state.rate_limiter = SlidingWindowLimiter(max_keys=config.rate_limit.max_keys)
+    app.state.api_gate = FixedWindowCounter(max_keys=config.rate_limit.max_keys)
     app.state.slo = SloMonitor(config.slo)
     # O último middleware adicionado é o mais externo: o contexto (identificador, limite de
     # corpo e log) envolve os demais, e assim o 403 e o 429 também aparecem no log. A sessão vem
-    # antes do limite de taxa, que conta por conta.
+    # antes do limite de taxa, que conta por conta; o limite geral por IP vem antes da sessão.
     app.add_middleware(
         RateLimitMiddleware, config=config.rate_limit, limiter=app.state.rate_limiter
     )
     app.add_middleware(SessionMiddleware, cookie_name=config.session.cookie_name)
+    app.add_middleware(ApiGateMiddleware, config=config.rate_limit, counter=app.state.api_gate)
     app.add_middleware(
         OriginCheckMiddleware,
         allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),

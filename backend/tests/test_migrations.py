@@ -17,7 +17,14 @@ import pytest
 
 from db_support import DATABASE_URL, fresh_schema, requires_database
 from ipc_api.db import migrate
-from ipc_api.db.migrate import DEFAULT_DIR, discover, ensure_login_role, migrate_down, migrate_up
+from ipc_api.db.migrate import (
+    DEFAULT_DIR,
+    applied_versions,
+    discover,
+    ensure_login_role,
+    migrate_down,
+    migrate_up,
+)
 
 # --- Descoberta dos arquivos -------------------------------------------------------------------
 
@@ -86,9 +93,9 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
     migrations = discover(DEFAULT_DIR)
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
-    assert await migrate_down(admin, migrations, "0000") == ["0004", "0003", "0002", "0001"]
+    assert await migrate_down(admin, migrations, "0000") == ["0005", "0004", "0003", "0002", "0001"]
     assert not await _schema_exists(admin)
-    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004"]
+    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004", "0005"]
     assert await _schema_exists(admin)
 
 
@@ -101,7 +108,8 @@ def test_cli_up_and_status(
 
     assert migrate.main(["status"]) == 0
     assert (
-        capsys.readouterr().out.strip() == "aplicadas: 0001, 0002, 0003, 0004; pendentes: nenhuma"
+        capsys.readouterr().out.strip()
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
@@ -203,3 +211,18 @@ async def test_login_role_name_is_validated(admin: Any, role: str) -> None:
 async def test_login_role_needs_a_password(admin: Any) -> None:
     with pytest.raises(ValueError, match="IPC_DB_LOGIN_PASSWORD"):
         await ensure_login_role(admin, "ipc_api_teste", "")
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_a_legacy_tracking_table_moves_out_of_public(admin: Any) -> None:
+    # Um banco de antes da Sprint 25: a tabela de controle ficava em public, exposta pela Data
+    # API do Supabase. A primeira execução a move para ipc_meta, sem perder o que foi aplicado.
+    before = await applied_versions(admin)
+    await admin.execute("ALTER TABLE ipc_meta.schema_migrations SET SCHEMA public")
+    await admin.execute("ALTER TABLE public.schema_migrations RENAME TO ipc_schema_migrations")
+
+    assert await applied_versions(admin) == before
+    assert await admin.fetchval("SELECT to_regclass('public.ipc_schema_migrations')") is None
+    # Ninguém além do administrador usa o esquema de controle.
+    assert not await admin.fetchval("SELECT has_schema_privilege('public', 'ipc_meta', 'USAGE')")

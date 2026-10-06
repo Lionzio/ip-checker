@@ -7,6 +7,7 @@ documentados do analyzer (413 e 422 com o envelope de erro) chegam ao aluno como
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -26,6 +27,8 @@ from ipc_api.schemas import (
 MAX_RESPONSE_BYTES = 256 * 1024
 #: O manifesto só muda quando o analyzer é reimplantado com outro ruleset.
 MANIFEST_TTL_S = 60.0
+#: O analyzer descarta o pedido quando este tempo acaba (S25-04).
+BUDGET_HEADER = "X-IPC-Budget-Ms"
 
 
 class AnalyzerUnavailable(Exception):  # noqa: N818 - é um estado, não um erro de programação
@@ -66,6 +69,7 @@ class AnalyzerClient:
             # Proxies do ambiente nunca valem para a rede interna.
             trust_env=False,
         )
+        self._timeout_s = timeout_s
         self._manifest: tuple[float, AnalyzerManifest] | None = None
 
     async def aclose(self) -> None:
@@ -75,16 +79,23 @@ class AnalyzerClient:
         self, method: str, path: str, payload: Any = None, request_id: str | None = None
     ) -> tuple[int, bytes]:
         # O mesmo request_id nos logs dos dois serviços liga a requisição à análise.
-        headers = {"X-Request-Id": request_id} if request_id else None
+        headers = {BUDGET_HEADER: str(int(self._timeout_s * 1000))}
+        if request_id:
+            headers["X-Request-Id"] = request_id
         try:
-            async with self._http.stream(method, path, json=payload, headers=headers) as response:
+            # O prazo vale para a chamada inteira, não para cada leitura: depois dele, a API
+            # desiste, e o analyzer, que recebeu o mesmo prazo, também.
+            async with (
+                asyncio.timeout(self._timeout_s),
+                self._http.stream(method, path, json=payload, headers=headers) as response,
+            ):
                 body = bytearray()
                 async for chunk in response.aiter_bytes():
                     body += chunk
                     if len(body) > MAX_RESPONSE_BYTES:
                         raise AnalyzerUnavailable("resposta do analyzer acima de 256 KB")
                 return response.status_code, bytes(body)
-        except httpx2.TimeoutException:
+        except (httpx2.TimeoutException, TimeoutError):
             raise AnalyzerUnavailable("o analyzer não respondeu a tempo") from None
         except httpx2.HTTPError as exc:
             raise AnalyzerUnavailable(

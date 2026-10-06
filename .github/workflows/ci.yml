@@ -33,10 +33,14 @@ jobs:
           --health-cmd "pg_isready -U postgres -d ipc_test"
           --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
+          # A mesma versão do uv das imagens (UV_IMAGE nos Dockerfiles).
+          version: "0.12.21"
       - name: Instalar Python 3.13 e dependências
         run: |
           uv python install 3.13
@@ -64,21 +68,26 @@ jobs:
     # (dono/repositório) e o segredo GABARITOS_TOKEN (token só de leitura) estão definidos. A pasta
     # gabaritos/ é ignorada pelo Git, e os testes mostram só arquivo, regra e linha, nunca o código.
     name: Gabaritos (zero violação, Q-14)
-    if: vars.GABARITOS_REPO != ''
+    # PRs do Dependabot não recebem os segredos do Actions: sem o token, o checkout falharia.
+    if: vars.GABARITOS_REPO != '' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Baixar os gabaritos (repositório privado, só leitura)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: ${{ vars.GABARITOS_REPO }}
           token: ${{ secrets.GABARITOS_TOKEN }}
           path: gabaritos
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
+          # A mesma versão do uv das imagens (UV_IMAGE nos Dockerfiles).
+          version: "0.12.21"
       - name: Instalar Python 3.13 e dependências
         working-directory: backend
         run: |
@@ -95,10 +104,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
+          # A mesma versão do uv das imagens (UV_IMAGE nos Dockerfiles).
+          version: "0.12.21"
       - name: Instalar Python 3.13 e dependências de teste
         working-directory: backend
         run: |
@@ -125,8 +138,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -155,7 +170,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Senhas desta execução (deploy/.env, nunca versionado)
         run: |
           python3 - <<'EOF'
@@ -172,7 +189,7 @@ jobs:
           EOF
       - name: Subir web (Caddy + SPA), api, analyzer e banco
         run: docker compose -f deploy/compose.yaml up --build -d --wait --wait-timeout 180
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -192,7 +209,7 @@ jobs:
         run: docker compose -f deploy/compose.yaml logs --no-color
       - name: Relatório do Playwright (só em falha)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report
           path: frontend/playwright-report
@@ -204,7 +221,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      # Este job é o único que guarda a credencial do checkout: o git fetch da develop precisa dela
+      # num repositório privado. Ele não instala nada nem roda código do repositório.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
       - name: Verificar que a main é ancestral da develop

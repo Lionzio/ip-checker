@@ -54,10 +54,11 @@ export function Privacy() {
 
       <h3 className="text-lg font-semibold">Feedback</h3>
       <p>
-        Quando há uma IA configurada, vão ao provedor dela só o código sem os comentários, a anotação
-        e o resultado da verificação. O nome do aluno é trocado por [ALUNO] antes do envio, e o seu
-        nome e o seu cargo não vão. Sem IA, o texto é montado por modelos no próprio servidor, e nada
-        sai dele.
+        Quando há uma IA configurada, vão ao provedor dela só o código sem os comentários e sem as
+        docstrings, a anotação e o resultado da verificação. Antes do envio, o nome do aluno é trocado
+        por [ALUNO], e e-mails, CPFs e números com 8 ou mais dígitos (como matrículas) são trocados
+        por marcas; o seu nome e o seu cargo não vão. Sem IA, o texto é montado por modelos no próprio
+        servidor, e nada sai dele.
       </p>
 
       <h3 className="text-lg font-semibold">Sessão, e-mail e registros técnicos</h3>
@@ -78,7 +79,10 @@ export function Privacy() {
       <p>
         Uma conta removida não é apagada: perde o acesso e as sessões, e os dados ficam guardados para
         que a pessoa possa voltar à equipe, como acontece com monitores em outros períodos, sem um
-        novo cadastro. Para corrigir os seus dados, use o perfil; para outros pedidos
+        novo cadastro. Uma conta fora da equipe (removida, recusada ou à espera de aprovação) que passa
+        365 dias sem nenhuma atividade é apagada, e o e-mail fica livre para um novo cadastro; um
+        cadastro que não confirma o e-mail é apagado em 48 horas. Para corrigir os seus dados, use o
+        perfil; para outros pedidos
         sobre eles, fale com o desenvolvedor da plataforma ou com a coordenação da disciplina.
       </p>
 

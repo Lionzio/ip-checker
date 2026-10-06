@@ -20,6 +20,7 @@ from ipc_api.feedback.compose import (
     mask,
     opening,
     presentation,
+    redact,
     template_text,
     unmask,
 )
@@ -256,3 +257,39 @@ def test_the_annotation_enters_as_written(annotation: str, sentence: str) -> Non
     text = template_text(student=STUDENT, items=[], annotation=annotation)
 
     assert text.startswith(sentence)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("matrícula 20231234567", "matrícula [MATRICULA]"),
+        ("cpf 123.456.789-09.", "cpf [CPF]."),
+        ("escreva para ana.lima+ip@cin.ufpe.br hoje", "escreva para [EMAIL] hoje"),
+        ("vlacg@cin.ufpe.br, 12345678", "[EMAIL], [MATRICULA]"),
+        ("x = 1234567  # sete dígitos ficam", "x = 1234567  # sete dígitos ficam"),
+        # Dentro de um nome também: um identificador pode carregar a matrícula.
+        ("aluno_20231234567 = 1", "aluno_[MATRICULA] = 1"),
+    ],
+)
+def test_personal_data_is_masked_before_the_ai(text: str, expected: str) -> None:
+    assert redact(text) == expected
+
+
+def test_the_prompt_masks_code_and_annotation() -> None:
+    prompt = build_prompt(
+        items=[],
+        code="m = 20231234567\n",
+        annotation="falei com ana@cin.ufpe.br",
+        student="Ana Lima",
+        treatment="neutro",
+    )
+
+    assert "m = [MATRICULA]" in prompt.user
+    assert "falei com [EMAIL]" in prompt.user
+
+
+@pytest.mark.parametrize("placeholder", ["[EMAIL]", "[CPF]", "[MATRICULA]"])
+def test_the_free_text_cannot_repeat_a_masked_value(placeholder: str) -> None:
+    text = f"Guarde o {placeholder} fora do código."
+
+    assert free_text_problem(text, valid=True, treatment="neutro") == "link ou marcação"

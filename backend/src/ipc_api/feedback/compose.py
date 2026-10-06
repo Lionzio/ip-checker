@@ -8,7 +8,9 @@ concordar com o tratamento (no neutro, nenhuma).
 
 O nome real do aluno nunca vai ao provedor: no prompt inteiro, inclusive no código e na anotação,
 ele vira ``[ALUNO]``, trocado de volta quando a resposta chega. O nome e o cargo de quem avalia
-também não vão: o provedor só recebe o tratamento.
+também não vão: o provedor só recebe o tratamento. Desde a S25-05, e-mails, CPFs e números com 8
+ou mais dígitos (matrículas) também são mascarados, e o analisador já tira comentários e
+docstrings do código.
 
 Sem IA configurada, ou com as duas fora do ar, o trecho livre sai de modelos de texto
 (``template_text``, ADR-06 alternativa C): a anotação entra como foi escrita, e uma dica e um
@@ -174,6 +176,24 @@ def unmask(text: str, student: str) -> str:
     return text.replace(PLACEHOLDER, student)
 
 
+#: Dados pessoais que podem aparecer no código ou na anotação (S25-05), na ordem em que são
+#: trocados: o e-mail primeiro, porque pode ter dígitos; o CPF com pontuação antes dos números.
+_PERSONAL = (
+    (re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"), "[EMAIL]"),
+    (re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)"), "[CPF]"),
+    (re.compile(r"(?<!\d)\d{8,}(?!\d)"), "[MATRICULA]"),
+)
+#: O que ``redact`` deixa no texto; o trecho livre da IA não pode repetir nenhum.
+REDACTED = ("[EMAIL]", "[CPF]", "[MATRICULA]")
+
+
+def redact(text: str) -> str:
+    """Mascara e-mails, CPFs e números com 8 ou mais dígitos (matrículas) antes da IA."""
+    for pattern, placeholder in _PERSONAL:
+        text = pattern.sub(placeholder, text)
+    return text
+
+
 # --- Prompt ------------------------------------------------------------------------------------
 
 _TREATMENT_RULES: dict[Treatment, str] = {
@@ -228,11 +248,12 @@ def build_prompt(
         )
     else:
         result = "a questão está correta, sem nenhuma violação"
-    note = mask(annotation.strip(), student) if annotation and annotation.strip() else None
+    # Os dados pessoais saem antes do nome: o nome dentro de um e-mail quebraria o e-mail.
+    note = mask(redact(annotation.strip()), student) if annotation and annotation.strip() else None
     user = (
         f"Resultado do verificador: {result}.\n\n"
         + (f"<anotacao>\n{note}\n</anotacao>\n\n" if note else "Sem anotação.\n\n")
-        + f"<codigo>\n{mask(code, student)}</codigo>"
+        + f"<codigo>\n{mask(redact(code), student)}</codigo>"
     )
     return Prompt(system=SYSTEM.replace("{tratamento}", _TREATMENT_RULES[treatment]), user=user)
 
@@ -295,7 +316,7 @@ def free_text_problem(text: str, *, valid: bool, treatment: Treatment) -> str | 
         return "longo demais"
     if len([s for s in re.split(r"[.!?]+", clean) if s.strip()]) > MAX_FREE_SENTENCES:
         return "frases demais"
-    if _LINKS.search(clean):
+    if _LINKS.search(clean) or any(placeholder in clean for placeholder in REDACTED):
         return "link ou marcação"
     if _REPEATS.search(clean):
         return "repete a abertura ou o resultado"
