@@ -76,9 +76,9 @@ repositório.
 
    Sem as variáveis do passo 8, a CI roda e o deploy só avisa que o piloto não está configurado.
 
-2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região mais próxima (São
-   Paulo). Em **Project Settings > Database**, copie a *connection string* do **Session pooler**
-   (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
+2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região East US (North
+   Virginia), a mesma da API no Render (Q-20). Em **Project Settings > Database**, copie a
+   *connection string* do **Session pooler** (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
    `postgres`: ela é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o
    usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração do pipeline cria esse usuário.
    A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando `postgres` por `ipc_api`
@@ -169,7 +169,7 @@ precisa do **Starter** (cerca de US$ 7 por mês) antes do primeiro prazo da List
 
 **Depois da P-13 (02/10/2026):** só a equipe da disciplina usa a ferramenta, e o pico esperado fica
 bem abaixo das 150 verificações por minuto que o gratuito atende. O piloto começa no gratuito, com o
-Starter de reserva; a S25-01 mede de novo no Render de verdade, já com login.
+Starter de reserva; a S28-01 mede de novo no Render de verdade, já com login.
 
 Para confirmar no Render de verdade, com o piloto no ar, aumente por alguns minutos
 `IPC_RATE_LIMIT_IP_PER_MIN` no painel (o k6 sai de um único IP) e rode:
