@@ -62,10 +62,16 @@ export default defineConfig({
       testIgnore: /(limits|account|feedback)\.spec\.ts/,
     },
     {
+      // Uma pausa de 61 s: a janela do limite por conta vira antes dos próximos projetos.
+      name: "janela",
+      dependencies: ["chromium"],
+      testMatch: /window\.setup\.ts/,
+    },
+    {
       // Sozinho: a troca de senha encerra as outras sessões da conta do desenvolvedor.
       name: "conta",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["chromium"],
+      dependencies: ["janela"],
       testMatch: /account\.spec\.ts/,
       fullyParallel: false,
     },
