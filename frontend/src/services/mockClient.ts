@@ -3,7 +3,12 @@
  * antes do backend estar pronto. Reconhece só alguns padrões de texto; não é o motor de regras.
  *
  * Para demonstrar os estados de erro, inclua no código um comentário `# simular: <cenário>`, em que
- * o cenário é `sobrecarga`, `limite`, `indisponivel`, `rede` ou `lento`.
+ * o cenário é `sobrecarga`, `limite`, `indisponivel`, `rede` ou `lento`. Desde a S26-04 há também
+ * `truncado` (o relatório cortado em 200 violações), `limite_analise` (o 422 `ANALYSIS_LIMIT`) e `ia`
+ * (o feedback com o trecho livre "escrito por uma IA").
+ *
+ * Como a API, o simulado exige a sessão (S26-04): sem entrar, as listas, a verificação, o plágio e o
+ * feedback respondem 401.
  *
  * A entrada também é simulada (Sprint 13): qualquer nome e senha preenchidos entram como uma
  * monitora de demonstração. Nada é verificado, porque não há servidor.
@@ -263,6 +268,10 @@ function simulateScenario(code: string): Promise<never> | null {
       );
     case "rede":
       return Promise.reject(new TypeError("Failed to fetch"));
+    case "limite_analise":
+      return Promise.reject(
+        new ApiError(422, "ANALYSIS_LIMIT", "O código é complexo demais para ser analisado (limite de nós da árvore)."),
+      );
     default:
       return null;
   }
@@ -345,6 +354,12 @@ export function createMockClient({
     const member = team.find((candidate) => candidate.id === id);
     if (member === undefined) throw new ApiError(404, "ACCOUNT_NOT_FOUND", "Conta não encontrada.");
     return member;
+  }
+
+  function requireSession() {
+    if (account === null) {
+      throw new ApiError(401, "UNAUTHENTICATED", "Entre com a sua conta da equipe para usar o IP-Checker.");
+    }
   }
 
   function requireManager() {
@@ -453,6 +468,7 @@ export function createMockClient({
 
     async compare(codeA, codeB, signal) {
       await wait(latencyMs, signal);
+      requireSession();
       // Simulação grosseira: compara as linhas sem espaços. O detector de verdade é o do analisador.
       const lines = (code: string) =>
         new Set(code.split("\n").map((line) => line.replace(/\s+/g, "")).filter(Boolean));
@@ -563,12 +579,14 @@ export function createMockClient({
 
     async listLists(signal) {
       await wait(latencyMs, signal);
+      requireSession();
       return ENABLED_LISTS;
     },
 
     async validate(request: ValidateRequest, signal) {
       const lento = /#\s*simular:\s*lento\b/.test(request.code);
       await wait(lento ? 15_000 : latencyMs, signal);
+      requireSession();
 
       const scenario = simulateScenario(request.code);
       if (scenario !== null) return scenario;
@@ -618,6 +636,27 @@ export function createMockClient({
       }
 
       const violations = findViolations(request.code, request.list_number);
+      if (/#\s*simular:\s*truncado\b/.test(request.code)) {
+        // O motor para em 200 violações (NFR-08); o simulado repete a primeira linha do código.
+        const filler = Array.from({ length: 200 }, (_, index): Violation => ({
+          rule_id: "R-04",
+          category: "NAO_CONSTA",
+          construct: "node:Simulado",
+          allowed_from_list: null,
+          message: "Construção simulada que não consta no documento da lista.",
+          line: index + 1,
+          col: 1,
+          end_line: index + 1,
+          end_col: 2,
+        }));
+        return {
+          ...base,
+          status: "invalid",
+          syntax_error: null,
+          violations: filler,
+          truncated: true,
+        } satisfies ValidateResponse;
+      }
       // Exigência do assunto da lista (R-02; R-68 na Lista 6): sem ele, a solução inteira é apontada.
       const requirement = SIMULATED_REQUIREMENTS[request.list_number];
       if (requirement !== undefined && !requirement.pattern.test(request.code.replace(/#.*$/gm, ""))) {
@@ -645,6 +684,7 @@ export function createMockClient({
 
     async feedback(request, signal) {
       await wait(latencyMs, signal);
+      requireSession();
       const checked = await client.validate(
         { code: request.code, list_number: request.list_number, question_id: null },
         signal,
@@ -668,12 +708,15 @@ export function createMockClient({
       const sentence = valid
         ? "Sua questão está ótima, não houve nenhuma violação de regras."
         : `Sua questão apresenta problemas, como o uso de ${used.join(", ")}, portanto ela foi anulada.`;
+      const ai = /#\s*simular:\s*ia\b/.test(request.code);
       return {
         request_id: `simulado-${(requests += 1)}`,
         status: valid ? "valid" : "invalid",
-        text: `${opening} ${sentence} Texto simulado: no servidor, uma IA ou os modelos de texto escrevem esta parte.`,
-        source: "template",
-        provider: null,
+        text: ai
+          ? `${opening} ${sentence} Gostei de como você organizou a leitura dos dados; vale revisar os nomes das variáveis.`
+          : `${opening} ${sentence} Texto simulado: no servidor, uma IA ou os modelos de texto escrevem esta parte.`,
+        source: ai ? "llm" : "template",
+        provider: ai ? "primary" : null,
       };
     },
   };

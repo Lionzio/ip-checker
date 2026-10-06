@@ -91,5 +91,13 @@ export function useValidateCode(client: ValidationClient, timeoutMs = DEFAULT_TI
     if (lastRequestRef.current !== null) await validate(lastRequestRef.current);
   }, [validate]);
 
-  return { state, validate, retry };
+  /** Próximo aluno (S26-02): cancela o que estiver em andamento e volta ao estado inicial. */
+  const reset = useCallback(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    lastRequestRef.current = null;
+    setState({ kind: "idle" });
+  }, []);
+
+  return { state, validate, retry, reset };
 }

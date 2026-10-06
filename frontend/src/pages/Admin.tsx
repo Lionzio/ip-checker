@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { RoleBadge } from "../components/RoleBadge";
 import type { AdminClient } from "../services/client";
 import type { AccountStatus, ManagedAccount, ManagementLogEntry, MembersResponse, Role } from "../types/api";
-import { errorMessage } from "../ui";
+import { errorMessage, INPUT, sessionExpired } from "../ui";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Tela de gerenciamento (S15-03, FR-28): fila de pedidos, membros ativos e contas removidas. Cada
@@ -41,11 +43,31 @@ interface Lists {
 
 type Notice = { ok: boolean; text: string } | null;
 
-export function Admin({ client, canViewLog = false }: { client: AdminClient; canViewLog?: boolean }) {
+/** Quantas ações do registro aparecem de cada vez (S26-04). */
+export const LOG_PAGE = 20;
+
+/** Sem acento e em minúsculas: "joao" acha "João". */
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+}
+
+interface AdminProps {
+  client: AdminClient;
+  canViewLog?: boolean;
+  /** A API respondeu 401: a sessão venceu ou foi encerrada. */
+  onUnauthenticated?: () => void;
+}
+
+export function Admin({ client, canViewLog = false, onUnauthenticated }: AdminProps) {
+  useDocumentTitle(PAGE_TITLES.admin);
   const [lists, setLists] = useState<Lists | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
-  const [busy, setBusy] = useState(false);
+  // A conta em que uma ação está em andamento: só a linha dela fica ocupada (S26-04).
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<Role | "">("");
+  const [logShown, setLogShown] = useState(LOG_PAGE);
   // Cada ação recarrega as listas: as ações permitidas mudam com o estado de cada conta.
   const [version, setVersion] = useState(0);
   const reload = () => setVersion((current) => current + 1);
@@ -60,24 +82,32 @@ export function Admin({ client, canViewLog = false }: { client: AdminClient; can
       ([requests, members, log]) => {
         setLists({ requests, members, log });
         setLoadError(null);
-        setBusy(false);
+        setBusyId(null);
       },
       (error: unknown) => {
         if (controller.signal.aborted) return;
+        setBusyId(null);
+        if (sessionExpired(error) && onUnauthenticated) {
+          onUnauthenticated();
+          return;
+        }
         setLoadError(errorMessage(error));
-        setBusy(false);
       },
     );
     return () => controller.abort();
-  }, [client, canViewLog, version]);
+  }, [client, canViewLog, version, onUnauthenticated]);
 
-  async function run(action: () => Promise<void>, success: string) {
-    setBusy(true);
+  async function run(account: ManagedAccount, action: () => Promise<void>, success: string) {
+    setBusyId(account.id);
     setNotice(null);
     try {
       await action();
       setNotice({ ok: true, text: success });
     } catch (caught) {
+      if (sessionExpired(caught) && onUnauthenticated) {
+        onUnauthenticated();
+        return;
+      }
       setNotice({ ok: false, text: errorMessage(caught) });
     }
     reload();
@@ -85,22 +115,28 @@ export function Admin({ client, canViewLog = false }: { client: AdminClient; can
 
   const handlers: Handlers = {
     approve: (account, role) =>
-      void run(() => client.approve(account.id, role), `${account.name} foi aprovado(a) como ${ROLE_NAMES[role]}.`),
+      void run(account, () => client.approve(account.id, role), `${account.name} foi aprovado(a) como ${ROLE_NAMES[role]}.`),
     reject: (account) => {
       if (!window.confirm(`Recusar o pedido de ${account.name}? A pessoa não terá acesso.`)) return;
-      void run(() => client.reject(account.id), `O pedido de ${account.name} foi recusado.`);
+      void run(account, () => client.reject(account.id), `O pedido de ${account.name} foi recusado.`);
     },
     changeRole: (account, role) =>
-      void run(() => client.changeRole(account.id, role), `${account.name} agora é ${ROLE_NAMES[role]}.`),
+      void run(account, () => client.changeRole(account.id, role), `${account.name} agora é ${ROLE_NAMES[role]}.`),
     remove: (account) => {
       const result = account.removal_status !== null ? STATUS_NAMES[account.removal_status] : undefined;
       const question = `Remover ${account.name} da equipe? A conta passa a ${result ?? "removida"}, perde o acesso e as sessões abertas são encerradas.`;
       if (!window.confirm(question)) return;
-      void run(() => client.remove(account.id), `${account.name} foi removido(a) da equipe (${result ?? "removida"}).`);
+      void run(account, () => client.remove(account.id), `${account.name} foi removido(a) da equipe (${result ?? "removida"}).`);
     },
     reactivate: (account, role) =>
-      void run(() => client.reactivate(account.id, role), `${account.name} foi reativado(a) como ${ROLE_NAMES[role]}.`),
+      void run(account, () => client.reactivate(account.id, role), `${account.name} foi reativado(a) como ${ROLE_NAMES[role]}.`),
   };
+
+  // Busca por nome ou e-mail, sem acento; o filtro de cargo vale para os membros e as contas removidas.
+  const query = fold(search.trim());
+  const matches = (account: ManagedAccount, byRole: boolean) =>
+    (query === "" || fold(account.name).includes(query) || fold(account.email).includes(query)) &&
+    (!byRole || roleFilter === "" || account.role === roleFilter);
 
   return (
     <div className="flex flex-col gap-8 py-4">
@@ -131,18 +167,35 @@ export function Admin({ client, canViewLog = false }: { client: AdminClient; can
       {lists === null && loadError === null && <p className="text-slate-600 dark:text-slate-300">Carregando…</p>}
       {lists !== null && (
         <>
+          <div role="search" className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm sm:max-w-xs">
+              <span className="font-medium">Buscar por nome ou e-mail</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} className={INPUT} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium">Cargo</span>
+              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as Role | "")} className={INPUT}>
+                <option value="">Todos os cargos</option>
+                {(Object.keys(ROLE_NAMES) as Role[]).map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_NAMES[role]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <Section title="Pedidos pendentes" empty="Nenhum pedido aguardando aprovação." count={lists.requests.length}>
-            <AccountTable kind="requests" accounts={lists.requests} busy={busy} handlers={handlers} />
+            <AccountTable kind="requests" accounts={lists.requests.filter((a) => matches(a, false))} busyId={busyId} handlers={handlers} />
           </Section>
           <Section title="Membros ativos" empty="Nenhum membro ativo." count={lists.members.active.length}>
-            <AccountTable kind="active" accounts={lists.members.active} busy={busy} handlers={handlers} />
+            <AccountTable kind="active" accounts={lists.members.active.filter((a) => matches(a, true))} busyId={busyId} handlers={handlers} />
           </Section>
           <Section
             title="Ex-monitores, conselheiros e inativos"
             empty="Nenhuma conta removida."
             count={lists.members.removed.length}
           >
-            <AccountTable kind="removed" accounts={lists.members.removed} busy={busy} handlers={handlers} />
+            <AccountTable kind="removed" accounts={lists.members.removed.filter((a) => matches(a, true))} busyId={busyId} handlers={handlers} />
           </Section>
           {lists.log !== null && (
             <Section title="Registro de ações" empty="Nenhuma ação registrada nos últimos 12 meses." count={lists.log.length}>
@@ -150,7 +203,12 @@ export function Admin({ client, canViewLog = false }: { client: AdminClient; can
                 Quem aprovou, recusou, alterou o cargo, removeu ou reativou cada conta nos últimos 12 meses, da ação mais
                 recente para a mais antiga. Só o desenvolvedor e os professores veem este registro.
               </p>
-              <LogTable entries={lists.log} />
+              <LogTable entries={lists.log.slice(0, logShown)} />
+              {lists.log.length > logShown && (
+                <button type="button" className={`${SMALL_BUTTON} self-start`} onClick={() => setLogShown((shown) => shown + LOG_PAGE)}>
+                  Mostrar mais ({lists.log.length - logShown} restantes)
+                </button>
+              )}
             </Section>
           )}
         </>
@@ -184,14 +242,17 @@ type Kind = "requests" | "active" | "removed";
 function AccountTable({
   kind,
   accounts,
-  busy,
+  busyId,
   handlers,
 }: {
   kind: Kind;
   accounts: ManagedAccount[];
-  busy: boolean;
+  busyId: string | null;
   handlers: Handlers;
 }) {
+  if (accounts.length === 0) {
+    return <p className="text-sm text-slate-600 dark:text-slate-300">Nenhuma conta corresponde à busca.</p>;
+  }
   return (
     <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
       <table className="w-full text-left text-sm">
@@ -213,7 +274,11 @@ function AccountTable({
         </thead>
         <tbody>
           {accounts.map((account) => (
-            <tr key={account.id} className="border-t border-slate-200 align-top dark:border-slate-700">
+            <tr
+              key={account.id}
+              aria-busy={busyId === account.id || undefined}
+              className="border-t border-slate-200 align-top aria-busy:opacity-60 dark:border-slate-700"
+            >
               <th scope="row" className="px-3 py-2 font-medium">{account.name}</th>
               <td className="px-3 py-2 break-all">{account.email}</td>
               <td className="px-3 py-2">{account.course}</td>
@@ -235,7 +300,7 @@ function AccountTable({
                 </td>
               )}
               <td className="px-3 py-2">
-                <Actions account={account} busy={busy} handlers={handlers} />
+                <Actions account={account} busy={busyId === account.id} handlers={handlers} />
               </td>
             </tr>
           ))}

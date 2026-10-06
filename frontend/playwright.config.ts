@@ -59,7 +59,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["login"],
-      testIgnore: /(limits|account|feedback)\.spec\.ts/,
+      testIgnore: /(limits|account|feedback|batch)\.spec\.ts/,
     },
     {
       // Uma pausa de 61 s: a janela do limite por conta vira antes dos próximos projetos.
@@ -76,11 +76,12 @@ export default defineConfig({
       fullyParallel: false,
     },
     {
-      // Sozinho também: troca o tratamento do desenvolvedor para conferir os três (S19-01).
+      // Sozinho também: troca o tratamento do desenvolvedor para conferir os três (S19-01). A correção
+      // em lote (S26-02) vem junto: cada aluno gasta uma verificação e um feedback do limite por conta.
       name: "feedback",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["conta"],
-      testMatch: /feedback\.spec\.ts/,
+      testMatch: /(feedback|batch)\.spec\.ts/,
       fullyParallel: false,
     },
     {

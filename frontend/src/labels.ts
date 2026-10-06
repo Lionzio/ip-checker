@@ -19,3 +19,37 @@ export const BUSY_TITLES: Partial<Record<ApiErrorCode, string>> = {
   OVERLOADED: "Serviço ocupado",
   ANALYZER_UNAVAILABLE: "Serviço indisponível",
 };
+
+/** Navegação principal (S26-01). */
+export const NAV_LABELS = {
+  checker: "Verificar",
+  plagiarism: "Plágio",
+  admin: "Gerenciar",
+  profile: "Perfil",
+  signOut: "Sair",
+} as const;
+
+/** O `<title>` de cada tela (S26-01). */
+export const PAGE_TITLES = {
+  landing: "Acesso restrito",
+  checker: "Verificação",
+  plagiarism: "Plágio",
+  admin: "Gerenciamento",
+  profile: "Perfil",
+  login: "Entrar",
+  register: "Registrar",
+  verify: "Confirmar o e-mail",
+  forgot: "Esqueci minha senha",
+  reset: "Redefinir a senha",
+  privacy: "Aviso de privacidade",
+  google: "Registrar com o Google",
+} as const;
+
+/** Singular e plural de cada categoria, no resumo do relatório (S26-03). */
+export const CATEGORY_COUNTS: Record<Category, readonly [string, string]> = {
+  ANULACAO: ["anulação imediata", "anulações imediatas"],
+  PROIBIDO_NA_QUESTAO: ["proibição da questão", "proibições da questão"],
+  EXIGENCIA: ["exigência não atendida", "exigências não atendidas"],
+  FORA_DA_LISTA: ["fora da lista", "fora da lista"],
+  NAO_CONSTA: ["não consta no documento", "não constam no documento"],
+};

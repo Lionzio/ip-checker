@@ -1,13 +1,16 @@
 import { Link } from "react-router";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { PAGE_TITLES } from "../labels";
 
 /**
  * Aviso de privacidade (S19-02; Q-16, Q-19 d, NFR-11). Descreve o que o sistema faz de fato; se os
  * dados guardados ou enviados a terceiros mudarem, este texto muda junto (DoD, seção 8).
  */
 export function Privacy() {
+  useDocumentTitle(PAGE_TITLES.privacy);
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-4 py-6 leading-relaxed">
-      <h2 className="text-2xl font-semibold">Aviso de privacidade</h2>
+      <h2 className="text-xl font-semibold">Aviso de privacidade</h2>
       <p>
         O IP-Checker é de uso exclusivo da equipe da disciplina de Introdução à Programação. Este aviso
         explica quais dados ele guarda, para quê, quem os vê e o que sai do servidor.
