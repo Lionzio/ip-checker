@@ -1,7 +1,14 @@
-"""Similaridade entre duas soluções (S17-01; FR-29, ADR-05, NFR-25), sem executar nada.
+"""Similaridade entre duas soluções (S17-01, S27-01; FR-29, ADR-05, ADR-07, NFR-25), sem executar
+nada.
+
+Desde a Sprint 27, a similaridade é o maior de três números: a métrica da ADR-05 (abaixo), o Dice
+da árvore canonizada da ADR-07 (``similarity_tree.py``) e, quando o menor código tem pelo menos
+``CONTAINMENT_MIN_RATIO`` do tamanho do maior, a contenção da árvore, que denuncia o enchimento
+com código morto. A resposta traz os três e os trechos em comum. A comparação de uma solução com a
+turma (``compare_many``) usa só a árvore, com o peso de cada subárvore pela raridade na turma.
 
 Os dois códigos passam pela mesma análise segura do motor (``parse.py``, com os limites de
-``guards.py``) e são comparados por duas métricas:
+``guards.py``) e, na ADR-05, são comparados por duas métricas:
 
 - **A, tokens** (peso ``TOKEN_WEIGHT``): o ``tokenize`` gera os tokens; comentários, linhas em
   branco e espaços saem; o conteúdo das strings vira ``STR``; os nomes ligados pelo aluno
@@ -37,6 +44,15 @@ from difflib import SequenceMatcher
 
 from ipc_analyzer.engine.guards import DEFAULT_LIMITS, AnalysisLimitError, InputError, Limits
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem, parse_source
+from ipc_analyzer.engine.similarity_tree import (
+    Match,
+    TreeFingerprint,
+    TreeScores,
+    class_idf,
+    fingerprint,
+    matches,
+    scores,
+)
 from ipc_analyzer.engine.symbols import collect_bindings
 
 #: Pesos das métricas (ADR-05): a de tokens pesa mais, porque também capta a ordem dos operandos.
@@ -45,6 +61,9 @@ AST_WEIGHT = 0.4
 #: Tamanho dos k-gramas e da janela do *winnowing* (MOSS).
 K = 5
 WINDOW = 4
+#: A contenção só conta quando o menor código tem pelo menos esta fração do maior: um código de
+#: três linhas sempre "cabe" num programa grande.
+CONTAINMENT_MIN_RATIO = 0.25
 
 _SKIPPED = frozenset(
     {
@@ -74,12 +93,34 @@ class Normalized:
 
 @dataclass(frozen=True, slots=True)
 class Similarity:
-    #: Porcentagem com uma casa decimal, de 0,0 a 100,0.
+    #: Porcentagem com uma casa decimal, de 0,0 a 100,0: a maior das métricas abaixo.
     percent: float
     token_score: float
     ast_score: float
     #: Quantos tokens normalizados cada código tem (a API avisa quando são poucos).
     token_counts: tuple[int, int]
+    #: ADR-05: a combinação de tokens e estrutura, de 0 a 1.
+    sequence_score: float
+    #: ADR-07: Dice e contenção da árvore canonizada, de 0 a 1.
+    tree: TreeScores
+    #: Os trechos em comum, na ordem do código A (S27-03).
+    matches: tuple[Match, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Prepared:
+    """Um código pronto para comparar: as duas representações e o tamanho."""
+
+    normalized: Normalized
+    tree: TreeFingerprint
+
+    @property
+    def tokens(self) -> int:
+        return _size(self.normalized.tokens)
+
+    @property
+    def weight(self) -> int:
+        return sum(self.tree.weights.values())
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,25 +143,127 @@ def compare_sources(
     Levanta os mesmos ``InputError`` da análise (FR-04), com a mensagem dizendo qual dos dois
     códigos (A ou B) foi recusado.
     """
-    normalized: list[Normalized] = []
+    prepared: list[Prepared] = []
     for side, source in enumerate((first, second), start=1):
         try:
-            result = parse_source(source, target=target, limits=limits)
-            if isinstance(result, SyntaxProblem):
-                return InvalidSide(side, result)
-            normalized.append(normalize(result))
+            result = prepare(source, target=target, limits=limits)
         except InputError as exc:
             raise type(exc)(f"Código {'AB'[side - 1]}: {exc.message}") from None
-    left, right = normalized
-    token_score = _similarity(left.tokens, right.tokens)
-    ast_score = _similarity(left.nodes, right.nodes)
-    percent = round(100 * (TOKEN_WEIGHT * token_score + AST_WEIGHT * ast_score), 1)
+        if isinstance(result, SyntaxProblem):
+            return InvalidSide(side, result)
+        prepared.append(result)
+    left, right = prepared
+    token_score = _similarity(left.normalized.tokens, right.normalized.tokens)
+    ast_score = _similarity(left.normalized.nodes, right.normalized.nodes)
+    sequence = TOKEN_WEIGHT * token_score + AST_WEIGHT * ast_score
+    tree = scores(left.tree, right.tree)
     return Similarity(
-        percent=percent,
+        percent=round(100 * max(sequence, _tree_score(left, right, tree)), 1),
         token_score=token_score,
         ast_score=ast_score,
-        token_counts=(_size(left.tokens), _size(right.tokens)),
+        token_counts=(left.tokens, right.tokens),
+        sequence_score=sequence,
+        tree=tree,
+        matches=tuple(matches(left.tree, right.tree)),
     )
+
+
+def prepare(
+    source: str, *, target: tuple[int, int], limits: Limits = DEFAULT_LIMITS
+) -> Prepared | SyntaxProblem:
+    """Analisa um código como o motor e monta as duas representações (a da ADR-05 primeiro: a da
+    ADR-07 altera a árvore)."""
+    result = parse_source(source, target=target, limits=limits)
+    if isinstance(result, SyntaxProblem):
+        return result
+    normalized = normalize(result)
+    return Prepared(normalized=normalized, tree=fingerprint(result.tree))
+
+
+def _tree_score(left: Prepared, right: Prepared, tree: TreeScores) -> float:
+    """O Dice da árvore, ou a contenção, quando os tamanhos são comparáveis."""
+    sizes = sorted((left.weight, right.weight))
+    comparable = sizes[1] == 0 or sizes[0] / sizes[1] >= CONTAINMENT_MIN_RATIO
+    return max(tree.dice, tree.containment) if comparable else tree.dice
+
+
+#: Quantas soluções da turma uma comparação aceita (S27-02).
+MAX_CLASS = 100
+
+
+@dataclass(frozen=True, slots=True)
+class ClassRejected:
+    """Uma solução da turma recusada pelos limites da análise (tamanho, linhas, complexidade)."""
+
+    message: str
+
+
+def compare_class(
+    target_code: str,
+    others: Sequence[str],
+    *,
+    target: tuple[int, int],
+    limits: Limits = DEFAULT_LIMITS,
+) -> SyntaxProblem | list[ClassMatch | SyntaxProblem | ClassRejected]:
+    """Compara a solução de um aluno com as da turma (S27-02).
+
+    Um erro de sintaxe na solução do aluno é a resposta inteira; nas da turma, só daquela. Os
+    limites da análise valem para cada código: a solução do aluno recusada levanta o
+    ``InputError``; uma da turma recusada vira ``ClassRejected``.
+    """
+    try:
+        prepared = prepare(target_code, target=target, limits=limits)
+    except InputError as exc:
+        raise type(exc)(f"Solução comparada: {exc.message}") from None
+    if isinstance(prepared, SyntaxProblem):
+        return prepared
+    class_items: list[Prepared | SyntaxProblem | ClassRejected] = []
+    for source in others[:MAX_CLASS]:
+        try:
+            class_items.append(prepare(source, target=target, limits=limits))
+        except InputError as exc:
+            class_items.append(ClassRejected(exc.message))
+    compared = iter(
+        compare_many(
+            prepared, [item for item in class_items if not isinstance(item, ClassRejected)]
+        )
+    )
+    return [item if isinstance(item, ClassRejected) else next(compared) for item in class_items]
+
+
+@dataclass(frozen=True, slots=True)
+class ClassMatch:
+    """Uma solução da turma comparada com a do aluno (S27-02)."""
+
+    percent: float
+    tree: TreeScores
+    token_count: int
+
+
+def compare_many(
+    target_code: Prepared, others: Sequence[Prepared | SyntaxProblem]
+) -> list[ClassMatch | SyntaxProblem]:
+    """Compara uma solução com as da turma, com o peso de cada subárvore pelo IDF da turma.
+
+    O que todas as soluções escrevem (a leitura da entrada, o laço óbvio) quase não conta; só a
+    árvore entra, porque a métrica da ADR-05 não tem como pesar pela turma.
+    """
+    valid = [item for item in others if isinstance(item, Prepared)]
+    idf = class_idf([target_code.tree, *(item.tree for item in valid)])
+    results: list[ClassMatch | SyntaxProblem] = []
+    for item in others:
+        if isinstance(item, SyntaxProblem):
+            results.append(item)
+            continue
+        tree = scores(target_code.tree, item.tree, idf)
+        results.append(
+            ClassMatch(
+                percent=round(100 * _tree_score(target_code, item, tree), 1),
+                tree=tree,
+                token_count=item.tokens,
+            )
+        )
+    return results
 
 
 def normalize(parsed: ParsedSource) -> Normalized:

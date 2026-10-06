@@ -16,6 +16,12 @@ export type FeedbackResponse = Schemas["FeedbackResponse"];
 /** Painel de plágio (Sprint 17). */
 export type SimilarityResponse = Schemas["SimilarityResponse"];
 export type SimilarityBand = Schemas["SimilarityBand"];
+/** Métricas, trechos em comum e a comparação com a turma (Sprint 27, ADR-07). */
+export type SimilarityMetrics = Schemas["SimilarityMetrics"];
+export type SimilarityMatch = Schemas["SimilarityMatch"];
+export type ClassSolution = Schemas["ClassSolution"];
+export type SimilarityClassResponse = Schemas["SimilarityClassResponse"];
+export type SimilarityClassItem = Schemas["SimilarityClassItem"];
 export type Violation = Schemas["Violation"];
 export type SyntaxErrorInfo = Schemas["SyntaxErrorInfo"];
 export type ListInfo = Schemas["ListInfo"];

@@ -432,6 +432,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/similarity/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compara uma solução com até 100 da turma (S27-02): o que toda a turma escreve quase não conta */
+        post: operations["similarity_batch_api_v1_similarity_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/feedback": {
         parameters: {
             query?: never;
@@ -595,6 +612,19 @@ export interface components {
              * @description Há IA configurada para o feedback; sem ela, o texto é montado por modelos.
              */
             feedback_ai: boolean;
+        };
+        /** ClassSolution */
+        ClassSolution: {
+            /**
+             * Label
+             * @description Como a solução aparece no resultado (um nome ou um número).
+             */
+            label: string;
+            /**
+             * Code
+             * @description Uma solução da turma. Nunca é executada nem guardada.
+             */
+            code: string;
         };
         /**
          * ErrorCode
@@ -1004,6 +1034,95 @@ export interface components {
              */
             minimum: number;
         };
+        /** SimilarityClassItem */
+        SimilarityClassItem: {
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "compared" | "syntax_error" | "rejected";
+            /** Similarity */
+            similarity: number | null;
+            band: components["schemas"]["SimilarityBand"] | null;
+            /** Short Code */
+            short_code: boolean;
+            metrics: components["schemas"]["SimilarityMetrics"] | null;
+            syntax_error: components["schemas"]["SyntaxErrorInfo"] | null;
+            /**
+             * Message
+             * @description Por que a solução foi recusada (tamanho, linhas).
+             */
+            message: string | null;
+        };
+        /** SimilarityClassRequest */
+        SimilarityClassRequest: {
+            /**
+             * Code
+             * @description A solução a comparar com a turma.
+             */
+            code: string;
+            /**
+             * Solutions
+             * @description Até 100 soluções da turma, somando até 128 KB.
+             */
+            solutions: components["schemas"]["ClassSolution"][];
+        };
+        /** SimilarityClassResponse */
+        SimilarityClassResponse: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "compared" | "syntax_error";
+            /** @description Erro na solução comparada. */
+            syntax_error: components["schemas"]["SyntaxErrorInfo"] | null;
+            /**
+             * Results
+             * @description Da mais parecida para a menos; as recusadas e com erro de sintaxe no fim.
+             */
+            results: components["schemas"]["SimilarityClassItem"][];
+            /** Notice */
+            notice: string;
+        };
+        /**
+         * SimilarityMatch
+         * @description Linhas do código A com a mesma estrutura de linhas do código B (S27-03).
+         */
+        SimilarityMatch: {
+            /** A First */
+            a_first: number;
+            /** A Last */
+            a_last: number;
+            /** B First */
+            b_first: number;
+            /** B Last */
+            b_last: number;
+        };
+        /**
+         * SimilarityMetrics
+         * @description As métricas por trás da similaridade (S27-01, ADR-07), em porcentagem.
+         */
+        SimilarityMetrics: {
+            /**
+             * Sequence
+             * @description ADR-05: tokens e estrutura em sequência. Vazia na comparação com a turma.
+             */
+            sequence: number | null;
+            /**
+             * Tree Dice
+             * @description ADR-07: Dice das subárvores da árvore canonizada.
+             */
+            tree_dice: number;
+            /**
+             * Tree Containment
+             * @description ADR-07: quanto do menor código está no maior (denuncia código morto).
+             */
+            tree_containment: number;
+        };
         /** SimilarityRequest */
         SimilarityRequest: {
             /**
@@ -1043,6 +1162,13 @@ export interface components {
              * @description O aviso de que o resultado é um indício (FR-29).
              */
             notice: string;
+            /** @description Vazia com erro de sintaxe. A similaridade é a maior delas. */
+            metrics?: components["schemas"]["SimilarityMetrics"] | null;
+            /**
+             * Matches
+             * @description Os trechos em comum, na ordem do código A.
+             */
+            matches?: components["schemas"]["SimilarityMatch"][];
         };
         /** SimilaritySyntaxError */
         SimilaritySyntaxError: {
@@ -2674,6 +2800,84 @@ export interface operations {
                 };
             };
             /** @description RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    similarity_batch_api_v1_similarity_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimilarityClassRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarityClassResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: a solução comparada acima de 51.200 bytes, ou corpo acima de 128 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (solução comparada complexa demais). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. Veja retry_after_s. */
             429: {
                 headers: {
                     [name: string]: unknown;

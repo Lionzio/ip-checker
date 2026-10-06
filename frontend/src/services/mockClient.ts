@@ -20,6 +20,7 @@ import type {
   ManagementLogEntry,
   Role,
   SimilarityBand,
+  SimilarityMatch,
   ValidateRequest,
   ValidateResponse,
   Violation,
@@ -335,6 +336,35 @@ function findViolations(code: string, listNumber: number): Violation[] {
   return violations;
 }
 
+const SIMULATED_NOTICE =
+  "A similaridade é um indício, não uma prova: a decisão final sobre plágio é sempre da equipe.";
+
+function simulatedBand(similarity: number): SimilarityBand {
+  return (
+    SIMULATED_BANDS.find((candidate) => similarity >= candidate.minimum) ?? {
+      id: "sem_suspeitas",
+      label: "Sem suspeitas",
+      minimum: 0,
+    }
+  );
+}
+
+/** Linhas iguais (sem espaços) nos dois códigos, cada uma usada uma vez: os "trechos" simulados. */
+function simulatedMatches(codeA: string, codeB: string): SimilarityMatch[] {
+  const linesB = codeB.split("\n").map((line) => line.replace(/\s+/g, ""));
+  const used = new Set<number>();
+  const found: SimilarityMatch[] = [];
+  codeA.split("\n").forEach((line, index) => {
+    const text = line.replace(/\s+/g, "");
+    if (text === "") return;
+    const other = linesB.findIndex((candidate, position) => candidate === text && !used.has(position));
+    if (other === -1) return;
+    used.add(other);
+    found.push({ a_first: index + 1, a_last: index + 1, b_first: other + 1, b_last: other + 1 });
+  });
+  return found;
+}
+
 export function createMockClient({
   latencyMs = 400,
   signedIn = false,
@@ -479,19 +509,58 @@ export function createMockClient({
       }
       const shared = [...a].filter((line) => b.has(line)).length;
       const similarity = Math.round((2000 * shared) / (a.size + b.size)) / 10;
-      const band = SIMULATED_BANDS.find((candidate) => similarity >= candidate.minimum) ?? {
-        id: "sem_suspeitas" as const,
-        label: "Sem suspeitas",
-        minimum: 0,
-      };
+      const containment = Math.round((1000 * shared) / Math.min(a.size, b.size)) / 10;
       return {
         request_id: `simulado-${(requests += 1)}`,
         status: "compared",
         similarity,
-        band,
+        band: simulatedBand(similarity),
         short_code: Math.min(a.size, b.size) < 6,
         syntax_error: null,
-        notice: "A similaridade é um indício, não uma prova: a decisão final sobre plágio é sempre da equipe.",
+        notice: SIMULATED_NOTICE,
+        metrics: { sequence: similarity, tree_dice: similarity, tree_containment: containment },
+        matches: simulatedMatches(codeA, codeB),
+      };
+    },
+
+    async compareClass(code, solutions, signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      if (code.trim() === "") throw new ApiError(422, "INVALID_INPUT", "Solução comparada: o código está vazio.");
+      const results = await Promise.all(
+        solutions.map(async (solution) => {
+          if (solution.code.trim() === "") {
+            return {
+              label: solution.label,
+              status: "rejected" as const,
+              similarity: null,
+              band: null,
+              short_code: false,
+              metrics: null,
+              syntax_error: null,
+              message: "O código está vazio.",
+            };
+          }
+          const compared = await client.compare(code, solution.code, signal);
+          return {
+            label: solution.label,
+            status: "compared" as const,
+            similarity: compared.similarity,
+            band: compared.band,
+            short_code: compared.short_code,
+            metrics: compared.metrics ? { ...compared.metrics, sequence: null } : null,
+            syntax_error: null,
+            message: null,
+          };
+        }),
+      );
+      results.sort((first, second) => (second.similarity ?? -1) - (first.similarity ?? -1));
+      return {
+        request_id: `simulado-${(requests += 1)}`,
+        status: "compared",
+        syntax_error: null,
+        results,
+        notice: SIMULATED_NOTICE,
       };
     },
 

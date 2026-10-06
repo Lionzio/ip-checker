@@ -288,3 +288,163 @@ def test_a_real_limit_says_which_code(real_api: TestClient) -> None:
 
     assert (response.status_code, response.json()["error"]["code"]) == (422, "ANALYSIS_LIMIT")
     assert response.json()["error"]["message"].startswith("Código A: ")
+
+
+def test_a_real_comparison_brings_the_metrics_and_the_matches(real_api: TestClient) -> None:
+    # A cópia com as condições reescritas e as linhas trocadas (ADR-07).
+    reordered = (
+        ORIGINAL.replace("frequencia = float(input())\n", "")
+        .replace("nota = float(input())\n", "nota = float(input())\nfrequencia = float(input())\n")
+        .replace("frequencia < 75", "75 > frequencia")
+    )
+
+    body = real_api.post(
+        "/api/v1/similarity", json={"code_a": ORIGINAL, "code_b": reordered}
+    ).json()
+
+    assert body["similarity"] == 100.0
+    assert body["metrics"]["tree_dice"] == 100.0
+    assert body["metrics"]["sequence"] < 100.0
+    assert {"a_first": 3, "a_last": 10, "b_first": 3, "b_last": 10} in body["matches"]
+
+
+# --- Contra a turma (S27-02) ---------------------------------------------------------------------
+
+
+def _class_answer(results: list[dict[str, Any]], status: str = "compared") -> Handler:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.url.path == "/internal/similarity/class"
+        return httpx2.Response(
+            200, json={"status": status, "syntax_error": None, "results": results}
+        )
+
+    return handler
+
+
+def _item(percent: float, tokens: int = 100) -> dict[str, Any]:
+    return {
+        "status": "compared",
+        "percent": percent,
+        "token_count": tokens,
+        "metrics": {"sequence": None, "tree_dice": percent, "tree_containment": percent},
+    }
+
+
+def test_the_class_comes_sorted_with_bands_and_the_refused_last() -> None:
+    results = [
+        _item(40.0),
+        {"status": "rejected", "message": "O código está vazio."},
+        _item(99.5, tokens=30),
+        {"status": "syntax_error", "syntax_error": {"line": 2, "col": 1, "message": "faltou ':'"}},
+    ]
+    solutions = [{"label": f"Aluno {n}", "code": "x = 1\n"} for n in range(4)]
+
+    with _api(_class_answer(results)) as api:
+        response = api.post(
+            "/api/v1/similarity/batch", json={"code": "y = 1\n", "solutions": solutions}
+        )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert [item["label"] for item in body["results"]] == [
+        "Aluno 2",
+        "Aluno 0",
+        "Aluno 1",
+        "Aluno 3",
+    ]
+    first = body["results"][0]
+    assert (first["similarity"], first["band"]["label"], first["short_code"]) == (
+        99.5,
+        "Plágio",
+        True,
+    )
+    assert body["results"][2]["message"] == "O código está vazio."
+    assert body["results"][3]["syntax_error"]["message"] == "faltou ':'"
+    assert body["notice"] == NOTICE
+
+
+def test_the_compared_solution_with_a_syntax_error() -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json={
+                "status": "syntax_error",
+                "syntax_error": {"line": 1, "col": 5, "message": "faltou ':'"},
+                "results": [],
+            },
+        )
+
+    with _api(handler) as api:
+        body = api.post(
+            "/api/v1/similarity/batch",
+            json={"code": "if x\n", "solutions": [{"label": "A", "code": "x = 1\n"}]},
+        ).json()
+
+    assert (body["status"], body["results"]) == ("syntax_error", [])
+    assert body["syntax_error"]["line"] == 1
+
+
+def test_the_class_answer_must_match_the_class() -> None:
+    with _api(_class_answer([_item(10.0)])) as api:
+        response = api.post(
+            "/api/v1/similarity/batch",
+            json={
+                "code": "y = 1\n",
+                "solutions": [{"label": "A", "code": "x\n"}, {"label": "B", "code": "z\n"}],
+            },
+        )
+
+    assert (response.status_code, response.json()["error"]["code"]) == (503, "ANALYZER_UNAVAILABLE")
+
+
+@pytest.mark.parametrize(
+    ("body", "status"),
+    [
+        ({"code": "x = 1\n", "solutions": []}, 422),
+        ({"code": "x = 1\n", "solutions": [{"label": "", "code": "x\n"}]}, 422),
+        ({"code": "x = 1\n", "solutions": [{"label": "A", "code": "x\n"}] * 101}, 422),
+        ({"code": "", "solutions": [{"label": "A", "code": "x\n"}]}, 422),
+    ],
+    ids=["vazia", "sem-rotulo", "mais-de-100", "codigo-vazio"],
+)
+def test_invalid_class_requests_are_refused_before_the_analyzer(
+    body: dict[str, Any], status: int
+) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        raise AssertionError("o analyzer não deveria ser chamado")
+
+    with _api(handler) as api:
+        response = api.post("/api/v1/similarity/batch", json=body)
+
+    assert response.status_code == status
+
+
+def test_the_class_needs_a_session() -> None:
+    app, _ = make_app(UNLIMITED)
+    with TestClient(app, base_url="https://testserver") as client:
+        response = client.post(
+            "/api/v1/similarity/batch",
+            json={"code": "x\n", "solutions": [{"label": "A", "code": "x\n"}]},
+        )
+
+    assert (response.status_code, response.json()["error"]["code"]) == (401, "UNAUTHENTICATED")
+
+
+def test_a_real_class_ignores_what_everybody_writes(real_api: TestClient) -> None:
+    common = "valor = int(input())\nprint(valor * 2 + 1)\n"
+    target = common + "if valor > 10:\n    print('grande')\n"
+    solutions = [
+        {"label": f"Aluno {k}", "code": common + f"for i in range({k}):\n    print(i * {k})\n"}
+        for k in range(2, 12)
+    ]
+    copy = target.replace("grande", "enorme").replace("valor", "numero")
+    solutions.append({"label": "Cópia", "code": copy})
+
+    body = real_api.post(
+        "/api/v1/similarity/batch", json={"code": target, "solutions": solutions}
+    ).json()
+
+    assert body["results"][0]["label"] == "Cópia"
+    assert body["results"][0]["band"]["label"] == "Plágio"
+    assert all(item["similarity"] < 80.0 for item in body["results"][1:])

@@ -98,6 +98,31 @@ class SimilaritySyntaxError(_Strict):
     message: Message
 
 
+Percent = Annotated[float, Field(ge=0, le=100)]
+Line = Annotated[int, Field(ge=1)]
+
+
+class SimilarityMetrics(_Strict):
+    """As métricas por trás da similaridade (S27-01, ADR-07), em porcentagem."""
+
+    sequence: Percent | None = Field(
+        description="ADR-05: tokens e estrutura em sequência. Vazia na comparação com a turma."
+    )
+    tree_dice: Percent = Field(description="ADR-07: Dice das subárvores da árvore canonizada.")
+    tree_containment: Percent = Field(
+        description="ADR-07: quanto do menor código está no maior (denuncia código morto)."
+    )
+
+
+class SimilarityMatch(_Strict):
+    """Linhas do código A com a mesma estrutura de linhas do código B (S27-03)."""
+
+    a_first: Line
+    a_last: Line
+    b_first: Line
+    b_last: Line
+
+
 class SimilarityResponse(_Strict):
     request_id: str
     status: Literal["compared", "syntax_error"]
@@ -110,6 +135,47 @@ class SimilarityResponse(_Strict):
     )
     syntax_error: SimilaritySyntaxError | None
     notice: str = Field(description="O aviso de que o resultado é um indício (FR-29).")
+    metrics: SimilarityMetrics | None = Field(
+        default=None, description="Vazia com erro de sintaxe. A similaridade é a maior delas."
+    )
+    matches: list[SimilarityMatch] = Field(
+        default_factory=list, description="Os trechos em comum, na ordem do código A."
+    )
+
+
+class ClassSolution(_Strict):
+    label: Annotated[str, StringConstraints(min_length=1, max_length=80)] = Field(
+        description="Como a solução aparece no resultado (um nome ou um número)."
+    )
+    code: str = Field(description="Uma solução da turma. Nunca é executada nem guardada.")
+
+
+class SimilarityClassRequest(_Strict):
+    code: str = Field(description="A solução a comparar com a turma.")
+    solutions: list[ClassSolution] = Field(
+        min_length=1, max_length=100, description="Até 100 soluções da turma, somando até 128 KB."
+    )
+
+
+class SimilarityClassItem(_Strict):
+    label: str
+    status: Literal["compared", "syntax_error", "rejected"]
+    similarity: Percent | None
+    band: SimilarityBand | None
+    short_code: bool
+    metrics: SimilarityMetrics | None
+    syntax_error: SyntaxErrorInfo | None
+    message: str | None = Field(description="Por que a solução foi recusada (tamanho, linhas).")
+
+
+class SimilarityClassResponse(_Strict):
+    request_id: str
+    status: Literal["compared", "syntax_error"]
+    syntax_error: SyntaxErrorInfo | None = Field(description="Erro na solução comparada.")
+    results: list[SimilarityClassItem] = Field(
+        description="Da mais parecida para a menos; as recusadas e com erro de sintaxe no fim."
+    )
+    notice: str
 
 
 class Violation(_Strict):
@@ -449,6 +515,8 @@ class AnalyzerSimilarity(_Strict):
     token_counts: list[Annotated[int, Field(ge=0)]] | None = Field(min_length=2, max_length=2)
     syntax_error_side: Literal[1, 2] | None
     syntax_error: SyntaxErrorInfo | None
+    metrics: SimilarityMetrics | None = None
+    matches: list[SimilarityMatch] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def _status_matches_content(self) -> Self:
@@ -459,6 +527,32 @@ class AnalyzerSimilarity(_Strict):
         ) != (broken and not compared):
             raise ValueError(f"status {self.status!r} incoerente com o conteúdo da resposta")
         return self
+
+
+class AnalyzerClassItem(_Strict):
+    status: Literal["compared", "syntax_error", "rejected"]
+    percent: Percent | None = None
+    token_count: Annotated[int, Field(ge=0)] | None = None
+    metrics: SimilarityMetrics | None = None
+    syntax_error: SyntaxErrorInfo | None = None
+    message: Annotated[str, StringConstraints(max_length=500)] | None = None
+
+    @model_validator(mode="after")
+    def _status_matches_content(self) -> Self:
+        expected = {
+            "compared": self.percent is not None and self.token_count is not None,
+            "syntax_error": self.syntax_error is not None,
+            "rejected": self.message is not None,
+        }
+        if not expected[self.status]:
+            raise ValueError(f"status {self.status!r} incoerente com o conteúdo do item")
+        return self
+
+
+class AnalyzerClass(_Strict):
+    status: Literal["compared", "syntax_error"]
+    syntax_error: SyntaxErrorInfo | None
+    results: list[AnalyzerClassItem] = Field(max_length=100)
 
 
 class AnalyzerResult(_Strict):
