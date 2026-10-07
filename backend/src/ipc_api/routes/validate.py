@@ -24,12 +24,17 @@ from ipc_api.deps import (
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
-from ipc_api.schemas import ValidateRequest, ValidateResponse
+from ipc_api.schemas import Indicators, ValidateRequest, ValidateResponse
 from ipc_api.settings import ApiSettings
 from ipc_api.telemetry import Outcome, Telemetry, TelemetryEvent, semester_of
 from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
+
+INDICATORS_NOTICE = (
+    "Indícios não são prova de uso de IA. Eles servem para decidir com quem conversar; a "
+    "confirmação é sempre uma conversa em que o aluno explica ou modifica o próprio código."
+)
 
 router = APIRouter(
     prefix="/api/v1", tags=["validação"], dependencies=[Depends(require_active_account)]
@@ -98,7 +103,11 @@ async def validate(
         async with admission.slot():
             started = time.perf_counter()
             result = await analyzer.analyze(
-                body.code, body.list_number, request_id=request_id, question_id=body.question_id
+                body.code,
+                body.list_number,
+                request_id=request_id,
+                question_id=body.question_id,
+                indicators=settings.ai_indicators,
             )
             analysis_ms = round((time.perf_counter() - started) * 1000)
     except Overloaded:
@@ -139,6 +148,12 @@ async def validate(
         syntax_error=result.syntax_error,
         violations=result.violations,
         truncated=result.truncated,
+        # Só para a equipe (ADR-08): nunca entram no feedback, na telemetria nem no log.
+        indicators=(
+            Indicators(**result.indicators.model_dump(), notice=INDICATORS_NOTICE)
+            if settings.ai_indicators and result.indicators is not None
+            else None
+        ),
     )
 
 

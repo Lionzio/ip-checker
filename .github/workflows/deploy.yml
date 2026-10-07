@@ -210,6 +210,8 @@ jobs:
         working-directory: backend
         env:
           PILOT_RELEASE: ${{ env.RELEASE }}
+          # Indícios de IA (S29): "1" só depois de ligados no render.yaml (docs/indicios-de-ia.md).
+          PILOT_AI_INDICATORS: ${{ vars.PILOT_AI_INDICATORS }}
           PILOT_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
           PILOT_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
         run: |

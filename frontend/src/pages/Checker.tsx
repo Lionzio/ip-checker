@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { type CodeEditorHandle, CodeEditor } from "../components/CodeEditor";
 import { FeedbackPanel } from "../components/FeedbackPanel";
+import { IndicatorsPanel } from "../components/IndicatorsPanel";
 import { ListSelector } from "../components/ListSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { ResultPanel } from "../components/ResultPanel";
@@ -147,6 +148,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
             onSelectLines={selectLines}
             headingRef={headingRef}
           />
+          {state.kind === "success" && state.response.indicators && (
+            <IndicatorsPanel indicators={state.response.indicators} onSelectLines={selectLines} />
+          )}
           {state.kind === "success" && verified !== null && (
             <FeedbackPanel
               client={client}

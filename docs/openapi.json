@@ -2207,13 +2207,19 @@
             "type": "boolean",
             "title": "Feedback Ai",
             "description": "Há IA configurada para o feedback; sem ela, o texto é montado por modelos."
+          },
+          "ai_indicators": {
+            "type": "boolean",
+            "title": "Ai Indicators",
+            "description": "Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29)."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "google",
-          "feedback_ai"
+          "feedback_ai",
+          "ai_indicators"
         ],
         "title": "AuthOptions"
       },
@@ -2532,6 +2538,126 @@
           "status"
         ],
         "title": "HealthResponse"
+      },
+      "Indicator": {
+        "properties": {
+          "signal": {
+            "type": "string",
+            "enum": [
+              "multiplas_violacoes",
+              "referencia_ia",
+              "estilo"
+            ],
+            "title": "Signal",
+            "description": "multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa)."
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^[a-z_]{1,40}$",
+            "title": "Kind",
+            "description": "O que foi observado, como variedade, salto_de_lista ou referencia."
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "baixo",
+                  "medio",
+                  "alto"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level",
+            "description": "Faixa deste indício; vazia nos marcadores de estilo, que não pesam."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "description": "Por que é um indício, com as construções envolvidas."
+          },
+          "lines": {
+            "items": {
+              "type": "integer",
+              "maximum": 1000000.0,
+              "minimum": 1.0
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "signal",
+          "kind",
+          "level",
+          "reason",
+          "lines"
+        ],
+        "title": "Indicator"
+      },
+      "Indicators": {
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "baixo",
+                  "medio",
+                  "alto"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Items"
+          },
+          "questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 1000,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Questions"
+          },
+          "notice": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Notice",
+            "description": "Indícios não são prova; a confirmação é a conversa."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "level",
+          "items",
+          "questions",
+          "notice"
+        ],
+        "title": "Indicators",
+        "description": "Indícios de uso de IA (ADR-08, S29): para a equipe decidir com quem conversar."
       },
       "ListInfo": {
         "properties": {
@@ -3951,6 +4077,17 @@
             "type": "boolean",
             "title": "Truncated",
             "description": "Verdadeiro quando havia mais de 200 violações."
+          },
+          "indicators": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Indicators"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Indícios de uso de IA (ADR-08), só quando estão ligados neste servidor (IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno."
           }
         },
         "additionalProperties": false,

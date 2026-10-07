@@ -8,6 +8,45 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 29 — Indícios de uso de IA, nunca veredito
+
+A Sprint 29 (S29-01 a S29-04; ADR-08, Q-21, US-34) foi concluída em 07/10/2026. A missão é dar à
+equipe motivos explicáveis para decidir com quem conversar, sem acusar ninguém por um número; a
+persona é quem corrige (monitor, monitor-chefe ou professor), e o aluno nunca vê os indícios.
+Decisões de implementação:
+
+- **S29-01:** `engine/indicators.py`, no analisador isolado (a árvore só existe ali), a partir das
+  violações que o motor já achou e da mesma árvore: variedade (proibições gerais diferentes, contadas
+  por construção, porque `break` e `continue` são a mesma regra R-11), repetição, salto de lista (2
+  ou mais listas depois da escolhida; o `for` na Lista 1 é erro comum e não conta) e construções
+  fora do documento (R-04), com as faixas iniciais da ADR-08 [PREMISSA]. Os marcadores de estilo
+  (docstring, anotações de tipo, `if __name__`, nomes e comentários em inglês, por listas iniciais
+  de palavras) são fatos sem faixa. Cada indício traz o motivo em PT-BR e as linhas (até 200), e o
+  conjunto traz 2 ou 3 perguntas para a conversa. Uma solução limpa, uma proibição isolada ou um erro
+  de sintaxe não mostram nada.
+- **S29-02:** as referências ficam em `rulesets/<período>/referencias/<questão>/*.py` (até 10 por
+  questão), neste repositório privado, carregadas com o ruleset e incluídas no SHA-256 dele; o
+  carregador recusa referência de questão não cadastrada, inválida ou grande demais. A comparação
+  usa o motor da ADR-07 (`compare_prepared`), com as referências preparadas uma vez por worker, e
+  mostra a mais parecida a partir de 80%, nas faixas do plágio. Ainda não há questão real
+  cadastrada, então o mecanismo foi testado com uma questão de teste.
+- **S29-03:** a API pede os indícios ao analisador só com `IPC_AI_INDICATORS=1` e os devolve no campo
+  `indicators` do `/validate`, com o aviso de que não são prova; o `/auth/options` diz se estão
+  ligados. Nada vai para o feedback, a telemetria, o log ou o banco. O painel "Indícios de uso de
+  IA" aparece abaixo do resultado só quando há indício, com a faixa, cada motivo, as linhas
+  clicáveis (selecionam no editor) e as perguntas; os marcadores de estilo ficam à parte, sem faixa.
+- **S29-04:** `docs/indicios-de-ia.md` (proposta de política para a coordenação, o texto para os
+  alunos, quem gera as referências e como ligar), a seção no guia da equipe, o passo 5 do
+  `RULES.md` e o `ipc-rules calibrate`, que mede as faixas em soluções humanas
+  (`<período>/lista-<n>/*.py`) e falha acima de 5% de faixa alta, sem nunca mostrar código. A
+  chave fica desligada no piloto (`render.yaml`, conferido por teste e pela verificação do piloto)
+  até a política ser aprovada e a calibração ficar na meta, o que depende das soluções anteriores a
+  2023 (Q-14).
+
+Sem migração de banco e sem dado novo: o deploy é igual ao da Sprint 28. O e2e com a chave ligada
+roda no projeto "feedback", com conta própria, para não gastar o limite por conta do projeto
+principal.
+
 ## Sprint 28 — Carga, eficácia e passagem de bastão
 
 A Sprint 28 (S28-01 a S28-04) foi concluída em 07/10/2026, no mesmo dia em que o piloto subiu

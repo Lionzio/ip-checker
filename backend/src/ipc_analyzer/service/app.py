@@ -33,6 +33,7 @@ from ipc_analyzer.engine.guards import (
     PayloadTooLargeError,
     thousands,
 )
+from ipc_analyzer.engine.indicators import Indicators, LevelName, Signal
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem, require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
@@ -57,6 +58,41 @@ class AnalyzeRequest(BaseModel):
     list_number: int = Field(ge=1, le=6)
     #: Questão do período (R-01), como L3-Q2; sem ela, valem só as regras da lista.
     question_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,32}$")
+    #: Calcula também os indícios de uso de IA (ADR-08); a API só pede quando estão ligados.
+    indicators: bool = False
+
+
+class IndicatorOut(BaseModel):
+    signal: Signal
+    kind: str
+    level: LevelName | None
+    reason: str
+    lines: list[int]
+
+
+class IndicatorsOut(BaseModel):
+    """Indícios de uso de IA (ADR-08, S29-01): nunca veredito, só para a equipe."""
+
+    level: LevelName | None
+    items: list[IndicatorOut]
+    questions: list[str]
+
+    @classmethod
+    def of(cls, indicators: Indicators) -> IndicatorsOut:
+        return cls(
+            level=None if indicators.level is None else indicators.level.label,
+            items=[
+                IndicatorOut(
+                    signal=item.signal,
+                    kind=item.kind,
+                    level=None if item.level is None else item.level.label,
+                    reason=item.reason,
+                    lines=list(item.lines),
+                )
+                for item in indicators.items
+            ],
+            questions=list(indicators.questions),
+        )
 
 
 class ViolationOut(BaseModel):
@@ -85,6 +121,7 @@ class AnalyzeResponse(BaseModel):
     syntax_error: SyntaxErrorOut | None
     violations: list[ViolationOut]
     truncated: bool
+    indicators: IndicatorsOut | None = None
 
     @classmethod
     def from_result(cls, result: AnalysisResult) -> AnalyzeResponse:
@@ -113,6 +150,9 @@ class AnalyzeResponse(BaseModel):
                 for v in result.violations
             ],
             truncated=result.truncated,
+            indicators=(
+                IndicatorsOut.of(result.indicators) if result.indicators is not None else None
+            ),
         )
 
 
@@ -408,7 +448,11 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         # A questão é conferida aqui, antes do worker: uma questão inexistente nem entra na fila.
         resolve_question(ruleset, body.list_number, body.question_id)
         result = await pool.analyze(
-            body.code, body.list_number, body.question_id, deadline=_deadline(request)
+            body.code,
+            body.list_number,
+            body.question_id,
+            deadline=_deadline(request),
+            indicators=body.indicators,
         )
         request.state.outcome = result.status
         request.state.violations = len(result.violations)

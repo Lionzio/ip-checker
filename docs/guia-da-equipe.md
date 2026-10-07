@@ -182,6 +182,27 @@ página lista as soluções da mais parecida para a menos. Aqui, cada trecho pes
 turma: o que todo mundo escreve (ler a entrada, o laço óbvio) quase não conta, então só sobe o que
 for incomum e igual. **Comparar lado a lado** abre a dupla em **Dois códigos**, com os trechos.
 
+## Indícios de uso de IA
+
+Quando estão ligados neste servidor (no piloto, só depois de a coordenação aprovar a política, em
+[`indicios-de-ia.md`](indicios-de-ia.md)), a verificação mostra, abaixo do resultado, o painel
+**Indícios de uso de IA**. Ele aparece só quando há algum indício, e só para a equipe: nada dele vai
+para o feedback do aluno.
+
+Cada indício vem com o motivo, as linhas (clique numa linha para selecioná-la no editor) e uma faixa:
+
+- **Múltiplas violações**: proibições gerais diferentes no mesmo código (`break`, `continue` e
+  `pass` juntos), a mesma proibição repetida, construções de listas bem posteriores (um dicionário
+  numa solução da Lista 3) e construções que o documento de permissões não cita;
+- **Semelhança com solução de IA**: quando a questão tem soluções de referência geradas por IA, a
+  mais parecida, pelo mesmo motor do painel de plágio;
+- **Marcadores de estilo**: docstrings, anotações de tipo, `if __name__ == "__main__"`, nomes e
+  comentários em inglês. São fatos, sem faixa.
+
+**Indício não é prova.** O painel serve para decidir com quem conversar; a confirmação é sempre a
+conversa, em que o aluno explica ou modifica o próprio código. As **perguntas para a conversa** no
+fim do painel ajudam a começar. Registre o caso no registro da monitoria, sem nome nem matrícula.
+
 ## Gerenciar a equipe
 
 **Gerenciar** aparece para o desenvolvedor, os professores e os monitores-chefe. Cada linha mostra

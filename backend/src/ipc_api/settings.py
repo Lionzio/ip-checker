@@ -91,6 +91,9 @@ class ApiSettings:
     cors_origins: tuple[str, ...] = ()
     #: Cabeçalho HSTS nas respostas (piloto: a API é servida em HTTPS pelo Render).
     hsts: bool = False
+    #: Indícios de uso de IA na verificação (ADR-08, S29). Desligados por padrão: no piloto, só
+    #: depois de a coordenação aprovar a política (S29-04, docs/indicios-de-ia.md).
+    ai_indicators: bool = False
     #: Versão implantada (commit), mostrada em /ready para o pipeline saber que o deploy entrou.
     release: str | None = None
     #: Banco de contas e sessões (S13-01), com o usuário da API, membro de ipc_app.
@@ -164,6 +167,7 @@ class ApiSettings:
             admission=_admission_from_env(env),
             cors_origins=parse_origins(env.get("IPC_CORS_ORIGINS", "")),
             hsts=env.get("IPC_HSTS", "0") == "1",
+            ai_indicators=env.get("IPC_AI_INDICATORS", "0") == "1",
             # O Render informa o commit implantado em RENDER_GIT_COMMIT.
             release=env.get("IPC_RELEASE") or env.get("RENDER_GIT_COMMIT") or None,
             database_url=env.get("IPC_DATABASE_URL") or None,

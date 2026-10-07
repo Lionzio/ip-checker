@@ -44,7 +44,9 @@ export function Privacy() {
       <h3 className="text-lg font-semibold">Código dos alunos</h3>
       <p>
         O código verificado, comparado no painel de plágio ou usado no feedback é analisado e
-        descartado: não vai para o banco, para o disco nem para os logs, e nunca é executado.
+        descartado: não vai para o banco, para o disco nem para os logs, e nunca é executado. Os
+        indícios de uso de IA, quando ligados, são calculados na hora a partir do mesmo código, só a
+        equipe os vê, e também não são guardados.
       </p>
 
       <h3 className="text-lg font-semibold">Estatísticas de uso</h3>

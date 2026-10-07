@@ -199,6 +199,38 @@ class SyntaxErrorInfo(_Strict):
     message: Message
 
 
+IndicatorLevel = Literal["baixo", "medio", "alto"]
+
+
+class Indicator(_Strict):
+    signal: Literal["multiplas_violacoes", "referencia_ia", "estilo"] = Field(
+        description=(
+            "multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma "
+            "solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa)."
+        )
+    )
+    kind: Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")] = Field(
+        description="O que foi observado, como variedade, salto_de_lista ou referencia."
+    )
+    level: IndicatorLevel | None = Field(
+        description="Faixa deste indício; vazia nos marcadores de estilo, que não pesam."
+    )
+    reason: Message = Field(description="Por que é um indício, com as construções envolvidas.")
+    lines: list[Position] = Field(max_length=MAX_VIOLATIONS)
+
+
+class AnalyzerIndicators(_Strict):
+    level: IndicatorLevel | None
+    items: list[Indicator] = Field(min_length=1, max_length=20)
+    questions: list[Message] = Field(max_length=3)
+
+
+class Indicators(AnalyzerIndicators):
+    """Indícios de uso de IA (ADR-08, S29): para a equipe decidir com quem conversar."""
+
+    notice: Message = Field(description="Indícios não são prova; a confirmação é a conversa.")
+
+
 class ValidateResponse(_Strict):
     request_id: str = Field(
         description="Identificador da requisição (ULID), também no X-Request-Id."
@@ -211,6 +243,13 @@ class ValidateResponse(_Strict):
     syntax_error: SyntaxErrorInfo | None
     violations: list[Violation]
     truncated: bool = Field(description="Verdadeiro quando havia mais de 200 violações.")
+    indicators: Indicators | None = Field(
+        default=None,
+        description=(
+            "Indícios de uso de IA (ADR-08), só quando estão ligados neste servidor "
+            "(IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno."
+        ),
+    )
 
 
 class QuestionInfo(_Strict):
@@ -349,6 +388,9 @@ class AuthOptions(_Strict):
     google: bool = Field(description="A entrada pelo Google está configurada (FR-24).")
     feedback_ai: bool = Field(
         description="Há IA configurada para o feedback; sem ela, o texto é montado por modelos."
+    )
+    ai_indicators: bool = Field(
+        description="Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29)."
     )
 
 
@@ -562,6 +604,7 @@ class AnalyzerResult(_Strict):
     syntax_error: SyntaxErrorInfo | None
     violations: list[Violation] = Field(max_length=MAX_VIOLATIONS)
     truncated: bool
+    indicators: AnalyzerIndicators | None = None
 
     @model_validator(mode="after")
     def _status_matches_content(self) -> Self:

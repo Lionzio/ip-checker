@@ -106,6 +106,7 @@ async def options(request: Request, response: Response) -> AuthOptions:
     return AuthOptions(
         google=request.app.state.google.oidc.config.enabled,
         feedback_ai=request.app.state.feedback.ai_enabled,
+        ai_indicators=request.app.state.settings.ai_indicators,
     )
 
 

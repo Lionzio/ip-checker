@@ -23,6 +23,9 @@ export type ClassSolution = Schemas["ClassSolution"];
 export type SimilarityClassResponse = Schemas["SimilarityClassResponse"];
 export type SimilarityClassItem = Schemas["SimilarityClassItem"];
 export type Violation = Schemas["Violation"];
+/** Indícios de uso de IA, só para a equipe (Sprint 29, ADR-08). */
+export type Indicators = Schemas["Indicators"];
+export type Indicator = Schemas["Indicator"];
 export type SyntaxErrorInfo = Schemas["SyntaxErrorInfo"];
 export type ListInfo = Schemas["ListInfo"];
 /** Uma questão com regra específica cadastrada no período (R-01, Sprint 24). */

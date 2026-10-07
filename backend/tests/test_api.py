@@ -143,6 +143,8 @@ def test_valid_code(client: TestClient, analyzer: FakeAnalyzer) -> None:
         "syntax_error": None,
         "violations": [],
         "truncated": False,
+        # Os indícios de IA ficam desligados por padrão (S29).
+        "indicators": None,
     }
     assert response.headers["X-Request-Id"] == body["request_id"]
     assert response.headers["Cache-Control"] == "no-store"

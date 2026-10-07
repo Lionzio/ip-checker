@@ -9,7 +9,9 @@ lê e valida estes arquivos: mudar uma regra nunca exige mudar código (ADR-02, 
 rulesets/
 └── <período>/            ex.: 2026.2 — a numeração das questões reinicia a cada período (P-07)
     ├── base.yaml         regras das listas, traduzidas do documento de permissões
-    └── questions/        regras de cada questão (R-01), uma por arquivo: L<lista>-Q<número>.yaml
+    ├── questions/        regras de cada questão (R-01), uma por arquivo: L<lista>-Q<número>.yaml
+    └── referencias/      soluções geradas por IA a partir do enunciado, por questão (S29-02):
+                          referencias/L<lista>-Q<número>/<assistente>.py (RULES.md, passo 5)
 ```
 
 Gabaritos **nunca** entram aqui nem em nenhuma pasta deste repositório: ficam num repositório
