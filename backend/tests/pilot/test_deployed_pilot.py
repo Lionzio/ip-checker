@@ -75,7 +75,9 @@ def test_web_sends_the_security_headers(http: httpx2.Client) -> None:
     csp = response.headers["content-security-policy"]
 
     assert response.status_code == 200
-    assert f"connect-src 'self' {_origin(API)}" in csp
+    # Mesma origem desde a S16-02: a página só fala com ela mesma; a API chega pelo rewrite.
+    assert "connect-src 'self';" in csp
+    assert _origin(API) not in csp
     assert "script-src 'self'" in csp
     assert "unsafe-inline" not in csp
     assert "frame-ancestors 'none'" in csp
@@ -99,7 +101,7 @@ def test_the_page_origin_serves_the_api(http: httpx2.Client) -> None:
     response = http.get(f"{WEB}/api/v1/auth/options")
 
     assert response.status_code == 200
-    assert set(response.json()) == {"google"}
+    assert set(response.json()) == {"google", "feedback_ai"}
     assert response.headers["content-type"].startswith("application/json")
 
 

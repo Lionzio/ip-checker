@@ -168,7 +168,8 @@ repositório.
    A conta de verificação só pode ser criada com a página no ar: entre como desenvolvedor na página
    da Vercel, registre a conta com um e-mail institucional seu que não seja da conta do
    desenvolvedor, confirme o e-mail, aprove-a como monitor em **Gerenciar** e não a use para mais
-   nada. Sem ela, o pipeline publica a versão nova e falha nas verificações. A cada deploy, o passo
+   nada. Sem ela, o pipeline publica a versão nova, confere tudo o que não precisa de login e
+   avisa que o login pela página e o smoke e2e ficaram de fora. A cada deploy, o passo
    das migrações marca essa conta no banco (`IPC_CHECK_ACCOUNT_LOGIN`, S28-02): as verificações
    dela não entram na telemetria, e ela não conta como membro no relatório de eficácia.
 
