@@ -58,6 +58,7 @@ o "Deploy do piloto" de novo). O Render guarda o deploy anterior mesmo quando el
 
 | Onde parou | O que significa | O que fazer |
 |---|---|---|
+| "Instalar a página e o Chromium do Playwright" (só com a conta de verificação) | Um espelho do Ubuntu não respondeu à instalação das bibliotecas do Chromium; o passo desiste em 10 minutos | Nada foi publicado: rode o "Deploy do piloto" de novo mais tarde |
 | "Conferir que o commit ainda é a ponta da main" (aviso) | Outra release chegou à `main` durante o deploy | Nada: o deploy da release nova está na fila e publica a ponta |
 | "Migrar o banco do piloto" | O Supabase recusou a conexão ou a migração falhou | Veja "Banco fora do ar"; a versão no ar não mudou |
 | "Publicar a API no Render" | A API nova não respondeu `/ready` em 25 minutos | Veja o log do build no Render (**Events**); a página não foi publicada, e o Render manteve a versão anterior no ar |
