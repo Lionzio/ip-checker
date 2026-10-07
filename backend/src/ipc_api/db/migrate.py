@@ -10,12 +10,22 @@ Cada migração roda numa transação, e um *advisory lock* impede duas execuç�
 Com ``--login-role NOME``, o comando também cria (ou atualiza) o usuário com que a API entra no
 banco, com a senha de ``IPC_DB_LOGIN_PASSWORD``, e o torna membro de ``ipc_app``: é assim que o
 Compose prepara o banco local. Nenhuma senha vai para a saída.
+
+Cada migração aplicada guarda o SHA-256 do ``.up.sql`` (S28-04). Antes de aplicar qualquer coisa,
+o comando confere que nenhum arquivo já aplicado mudou: uma migração se corrige com outra, nunca
+editando a que já rodou. Versões aplicadas que não existem na pasta (um deploy de volta para uma
+versão anterior, docs/runbook.md) são ignoradas, porque as migrações só acrescentam.
+
+Com ``IPC_CHECK_ACCOUNT_LOGIN`` (e-mail ou nome), o ``up`` também marca a conta de verificação do
+deploy (S28-02): as verificações dela não entram na telemetria nem no relatório de eficácia. Só uma
+conta fica marcada; se o login não existir, nada muda.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import os
 import re
 import sys
@@ -53,6 +63,7 @@ CREATE TABLE IF NOT EXISTS ipc_meta.schema_migrations (
   name text NOT NULL,
   applied_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE ipc_meta.schema_migrations ADD COLUMN IF NOT EXISTS checksum text;
 """
 
 
@@ -62,6 +73,12 @@ class Migration:
     name: str
     up: Path
     down: Path
+
+    @property
+    def checksum(self) -> str:
+        """SHA-256 do ``.up.sql``, com as quebras de linha normalizadas (checkout no Windows)."""
+        text = self.up.read_bytes().replace(b"\r\n", b"\n")
+        return hashlib.sha256(text).hexdigest()
 
 
 def discover(directory: Path) -> list[Migration]:
@@ -91,7 +108,40 @@ async def applied_versions(connection: Any) -> list[str]:
     return [str(row["version"]) for row in rows]
 
 
+async def verify_checksums(connection: Any, migrations: Sequence[Migration]) -> list[str]:
+    """Confere os arquivos já aplicados; preenche o SHA-256 das aplicadas antes da S28-04.
+
+    Devolve as versões preenchidas agora. Levanta ``ValueError`` se um arquivo aplicado mudou.
+    """
+    await applied_versions(connection)
+    stored = {
+        str(row["version"]): row["checksum"]
+        for row in await connection.fetch(
+            "SELECT version, checksum FROM ipc_meta.schema_migrations"
+        )
+    }
+    filled = []
+    for migration in migrations:
+        if migration.version not in stored:
+            continue
+        checksum = stored[migration.version]
+        if checksum is None:
+            await connection.execute(
+                "UPDATE ipc_meta.schema_migrations SET checksum = $2 WHERE version = $1",
+                migration.version,
+                migration.checksum,
+            )
+            filled.append(migration.version)
+        elif checksum != migration.checksum:
+            raise ValueError(
+                f"A migração {migration.version} ({migration.up.name}) mudou depois de aplicada. "
+                "Desfaça a edição e corrija com uma migração nova."
+            )
+    return filled
+
+
 async def migrate_up(connection: Any, migrations: Sequence[Migration]) -> list[str]:
+    await verify_checksums(connection, migrations)
     done = set(await applied_versions(connection))
     applied = []
     for migration in migrations:
@@ -100,9 +150,11 @@ async def migrate_up(connection: Any, migrations: Sequence[Migration]) -> list[s
         async with connection.transaction():
             await connection.execute(migration.up.read_text(encoding="utf-8"))
             await connection.execute(
-                "INSERT INTO ipc_meta.schema_migrations (version, name) VALUES ($1, $2)",
+                "INSERT INTO ipc_meta.schema_migrations (version, name, checksum) "
+                "VALUES ($1, $2, $3)",
                 migration.version,
                 migration.name,
+                migration.checksum,
             )
         applied.append(migration.version)
     return applied
@@ -143,6 +195,24 @@ async def ensure_login_role(connection: Any, role: str, password: str) -> None:
     await connection.execute(grant)
 
 
+async def mark_check_account(connection: Any, login: str) -> bool:
+    """Marca a conta de verificação pelo e-mail ou pelo nome e desmarca as outras (S28-02).
+
+    Devolve ``False``, sem mudar nada, se nenhuma conta tem esse login.
+    """
+    target = await connection.fetchval(
+        "SELECT a.id FROM app.account a WHERE lower(a.name) = lower(btrim($1)) "
+        "OR a.id = (SELECT account_id FROM app.account_email WHERE email = lower(btrim($1)))",
+        login,
+    )
+    if target is None:
+        return False
+    await connection.execute(
+        "UPDATE app.account SET check_account = (id = $1) WHERE check_account OR id = $1", target
+    )
+    return True
+
+
 async def run(
     command: str, *, url: str, directory: Path, target: str, login_role: str | None
 ) -> str:
@@ -157,10 +227,18 @@ async def run(
                     await ensure_login_role(
                         connection, login_role, os.environ.get("IPC_DB_LOGIN_PASSWORD", "")
                     )
-                return f"aplicadas: {', '.join(changed) or 'nenhuma'}"
+                result = f"aplicadas: {', '.join(changed) or 'nenhuma'}"
+                check_login = os.environ.get("IPC_CHECK_ACCOUNT_LOGIN", "").strip()
+                if check_login:
+                    found = await mark_check_account(connection, check_login)
+                    result += "; conta de verificação: " + (
+                        "marcada" if found else "não encontrada"
+                    )
+                return result
             if command == "down":
                 changed = await migrate_down(connection, migrations, target)
                 return f"revertidas: {', '.join(changed) or 'nenhuma'}"
+            await verify_checksums(connection, migrations)
             versions = await applied_versions(connection)
             pending = [m.version for m in migrations if m.version not in set(versions)]
             return (

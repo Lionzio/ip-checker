@@ -1,0 +1,167 @@
+# Changelog
+
+O que cada sprint entregou e as decisões de implementação tomadas nela. Até a Sprint 27, este
+texto ficava nos parágrafos "Situação" do blueprint (seção 7); desde a S28-04, fica aqui. O que
+estava planejado para cada sprint continua nas tabelas de tasks do [blueprint](docs/blueprint.md).
+
+Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção da sprint
+(`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
+mudaram.
+
+## Sprint 28 — Carga, eficácia e passagem de bastão
+
+A Sprint 28 (S28-01 a S28-04) foi concluída em 07/10/2026, no mesmo dia em que o piloto subiu
+(Render, Vercel e Supabase), com estas decisões de implementação:
+
+- **S28-01:** o `pilot-load.js` entra com uma conta antes de verificar e mede também uma rota que
+  só consulta a sessão no banco (`/auth/me`) e uma que não consulta o banco (`/auth/options`); a
+  diferença entre as duas é a distância até o Supabase (Q-20). O `run_load.py` sobe um PostgreSQL,
+  aplica as migrações e entra com a conta do desenvolvedor desse banco descartável, com os limites
+  por conta e por IP aumentados só ali. Com login, o plano gratuito não atende o P95 ≤ 200 ms nem
+  com 30 verificações por minuto (P95 de 383 ms, pela cota de 0,1 CPU), e o Starter atende 500 por
+  minuto com P95 de 28 ms: a recomendação passou a ser o Starter antes do primeiro prazo (ADR-03).
+  O workflow manual "Carga no piloto" (`load.yml`) roda o k6 no piloto de verdade, pela página, com
+  a conta de verificação, a até 25 por minuto, e traz o P95 do servidor (`/health/slo`); ele espera
+  a conta de verificação.
+- **S28-02:** a primeira verificação de cada conta em cada lista do período grava
+  `app.list_adoption` (conta, período e lista, sem data nem resultado), fora do caminho da resposta,
+  com a combinação já gravada guardada na memória; a view `telemetry.v_team_adoption_by_list`
+  devolve só a porcentagem de membros ativos por lista, para o `ipc_reader`. A conta de verificação
+  do deploy ganhou a marca `check_account`, gravada pelo passo das migrações do pipeline
+  (`IPC_CHECK_ACCOUNT_LOGIN`, uma conta marcada por vez): as verificações dela não entram na
+  telemetria nem na adoção, e ela não conta como membro. `docs/eficacia.md` diz como medir os cinco
+  critérios da P-09 e traz o formulário da pesquisa de satisfação. O aviso de privacidade conta a
+  adoção e o backup.
+- **S28-03:** `docs/onboarding.md` (do zero ao compose e ao e2e verdes), `CONTRIBUTING.md`,
+  `SECURITY.md` e `docs/README.md` como mapa. O `deploy/README.md` virou um índice de
+  `deploy/piloto.md`, `deploy/compose.md` e `deploy/seguranca.md`. O runbook ganhou o índice por
+  sintoma, o registro dos ensaios de rollback, a latência do `/health/slo`, a conta de verificação,
+  o backup e a restauração e o registro de incidentes. O workflow `backup.yml` faz, todo domingo, o
+  `pg_dump` dos esquemas `app` e `telemetry`, confere com o `pg_restore --list`, criptografa com o
+  age (chave pública em `BACKUP_AGE_RECIPIENT`; a privada fica só com o autor) e guarda 90 dias como
+  artefato. O primeiro ensaio cronometrado do rollback espera o primeiro deploy completo pelo
+  pipeline.
+- **S28-04:** o blueprint foi dividido: os ADRs em `docs/adr/`, a antiga seção 1.3 em
+  `docs/decisoes.md` e os parágrafos "Situação" neste `CHANGELOG.md`, conferido linha a linha para
+  nada se perder. Uma auditoria das afirmações sobre controles corrigiu ou marcou [PLANEJADO] o que
+  não existe (CODEOWNERS e *branch protection*, que o GitHub Free não aplica em repositório privado;
+  GHCR e deploy por SSH; Prometheus e Grafana; pytest-benchmark, Lighthouse, Semgrep e o k6 por
+  release; o editor CodeMirror). O `scripts/release.sh` faz o fast-forward da `main`, a tag
+  `sprint-NN` e o GitHub Release com a seção daqui. O `migrate` guarda o SHA-256 de cada migração
+  aplicada e recusa uma que mudou depois (as aplicadas antes ganham o SHA-256 na primeira execução;
+  versões mais novas que a pasta são ignoradas, para o rollback). O e2e cria uma conta por projeto
+  que mexe na própria conta, pelo caminho de verdade, e a pausa de 61 s saiu. Na CI, um primeiro
+  job decide o que roda: na `main`, só a política de branches (o commit já passou na `develop`); com
+  só `.md` mudando, nenhum teste. O modelo de PR ganhou "Como foi testado" e os itens de dados,
+  migração, contrato e documentação.
+
+## Sprint 27 — Plágio por árvore canonizada
+
+A Sprint 27 (S27-01 a S27-03) foi concluída em 06/10/2026, com estas decisões de implementação:
+
+- **S27-01:** o motor fica em `engine/similarity_tree.py`, no analisador isolado, sobre a mesma árvore da análise (com os limites de `guards.py`). As reescritas (`+=`, `if` negado com `else`, retorno antecipado, laços) mudam a árvore; a ordem canônica dos operandos (`+`, `*`, `&`, `|`, `^`, `and`, `or`, `==`, `!=`, `is`), a troca de `>` por `<` e a reordenação por dependência entram direto no hash de baixo para cima, numa passada só: nenhuma subárvore é percorrida duas vezes, e a cadeia `1+1+…+1` não fica quadrática. As comparações de ordem num `if` com `else` ficam sempre na forma `<`, trocando os ramos quando preciso (`if x >= 7: A else: B` é `if x < 7: B else: A`). Os três laços equivalentes viram um laço genérico sobre a sequência (`for x in v`, `for i in range(len(v))` com `v[i]` e `while i < len(v)` com `v[i]`, `i += 1` e o `i = 0` logo antes); `for i in range(n)` e `while i < n` viram o laço até `n`. A reordenação só troca comandos vizinhos sem dependência de dados; `input`, `print` e as chamadas de funções do aluno mantêm a ordem entre si, uma chamada de método conta como escrita no objeto (`v.append`), e laços, `return`, `break`, `try` e `with` são barreiras. No nível do módulo a ordem nunca conta, porque o módulo não entra no multiconjunto. A similaridade é o maior de três números: a métrica da ADR-05 (que continua como segunda métrica, item 7), o Dice da árvore e a contenção, esta só quando o menor código tem pelo menos 25% do tamanho do maior (um código de três linhas sempre "cabe" num programa grande). No corpus, todas as reescritas da tabela da ADR-07 deram 100% (inclusive todas juntas, que a ADR-05 dava 42,9%), e as soluções independentes ficaram entre 0% e 22%; dois códigos de 50 KB são comparados em cerca de 0,3 s.
+- **S27-02:** `POST /api/v1/similarity/batch` compara uma solução com até 100 da turma num worker só, com prazo próprio (10 s no analisador, 12 s na API) e uma vaga de análise. Só a árvore entra, com o peso de cada subárvore pelo IDF da turma, `ln((N + 1) / df)` normalizado; a métrica da ADR-05 não tem como ser pesada pela turma. A solução com erro de sintaxe ou recusada pelos limites aparece na lista, no fim, com o motivo; erro na solução comparada é a resposta inteira. O corpo continua limitado a 128 KB: a página aceita até 120 KB de soluções e pede que turmas maiores sejam comparadas em partes. A rota entra no limite por conta das verificações.
+- **S27-03:** a resposta de `/api/v1/similarity` traz as três métricas e até 30 pares de intervalos de linhas com a mesma estrutura, dos maiores para os menores, sem sobreposição, só de comandos com pelo menos 6 nós. A página marca os trechos nos dois editores, destaca o par escolhido e rola os dois até ele; a rolagem sincronizada é opcional. Os trechos somem quando um dos códigos muda depois da comparação. O botão da página virou "Limpar os dois", porque cada editor já tem o seu "Limpar".
+
+No stack local, o e2e completo passou com a cópia disfarçada (funções e linhas reordenadas, nomes trocados e o `for` virando `while`) aparecendo como Plágio, com o par de trechos certo nos dois lados, e com a comparação contra a turma pondo a cópia em primeiro lugar.
+
+## Sprint 26 — Correção em lote e relatório
+
+A Sprint 26 (S26-01 a S26-04) foi concluída em 06/10/2026, com estas decisões de implementação:
+
+- **S26-01:** o cabeçalho mostra só "IP-Checker" e a navegação no celular; o subtítulo aparece a partir de 640 px, e o nome de quem está logado a partir de 1024 px (no celular, ele fica no `title` do link Perfil). A navegação é uma lista em `<nav aria-label="Principal">`, com `aria-current="page"` na tela atual, inclusive Verificar; os itens têm 44 px de altura nas telas de toque. Cada tela tem o próprio `<title>` ("Verificação · IP-Checker"), e a verificação ganhou o `<h2>` "Verificação". Os componentes `Button`, `TextLink` e `ErrorText` ficam em `components/ui.tsx`, com as classes em `ui.ts`, e os rótulos da navegação, dos títulos e do resumo foram para o `labels.ts`. Os textos cinza-claros que não passavam no contraste AA do tema escuro foram trocados; o axe não acha violações graves nos dois temas, conferido no e2e.
+- **S26-02:** o rascunho (código, lista, questão, nome do aluno e anotação) fica num contexto acima da sessão, só na memória: sobrevive à navegação e ao novo login depois de a sessão vencer, e **Sair** o apaga. Só o número da última lista vai para o `localStorage`. Depois de verificar, o foco vai ao título do resultado (com rolagem); depois de gerar o feedback, a Copiar. O aviso de nome repetido aparece quando o código verificado é outro e o nome é o mesmo do último feedback gerado. O Tab insere 4 espaços e mantém o desfazer do navegador; Esc e depois Tab sai do editor (sem armadilha de teclado, WCAG 2.1.2). O e2e conta 4 ações por aluno: colar, Ctrl+Enter, nome e Enter, Próximo aluno.
+- **S26-03:** as violações são agrupadas por regra e mensagem, na ordem anulação, proibição da questão, exigência, fora da lista e não consta, e dentro de cada uma pela primeira linha; cada categoria tem uma cor (anulação vermelha, questão fúcsia, exigência roxa, fora da lista âmbar, não consta azul) e uma borda à esquerda. Cada ocorrência é um botão "Linha L, coluna C" que seleciona no editor o trecho que o motor apontou, até `end_line` (um `for` inteiro, por exemplo), e marca essas linhas na numeração. O trecho mostrado no cartão é a primeira linha da primeira ocorrência, do código que foi verificado.
+- **S26-04:** `useApiCall` dá a todas as chamadas do plágio e do feedback um prazo (15 s e 40 s), cancelamento (botão Cancelar) e o tratamento central da sessão vencida. Uma 401 `UNAUTHENTICATED` em qualquer tela leva a Entrar com o aviso e, depois de entrar, de volta à tela de origem; uma 401 de senha atual errada no perfil não conta como sessão vencida. Durante a verificação o editor fica só para leitura, sem perder o foco. O leitor de tela recebe só o resumo do resultado, numa região viva própria, e não o relatório inteiro. O gerenciamento ganhou busca por nome ou e-mail (sem acento), filtro por cargo, "Mostrar mais" no registro (20 por vez) e ocupado só na linha da ação. O cliente simulado exige a sessão e ganhou `# simular: truncado`, `limite_analise` e `ia`.
+
+No stack local, o e2e completo passou com os testes novos de lote, clique na violação, largura de 375 px e axe nos dois temas.
+
+## Sprint 25 — Endurecimento para o primeiro deploy
+
+A Sprint 25 (S25-01 a S25-05) foi concluída em 06/10/2026, com estas decisões de implementação:
+
+- **S25-01:** todas as actions fixadas por SHA (com a versão no comentário), `persist-credentials: false` em todo checkout, exceto o da política de branches, que precisa do histórico; o `uv` fixado em 0.12.21; o `openapi-typescript` continua no `npx` com a versão fixada, porque a 7.13 pede TypeScript 5 e o projeto usa o 6; Dependabot mensal para a `develop`, agrupado; o job `audit` (gitleaks, pip-audit, npm audit e trivy na imagem do piloto) roda toda semana e ainda não bloqueia; o job dos gabaritos não roda para o Dependabot, que não recebe o segredo.
+- **S25-02:** o deploy aceita `workflow_dispatch` só na `main` e só para um commit com a CI verde; as instalações rodam sem segredo no ambiente; antes de cada etapa o pipeline confere se o commit ainda é a ponta da `main` e, se não for, encerra sem publicar; o Render vem primeiro, e a Vercel só depois de o `/ready` responder com o commit certo (prazo de 25 min), com outro prazo para o `version.json` da página. O health check do Render passou a ser `/health/service` (API e analisador, sem o banco), e não `/health`, para uma oscilação do banco não derrubar a instância nem travar o deploy; o `/ready` continua checando o banco para o UptimeRobot. A tabela de migrações saiu do `public` para o esquema `ipc_meta`, fora do alcance da Data API do Supabase, e uma tabela antiga é movida sozinha. O roteiro do primeiro deploy (`deploy/README.md`) tem a migração manual antes do Render e uma lista de conferência com a P-15, e o `docs/runbook.md` cobre rollback, deploy parado, banco ou analisador fora do ar e troca de segredos.
+- **S25-03:** a migração é a `0005` (a `0004` ficou com a redefinição de senha). A limpeza apaga sessões vencidas, links usados ou vencidos, cadastros não confirmados 48 horas depois do último pedido (um novo cadastro com o mesmo e-mail recomeça o prazo), contas fora do status `ativo` com 365 dias sem atividade (nunca a do desenvolvedor nem as criadas pela semente), o registro de gerenciamento com mais de 12 meses e a cota de feedbacks de antes de ontem. A atividade é o cadastro, cada login, a confirmação do e-mail, a redefinição da senha e cada mudança de status ou de cargo. Uma conta apagada leva os e-mails (que ficam livres), as sessões, os links e a cota; quem ela aprovou fica sem "quem decidiu", e o registro de gerenciamento guarda os nomes, só sem o vínculo com a conta. Os prazos são contados pelo relógio do banco: a API não consegue apagar nada antes da hora. A tarefa roda ao subir e a cada 24 horas (`IPC_HOUSEKEEPING`, `IPC_HOUSEKEEPING_INTERVAL_S`), e as contagens desde a subida aparecem em `/health/slo`.
+- **S25-04:** no Render, o analisador roda com 1 worker e a API admite 1 análise por vez (`deploy/render/supervisord.conf`). O prazo da API para o analisador é o do pool mais 1 s (`IPC_TIMEOUT_S` + 1, ou `IPC_ANALYZER_TIMEOUT_S`) e vale para a chamada inteira, não para cada leitura; ele vai no cabeçalho `X-IPC-Budget-Ms`, e o analisador descarta o pedido que vence na fila, sem analisá-lo, e interrompe a análise que passaria do prazo (503 `DEADLINE_EXCEEDED`, que só aparece no log). Cada operação no banco tem 5 s, incluindo a espera por uma conexão do pool; a sessão e a conta vêm numa consulta só. Todo `/api/*` tem um limite por IP de 600 por minuto (6.000 nas faixas do campus), contado antes da sessão, numa janela fixa de 1 minuto; o contrato OpenAPI descreve esse 429 na introdução, sem repeti-lo em cada rota. A API não sobe com `IPC_PUBLIC_BASE_URL` sem `https://` quando o cookie é seguro, exceto em `localhost`, `127.0.0.1` e `::1`, que o navegador trata como seguros. O worker nega também `io_uring_*`, `ptrace`, `process_vm_readv`/`process_vm_writev`, `bpf`, `userfaultfd`, `unshare` e `setns` (os que a libseccomp do sistema conhece; as quatro chamadas originais continuam obrigatórias), não grava core dump e não cria processos nem threads (`RLIMIT_NPROC` = 0, aplicado por último, porque a libseccomp é procurada com um subprocesso). Uma exceção inesperada vira 500 `INTERNAL_ERROR` em JSON, com o `X-Request-Id` na mensagem e no cabeçalho, sem detalhes da falha. O Google e o Brevo deixaram de usar proxies do ambiente.
+- **S25-05:** o analisador troca por `...` toda docstring e todo texto solto no código do feedback, além de tirar os comentários; a API mascara e-mails (`[EMAIL]`), CPFs com pontuação (`[CPF]`) e números com 8 ou mais dígitos (`[MATRICULA]`, inclusive dentro de um nome) no código e na anotação, antes de trocar o nome do aluno por `[ALUNO]`; o trecho livre da IA que repete uma dessas marcas é recusado. A cota de feedbacks fica no banco (`app.feedback_quota`, na mesma migração `0005`), por conta e dia UTC, e só é cobrada depois de a análise dar certo: um código com erro de sintaxe ou o analisador fora do ar não gastam nada.
+
+No stack local, o e2e completo passou com a imagem nova; os testes que dependem do Linux (seccomp, rlimits e o pool) passaram num contêiner Linux antes do PR.
+
+Manutenção (06/10/2026): o Dependabot (S25-01) abriu na primeira rodada saltos de versão principal que quebrariam o projeto, misturados a atualizações seguras: Postgres 17 → 18 (a imagem muda o caminho dos dados, e o banco do compose não sobe; o Supabase do piloto está na 17), TypeScript 6 → 7 (o typescript-eslint ainda não aceita) e @types/node 24 → 26 (tipos de um Node que o projeto não usa). O `dependabot.yml` passou a ignorar esses saltos, e também o do Python além de 3.13 e o do Node além de 24 nas imagens, para não deixar o analisador e o build fora do ar; correções e versões menores continuam chegando. Cada salto vira uma tarefa feita de propósito, com o seu gatilho: Postgres 18 quando o Supabase do piloto subir, junto com o volume do compose; TypeScript 7 quando o typescript-eslint aceitar; Node e `@types/node` juntos, com o `engines`, as imagens e a CI; Python 3.14 junto com o ruleset (`target_python`), o `pyproject.toml` e as imagens.
+
+## Sprint 24 — Regras por questão, ipc-rules e esqueci minha senha
+
+A Sprint 24 (S24-01 a S24-04) foi concluída em 06/10/2026, com estas decisões de implementação:
+
+- **Onde ficam as questões:** em `rulesets/2026.2/questions/`, o período do ruleset ativo, e não numa pasta 2027.1, que ainda não existe; quando o ruleset de 2027.1 for criado, as questões dele vão para a pasta dele (P-07). Nenhuma questão real foi cadastrada, porque o conteúdo vem dos enunciados; a pasta traz só um `LEIA-ME.md`, e o seletor da página diz "Nenhuma questão com regra específica cadastrada".
+- **Precedência:** a proibição da questão sai com o ID R-01 e a categoria `PROIBIDO_NA_QUESTAO`; `allow` libera regras inteiras com as condições delas (liberar a R-37 libera o `zip` no `for`, não qualquer `zip`); `allow_facts` libera fatos sem condição; as exigências (R-02 e R-68) e as meta-regras não mudam com a questão.
+- **Validação:** o carregador recusa a questão com nome de arquivo diferente do `question_id`, lista diferente da do nome, R-xx inexistente, meta-regra ou exigência em `allow`/`deny`, proibição geral em `deny` (já vale sempre), fato estrutural e o mesmo fato liberado e proibido; ele marca as proibições gerais liberadas, que o `ipc-rules` mostra como aviso (anotação no PR, C-02).
+- **Versão:** o `ruleset_version` continua mudando só com o `base.yaml`, para um PR de questão não disputar a versão com outro; o `ruleset_sha256` do manifesto e do `/internal/health` passa a cobrir as questões.
+- **API:** a questão é conferida no manifesto do analisador (`UNKNOWN_QUESTION` para questão inexistente ou de outra lista) e de novo no analisador, antes do worker; com questão, o aviso `QUESTION_RULES_NOT_APPLIED` some; a telemetria grava a questão; o feedback usa a mesma questão da verificação; `GET /api/v1/lists` traz as questões de cada lista.
+- **Gabaritos:** só um gabarito do período ativo cujo nome é a questão (`2026.2/lista-3/L3-Q2.py`) usa as regras dela; os de períodos anteriores continuam no `excecoes.yaml`, porque as questões deles não ficam cadastradas (P-07).
+- **S24-02:** `ipc-rules validate <período> [--golden <pasta>]` sai com 0, 1 ou 2 e virou passo bloqueante do job do backend; os predicados ficam em `engine/predicates.py`, do qual o carregador tira os parâmetros e as condições tiram a função; o `facts.py` virou o pacote `facts/` (modelo, extrator e grafo de chamadas), com a mesma interface.
+- **S24-03:** governança por processo, porque a Q-22 foi adiada: `RULES.md` com um exemplo comentado (conferido pelo `ipc-rules`) e o modelo de PR `.github/PULL_REQUEST_TEMPLATE/regras.md`.
+- **S24-04:** o link de redefinição vale por 1 hora (o de verificação vale 24 horas); só o recebe quem já confirmou o e-mail e não foi recusado, inclusive contas na fila de aprovação e removidas; o pedido responde sempre 202 e segue o limite do reenvio; a troca da senha gasta o token na mesma transação e encerra todas as sessões; a migração `0004` amplia a finalidade dos tokens; as rotas novas entram no limite por IP das rotas de autenticação.
+
+No stack local, o e2e completo passou (37 testes, com o fluxo de redefinição pelo Mailpit e o seletor de questão).
+
+## Sprint 23 — Listas 5 e 6, recursão obrigatória e registro do gerenciamento
+
+A Sprint 23 (S23-01 a S23-03) foi concluída em 06/10/2026, com estas decisões de implementação: a partir da Lista 5, vários nomes no alvo do `for` valem quando o `for` percorre `zip()` (R-64, com qualquer número de sequências), `enumerate()` (R-63) ou `.items()` sem argumentos (R-65), e nos outros casos a violação sai com o ID da R-63 e uma mensagem que cita as três construções; `derived:recursion` passou a fato estrutural, porque o `def` e a chamada já são decididos pela R-59 (assim, uma função recursiva antes da Lista 4 aparece como o `def`, e não como "recursão"); a recursão por `lambda` não comprova a R-68, porque só funções com `def` entram no grafo; a dict comprehension não comprova o assunto da Lista 5 e continua na R-04 (Q-02 e); com as seis listas habilitadas, os testes do `LIST_NOT_ENABLED` desabilitam a Lista 6 nas próprias configurações; o registro de gerenciamento é lido pelo desenvolvedor e pelos professores (como a REC-06 propôs), mostra até 500 ações dos últimos 12 meses, e o expurgo roda a cada ação e a cada leitura, sem tarefa agendada; o prazo de 12 meses é contado pelo relógio do banco, então a API não consegue apagar um registro recente. Entraram três casos a observar no mapeamento: argumentos nomeados em `dict()`, `update()` e `enumerate()` (Q-02 c), vários nomes no `for` sobre pares quaisquer na L5 e na L6, e a recursão por `lambda`. A revisão de fim de sprint achou e corrigiu duas falhas do motor: o iterável do primeiro `for` de uma compreensão, os valores padrão e os decoradores passaram a ser resolvidos no escopo de fora, como no Python (antes, `[v for map in [map(s)] for v in map]` escondia o built-in `map`, ameaça 8); e um parâmetro ou variável local com o nome da função (`def f(f): return f(1)`) deixou de contar como recursão. O corpus golden tem 292 casos (eram 241), com 4 casos novos de evasão.
+
+## Sprint 22 — Listas 3 e 4
+
+A Sprint 22 (S22-01 e S22-02) foi concluída em 02/10/2026, com estas decisões de implementação: a R-39 (matrizes) casa o mesmo `node:List` da R-38, porque matriz é lista de listas, e por isso as mensagens antes da L3 citam a R-38; a R-40 casa toda tupla, inclusive a atribuição múltipla, e com isso `a, b = 1, 2` antes da L3 passa de R-04 a "Fora da lista" pela R-40, sem mudar a decisão da Q-02 (d); o `in` da R-44 é o mesmo fato das R-30 e R-36; `call:user` (a chamada de uma função do aluno) entra na R-59, e por isso os casos de evasão em que o aluno guarda um built-in num nome e o chama passaram de R-04 a "Fora da lista" (R-59); parâmetro com valor padrão e função aninhada continuam na R-04 (Q-02 f), a segunda pelo fato novo `derived:nested_function` (métodos de classe não contam, pois a classe já é R-09); a recursão é permitida na L4 como chamada de função (a exigência dela é só da L6, R-68). Os casos em aberto do mapeamento (`if __name__`, `f(x=1)`, `for a, b in pares`, `f"{x!r}"`, `zip` em compreensão) seguiram sem decisão e ficaram do lado mais restritivo; entrou um novo: uma lista que só vem de `split()` não comprova o assunto da L3 pela Q-05. O corpus golden tem 241 casos (eram 158).
+
+## Sprint 21 — Telemetria anônima e alertas de latência e erro
+
+A Sprint 21 (S21-01 e S21-02) foi concluída em 02/10/2026, com estas decisões de implementação: o período do evento é o do ruleset (`2026.2.1` dá `2026.2`), porque a identidade da questão é (período, questão) (P-07); as recusas antes da análise usam a última versão do ruleset vista, lida do manifesto quando a API sobe, e só contam nas listas habilitadas; o tempo de análise é medido na API, em volta da chamada ao analisador; o expurgo é uma função `SECURITY DEFINER` chamada pela API, no lugar do `pg_cron` (5.2.4); os alertas de latência e de erro saem de `/health/slo` com o UptimeRobot, sem Grafana (C8), e não alertam com menos de 20 requisições na janela; os contadores da telemetria aparecem no mesmo endereço; o aviso de privacidade ganhou a seção "Estatísticas de uso". No stack local, o e2e gerou 19 eventos, as views responderam como a coordenação as consultaria, e o exercício de falha virou o `/health/slo` para 503 e de volta para 200. Ficam com o autor o terceiro monitor do UptimeRobot e o exercício no piloto (`deploy/README.md`, "Telemetria e alertas").
+
+## Sprint 20 — Lista 2 (zip condicional e exigência do laço) e gabaritos
+
+A Sprint 20 (S20-01 e S20-02) foi concluída em 02/10/2026, com estas decisões de implementação: só o comando `for` conta como "comando for" da R-37, e o `zip()` de uma compreensão cai na R-37 (caso a observar no mapeamento, antes da Sprint 22); o `zip()` dentro de outra chamada no cabeçalho, ou com um nome que guarda o `zip` (`z = zip`), não vale; a falha da condição usa a categoria `NAO_CONSTA` com o ID e a mensagem da R-37, como a da R-33; o `target:for_unpack` só é permitido pela R-37, então a R-64 precisa casá-lo também na Sprint 23, senão `for a, b in zip(x, y)` cairia na R-04 nas Listas 5 e 6; os casos golden antigos da Lista 2 sem laço passaram a esperar a R-02; os testes que usavam a Lista 2 como "não habilitada" passaram a usar a Lista 3. O corpus golden tem 158 casos (eram 145). Os gabaritos reais ainda não rodam: o repositório privado e o token são do autor (`rulesets/README.md`, seção "Gabaritos").
+
+## Sprint 19 — Feedback na página e liberação para a equipe
+
+A Sprint 19 (S19-01 e S19-02) foi concluída em 02/10/2026: o painel "Feedback para o aluno" aparece sob o resultado e gera o texto sobre o código que foi verificado, mesmo que o editor mude depois; o nome do aluno e a anotação continuam no painel entre verificações, e um texto gerado para uma verificação anterior some quando chega uma nova; com erro de sintaxe, o painel explica que não há feedback; a página diz se o texto foi escrito com IA ou montado sem IA e pede revisão antes de copiar; o e2e gera o feedback com o provedor falso nos três tratamentos, num projeto do Playwright à parte, porque troca o tratamento da conta; o aviso de privacidade (Q-19 d) fica em `/privacidade`, aberto sem login e ligado no rodapé, com um resumo nos dois registros; o guia da equipe (`docs/guia-da-equipe.md`) substitui o guia do piloto; a apresentação do Marco 2 foi revista para o uso pela equipe, com cinco decisões (uso pela equipe com os quatro casos de interpretação, Q-16, Q-17, custeio e Q-15 com a REC-05); com só a equipe usando, o pico esperado fica abaixo do que o plano gratuito atende, e o Starter passa a ser reserva, a confirmar na S28-01. Ficam com o autor a configuração das contas externas (`deploy/README.md`), o primeiro deploy com login, que confirma a P-15, a revisão do guia e a data da apresentação.
+
+## Sprint 18 — Feedback por IA (principal e reserva) e montagem determinística
+
+A Sprint 18 (S18-01 e S18-02) foi concluída em 02/10/2026: a abertura segue os exemplos da especificação ("seu código estava muito bom" ou "seu código precisa de ajustes", com vírgula depois da apresentação neutra) e a frase obrigatória lista as construções pelos nomes do `display.py`, com a falta de R-02 como "a falta de if ou operador ternário" (proposta da Q-18 b); o analisador devolve o resultado com os nomes legíveis e o código sem comentários (`POST /internal/feedback-input`); o nome do aluno vira `[ALUNO]` inteiro e em partes, e o nome e o cargo de quem avalia não vão ao provedor; o trecho livre é recusado se fala de anulação ou violação, contradiz o motor, repete a abertura, traz link ou usa palavra com marcação de gênero fora do tratamento; a pedido do autor, há IA principal e de reserva e, sem nenhuma, o feedback montado por modelos (ADR-06, item 6), e a resposta diz de onde veio o texto (`source` e `provider`); cada conta tem até 60 feedbacks por dia e o servidor até 1.000; com erro de sintaxe não há feedback (proposta da Q-18 c).
+
+## Sprint 17 — Painel de plágio
+
+A Sprint 17 (S17-01 a S17-03) foi concluída em 02/10/2026: o motor segue a ADR-05 com a calibração do item 6, e o corpus de pares (`backend/tests/similarity/pares.yaml`) cobre nomes trocados (100%), espaços e comentários (100%), textos de strings trocados (100%), funções e blocos reordenados (100%), soluções independentes (abaixo de 80%) e exercícios diferentes; dois códigos de 50 KB são comparados em cerca de 0,2 s; as recusas de limite dizem qual código (A ou B) foi recusado; a API classifica pelo valor exibido, com uma casa decimal, e avisa quando o menor dos códigos tem menos de 60 tokens normalizados (ameaça 20); o plágio divide com a verificação o limite de 30 por minuto da conta e as vagas de análise; o item 22 da seção 8 roda pela borda, com cada entrada maliciosa em cada um dos dois códigos; a numeração de linhas do editor passou a ter contraste AA, que o axe cobrou no painel.
+
+## Sprint 16 — Google, mesma origem e segurança da autenticação
+
+A Sprint 16 (S16-01 a S16-03) foi concluída em 02/10/2026: o Google usa o Authlib (PKCE) e a joserfc, a implementação JOSE do Authlib, para validar o ID token pelo JWKS do Google (RS256, emissor, audiência, validade, `nonce` e `azp`), com as chaves em cache por até 1 hora e recarregadas quando aparece um `kid` desconhecido; o `state` fica num cookie `__Host-` e vale uma vez, por até 10 minutos, e os fluxos e cadastros em andamento ficam só na memória da instância única (ADR-03); o `hd` vai como `*` (contas de organizações), só como dica; um e-mail verificado é ligado à conta Google na primeira entrada, e outra conta Google com o mesmo e-mail é recusada (`outra_conta`); as recusas voltam à página como códigos em `/entrar?google=...`, sem dados pessoais; `GET /api/v1/auth/options` diz se o Google está configurado, e o botão só aparece nesse caso; no piloto, o build da Vercel lê `IPC_API_ORIGIN` só para o *rewrite*, a CSP fica com `connect-src 'self'`, e o pipeline aplica as migrações antes de cada deploy e confere login, verificação e saída pela origem da página com uma conta de verificação; a suíte de segurança da autenticação (itens 16 a 20 da seção 8) roda pela borda do compose, com um cliente por teste, e as recusas do Google ficam nos testes com o provedor OIDC falso.
+
+## Sprint 15 — Cargos, aprovação e gerenciamento
+
+A Sprint 15 (S15-01 a S15-03) foi concluída em 02/10/2026: a política é uma função pura testada pela matriz completa (4 cargos × 5 ações × 5 cargos-alvo × 7 status × 5 cargos pedidos); cada ação é aplicada por uma transição condicional no banco, e quem age depois de outra pessoa recebe 409 em vez de sobrescrevê-la; as ações respondem 204, e as listas trazem, para cada conta, as ações e os cargos que quem consulta pode usar e o status que a remoção daria; a resposta da conta traz `can_manage`, que mostra o link Gerenciar; as contas `inativo` (professores removidos) aparecem na mesma lista dos ex-monitores e conselheiros, para poderem ser reativadas; pela letra do FR-27 ("quem tem permissão sobre o cargo que ela vai receber"), um monitor-chefe pode reativar um professor removido como monitor ou monitor-chefe, nunca como professor; a remoção e a recusa pedem confirmação na tela; a tela passa no axe sem violações graves.
+
+## Sprint 14 — Registro por e-mail, verificação e perfil
+
+A Sprint 14 (S14-01 a S14-03) foi concluída em 02/10/2026, com estas decisões de implementação: o nome não pode conter `@`, para o login por nome nunca se confundir com o login por e-mail; registrar de novo um e-mail ainda não confirmado substitui os dados pendentes e invalida o link anterior; o reenvio do link responde sempre 202, sem revelar se a conta existe, e envia no máximo 1 por minuto e 5 por dia por conta; a confirmação é um `POST` feito pelo botão da página `/verificar`; a resposta da conta traz `has_password`, para o perfil pedir a senha atual só a quem tem senha; cinco senhas atuais erradas em 15 minutos bloqueiam novas tentativas de troca até a janela de 15 minutos liberar (429 `RATE_LIMITED`); o rodapé traz os créditos do autor, com GitHub e LinkedIn.
+
+## Sprint 13 — Contas, sessão e login por senha
+
+A Sprint 13 (S13-01 a S13-03) foi concluída em 02/10/2026; o limite por conta ficou em 30 por minuto (P-11 h), e os testes do banco rodam contra um PostgreSQL de verdade na CI.
+
+## Sprint 12 — Liberação do piloto (Marco 2)
+
+Concluída em 01/10/2026. O detalhe está nas tasks da sprint no blueprint (seção 7).
+
+## Sprint 11 — Deploy do piloto (Render + Vercel) com isolamento por processo
+
+Concluída em 01/10/2026. O detalhe está nas tasks da sprint no blueprint (seção 7).
+
+## Sprint 10 — Limite de taxa, admissão e mensagens de espera
+
+Concluída em 01/10/2026. O detalhe está nas tasks da sprint no blueprint (seção 7).
+
+## Sprint 1 — Monorepo, CI e carregador do ruleset (R-03 a R-36)
+
+Concluída em 01/10/2026. O detalhe está nas tasks da sprint no blueprint (seção 7).

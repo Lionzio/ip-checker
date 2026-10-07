@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
+import { storageFor } from "./e2e/accounts";
 
 /**
  * Smoke e2e (S9-02): a página servida pelo Caddy do compose, falando com a API, o analyzer e o banco
@@ -9,6 +10,10 @@ import { defineConfig, devices } from "@playwright/test";
  * Desde a Sprint 13, tudo exige sessão: o projeto "login" entra pela tela com a conta do
  * desenvolvedor e guarda o cookie em `e2e/.auth/` (fora do Git), que os demais testes reusam. A
  * senha vem de E2E_PASSWORD ou, localmente, do IPC_DEV_INITIAL_PASSWORD do `deploy/.env`.
+ *
+ * Desde a S28-04, os projetos que mexem na própria conta (senha, tratamento, limite por conta) têm
+ * cada um a sua, criada pelo projeto "contas" (`e2e/accounts.setup.ts`). Eles rodam juntos, sem a
+ * pausa de 61 s para a janela do limite por conta virar.
  */
 
 function fromDeployEnv(name: string): string | undefined {
@@ -62,33 +67,34 @@ export default defineConfig({
       testIgnore: /(limits|account|feedback|batch|plagiarism-tree)\.spec\.ts/,
     },
     {
-      // Uma pausa de 61 s: a janela do limite por conta vira antes dos próximos projetos.
-      name: "janela",
+      // Depois do principal: as contas novas não aparecem nas telas que ele confere.
+      name: "contas",
+      use: { ...devices["Desktop Chrome"] },
       dependencies: ["chromium"],
-      testMatch: /window\.setup\.ts/,
+      testMatch: /accounts\.setup\.ts/,
     },
     {
-      // Sozinho: a troca de senha encerra as outras sessões da conta do desenvolvedor.
+      // A troca de senha encerra as outras sessões da conta: em ordem, com a conta só deste projeto.
       name: "conta",
-      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["janela"],
+      use: { ...devices["Desktop Chrome"], storageState: storageFor("conta") },
+      dependencies: ["contas"],
       testMatch: /account\.spec\.ts/,
       fullyParallel: false,
     },
     {
-      // Sozinho também: troca o tratamento do desenvolvedor para conferir os três (S19-01). A correção
-      // em lote (S26-02) e o plágio por árvore (S27) vêm junto: cada um gasta o limite por conta.
+      // Troca o tratamento para conferir os três (S19-01). A correção em lote (S26-02) e o plágio
+      // por árvore (S27) vêm junto: cada um gasta o limite por conta.
       name: "feedback",
-      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["conta"],
+      use: { ...devices["Desktop Chrome"], storageState: storageFor("feedback") },
+      dependencies: ["contas"],
       testMatch: /(feedback|batch|plagiarism-tree)\.spec\.ts/,
       fullyParallel: false,
     },
     {
-      // Por último: o limite é por conta, e todos os testes dividem a do desenvolvedor.
+      // Gasta os 30 por minuto da conta só dele.
       name: "limite",
-      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
-      dependencies: ["feedback"],
+      use: { ...devices["Desktop Chrome"], storageState: storageFor("limite") },
+      dependencies: ["contas"],
       testMatch: /limits\.spec\.ts/,
     },
       ],

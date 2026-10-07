@@ -71,8 +71,10 @@ nenhum identificador próprio.
 
 Os testes de `e2e/` usam o Chromium contra o compose completo (Caddy, API, analyzer, banco e
 Mailpit). O projeto `login` entra com a conta do desenvolvedor; `chromium` roda os testes em
-paralelo, inclusive o registro que lê o e-mail no Mailpit; `conta` troca a senha e a devolve; e
-`limite` esgota o limite por conta, por último.
+paralelo, inclusive o registro que lê o e-mail no Mailpit; `contas` cria, pelo registro de
+verdade, uma conta para cada projeto que mexe na própria conta (S28-04); e, juntos, `conta` troca a
+senha e a devolve, `feedback` troca o tratamento (com o lote e o plágio por árvore) e `limite`
+esgota o limite por conta, cada um com a sua.
 
 ```bash
 docker compose -f ../deploy/compose.yaml up --build -d --wait

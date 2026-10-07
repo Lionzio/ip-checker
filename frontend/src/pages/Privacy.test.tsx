@@ -30,6 +30,9 @@ describe("Aviso de privacidade (S19-02, Q-19 d)", () => {
     // Telemetria (S21-01): anônima, agregada e apagada em 12 meses.
     expect(screen.getByText(/não guarda o código, a conta, o nome de ninguém nem\s+o IP/)).toBeInTheDocument();
     expect(screen.getByText(/apagados depois de 12 meses/)).toBeInTheDocument();
+    // S28-02 e S28-03: adoção por lista, só em porcentagem, e o backup criptografado.
+    expect(screen.getByText(/só a porcentagem da equipe que\s+usou cada lista, nunca quem/)).toBeInTheDocument();
+    expect(screen.getByText(/criptografada, e guardada por 90 dias/)).toBeInTheDocument();
   });
 
   it("também abre com sessão", async () => {

@@ -1,13 +1,26 @@
 # Runbook do piloto
 
-O que fazer quando algo dá errado no piloto (Render, Vercel e Supabase; S25-02). Cada seção começa
-pelo sintoma. A configuração das contas está em [`deploy/README.md`](../deploy/README.md), seção
-"Piloto"; a passagem de bastão completa, com o ensaio cronometrado do rollback, vem na Sprint 28.
+O que fazer quando algo dá errado no piloto (Render, Vercel e Supabase; S25-02, completado na
+S28-03). Cada seção começa pelo sintoma. A configuração das contas está em
+[`deploy/piloto.md`](../deploy/piloto.md); quem chega ao projeto começa pelo
+[`onboarding.md`](onboarding.md).
+
+| Sintoma | Seção |
+|---|---|
+| Uma release quebrou o piloto | Voltar para a versão anterior (rollback) |
+| O workflow "Deploy do piloto" ficou vermelho | O deploy parou no meio |
+| `/ready` com 503 e `DATABASE_UNAVAILABLE` | Banco fora do ar |
+| `/health/service` com 503 | Analisador indisponível |
+| O UptimeRobot acusa o `/health/slo` | Latência ou erros acima da meta |
+| Dados perdidos ou corrompidos no banco | Backup, "Restaurar um backup" |
+| Um segredo vazou ou alguém acessou o que não devia | Segredos e Incidentes de segurança |
 
 ## Voltar para a versão anterior (rollback)
 
-A meta da DoD é voltar em até 5 minutos. Os dois serviços guardam os deploys anteriores, então o
-caminho mais rápido é pelos painéis; o Git vem depois, para a `main` não publicar o erro de novo.
+A meta da DoD é voltar em até 5 minutos, contados do início do passo 1 até o passo 3 conferido.
+Os dois serviços guardam os deploys anteriores, então o caminho mais rápido é pelos painéis; o Git
+vem depois, para a `main` não publicar o erro de novo. Cronometre e anote no registro dos ensaios
+(abaixo), inclusive quando for de verdade.
 
 1. **API (Render):** no serviço `ip-checker-api`, abra **Events**, escolha o último deploy que
    funcionava e clique em **Rollback**. O Render sobe a imagem anterior e só troca quando ela
@@ -30,6 +43,17 @@ IPC_DATABASE_ADMIN_URL='<connection string do Supabase, usuário postgres>' \
 uv run python -m ipc_api.db.migrate down --to <versão anterior, ex.: 0003>
 ```
 
+### Registro dos ensaios de rollback
+
+Um ensaio por período, num momento sem uso da equipe: escolha no Render e na Vercel o deploy
+anterior, faça os passos 1 a 3 cronometrando e depois volte para o atual pelo mesmo caminho (ou rode
+o "Deploy do piloto" de novo). O Render guarda o deploy anterior mesmo quando ele é do mesmo commit
+(uma troca de variável gera um deploy novo), então o ensaio funciona antes da segunda release.
+
+| Data | Quem | De → para | Render | Vercel | Total até o passo 3 | Observações |
+|---|---|---|---|---|---|---|
+| (pendente) | | | | | | O primeiro ensaio fica para depois do primeiro "Deploy do piloto" completo, com a conta de verificação |
+
 ## O deploy parou no meio
 
 | Onde parou | O que significa | O que fazer |
@@ -42,6 +66,19 @@ uv run python -m ipc_api.db.migrate down --to <versão anterior, ex.: 0003>
 
 Depois de corrigir a configuração, rode de novo em **Actions > Deploy do piloto > Run workflow**
 (branch `main`).
+
+## Latência ou erros acima da meta (/health/slo)
+
+O `/health/slo` responde 503 quando, nos últimos 5 minutos e com pelo menos 20 requisições, o P95
+do `POST /api/v1/validate` passou de 200 ms ou mais de 1% das respostas foram 5xx. O corpo diz o
+motivo (`reasons`: `latencia` ou `erros`).
+
+- **Latência no plano gratuito:** esperada com login (0,1 CPU; S28-01 e ADR-03). Se acontece toda
+  vez que a equipe usa, é a hora de passar para o Starter (**Settings > Instance Type** no Render).
+- **Latência no Starter:** veja se o Supabase está lento (**Reports** no painel) e rode o workflow
+  "Carga no piloto" com uma taxa baixa, que separa a sessão no banco do analisador.
+- **Erros:** os logs do Render mostram o `outcome` de cada requisição (sem código nem IP). Muitos
+  `ANALYZER_UNAVAILABLE` ou `DATABASE_UNAVAILABLE` levam às seções abaixo.
 
 ## Banco fora do ar (DATABASE_UNAVAILABLE)
 
@@ -80,3 +117,83 @@ Trocar um segredo (vazou, ou alguém saiu da equipe técnica):
 
 Trocar uma variável no Render reinicia o serviço; as sessões abertas continuam válidas, porque
 ficam no banco.
+
+## Conta de verificação do deploy
+
+Uma conta ativa (monitor), usada só pelas verificações e pelo smoke e2e do pipeline e pelo workflow
+"Carga no piloto". O login e a senha ficam nos secrets `PILOT_CHECK_LOGIN`, `PILOT_CHECK_PASSWORD` e
+`PILOT_CHECK_NAME`. A cada deploy, o passo das migrações a marca no banco (`check_account`, S28-02):
+as verificações dela não entram na telemetria, e ela não conta como membro no relatório de eficácia.
+
+- **Trocar a conta:** crie a nova pela página (registro, e-mail, aprovação como monitor), troque os
+  três secrets e rode o "Deploy do piloto". A marca passa para a nova, e a antiga perde a marca;
+  remova a antiga em **Gerenciar**.
+- **Trocar a senha:** pelo perfil da conta e, depois, no secret `PILOT_CHECK_PASSWORD`.
+
+## Backup
+
+O workflow "Backup do banco do piloto" (`.github/workflows/backup.yml`, S28-03) roda todo domingo e
+à mão. Ele faz o `pg_dump` dos esquemas `app` (contas, sessões, registro de gerenciamento, cota de
+feedback e adoção) e `telemetry`, confere o dump com o `pg_restore --list`, criptografa com o
+[age](https://github.com/FiloSottile/age) e guarda o arquivo como artefato do workflow por 90 dias.
+O dump tem dados pessoais da equipe (nomes, e-mails e resumos de senha), por isso só sai
+criptografado. Sem a variável `BACKUP_AGE_RECIPIENT`, o workflow só avisa e não faz nada.
+
+Configuração, uma vez, no Git Bash:
+
+```bash
+age-keygen -o ipc-backup.key
+```
+
+O comando mostra a chave pública (`age1...`). Grave-a no GitHub; ela não é segredo:
+
+```bash
+gh variable set BACKUP_AGE_RECIPIENT --repo Lionzio/ip-checker --body "age1..."
+```
+
+A chave privada (`ipc-backup.key`) fica **fora do GitHub e do computador do dia a dia**, num
+gerenciador de senhas ou num pendrive guardado. Sem ela, nenhum backup abre; com ela, todos.
+
+### Restaurar um backup
+
+1. Em **Actions > Backup do banco do piloto**, abra a execução da data desejada e baixe o artefato
+   (`ipc-piloto-AAAA-MM-DD`). Confira o arquivo: `sha256sum -c ipc-piloto-*.sha256`.
+2. Decifre: `age --decrypt -i ipc-backup.key -o dump ipc-piloto-AAAA-MM-DD.dump.age`.
+3. **Ensaio, sem tocar no piloto:** suba um PostgreSQL descartável, aplique as migrações e restaure
+   só os dados:
+
+   ```bash
+   docker run -d --name ipc-restore -e POSTGRES_PASSWORD=ensaio -e POSTGRES_DB=ipchecker -p 127.0.0.1:55433:5432 postgres:17-alpine
+   cd backend
+   IPC_DATABASE_ADMIN_URL=postgresql://postgres:ensaio@127.0.0.1:55433/ipchecker IPC_DB_LOGIN_PASSWORD=ensaio uv run python -m ipc_api.db.migrate up --login-role ipc_api
+   docker exec -i ipc-restore pg_restore --data-only --disable-triggers -U postgres -d ipchecker < ../dump
+   ```
+
+   Confira algumas contagens (`SELECT count(*) FROM app.account;`) e apague o contêiner e o `dump`.
+4. **No piloto, de verdade:** só depois do ensaio. Avise a equipe, rode o backup à mão (para guardar
+   o estado atual), apague os dados das tabelas afetadas e restaure com o mesmo
+   `pg_restore --data-only`, usando a `PILOT_DATABASE_ADMIN_URL`. Depois, `/ready` e um login.
+
+O ensaio de restauração é feito uma vez por semestre (NFR-20) e anotado aqui:
+
+| Data | Quem | Backup de | Resultado |
+|---|---|---|---|
+| (pendente) | | | O primeiro, depois do primeiro backup do piloto |
+
+## Incidentes de segurança
+
+Um vazamento de segredo, um acesso indevido a uma conta, um código de aluno que apareceu fora do
+lugar (log, banco, disco) ou uma falha no isolamento do analisador. Como relatar está no
+[`SECURITY.md`](../SECURITY.md).
+
+1. **Conter:** troque o segredo (seção "Segredos"); remova a conta afetada em **Gerenciar** (as
+   sessões dela acabam na hora); se for o isolamento, faça o rollback.
+2. **Registrar:** uma linha na tabela abaixo, sem dados pessoais nem código de aluno.
+3. **Corrigir:** por PR, com um teste que reproduz o problema.
+4. **Avisar:** a coordenação da disciplina, quando dados pessoais da equipe foram expostos.
+
+O critério 5 da P-09 conta os incidentes desta tabela ([`eficacia.md`](eficacia.md)).
+
+| Data | O que aconteceu | Contenção | Correção (PR) |
+|---|---|---|---|
+| — | Nenhum incidente registrado | | |

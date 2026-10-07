@@ -1,0 +1,113 @@
+name: Carga no piloto
+
+# Teste de carga no Render de verdade, já com login (S28-01; NFR-01, Q-20, ADR-03). Só roda à mão
+# (Actions > Carga no piloto > Run workflow). Entra com a conta de verificação do deploy, cujas
+# verificações não entram na telemetria nem no relatório de eficácia (S28-02), e verifica pela
+# página da Vercel, como a equipe: cada verificação passa pelo rewrite, pela sessão no banco
+# (Supabase) e pelo analisador.
+#
+# A taxa fica abaixo do limite de 30 verificações por minuto da conta (P-11 h): este teste mede a
+# latência real com o banco a distância, não a capacidade, que o deploy/load/run_load.py mede com
+# os recursos de cada plano. O NFR-01 é medido no servidor: o resumo traz o P95 do /health/slo
+# (latência dentro da API) ao lado do P95 visto pelo k6 (com a rede do GitHub até a Vercel).
+
+on:
+  workflow_dispatch:
+    inputs:
+      rate:
+        description: "Verificações por minuto (1 a 25; o limite da conta é 30)"
+        default: "20"
+      duration:
+        description: "Duração, como 5m (até 10m)"
+        default: "5m"
+
+permissions:
+  contents: read
+
+# Nunca ao mesmo tempo que um deploy.
+concurrency:
+  group: deploy-piloto
+  cancel-in-progress: false
+
+env:
+  K6_IMAGE: grafana/k6@sha256:e66db15b860113878fa74670e31f5e274830b7b6e42c8bff28b2f2d86a257603
+
+jobs:
+  load:
+    name: k6 no piloto, com login
+    if: vars.PILOT_API_URL != '' && vars.PILOT_WEB_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PILOT_API_URL: ${{ vars.PILOT_API_URL }}
+      PILOT_WEB_URL: ${{ vars.PILOT_WEB_URL }}
+      RATE: ${{ inputs.rate }}
+      DURATION: ${{ inputs.duration }}
+    steps:
+      - name: Conferir a taxa e a duração
+        run: |
+          if ! [[ "$RATE" =~ ^[0-9]+$ ]] || [ "$RATE" -lt 1 ] || [ "$RATE" -gt 25 ]; then
+            echo "::error::A taxa precisa ser de 1 a 25 por minuto (recebido: $RATE)."
+            exit 1
+          fi
+          if ! [[ "$DURATION" =~ ^([0-9]+)([sm])$ ]]; then
+            echo "::error::Use a duração como 90s ou 5m (recebido: $DURATION)."
+            exit 1
+          fi
+          seconds=${BASH_REMATCH[1]}
+          [ "${BASH_REMATCH[2]}" = "m" ] && seconds=$((seconds * 60))
+          if [ "$seconds" -gt 600 ]; then
+            echo "::error::A duração máxima é 10 minutos."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Acordar a API (o plano gratuito dorme sem tráfego)
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 20 "$PILOT_API_URL/ready" -o /dev/null; then
+              echo "API pronta."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::A API não respondeu ao /ready em 5 minutos."
+          exit 1
+
+      - name: Rodar o k6 pela página da Vercel
+        env:
+          LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
+          PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
+        run: |
+          if [ -z "$LOGIN" ] || [ -z "$PASSWORD" ]; then
+            echo "::error::Faltam os secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD (deploy/piloto.md)."
+            exit 1
+          fi
+          # Os limites do k6 medem do GitHub até a Vercel, com a rede no meio; o NFR-01 é o P95
+          # do servidor, no passo seguinte. Por isso o k6 roda sem reprovar pelos limites.
+          docker run --rm -v "$PWD/deploy/load:/scripts:ro" \
+            -e BASE_URL="$PILOT_WEB_URL" -e RATE -e DURATION -e LOGIN -e PASSWORD \
+            "$K6_IMAGE" run --quiet --no-thresholds /scripts/pilot-load.js | tee k6.txt
+
+      - name: Resumo (k6 e /health/slo)
+        if: always()
+        run: |
+          slo=$(curl -fsS --max-time 20 "$PILOT_API_URL/health/slo" || echo '{}')
+          {
+            echo "## Carga no piloto: ${RATE}/min por ${DURATION}"
+            echo
+            echo "Visto pelo k6 (GitHub → Vercel → Render):"
+            echo
+            echo '```'
+            cat k6.txt 2>/dev/null || echo "(o k6 não rodou)"
+            echo '```'
+            echo
+            echo "Medido no servidor (/health/slo, últimos 5 minutos; NFR-01: P95 ≤ 200 ms):"
+            echo
+            echo '```json'
+            echo "$slo"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import Request
 
 from ipc_api.admission import Admission
+from ipc_api.adoption import Adoption
 from ipc_api.clients.analyzer import AnalyzerClient
 from ipc_api.housekeeping import Housekeeping
 from ipc_api.settings import ApiSettings
@@ -35,6 +36,11 @@ def get_request_id(request: Request) -> str:
 def get_telemetry(request: Request) -> Telemetry:
     telemetry: Telemetry = request.app.state.telemetry
     return telemetry
+
+
+def get_adoption(request: Request) -> Adoption:
+    adoption: Adoption = request.app.state.adoption
+    return adoption
 
 
 def get_housekeeping(request: Request) -> Housekeeping:

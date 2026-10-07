@@ -135,6 +135,12 @@ class AccountStore(Protocol):
         nunca a do desenvolvedor) e o registro de gerenciamento com mais de 12 meses.
         """
 
+    async def record_adoption(self, account_id: UUID, semester: str, list_number: int) -> None:
+        """Registra que a conta usou a ferramenta na lista do período (S28-02, critério 2 da P-09).
+
+        Um registro por (conta, período, lista), sem data nem resultado; repetir não muda nada.
+        """
+
     async def take_feedback_quota(
         self, account_id: UUID, day: date, per_account: int, daily_cap: int
     ) -> QuotaExceeded | None:
@@ -203,6 +209,8 @@ class MemoryAccountStore:
         self.activity: dict[UUID, datetime] = {}
         #: Feedbacks gastos por dia e conta (``app.feedback_quota``).
         self.feedback_quota: dict[tuple[date, UUID], int] = {}
+        #: Quem já usou a ferramenta em cada período e lista (``app.list_adoption``).
+        self.adoption: set[tuple[UUID, str, int]] = set()
         self.available = True
         self._lock = asyncio.Lock()
 
@@ -516,6 +524,7 @@ class MemoryAccountStore:
         self.activity.pop(account_id, None)
         for key in [key for key in self.feedback_quota if key[1] == account_id]:
             del self.feedback_quota[key]
+        self.adoption = {entry for entry in self.adoption if entry[0] != account_id}
         self.decisions.pop(account_id, None)
         for other, (decided_by, decided_at) in list(self.decisions.items()):
             if decided_by == account_id:
@@ -533,6 +542,10 @@ class MemoryAccountStore:
             del self.sessions[token_hash]
         for token_hash in [h for h, t in self.email_tokens.items() if t.account_id == account_id]:
             del self.email_tokens[token_hash]
+
+    async def record_adoption(self, account_id: UUID, semester: str, list_number: int) -> None:
+        self._check()
+        self.adoption.add((account_id, semester, list_number))
 
     async def take_feedback_quota(
         self, account_id: UUID, day: date, per_account: int, daily_cap: int

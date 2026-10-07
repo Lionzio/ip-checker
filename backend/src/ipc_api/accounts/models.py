@@ -98,6 +98,9 @@ class Account:
     created_at: datetime
     #: Identificador da conta Google ligada (``sub`` do ID token), se houver (FR-24).
     google_sub: str | None = None
+    #: Conta de verificação do deploy (S28-02), marcada pelo pipeline: as verificações dela não
+    #: entram na telemetria nem no relatório de eficácia, e ela não conta como membro da equipe.
+    check_account: bool = False
 
     @property
     def primary_email(self) -> str:
