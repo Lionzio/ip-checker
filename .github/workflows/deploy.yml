@@ -108,9 +108,18 @@ jobs:
         run: |
           uv python install 3.13
           uv sync --locked
+      # Só o smoke e2e usa a página e o Chromium, e ele só roda com a conta de verificação. A
+      # instalação fica antes da publicação: se um espelho falhar, nada é publicado pela metade.
       - name: Instalar a página e o Chromium do Playwright
+        if: env.HAS_CHECK_ACCOUNT == 'true'
         working-directory: frontend
+        timeout-minutes: 10
         run: |
+          # O apt não tem prazo para um download parado: um espelho do Ubuntu travado segurou o
+          # deploy de 07/10/2026 por 15 minutos. Com estes limites, ele desiste do espelho em 30 s
+          # e tenta de novo; o timeout-minutes do passo é a última barreira.
+          printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99-ipc-timeouts > /dev/null
           npm ci
           npx playwright install --with-deps chromium
 

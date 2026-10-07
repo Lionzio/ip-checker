@@ -61,6 +61,12 @@ Render, de antes da mesma origem, e o `/auth/options` sem o `feedback_ai`); o pi
 certo, e os testes foram corrigidos. Enquanto a conta de verificação não existe, o pipeline
 confere o que não precisa de login e avisa, em vez de falhar.
 
+O primeiro deploy pela `main` (07/10/2026) travou 15 minutos instalando o Chromium: um espelho
+do Ubuntu parou no meio de um download, e o `apt` não tem prazo para isso. Foi cancelado antes
+de publicar qualquer coisa. Desde então, o deploy só instala a página e o Chromium quando o smoke
+e2e vai rodar (com a conta de verificação), e a instalação, no deploy e na CI, tem prazo de 30 s
+por espelho no `apt` e de 10 minutos no passo.
+
 ## Sprint 27 — Plágio por árvore canonizada
 
 A Sprint 27 (S27-01 a S27-03) foi concluída em 06/10/2026, com estas decisões de implementação:

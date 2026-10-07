@@ -253,7 +253,13 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Instalar dependências e o Chromium do Playwright
         working-directory: frontend
+        timeout-minutes: 10
         run: |
+          # O apt não tem prazo para um download parado: um espelho do Ubuntu travado segurou o
+          # deploy de 07/10/2026 por 15 minutos. Com estes limites, ele desiste do espelho em 30 s
+          # e tenta de novo; o timeout-minutes do passo é a última barreira.
+          printf 'Acquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nAcquire::Retries "3";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99-ipc-timeouts > /dev/null
           npm ci
           npx playwright install --with-deps chromium
       - name: Playwright (Marco 1 e acesso restrito; a senha vem do deploy/.env)
