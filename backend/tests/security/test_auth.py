@@ -300,7 +300,8 @@ def test_google_stays_off_without_configuration(fresh_client: Client) -> None:
         [_request("GET", "/api/v1/auth/options"), _request("GET", "/api/v1/auth/google/start")]
     )
 
-    assert options.body == {"google": False, "feedback_ai": False}
+    # No compose, os indícios de IA ficam ligados (S29); no piloto, desligados (render.yaml).
+    assert options.body == {"google": False, "feedback_ai": False, "ai_indicators": True}
     assert start.status == 303
     assert start.headers["location"] == "/entrar?google=indisponivel"
 
