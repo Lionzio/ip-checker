@@ -159,7 +159,10 @@ jobs:
           fi
           curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" -o /dev/null
           echo "Deploy de $RELEASE pedido ao Render."
-          release_of() { curl -fsS --max-time 20 "$1" | python3 -c "import json, sys; print(json.load(sys.stdin).get('release'))" 2>/dev/null; }
+          # Uma consulta sem resposta (o plano gratuito acorda devagar, o serviço reinicia com a
+          # versão nova) não pode encerrar o passo: com bash -e, a atribuição api=$(...) de um
+          # comando que falha sai na hora. Daí o || true: o laço é que decide quando desistir.
+          release_of() { curl -fsS --max-time 20 "$1" 2>/dev/null | python3 -c "import json, sys; print(json.load(sys.stdin).get('release'))" 2>/dev/null || true; }
           # O build gratuito do Render leva alguns minutos: até 25 min, contados no relógio.
           deadline=$((SECONDS + 1500))
           while [ "$SECONDS" -lt "$deadline" ]; do
@@ -185,7 +188,10 @@ jobs:
           fi
           curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL" -o /dev/null
           echo "Deploy de $RELEASE pedido à Vercel."
-          release_of() { curl -fsS --max-time 20 "$1" | python3 -c "import json, sys; print(json.load(sys.stdin).get('release'))" 2>/dev/null; }
+          # Uma consulta sem resposta (o plano gratuito acorda devagar, o serviço reinicia com a
+          # versão nova) não pode encerrar o passo: com bash -e, a atribuição api=$(...) de um
+          # comando que falha sai na hora. Daí o || true: o laço é que decide quando desistir.
+          release_of() { curl -fsS --max-time 20 "$1" 2>/dev/null | python3 -c "import json, sys; print(json.load(sys.stdin).get('release'))" 2>/dev/null || true; }
           deadline=$((SECONDS + 600))
           while [ "$SECONDS" -lt "$deadline" ]; do
             web=$(release_of "$PILOT_WEB_URL/version.json")
