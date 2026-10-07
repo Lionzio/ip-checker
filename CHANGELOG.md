@@ -66,6 +66,10 @@ do Ubuntu parou no meio de um download, e o `apt` não tem prazo para isso. Foi 
 de publicar qualquer coisa. Desde então, o deploy só instala a página e o Chromium quando o smoke
 e2e vai rodar (com a conta de verificação), e a instalação, no deploy e na CI, tem prazo de 30 s
 por espelho no `apt` e de 10 minutos no passo.
+Na segunda tentativa, a migração 0006 e o deploy da API passaram, mas o passo parou na primeira
+consulta ao `/ready` que demorou mais de 20 s: com `bash -e`, a falha do `curl` dentro de
+`api=$(...)` encerrava o laço de espera. A consulta agora nunca falha (`|| true`), e quem desiste é
+o laço, depois de 25 minutos para a API e 10 para a página.
 
 ## Sprint 27 — Plágio por árvore canonizada
 
