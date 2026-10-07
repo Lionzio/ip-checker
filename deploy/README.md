@@ -143,11 +143,18 @@ repositório.
    **Environment Variables**, crie `IPC_API_ORIGIN` com o endereço do Render, para Production: o
    build monta com ela o *rewrite* de `/api/*`, e ela nunca entra no código da página. O deploy
    por push está desligado (`"git": {"deploymentEnabled": false}` no `vercel.json`), então a
-   importação cria o projeto sem publicar nada. Em **Settings > Git > Deploy Hooks**, crie um hook
-   para a branch `main`, copie a URL e dispare o primeiro deploy no terminal:
+   importação cria o projeto sem publicar nada (um primeiro build pela branch padrão pode aparecer
+   com erro; ignore-o). Confira em **Settings > Environments > Production** que o **Branch
+   Tracking** é `main`. Em **Settings > Git > Deploy Hooks**, crie um hook para a branch `main`
+   (digite `main` no campo) e copie a URL, que é o `VERCEL_DEPLOY_HOOK_URL` do passo 8. Para o
+   primeiro deploy, use **Deployments > ⋯ > Create Deployment**, escolha `main` e clique em
+   **Deploy to Production**; ou dispare o hook no terminal:
    `read -rs -p "Hook da Vercel: " HOOK; echo; curl -s -X POST "$HOOK"; unset HOOK`. Quando ele
-   terminar, anote o endereço da página em **Settings > Domains**, por exemplo
-   `https://ip-checker.vercel.app`.
+   terminar, anote o endereço da página em **Settings > Domains**. Se `ip-checker.vercel.app` já
+   tiver dono, a Vercel acrescenta um sufixo (no piloto de 2026, `ip-checker-red-phi.vercel.app`):
+   use o endereço que ela mostrar. Volte ao Render e troque `IPC_PUBLIC_BASE_URL` por ele, com
+   **Save and deploy**: os links dos e-mails usam esse endereço, e a API recusa ações que mudam
+   estado vindas de outra origem.
 
 6. **Google (opcional).** Em <https://console.cloud.google.com>, **APIs & Services > Credentials >
    Create credentials > OAuth client ID**, tipo **Web application**. Em **Authorized redirect
@@ -218,6 +225,11 @@ curl -s https://ip-checker-api.onrender.com/ready
 ```
 
 A resposta traz o commit implantado em `release`. A página publica o dela em `/version.json`.
+
+O *rewrite* mantém o prefixo: `<página>/api/v1/...` chega a `<Render>/api/v1/...`. Por isso
+`<página>/api/health/service` responde 404 (`{"detail":"Not Found"}`, do FastAPI), e isso já prova
+que o *rewrite* chegou ao Render; a saúde é conferida direto no Render. Sem sessão,
+`<página>/api/v1/auth/me` responde 401, como no Render.
 
 ### Teste de carga: plano gratuito ou Starter (S12-02)
 
