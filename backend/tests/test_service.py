@@ -61,6 +61,7 @@ def test_valid_code(client: TestClient) -> None:
         "syntax_error": None,
         "violations": [],
         "truncated": False,
+        "indicators": None,
     }
 
 

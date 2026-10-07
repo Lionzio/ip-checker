@@ -9,6 +9,7 @@ from ipc_analyzer.engine.guards import (
     Limits,
     UnknownQuestionError,
 )
+from ipc_analyzer.engine.indicators import compute_indicators
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem, parse_source
 from ipc_analyzer.engine.policy import evaluate
@@ -22,8 +23,12 @@ def analyze_source(
     ruleset: CompiledRuleset,
     question_id: str | None = None,
     limits: Limits = DEFAULT_LIMITS,
+    with_indicators: bool = False,
 ) -> AnalysisResult:
     """Analisa o código para a lista indicada e, se houver, para a questão (R-01).
+
+    Com ``with_indicators``, calcula também os indícios de uso de IA (ADR-08, S29-01), a partir das
+    violações e da mesma árvore, sem guardar nada.
 
     Levanta ``InvalidInputError``, ``UnknownQuestionError``, ``PayloadTooLargeError`` ou
     ``AnalysisLimitError`` quando a entrada é recusada (FR-04, NFR-08).
@@ -38,12 +43,25 @@ def analyze_source(
             syntax_error=parsed,
         )
     violations, truncated = evaluate(extract_facts(parsed), ruleset, list_number, question=question)
+    indicators = (
+        compute_indicators(
+            parsed,
+            violations,
+            list_number=list_number,
+            ruleset=ruleset,
+            question_id=question_id,
+            limits=limits,
+        )
+        if with_indicators
+        else None
+    )
     return AnalysisResult(
         status="invalid" if violations else "valid",
         ruleset_version=ruleset.version,
         list_number=list_number,
         violations=violations,
         truncated=truncated,
+        indicators=indicators,
     )
 
 

@@ -26,6 +26,10 @@ services:
         sync: false
       - key: IPC_HSTS
         value: "1"
+      # Indícios de uso de IA (ADR-08, S29): desligados no piloto até a coordenação aprovar a
+      # política (S29-04, docs/indicios-de-ia.md). Ligar é trocar para "1" aqui, por PR.
+      - key: IPC_AI_INDICATORS
+        value: "0"
       - key: IPC_ENABLED_LISTS
         value: "1,2,3,4,5,6"
       # A Vercel e a borda do Render acrescentam cada uma um endereço ao X-Forwarded-For: o IP do

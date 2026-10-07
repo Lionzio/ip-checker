@@ -612,6 +612,11 @@ export interface components {
              * @description Há IA configurada para o feedback; sem ela, o texto é montado por modelos.
              */
             feedback_ai: boolean;
+            /**
+             * Ai Indicators
+             * @description Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29).
+             */
+            ai_indicators: boolean;
         };
         /** ClassSolution */
         ClassSolution: {
@@ -742,6 +747,49 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** Indicator */
+        Indicator: {
+            /**
+             * Signal
+             * @description multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa).
+             * @enum {string}
+             */
+            signal: "multiplas_violacoes" | "referencia_ia" | "estilo";
+            /**
+             * Kind
+             * @description O que foi observado, como variedade, salto_de_lista ou referencia.
+             */
+            kind: string;
+            /**
+             * Level
+             * @description Faixa deste indício; vazia nos marcadores de estilo, que não pesam.
+             */
+            level: ("baixo" | "medio" | "alto") | null;
+            /**
+             * Reason
+             * @description Por que é um indício, com as construções envolvidas.
+             */
+            reason: string;
+            /** Lines */
+            lines: number[];
+        };
+        /**
+         * Indicators
+         * @description Indícios de uso de IA (ADR-08, S29): para a equipe decidir com quem conversar.
+         */
+        Indicators: {
+            /** Level */
+            level: ("baixo" | "medio" | "alto") | null;
+            /** Items */
+            items: components["schemas"]["Indicator"][];
+            /** Questions */
+            questions: string[];
+            /**
+             * Notice
+             * @description Indícios não são prova; a confirmação é a conversa.
+             */
+            notice: string;
         };
         /** ListInfo */
         ListInfo: {
@@ -1323,6 +1371,8 @@ export interface components {
              * @description Verdadeiro quando havia mais de 200 violações.
              */
             truncated: boolean;
+            /** @description Indícios de uso de IA (ADR-08), só quando estão ligados neste servidor (IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno. */
+            indicators?: components["schemas"]["Indicators"] | null;
         };
         /** VerifyRequest */
         VerifyRequest: {

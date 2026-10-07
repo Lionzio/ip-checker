@@ -153,6 +153,11 @@ def compare_sources(
             return InvalidSide(side, result)
         prepared.append(result)
     left, right = prepared
+    return compare_prepared(left, right)
+
+
+def compare_prepared(left: Prepared, right: Prepared) -> Similarity:
+    """Compara dois códigos já preparados (o da submissão e uma referência, S29-02)."""
     token_score = _similarity(left.normalized.tokens, right.normalized.tokens)
     ast_score = _similarity(left.normalized.nodes, right.normalized.nodes)
     sequence = TOKEN_WEIGHT * token_score + AST_WEIGHT * ast_score

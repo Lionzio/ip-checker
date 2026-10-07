@@ -117,11 +117,17 @@ class AnalyzerClient:
         list_number: int,
         request_id: str | None = None,
         question_id: str | None = None,
+        indicators: bool = False,
     ) -> AnalyzerResult:
         status, body = await self._request(
             "POST",
             "/internal/analyze",
-            {"code": code, "list_number": list_number, "question_id": question_id},
+            {
+                "code": code,
+                "list_number": list_number,
+                "question_id": question_id,
+                "indicators": indicators,
+            },
             request_id,
         )
         if status == 200:

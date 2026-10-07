@@ -6,10 +6,11 @@ soluções em busca de plágio e redige o feedback para o aluno. O código é an
 sintática (AST), num serviço isolado. O acesso é restrito à equipe da disciplina, com login,
 aprovação manual e cargos (P-13 do blueprint).
 
-Hoje (07/10/2026, Sprint 28 concluída), as seis listas estão habilitadas, com as regras por
+Hoje (07/10/2026, Sprint 29 concluída), as seis listas estão habilitadas, com as regras por
 questão, o painel de plágio (dois códigos ou contra a turma, por árvore canonizada), o feedback por
 IA ou por modelos de texto, a correção em lote, o gerenciamento da equipe com registro das ações, a
-telemetria anônima e o relatório de eficácia. O piloto está no ar (Render, Vercel e Supabase) desde
+telemetria anônima, o relatório de eficácia e os indícios de uso de IA (desligados no piloto até a
+coordenação aprovar a política). O piloto está no ar (Render, Vercel e Supabase) desde
 07/10/2026; o uso pela equipe é em 2027.1.
 
 | Para | Leia |
@@ -160,7 +161,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 26 | Correção em lote e relatório: S26-01 cabeçalho e navegação no celular, títulos por tela e componentes comuns; S26-02 "Próximo aluno", Ctrl+Enter, rascunho em memória e editor com Tab, Limpar e Colar; S26-03 relatório agrupado por regra, com resumo, trecho e clique na linha; S26-04 prazos, cancelamento e sessão vencida iguais em todas as telas, busca no gerenciamento | Concluída |
 | 27 | Plágio por árvore canonizada (ADR-07): S27-01 árvore canonizada com reordenação por dependência, Dice e contenção; S27-02 uma solução contra até 100 da turma, com o peso pela raridade (IDF); S27-03 trechos em comum realçados nos dois códigos, Trocar A e B e Limpar | Concluída |
 | 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (faltam o ensaio do rollback e a carga no piloto, que dependem da conta de verificação) |
-| 29 | Indícios de uso de IA (ADR-08): múltiplas violações, semelhança com referências geradas por IA e marcadores de estilo | Planejada |
+| 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política e a calibração) |
 
 O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de

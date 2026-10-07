@@ -97,11 +97,17 @@ def _before_deadline[T](deadline: float, function: Callable[..., T], *args: Any)
     return function(*args)
 
 
-def _analyze_in_worker(source: str, list_number: int, question_id: str | None) -> AnalysisResult:
+def _analyze_in_worker(
+    source: str, list_number: int, question_id: str | None, with_indicators: bool = False
+) -> AnalysisResult:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
     return analyze_source(
-        source, list_number=list_number, ruleset=_RULESET, question_id=question_id
+        source,
+        list_number=list_number,
+        ruleset=_RULESET,
+        question_id=question_id,
+        with_indicators=with_indicators,
     )
 
 
@@ -201,9 +207,10 @@ class AnalyzerPool:
         question_id: str | None = None,
         *,
         deadline: float | None = None,
+        indicators: bool = False,
     ) -> AnalysisResult:
         return await self.run(
-            _analyze_in_worker, source, list_number, question_id, deadline=deadline
+            _analyze_in_worker, source, list_number, question_id, indicators, deadline=deadline
         )
 
     async def feedback_input(

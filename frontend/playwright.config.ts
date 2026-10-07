@@ -64,7 +64,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["login"],
-      testIgnore: /(limits|account|feedback|batch|plagiarism-tree)\.spec\.ts/,
+      testIgnore: /(limits|account|feedback|batch|plagiarism-tree|indicators)\.spec\.ts/,
     },
     {
       // Depois do principal: as contas novas não aparecem nas telas que ele confere.
@@ -82,12 +82,12 @@ export default defineConfig({
       fullyParallel: false,
     },
     {
-      // Troca o tratamento para conferir os três (S19-01). A correção em lote (S26-02) e o plágio
-      // por árvore (S27) vêm junto: cada um gasta o limite por conta.
+      // Troca o tratamento para conferir os três (S19-01). A correção em lote (S26-02), o plágio
+      // por árvore (S27) e os indícios de IA (S29) vêm junto: cada um gasta o limite por conta.
       name: "feedback",
       use: { ...devices["Desktop Chrome"], storageState: storageFor("feedback") },
       dependencies: ["contas"],
-      testMatch: /(feedback|batch|plagiarism-tree)\.spec\.ts/,
+      testMatch: /(feedback|batch|plagiarism-tree|indicators)\.spec\.ts/,
       fullyParallel: false,
     },
     {

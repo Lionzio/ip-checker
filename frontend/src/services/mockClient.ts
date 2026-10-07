@@ -15,6 +15,7 @@
  */
 import type {
   Account,
+  Indicators,
   ListInfo,
   ManagedAccount,
   ManagementLogEntry,
@@ -230,6 +231,44 @@ function thousands(value: number): string {
 }
 
 /** Procura o último '(' sem fechamento, ignorando o conteúdo de strings simples. */
+const INDICATORS_NOTICE =
+  "Indícios não são prova de uso de IA. Eles servem para decidir com quem conversar; a confirmação é sempre uma conversa em que o aluno explica ou modifica o próprio código.";
+
+/**
+ * Indícios simulados (S29, ADR-08): só a variedade de proibições gerais, como o motor faz com
+ * `break`, `continue` e `pass` juntos. O resto dos sinais fica para o motor de verdade.
+ */
+export function simulatedIndicators(code: string): Indicators | null {
+  const found = new Map<string, number[]>();
+  code.split("\n").forEach((text, index) => {
+    for (const word of ["break", "continue", "pass"]) {
+      if (new RegExp(`^\\s*${word}\\s*(#.*)?$`).test(text)) found.set(word, [...(found.get(word) ?? []), index + 1]);
+    }
+  });
+  if (found.size < 2) return null;
+  const level = found.size >= 3 ? "alto" : "medio";
+  const names = [...found.keys()].map((word) => `'${word}'`);
+  const lines = [...found.values()].flat().sort((first, second) => first - second);
+  const [firstWord, firstLines] = [...found.entries()][0] ?? ["break", [1]];
+  return {
+    level,
+    items: [
+      {
+        signal: "multiplas_violacoes",
+        kind: "variedade",
+        level,
+        reason: `${found.size} proibições gerais diferentes no mesmo código: ${names.slice(0, -1).join(", ")} e ${names.at(-1)}. Cada uma anula a questão, e juntas são raras numa solução escrita para a lista.`,
+        lines,
+      },
+    ],
+    questions: [
+      `O que o '${firstWord}' da linha ${firstLines[0] ?? 1} faz? Como você escreveria esse trecho sem ele?`,
+      "Faça uma pequena mudança no programa (por exemplo, outro formato de saída) e explique o que precisou alterar.",
+    ],
+    notice: INDICATORS_NOTICE,
+  };
+}
+
 function findUnclosedParenthesis(code: string): { line: number; col: number } | null {
   const open: { line: number; col: number }[] = [];
   code.split("\n").forEach((text, index) => {
@@ -566,7 +605,7 @@ export function createMockClient({
 
     async options(signal) {
       await wait(latencyMs, signal);
-      return { google, feedback_ai: false };
+      return { google, feedback_ai: false, ai_indicators: true };
     },
 
     async googlePending(signal) {
@@ -748,6 +787,7 @@ export function createMockClient({
         syntax_error: null,
         violations,
         truncated: false,
+        indicators: simulatedIndicators(request.code),
       } satisfies ValidateResponse;
     },
 

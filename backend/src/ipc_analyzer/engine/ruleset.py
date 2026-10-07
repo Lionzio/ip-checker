@@ -32,6 +32,8 @@ from pydantic import (
     model_validator,
 )
 
+from ipc_analyzer.engine.guards import InputError
+from ipc_analyzer.engine.parse import SyntaxProblem, parse_source
 from ipc_analyzer.engine.predicates import REGISTRY
 
 # ---------------------------------------------------------------------------
@@ -530,6 +532,8 @@ class CompiledRuleset:
     structural_facts: frozenset[str]
     #: Regras por questão do período (R-01), por ``question_id``.
     questions: Mapping[str, CompiledQuestion] = MappingProxyType({})
+    #: Soluções de referência geradas por IA, por ``question_id`` (ADR-08, sinal 2; S29-02).
+    references: Mapping[str, tuple[Reference, ...]] = MappingProxyType({})
 
     @property
     def version(self) -> str:
@@ -588,6 +592,21 @@ def compile_ruleset(
 
 #: Pasta das regras por questão, ao lado do ``base.yaml`` (R-01, P-07).
 QUESTIONS_DIR = "questions"
+#: Pasta das soluções de referência geradas por IA, uma subpasta por questão (S29-02).
+REFERENCES_DIR = "referencias"
+#: Uma questão guarda poucas referências: 2 ou 3 assistentes, uma ou duas soluções cada (ADR-08).
+MAX_REFERENCES_PER_QUESTION = 10
+
+
+@dataclass(frozen=True, slots=True)
+class Reference:
+    """Uma solução de referência para uma questão, gerada pela equipe com uma IA a partir só do
+    enunciado (ADR-08, item 2). ``label`` é o nome do arquivo, sem a extensão (``assistente-a``).
+    """
+
+    question_id: str
+    label: str
+    source: str
 
 
 def load_ruleset(path: Path) -> CompiledRuleset:
@@ -621,7 +640,52 @@ def load_ruleset(path: Path) -> CompiledRuleset:
         except ValueError as exc:
             raise RulesetError(f"questão inválida: {file}\n  - {exc}") from exc
     compiled = compile_ruleset(ruleset, raw, questions)
-    return replace(compiled, sha256=digest.hexdigest())
+    references = _load_references(path.parent / REFERENCES_DIR, compiled, digest)
+    return replace(compiled, sha256=digest.hexdigest(), references=references)
+
+
+def _load_references(
+    folder: Path, compiled: CompiledRuleset, digest: hashlib._Hash
+) -> Mapping[str, tuple[Reference, ...]]:
+    """Lê ``referencias/<questão>/*.py``: cada subpasta é uma questão cadastrada, e cada arquivo
+    precisa ser Python válido dentro dos mesmos limites de uma submissão (S29-02)."""
+    if not folder.is_dir():
+        return MappingProxyType({})
+    found: dict[str, tuple[Reference, ...]] = {}
+    for question_folder in sorted(path for path in folder.iterdir() if path.is_dir()):
+        question_id = question_folder.name
+        if question_id not in compiled.questions:
+            raise RulesetError(
+                f"referências inválidas: {question_folder}\n  - a questão {question_id} não está "
+                f"cadastrada em {QUESTIONS_DIR}/"
+            )
+        files = sorted(question_folder.glob("*.py"))
+        if len(files) > MAX_REFERENCES_PER_QUESTION:
+            raise RulesetError(
+                f"referências inválidas: {question_folder}\n  - {len(files)} arquivos; o limite é "
+                f"{MAX_REFERENCES_PER_QUESTION} por questão"
+            )
+        references = []
+        for file in files:
+            try:
+                raw = file.read_bytes()
+                source = raw.decode("utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                raise RulesetError(f"não foi possível ler a referência {file}: {exc}") from exc
+            try:
+                parsed = parse_source(source, target=compiled.target_version)
+            except InputError as exc:
+                raise RulesetError(f"referência inválida: {file}\n  - {exc.message}") from exc
+            if isinstance(parsed, SyntaxProblem):
+                raise RulesetError(
+                    f"referência inválida: {file}\n  - linha {parsed.line}: {parsed.message}"
+                )
+            name = f"{question_id}/{file.name}"
+            digest.update(b"\0" + name.encode() + b"\0" + raw)
+            references.append(Reference(question_id=question_id, label=file.stem, source=source))
+        if references:
+            found[question_id] = tuple(references)
+    return MappingProxyType(found)
 
 
 def _read_yaml(path: Path, what: str) -> tuple[bytes, dict[str, object]]:

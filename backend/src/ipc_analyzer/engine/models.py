@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ipc_analyzer.engine.parse import SyntaxProblem
 from ipc_analyzer.engine.ruleset import Category
+
+if TYPE_CHECKING:
+    from ipc_analyzer.engine.indicators import Indicators
 
 AnalysisStatus = Literal["valid", "invalid", "syntax_error"]
 
@@ -38,3 +41,5 @@ class AnalysisResult:
     syntax_error: SyntaxProblem | None = None
     #: Verdadeiro quando havia mais de ``MAX_VIOLATIONS`` violações e a lista foi cortada.
     truncated: bool = False
+    #: Indícios de uso de IA (ADR-08), só quando pedidos e só para a equipe; ``None`` sem indício.
+    indicators: Indicators | None = None

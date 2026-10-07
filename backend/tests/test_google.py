@@ -175,14 +175,22 @@ def test_google_settings_come_in_pairs() -> None:
 def test_without_configuration_google_is_off(store: MemoryAccountStore) -> None:
     app, _ = make_app(store=store)
     with TestClient(app, base_url=BASE_URL, follow_redirects=False) as api:
-        assert api.get("/api/v1/auth/options").json() == {"google": False, "feedback_ai": False}
+        assert api.get("/api/v1/auth/options").json() == {
+            "google": False,
+            "feedback_ai": False,
+            "ai_indicators": False,
+        }
         assert landing(api.get("/api/v1/auth/google/start")) == "/entrar?google=indisponivel"
         callback = api.get("/api/v1/auth/google/callback", params={"code": "c", "state": "s"})
         assert landing(callback) == "/entrar?google=indisponivel"
 
 
 def test_start_sends_state_nonce_pkce_and_hd_only_as_a_hint(api: TestClient) -> None:
-    assert api.get("/api/v1/auth/options").json() == {"google": True, "feedback_ai": False}
+    assert api.get("/api/v1/auth/options").json() == {
+        "google": True,
+        "feedback_ai": False,
+        "ai_indicators": False,
+    }
     response = api.get("/api/v1/auth/google/start")
     location = urlsplit(response.headers["location"])
     query = {k: v[0] for k, v in parse_qs(location.query).items()}

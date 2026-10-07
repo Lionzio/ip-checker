@@ -28,6 +28,8 @@ RELEASE = os.environ.get("PILOT_RELEASE")
 #: Conta ativa só para as verificações do piloto (secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD).
 LOGIN = os.environ.get("PILOT_LOGIN", "")
 PASSWORD = os.environ.get("PILOT_PASSWORD", "")
+#: Os indícios de uso de IA só ligam no piloto com a política aprovada pela coordenação (S29-04).
+AI_INDICATORS = os.environ.get("PILOT_AI_INDICATORS", "0") == "1"
 
 pytestmark = pytest.mark.skipif(
     not (API and WEB), reason="defina PILOT_API_URL e PILOT_WEB_URL para conferir o piloto"
@@ -101,8 +103,15 @@ def test_the_page_origin_serves_the_api(http: httpx2.Client) -> None:
     response = http.get(f"{WEB}/api/v1/auth/options")
 
     assert response.status_code == 200
-    assert set(response.json()) == {"google", "feedback_ai"}
+    assert set(response.json()) == {"google", "feedback_ai", "ai_indicators"}
     assert response.headers["content-type"].startswith("application/json")
+
+
+def test_ai_indicators_are_on_only_when_expected(http: httpx2.Client) -> None:
+    # ADR-08: o painel de indícios não liga no piloto sem a política combinada (S29-04).
+    response = http.get(f"{WEB}/api/v1/auth/options")
+
+    assert response.json()["ai_indicators"] is AI_INDICATORS
 
 
 def test_without_a_session_the_api_gives_nothing(http: httpx2.Client) -> None:

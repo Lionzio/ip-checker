@@ -108,3 +108,68 @@ def test_wrong_usage_exits_two(capsys: pytest.CaptureFixture[str]) -> None:
         main(["validar"])
 
     assert exit_info.value.code == 2
+
+
+# --- ipc-rules calibrate (S29-04) ----------------------------------------------------------------
+
+CANARY = "CANARIO_CALIBRACAO_51b2"
+HIGH = (
+    "for i in range(5):\n    if i == 1:\n        break\n"
+    "    if i == 2:\n        continue\n    pass\n"
+)
+CLEAN = "x = int(input())\nif x > 0:\n    print(x)\n"
+
+
+def solutions(tmp_path: Path, files: dict[str, str]) -> Path:
+    root = tmp_path / "solucoes"
+    for relative, code in files.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"# {CANARY}\n{code}", encoding="utf-8")
+    return root
+
+
+def test_calibrate_counts_each_level_and_names_only_the_files(
+    period: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = solutions(
+        tmp_path,
+        {"2022.1/lista-2/q01.py": HIGH, "2022.1/lista-1/q02.py": CLEAN, "2022.1/notas.txt": "x"},
+    )
+
+    assert main(["calibrate", str(period), str(root), "--max-alto", "60"]) == 0
+
+    out = capsys.readouterr().out
+    assert "soluções analisadas: 2" in out
+    assert "  alto: 1" in out
+    assert "  nenhum: 1" in out
+    assert "faixa alta: 50.0% (limite: 60.0%)" in out
+    assert "alto: 2022.1/lista-2/q01.py: variedade" in out
+    assert CANARY not in out
+
+
+def test_calibrate_fails_above_the_limit(
+    period: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = solutions(tmp_path, {"2022.1/lista-2/q01.py": HIGH, "2022.1/lista-1/q02.py": CLEAN})
+
+    assert main(["calibrate", str(period), str(root)]) == 1
+    assert "limite: 5.0%" in capsys.readouterr().out
+
+
+def test_calibrate_without_solutions_is_wrong_usage(
+    period: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["calibrate", str(period), str(tmp_path / "vazia")]) == 2
+    assert "nenhuma solução" in capsys.readouterr().out
+
+
+def test_calibrate_counts_refused_files_apart(
+    period: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = solutions(
+        tmp_path, {"2022.1/lista-1/grande.py": "x = 1\n" * 1_100, "2022.1/lista-1/q.py": CLEAN}
+    )
+
+    assert main(["calibrate", str(period), str(root)]) == 0
+    assert "recusadas pelos limites: 1" in capsys.readouterr().out

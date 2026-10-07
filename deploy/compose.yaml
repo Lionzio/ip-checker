@@ -141,6 +141,9 @@ services:
       # De onde sai o link do e-mail; nunca do Host da requisição (ameaça 21). Localmente, o link
       # só abre na própria máquina: para a equipe, ele precisa ser o endereço público do piloto.
       IPC_PUBLIC_BASE_URL: ${IPC_PUBLIC_BASE_URL:-http://127.0.0.1:${IPC_HTTP_PORT:-8180}}
+      # Indícios de uso de IA (ADR-08, S29): ligados no ambiente local, na CI e no e2e; no
+      # piloto, só com a política aprovada (render.yaml).
+      IPC_AI_INDICATORS: ${IPC_AI_INDICATORS:-1}
       # Feedback (S18): IA principal e de reserva, do deploy/.env. Vazias, o feedback é montado
       # por modelos de texto, sem IA. Só a api recebe as chaves; o analyzer nunca.
       IPC_LLM_PROVIDER: ${IPC_LLM_PROVIDER:-}

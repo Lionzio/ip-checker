@@ -10,6 +10,7 @@ e o plano; as decisões, os ADRs e o histórico das sprints têm arquivos própr
 | [`guia-da-equipe.md`](guia-da-equipe.md) | Equipe da disciplina | Como entrar, verificar, comparar soluções e gerar o feedback |
 | [`../RULES.md`](../RULES.md) | Monitores e professores | Como cadastrar as regras de uma questão |
 | [`eficacia.md`](eficacia.md) | Professores e coordenação | Como medir os critérios de eficácia do piloto (P-09) e o formulário da pesquisa |
+| [`indicios-de-ia.md`](indicios-de-ia.md) | Equipe e coordenação | A política dos indícios de uso de IA (ADR-08), as faixas, a calibração e como ligar no piloto |
 
 ## Para manter
 

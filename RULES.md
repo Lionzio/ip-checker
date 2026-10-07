@@ -84,3 +84,19 @@ automático, foi adiada para depois da release):
 
 Depois do merge na `develop` e da release na `main`, o deploy publica o ruleset novo e a questão
 aparece no seletor da página.
+
+## 5. Soluções de referência por IA (opcional, S29-02)
+
+Para o sinal de semelhança com IA do painel de indícios ([`docs/indicios-de-ia.md`](docs/indicios-de-ia.md)),
+quem cadastra a questão pode gerar 2 ou 3 soluções com assistentes diferentes, **a partir só do
+enunciado** e sem nenhum código de aluno, e guardá-las sem edição em:
+
+```text
+rulesets/2026.2/referencias/L3-Q2/assistente-a.py
+rulesets/2026.2/referencias/L3-Q2/assistente-b.py
+```
+
+A pasta tem o nome da questão, que precisa estar cadastrada em `questions/`; cada arquivo é uma
+solução em Python válido, de até 50 KB, e o nome do arquivo (sem `.py`) aparece no painel. O
+`ipc-rules validate` recusa uma referência inválida e mostra quantas há. Vão no mesmo PR da questão
+ou num PR à parte, com a mesma aprovação.
