@@ -85,12 +85,18 @@ repositório.
    Sem as variáveis do passo 8, a CI roda e o deploy só avisa que o piloto não está configurado.
 
 2. **Banco (Supabase).** Em <https://supabase.com>, crie um projeto na região East US (North
-   Virginia), a mesma da API no Render (Q-20). Em **Project Settings > Database**, copie a
-   *connection string* do **Session pooler** (os executores do GitHub não alcançam o endereço direto, que é só IPv6) com o usuário
-   `postgres`: ela é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o
-   usuário da API, `ipc_api` (`PILOT_DB_API_PASSWORD`); a migração cria esse usuário.
-   A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando `postgres` por `ipc_api`
-   e a senha pela do `ipc_api`.
+   Virginia), a mesma da API no Render (Q-20). Use na senha do banco só letras, números, `-` e `_`
+   (ela vai dentro de uma URL; o botão de gerar senha do Supabase serve). No botão **Connect** do
+   projeto, copie a *connection string* do **Session pooler** (porta 5432; os executores do GitHub
+   não alcançam o endereço direto, que é só IPv6, e o *Transaction pooler*, porta 6543, não serve à
+   API). Ela tem o formato
+   `postgresql://postgres.<id do projeto>:<senha>@aws-0-us-east-1.pooler.supabase.com:5432/postgres`
+   e é a `PILOT_DATABASE_ADMIN_URL` do passo 8. Escolha também uma senha para o usuário da API,
+   `ipc_api` (`PILOT_DB_API_PASSWORD`, também só com letras, números, `-` e `_`); a migração cria
+   esse usuário. A `IPC_DATABASE_URL` do Render é a mesma *connection string*, trocando
+   `postgres.<id do projeto>` por `ipc_api.<id do projeto>` e a senha pela do `ipc_api`.
+
+   Para gerar uma senha assim, no terminal: `python -c "import secrets; print(secrets.token_urlsafe(24))"`.
 
    Ainda no Supabase, em **Project Settings > API**, desligue a **Data API**: o IP-Checker fala
    com o banco só pela *connection string*, e a Data API exporia o esquema `public` às chaves
@@ -104,13 +110,17 @@ repositório.
 
    ```bash
    cd backend
-   IPC_DATABASE_ADMIN_URL='<connection string do Session pooler, usuário postgres>' \
-   IPC_DB_LOGIN_PASSWORD='<senha escolhida para o ipc_api>' \
-   uv run python -m ipc_api.db.migrate up --login-role ipc_api
+   read -rs -p "Connection string do Session pooler (usuário postgres): " IPC_DATABASE_ADMIN_URL; echo
+   read -rs -p "Senha escolhida para o ipc_api: " IPC_DB_LOGIN_PASSWORD; echo
+   export IPC_DATABASE_ADMIN_URL IPC_DB_LOGIN_PASSWORD
+   .venv/Scripts/python.exe -m ipc_api.db.migrate up --login-role ipc_api
+   unset IPC_DATABASE_ADMIN_URL IPC_DB_LOGIN_PASSWORD
    ```
 
-   A saída lista as migrações aplicadas e não mostra nenhuma senha. Depois disso, o pipeline aplica
-   só as migrações novas a cada release.
+   O `read -s` pede os valores sem mostrá-los na tela nem guardá-los no histórico do terminal. No
+   Linux ou no macOS, o Python do ambiente é `.venv/bin/python` (ou `uv run python`). A saída lista
+   as migrações aplicadas e não mostra nenhuma senha. Depois disso, o pipeline aplica só as
+   migrações novas a cada release.
 
 3. **E-mail (Brevo).** Em <https://www.brevo.com>, verifique o remetente (o endereço que vai em
    `IPC_EMAIL_FROM`) e crie uma chave de API em **SMTP & API > API Keys**. Antes de usar um
@@ -120,17 +130,31 @@ repositório.
 4. **Render.** Em <https://dashboard.render.com>, **New > Blueprint**, conecte o repositório
    `Lionzio/ip-checker` e confirme o `render.yaml`. Ele cria o serviço `ip-checker-api` (Docker,
    plano Free, região Virginia). O assistente pede as variáveis marcadas com `sync: false`:
-   preencha-as já ali, com os valores do passo 7, para o primeiro build subir completo. Anote o
-   endereço, por exemplo `https://ip-checker-api.onrender.com` (se o nome estiver ocupado, o Render
-   acrescenta um sufixo: use o endereço que ele mostrar). Em **Settings > Deploy Hook**, copie a URL
-   do hook.
+   preencha-as já ali, com os valores do passo 7, para o primeiro build subir completo. O endereço
+   da Vercel (`IPC_PUBLIC_BASE_URL`) só existe depois do passo 5: se ainda não o tiver, use
+   `https://ip-checker.vercel.app` e corrija depois (cada mudança de variável reinicia o serviço).
+   Anote o endereço do serviço, por exemplo `https://ip-checker-api.onrender.com` (se o nome estiver
+   ocupado, o Render acrescenta um sufixo: use o endereço que ele mostrar). Se o primeiro build não
+   começar sozinho, use **Manual Deploy > Deploy latest commit**. Em **Settings > Deploy Hook**,
+   copie a URL do hook.
 
 5. **Vercel.** Em <https://vercel.com/new>, importe o mesmo repositório com **Root Directory**
    `frontend` e **Framework Preset** "Other" (o `vercel.json` define instalação e build). Em
    **Environment Variables**, crie `IPC_API_ORIGIN` com o endereço do Render, para Production: o
-   build monta com ela o *rewrite* de `/api/*`, e ela nunca entra no código da página. Depois do
-   primeiro deploy, anote o endereço da página, por exemplo `https://ip-checker.vercel.app`. Em
-   **Settings > Git > Deploy Hooks**, crie um hook para a branch `main` e copie a URL.
+   build monta com ela o *rewrite* de `/api/*`, e ela nunca entra no código da página. O deploy
+   por push está desligado (`"git": {"deploymentEnabled": false}` no `vercel.json`), então a
+   importação cria o projeto sem publicar nada (um primeiro build pela branch padrão pode aparecer
+   com erro; ignore-o). Confira em **Settings > Environments > Production** que o **Branch
+   Tracking** é `main`. Em **Settings > Git > Deploy Hooks**, crie um hook para a branch `main`
+   (digite `main` no campo) e copie a URL, que é o `VERCEL_DEPLOY_HOOK_URL` do passo 8. Para o
+   primeiro deploy, use **Deployments > ⋯ > Create Deployment**, escolha `main` e clique em
+   **Deploy to Production**; ou dispare o hook no terminal:
+   `read -rs -p "Hook da Vercel: " HOOK; echo; curl -s -X POST "$HOOK"; unset HOOK`. Quando ele
+   terminar, anote o endereço da página em **Settings > Domains**. Se `ip-checker.vercel.app` já
+   tiver dono, a Vercel acrescenta um sufixo (no piloto de 2026, `ip-checker-red-phi.vercel.app`):
+   use o endereço que ela mostrar. Volte ao Render e troque `IPC_PUBLIC_BASE_URL` por ele, com
+   **Save and deploy**: os links dos e-mails usam esse endereço, e a API recusa ações que mudam
+   estado vindas de outra origem.
 
 6. **Google (opcional).** Em <https://console.cloud.google.com>, **APIs & Services > Credentials >
    Create credentials > OAuth client ID**, tipo **Web application**. Em **Authorized redirect
@@ -154,9 +178,17 @@ repositório.
    - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` (URLs dos hooks);
      `PILOT_DATABASE_ADMIN_URL` e `PILOT_DB_API_PASSWORD` (passo 2), para as migrações;
      `PILOT_CHECK_LOGIN`, `PILOT_CHECK_PASSWORD` e `PILOT_CHECK_NAME`, de uma conta ativa usada só
-     nas verificações e no smoke e2e do piloto (registre-a, aprove-a como monitor e não a use para
-     mais nada);
+     nas verificações e no smoke e2e do piloto;
    - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel).
+
+   A conta de verificação só pode ser criada com a página no ar: entre como desenvolvedor na página
+   da Vercel, registre a conta com um e-mail institucional seu que não seja da conta do
+   desenvolvedor, confirme o e-mail, aprove-a como monitor em **Gerenciar** e não a use para mais
+   nada. Sem ela, o pipeline publica a versão nova e falha nas verificações.
+
+   Os secrets podem ser gravados pelo terminal, sem passar pelo navegador: `gh secret set NOME`
+   pede o valor sem mostrá-lo (por exemplo, `gh secret set RENDER_DEPLOY_HOOK_URL`). As variables
+   não são segredos: `gh variable set PILOT_API_URL --body https://...`.
 
    A partir daí, toda release na `main` migra o banco, faz o deploy e as verificações sozinha. Para
    o primeiro deploy, sem esperar outra release, use **Actions > Deploy do piloto > Run workflow**,
@@ -193,6 +225,11 @@ curl -s https://ip-checker-api.onrender.com/ready
 ```
 
 A resposta traz o commit implantado em `release`. A página publica o dela em `/version.json`.
+
+O *rewrite* mantém o prefixo: `<página>/api/v1/...` chega a `<Render>/api/v1/...`. Por isso
+`<página>/api/health/service` responde 404 (`{"detail":"Not Found"}`, do FastAPI), e isso já prova
+que o *rewrite* chegou ao Render; a saúde é conferida direto no Render. Sem sessão,
+`<página>/api/v1/auth/me` responde 401, como no Render.
 
 ### Teste de carga: plano gratuito ou Starter (S12-02)
 
