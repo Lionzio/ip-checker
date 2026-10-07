@@ -1,18 +1,16 @@
 import { type Browser, expect, type Page, test } from "@playwright/test";
+import { accountOf } from "./accounts";
 import { pageFetch } from "./pageFetch";
 
 /**
- * Perfil e troca de senha (S14-03, FR-26) com a conta do desenvolvedor. Roda no projeto "conta",
- * sozinho e depois dos demais: troca a senha e a devolve, e a troca encerra as outras sessões.
+ * Perfil e troca de senha (S14-03, FR-26) com a conta do projeto "conta" (S28-04), que é só dele:
+ * a troca de senha encerra as outras sessões da conta sem atrapalhar os demais projetos.
  */
-const LOGIN = process.env.E2E_LOGIN ?? "";
-const PASSWORD = process.env.E2E_PASSWORD ?? "";
-
 async function signIn(browser: Browser, password: string): Promise<Page> {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const page = await context.newPage();
   await page.goto("/entrar");
-  await page.getByLabel("Nome ou e-mail institucional").fill(LOGIN);
+  await page.getByLabel("Nome ou e-mail institucional").fill(accountOf("conta").login);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
   return page;
@@ -54,7 +52,8 @@ test("edita curso e tratamento no perfil, e a mudança fica salva", async ({ pag
 
 test("troca a senha, encerra as outras sessões e mantém a atual", async ({ page, browser }) => {
   const temporary = `Temp-${Date.now()}!x`;
-  const other = await signIn(browser, PASSWORD);
+  const { password } = accountOf("conta");
+  const other = await signIn(browser, password);
   await expect(other.getByRole("button", { name: "Sair" })).toBeVisible();
 
   // A senha atual errada é recusada e não troca nada.
@@ -65,18 +64,18 @@ test("troca a senha, encerra as outras sessões e mantém a atual", async ({ pag
   await page.getByRole("button", { name: "Alterar a senha" }).click();
   await expect(page.getByRole("alert")).toHaveText("A senha atual está incorreta.");
 
-  await changePassword(page, PASSWORD, temporary);
+  await changePassword(page, password, temporary);
   try {
     expect((await pageFetch(other, "/api/v1/auth/me")).status).toBe(401);
     expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(200);
 
-    const withOld = await signIn(browser, PASSWORD);
+    const withOld = await signIn(browser, password);
     await expect(withOld.getByRole("alert")).toContainText("Nome, e-mail ou senha incorretos.");
     const withNew = await signIn(browser, temporary);
     await expect(withNew.getByRole("button", { name: "Sair" })).toBeVisible();
   } finally {
-    // Devolve a senha original pela sessão guardada, que segue válida para o projeto "limite".
-    await changePassword(page, temporary, PASSWORD);
+    // Devolve a senha original pela sessão guardada, para a próxima execução local.
+    await changePassword(page, temporary, password);
   }
   await other.context().close();
 });

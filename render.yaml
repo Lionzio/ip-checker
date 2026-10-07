@@ -2,7 +2,7 @@
 #
 # Um único serviço Docker, com a API e o analisador isolados por processo (deploy/render/). O deploy
 # nunca é automático a cada push: o pipeline (.github/workflows/deploy.yml) chama o deploy hook
-# depois que a CI passa na main. Passo a passo da criação em deploy/README.md, seção "Piloto".
+# depois que a CI passa na main. Passo a passo da criação em deploy/piloto.md.
 services:
   - type: web
     name: ip-checker-api

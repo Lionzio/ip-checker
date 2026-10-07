@@ -93,9 +93,16 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
     migrations = discover(DEFAULT_DIR)
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
-    assert await migrate_down(admin, migrations, "0000") == ["0005", "0004", "0003", "0002", "0001"]
+    assert await migrate_down(admin, migrations, "0000") == [
+        "0006",
+        "0005",
+        "0004",
+        "0003",
+        "0002",
+        "0001",
+    ]
     assert not await _schema_exists(admin)
-    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004", "0005"]
+    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004", "0005", "0006"]
     assert await _schema_exists(admin)
 
 
@@ -109,7 +116,7 @@ def test_cli_up_and_status(
     assert migrate.main(["status"]) == 0
     assert (
         capsys.readouterr().out.strip()
-        == "aplicadas: 0001, 0002, 0003, 0004, 0005; pendentes: nenhuma"
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
@@ -226,3 +233,109 @@ async def test_a_legacy_tracking_table_moves_out_of_public(admin: Any) -> None:
     assert await admin.fetchval("SELECT to_regclass('public.ipc_schema_migrations')") is None
     # Ninguém além do administrador usa o esquema de controle.
     assert not await admin.fetchval("SELECT has_schema_privilege('public', 'ipc_meta', 'USAGE')")
+
+
+# --- Checksum das migrações aplicadas (S28-04) -------------------------------------------------
+
+
+def _copy_migrations(target: Path) -> Path:
+    for path in DEFAULT_DIR.iterdir():
+        (target / path.name).write_bytes(path.read_bytes())
+    return target
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_each_applied_migration_keeps_its_checksum(admin: Any) -> None:
+    migrations = discover(DEFAULT_DIR)
+    stored = dict(await admin.fetch("SELECT version, checksum FROM ipc_meta.schema_migrations"))
+
+    assert stored == {m.version: m.checksum for m in migrations}
+
+
+def test_the_checksum_ignores_windows_line_endings(tmp_path: Path) -> None:
+    (tmp_path / "0001_a.up.sql").write_bytes(b"SELECT 1;\nSELECT 2;\n")
+    (tmp_path / "0001_a.down.sql").write_bytes(b"SELECT 1;\n")
+    unix = discover(tmp_path)[0].checksum
+    (tmp_path / "0001_a.up.sql").write_bytes(b"SELECT 1;\r\nSELECT 2;\r\n")
+
+    assert discover(tmp_path)[0].checksum == unix
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_an_applied_migration_that_changed_is_refused(admin: Any, tmp_path: Path) -> None:
+    folder = _copy_migrations(tmp_path)
+    edited = folder / "0003_registro_gerenciamento.up.sql"
+    edited.write_text(edited.read_text(encoding="utf-8") + "\n-- editada\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"0003 .* mudou depois de aplicada"):
+        await migrate_up(admin, discover(folder))
+    with pytest.raises(ValueError, match="mudou depois de aplicada"):
+        await migrate.run("status", url=DATABASE_URL, directory=folder, target="0", login_role=None)
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_migrations_applied_before_the_checksum_get_one(admin: Any) -> None:
+    await admin.execute("UPDATE ipc_meta.schema_migrations SET checksum = NULL")
+    migrations = discover(DEFAULT_DIR)
+
+    assert await migrate.verify_checksums(admin, migrations) == [m.version for m in migrations]
+    assert await migrate.verify_checksums(admin, migrations) == []
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_versions_newer_than_the_folder_are_ignored(admin: Any, tmp_path: Path) -> None:
+    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0006, e a
+    # pasta antiga não. As migrações só acrescentam, então a versão anterior sobe normalmente.
+    folder = _copy_migrations(tmp_path)
+    for path in folder.glob("0006_*"):
+        path.unlink()
+
+    assert await migrate_up(admin, discover(folder)) == []
+
+
+# --- Conta de verificação do deploy (S28-02) ---------------------------------------------------
+
+
+async def _check_flags(connection: Any) -> dict[str, bool]:
+    rows = await connection.fetch("SELECT name, check_account FROM app.account")
+    return {row["name"]: row["check_account"] for row in rows}
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_the_check_account_is_marked_by_email_or_name(admin: Any) -> None:
+    check = await _insert_account(admin, "Verificação", "monitor", "ativo")
+    await admin.execute(
+        "INSERT INTO app.account_email (email, account_id) VALUES ($1, $2)",
+        "verificacao@cin.ufpe.br",
+        check,
+    )
+    await _insert_account(admin, "Monitora", "monitor", "ativo")
+
+    assert await migrate.mark_check_account(admin, " Verificacao@CIN.ufpe.br ")
+    assert await _check_flags(admin) == {"Verificação": True, "Monitora": False}
+    # Só uma conta fica marcada: trocar a conta de verificação desmarca a anterior.
+    assert await migrate.mark_check_account(admin, "monitora")
+    assert await _check_flags(admin) == {"Verificação": False, "Monitora": True}
+    # Um login que não existe não muda nada.
+    assert not await migrate.mark_check_account(admin, "ninguem@cin.ufpe.br")
+    assert await _check_flags(admin) == {"Verificação": False, "Monitora": True}
+
+
+@requires_database
+def test_cli_up_marks_the_check_account(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    asyncio.run(fresh_schema())
+    monkeypatch.setenv("IPC_DATABASE_ADMIN_URL", DATABASE_URL)
+    monkeypatch.setenv("IPC_CHECK_ACCOUNT_LOGIN", "ninguem@cin.ufpe.br")
+
+    assert migrate.main(["up"]) == 0
+    assert (
+        capsys.readouterr().out.strip()
+        == "aplicadas: nenhuma; conta de verificação: não encontrada"
+    )

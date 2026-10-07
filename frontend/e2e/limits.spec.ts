@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Limite de taxa por conta (S13-02; antes, por X-Client-Id anônimo): roda por último (projeto
- * "limite"), porque todos os testes usam a conta do desenvolvedor e dividem os 30 por minuto.
+ * Limite de taxa por conta (S13-02; antes, por X-Client-Id anônimo): roda no projeto "limite", com
+ * a conta só dele (S28-04), então gastar os 30 por minuto não atrapalha nenhum outro teste.
  */
 test("acima de 30 verificações por minuto da mesma conta, a página mostra o limite e a espera", async ({ page }) => {
   await page.goto("/");

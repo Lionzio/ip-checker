@@ -54,6 +54,12 @@ export function Privacy() {
         o IP. Os professores consultam só contagens agregadas (regras mais apontadas, erros de sintaxe e
         volume por semana), e os registros são apagados depois de 12 meses.
       </p>
+      <p>
+        Para medir quanto a equipe usa a ferramenta (um dos critérios do piloto), o sistema guarda, para
+        cada conta, em quais listas de cada período ela já verificou algum código: só a lista e o
+        período, sem data, código nem resultado. Os professores veem só a porcentagem da equipe que
+        usou cada lista, nunca quem, e o registro some junto com a conta.
+      </p>
 
       <h3 className="text-lg font-semibold">Feedback</h3>
       <p>
@@ -72,6 +78,11 @@ export function Privacy() {
           trocar a senha, ao mudar de cargo ou ao ser removido da equipe.
         </li>
         <li>O link de verificação do registro é enviado ao seu e-mail por um serviço de envio de e-mails.</li>
+        <li>
+          Uma cópia do banco (contas e estatísticas, nunca código de aluno) é feita toda semana,
+          criptografada, e guardada por 90 dias, para recuperar os dados se algo der errado. Só o
+          desenvolvedor da plataforma tem a chave que a abre.
+        </li>
         <li>
           Os registros técnicos não guardam código, senhas, tokens nem o IP. O IP é usado só na memória
           do servidor, para o limite de requisições, e some em até 2 minutos.

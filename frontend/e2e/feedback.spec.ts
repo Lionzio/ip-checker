@@ -1,22 +1,26 @@
 import { expect, type Page, test } from "@playwright/test";
+import { accountOf } from "./accounts";
 import { pageFetch } from "./pageFetch";
 
 /**
  * Feedback para o aluno (S19-01; FR-30, US-32) com o analisador de verdade e a IA falsa do compose
- * (IPC_LLM_PROVIDER=fake). Roda no projeto "feedback", sozinho: troca o tratamento do
- * desenvolvedor para conferir a apresentação nos três e o devolve no fim.
+ * (IPC_LLM_PROVIDER=fake). Roda no projeto "feedback", com a conta só dele (S28-04): troca o
+ * tratamento para conferir a apresentação nos três e o devolve no fim.
  */
-const NAME = process.env.E2E_NAME ?? "";
 const VALID = "x = int(input())\nif x > 0:\n    print(x)\n";
 const INVALID = "x = int(input())\nfor i in range(x):\n    print(i)\n";
 const FAKE_TEXT =
   "Gostei bastante de como você organizou a leitura dos dados. Como dica, vale testar o programa com outros valores de entrada.";
 
-const PRESENTATIONS = {
-  masculino: `sou o monitor ${NAME} e`,
-  feminino: `sou a monitora ${NAME} e`,
-  neutro: `aqui é ${NAME}, da monitoria, e`,
-} as const;
+/** A apresentação de cada tratamento, com o nome da conta do projeto "feedback" (S28-04). */
+function presentation(treatment: "masculino" | "feminino" | "neutro"): string {
+  const { name } = accountOf("feedback");
+  return {
+    masculino: `sou o monitor ${name} e`,
+    feminino: `sou a monitora ${name} e`,
+    neutro: `aqui é ${name}, da monitoria, e`,
+  }[treatment];
+}
 
 async function verify(page: Page, code: string) {
   await page.goto("/");
@@ -38,7 +42,7 @@ async function generate(page: Page, code: string, student: string) {
 test("o feedback usa a apresentação do tratamento e a frase obrigatória do resultado", async ({ page }) => {
   await page.goto("/");
   const me = await pageFetch(page, "/api/v1/auth/me");
-  const original = (me.body as { treatment: keyof typeof PRESENTATIONS }).treatment;
+  const original = (me.body as { treatment: string }).treatment;
   try {
     for (const treatment of ["masculino", "feminino", "neutro"] as const) {
       const changed = await pageFetch(page, "/api/v1/profile", { method: "PATCH", body: { treatment } });
@@ -47,7 +51,7 @@ test("o feedback usa a apresentação do tratamento e a frase obrigatória do re
       const { panel, text } = await generate(page, VALID, "Isabella Schultz");
 
       expect(text).toBe(
-        `Olá, Isabella Schultz, ${PRESENTATIONS[treatment]} seu código estava muito bom. ` +
+        `Olá, Isabella Schultz, ${presentation(treatment)} seu código estava muito bom. ` +
           `Sua questão está ótima, não houve nenhuma violação de regras. ${FAKE_TEXT}`,
       );
       await expect(panel).toContainText("Escrito com IA a partir do resultado do IP-Checker.");

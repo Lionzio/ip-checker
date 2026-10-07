@@ -6,7 +6,8 @@ name: Deploy do piloto
 #
 #   1. instalar as ferramentas, sem nenhum segredo no ambiente;
 #   2. conferir que o commit ainda é a ponta da main (os hooks publicam a ponta, não um commit);
-#   3. migrar o banco do piloto (as migrações só acrescentam, então servem à versão no ar);
+#   3. migrar o banco do piloto (as migrações só acrescentam, então servem à versão no ar) e marcar
+#      a conta de verificação, que fica fora da telemetria e do relatório de eficácia (S28-02);
 #   4. publicar a API no Render e esperar o /ready com a versão nova;
 #   5. só então publicar a página na Vercel e esperar o /version.json;
 #   6. conferir o piloto de fora (mesma origem, cabeçalhos, TLS, login) e rodar o smoke e2e.
@@ -15,7 +16,7 @@ name: Deploy do piloto
 # rollback está em docs/runbook.md.
 #
 # Configuração no GitHub (Settings > Secrets and variables > Actions), passo a passo em
-# deploy/README.md, seção "Piloto":
+# deploy/piloto.md:
 #   secrets:   RENDER_DEPLOY_HOOK_URL, VERCEL_DEPLOY_HOOK_URL, PILOT_DATABASE_ADMIN_URL,
 #              PILOT_DB_API_PASSWORD, PILOT_CHECK_LOGIN, PILOT_CHECK_PASSWORD, PILOT_CHECK_NAME
 #   variables: PILOT_API_URL (Render), PILOT_WEB_URL (Vercel)
@@ -49,7 +50,7 @@ jobs:
     steps:
       - run: >-
           echo "::warning::Deploy pulado: defina as variáveis PILOT_API_URL e PILOT_WEB_URL e os
-          secrets RENDER_DEPLOY_HOOK_URL e VERCEL_DEPLOY_HOOK_URL (deploy/README.md, Piloto)."
+          secrets RENDER_DEPLOY_HOOK_URL e VERCEL_DEPLOY_HOOK_URL (deploy/piloto.md)."
 
   deploy:
     name: Deploy no Render e na Vercel
@@ -124,6 +125,7 @@ jobs:
         env:
           IPC_DATABASE_ADMIN_URL: ${{ secrets.PILOT_DATABASE_ADMIN_URL }}
           IPC_DB_LOGIN_PASSWORD: ${{ secrets.PILOT_DB_API_PASSWORD }}
+          IPC_CHECK_ACCOUNT_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
         run: |
           # As migrações precisam servir também à versão que ainda está no ar (só acrescentam).
           if [ -z "$IPC_DATABASE_ADMIN_URL" ] || [ -z "$IPC_DB_LOGIN_PASSWORD" ]; then

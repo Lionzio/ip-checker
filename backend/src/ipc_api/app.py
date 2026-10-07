@@ -28,6 +28,7 @@ from ipc_api.accounts.models import DeveloperSeed
 from ipc_api.accounts.passwords import Passwords, password_problems
 from ipc_api.accounts.store import AccountStore
 from ipc_api.admission import Admission
+from ipc_api.adoption import Adoption
 from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.google import Expiring, GoogleOidc
 from ipc_api.auth.google_accounts import GoogleAccounts
@@ -235,10 +236,14 @@ def create_app(
             app.state.telemetry = await _start_telemetry(
                 config, telemetry_sink, client, production=account_store is None
             )
+            app.state.adoption = Adoption(store)
             app.state.housekeeping = Housekeeping(store, config.housekeeping, clock=clock)
             app.state.housekeeping.start()
             yield
         finally:
+            adoption = getattr(app.state, "adoption", None)
+            if adoption is not None:
+                await adoption.drain()
             housekeeping = getattr(app.state, "housekeeping", None)
             if housekeeping is not None:
                 await housekeeping.stop()

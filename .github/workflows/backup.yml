@@ -1,0 +1,88 @@
+name: Backup do banco do piloto
+
+# Backup semanal criptografado dos esquemas app (contas, sessões, registro de gerenciamento, cota e
+# adoção) e telemetry (S28-03). O dump é conferido (pg_restore --list), criptografado com a chave
+# pública age de BACKUP_AGE_RECIPIENT e guardado como artefato do workflow por 90 dias. Só quem tem
+# a chave privada, fora do GitHub, consegue abrir. Como restaurar: docs/runbook.md, "Restaurar um
+# backup".
+#
+# Configuração (Settings > Secrets and variables > Actions):
+#   secret:   PILOT_DATABASE_ADMIN_URL (o mesmo do deploy)
+#   variable: BACKUP_AGE_RECIPIENT (chave pública age1..., criada com age-keygen; não é segredo)
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-piloto
+  cancel-in-progress: false
+
+env:
+  # A mesma imagem do banco do compose e da CI, com o pg_dump 17 do Supabase.
+  POSTGRES_IMAGE: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+
+jobs:
+  not-configured:
+    name: Backup ainda não configurado
+    if: vars.BACKUP_AGE_RECIPIENT == ''
+    runs-on: ubuntu-latest
+    steps:
+      - run: >-
+          echo "::warning::Backup pulado: defina a variável BACKUP_AGE_RECIPIENT (chave pública
+          age) e o secret PILOT_DATABASE_ADMIN_URL (docs/runbook.md, Backup)."
+
+  backup:
+    name: pg_dump criptografado (app e telemetry)
+    if: vars.BACKUP_AGE_RECIPIENT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Instalar o age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+
+      - name: Dump, conferência e criptografia
+        env:
+          DATABASE_URL: ${{ secrets.PILOT_DATABASE_ADMIN_URL }}
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Falta o secret PILOT_DATABASE_ADMIN_URL."
+            exit 1
+          fi
+          if ! [[ "$RECIPIENT" =~ ^age1[a-z0-9]{58}$ ]]; then
+            echo "::error::BACKUP_AGE_RECIPIENT não parece uma chave pública age (age1...)."
+            exit 1
+          fi
+          umask 077
+          mkdir -p backup
+          name="ipc-piloto-$(date -u +%Y-%m-%d)"
+          # O dump em claro só existe no disco do runner, durante este passo.
+          docker run --rm -e DATABASE_URL -v "$PWD/backup:/out" --user "$(id -u):$(id -g)" \
+            "$POSTGRES_IMAGE" sh -c \
+            'pg_dump --format=custom --schema=app --schema=telemetry --no-owner --no-privileges \
+               --file=/out/dump "$DATABASE_URL" && pg_restore --list /out/dump > /out/conteudo.txt'
+          tables=$(grep -c " TABLE DATA " backup/conteudo.txt || true)
+          echo "Tabelas com dados no dump: $tables"
+          if [ "$tables" -lt 5 ]; then
+            echo "::error::O dump tem só $tables tabelas com dados; algo está errado."
+            exit 1
+          fi
+          age --encrypt --recipient "$RECIPIENT" --output "backup/$name.dump.age" backup/dump
+          shred -u backup/dump backup/conteudo.txt
+          (cd backup && sha256sum "$name.dump.age" > "$name.dump.age.sha256")
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          ls -l backup
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.NAME }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error

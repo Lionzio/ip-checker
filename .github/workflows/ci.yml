@@ -13,8 +13,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # Desde a S28-04, a CI pesada não roda duas vezes no mesmo commit nem quando só a documentação
+    # mudou. A main só avança por fast-forward da develop (branch-policy), então o commit que chega
+    # nela já passou pela CI completa na develop: aqui só se confere que passou. Um PR ou push que
+    # só muda arquivos .md também pula os testes. Na dúvida (sem base para comparar, primeiro push
+    # de uma branch), roda tudo.
+    name: O que precisa rodar
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      heavy: ${{ steps.decide.outputs.heavy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decidir
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          heavy=true
+          if [ "$EVENT" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            green=$(gh api "repos/$REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&branch=develop&event=push&status=success" \
+              -q '[.workflow_runs[] | select(.name == "CI")] | length')
+            if [ "$green" != "0" ]; then
+              heavy=false
+              echo "::notice::$GITHUB_SHA já passou pela CI completa na develop; na main, só a política de branches."
+            else
+              echo "::warning::Nenhuma CI verde da develop para $GITHUB_SHA; roda tudo."
+            fi
+          elif [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            changed=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+            if [ -n "$changed" ] && ! printf '%s\n' "$changed" | grep -qvE '\.md$'; then
+              heavy=false
+              echo "::notice::Só documentação (.md) mudou; os testes não rodam."
+            fi
+          fi
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+
   backend:
     name: Backend (lint, tipos, testes)
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -69,7 +117,10 @@ jobs:
     # gabaritos/ é ignorada pelo Git, e os testes mostram só arquivo, regra e linha, nunca o código.
     name: Gabaritos (zero violação, Q-14)
     # PRs do Dependabot não recebem os segredos do Actions: sem o token, o checkout falharia.
-    if: vars.GABARITOS_REPO != '' && github.actor != 'dependabot[bot]'
+    needs: changes
+    if: >-
+      needs.changes.outputs.heavy == 'true' &&
+      vars.GABARITOS_REPO != '' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -101,6 +152,8 @@ jobs:
 
   security:
     name: Segurança (isolamento, submissões maliciosas e imagem do piloto)
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -132,6 +185,8 @@ jobs:
 
   frontend:
     name: Frontend (lint, tipos, testes, build)
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -167,6 +222,8 @@ jobs:
 
   e2e:
     name: Smoke e2e (compose completo + Playwright)
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

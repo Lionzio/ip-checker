@@ -116,7 +116,7 @@ Para depurar localmente com o formato padrão do uvicorn, use `IPC_JSON_LOGS=0`.
 
 A imagem do backend (`backend/Dockerfile`) roda os dois serviços, cada um com o seu comando, e é
 construída a partir da raiz do repositório, porque embute os rulesets. O endurecimento e os testes de isolamento estão em
-[`../deploy/README.md`](../deploy/README.md). A suíte de segurança (`tests/security/`:
+[`../deploy/seguranca.md`](../deploy/seguranca.md). A suíte de segurança (`tests/security/`:
 isolamento e submissões maliciosas) é pulada na suíte normal e roda com `IPC_SECURITY_TESTS=1`.
 
 ## Limites só no Linux

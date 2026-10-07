@@ -8,16 +8,25 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
+from ipc_api.accounts.models import Account
 from ipc_api.admission import Admission, Overloaded
+from ipc_api.adoption import Adoption
 from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
-from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings, get_telemetry
+from ipc_api.deps import (
+    get_admission,
+    get_adoption,
+    get_analyzer,
+    get_request_id,
+    get_settings,
+    get_telemetry,
+)
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import ValidateRequest, ValidateResponse
 from ipc_api.settings import ApiSettings
-from ipc_api.telemetry import Outcome, Telemetry, TelemetryEvent
+from ipc_api.telemetry import Outcome, Telemetry, TelemetryEvent, semester_of
 from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
@@ -61,15 +70,19 @@ async def validate(
     settings: Annotated[ApiSettings, Depends(get_settings)],
     request_id: Annotated[str, Depends(get_request_id)],
     telemetry: Annotated[Telemetry, Depends(get_telemetry)],
+    adoption: Annotated[Adoption, Depends(get_adoption)],
+    account: Annotated[Account, Depends(require_active_account)],
 ) -> ValidateResponse:
     # O resultado diz respeito ao código de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
+    # As verificações da conta de verificação do deploy não contam no uso (S28-02).
+    counted = not account.check_account
     request.state.list_number = body.list_number
     enabled = body.list_number in settings.enabled_lists
     try:
         check_code(body.code)
     except ApiError:
-        if enabled:
+        if enabled and counted:
             _record_refusal(telemetry, body.list_number, "rejected")
         raise
     if not enabled:
@@ -92,7 +105,8 @@ async def validate(
         raise overloaded() from None
     except AnalyzerRejected as exc:
         limit = exc.code == ErrorCode.ANALYSIS_LIMIT
-        _record_refusal(telemetry, body.list_number, "analysis_limit" if limit else "rejected")
+        if counted:
+            _record_refusal(telemetry, body.list_number, "analysis_limit" if limit else "rejected")
         raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
@@ -100,17 +114,20 @@ async def validate(
 
     request.state.ruleset_version = result.ruleset_version
     request.state.outcome = result.status
-    # Fora do caminho da resposta: só entra na fila, sem código, conta ou IP (FR-16).
-    telemetry.record(
-        TelemetryEvent.from_result(
-            ruleset_version=result.ruleset_version,
-            list_number=result.list_number,
-            question_id=body.question_id,
-            outcome=result.status,
-            rule_ids=[violation.rule_id for violation in result.violations],
-            analysis_ms=analysis_ms,
+    if counted:
+        # Fora do caminho da resposta: só entra na fila, sem código, conta ou IP (FR-16).
+        telemetry.record(
+            TelemetryEvent.from_result(
+                ruleset_version=result.ruleset_version,
+                list_number=result.list_number,
+                question_id=body.question_id,
+                outcome=result.status,
+                rule_ids=[violation.rule_id for violation in result.violations],
+                analysis_ms=analysis_ms,
+            )
         )
-    )
+        # A adoção é ligada à conta, mas só diz que ela usou a lista no período (P-09, critério 2).
+        adoption.record(account.id, semester_of(result.ruleset_version), result.list_number)
     return ValidateResponse(
         request_id=request_id,
         ruleset_version=result.ruleset_version,

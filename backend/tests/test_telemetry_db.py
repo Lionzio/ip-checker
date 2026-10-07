@@ -45,7 +45,7 @@ async def api_url(admin: Any) -> str:
 
 @pytest.fixture
 async def reader(admin: Any) -> AsyncIterator[Any]:
-    """Uma pessoa da coordenação com o papel ipc_reader (como o deploy/README ensina)."""
+    """Uma pessoa da coordenação com o papel ipc_reader (como o deploy/compose.md ensina)."""
     password = secrets.token_urlsafe(16)
     await admin.execute("DROP ROLE IF EXISTS ipc_leitura_teste")
     statement = await admin.fetchval(

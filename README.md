@@ -6,15 +6,20 @@ soluções em busca de plágio e redige o feedback para o aluno. O código é an
 sintática (AST), num serviço isolado. O acesso é restrito à equipe da disciplina, com login,
 aprovação manual e cargos (P-13 do blueprint).
 
-Hoje (06/10/2026, Sprint 23 concluída), as seis listas estão habilitadas, com as exigências do
-assunto de cada uma (R-02 e a recursão da R-68), o painel de plágio, o feedback por IA ou por
-modelos de texto, o gerenciamento da equipe com registro das ações e a telemetria anônima. O
-piloto com a equipe é em 2027.1; o primeiro deploy depende das contas externas do autor
-(seção "Pendências do autor").
+Hoje (07/10/2026, Sprint 28 concluída), as seis listas estão habilitadas, com as regras por
+questão, o painel de plágio (dois códigos ou contra a turma, por árvore canonizada), o feedback por
+IA ou por modelos de texto, a correção em lote, o gerenciamento da equipe com registro das ações, a
+telemetria anônima e o relatório de eficácia. O piloto está no ar (Render, Vercel e Supabase) desde
+07/10/2026; o uso pela equipe é em 2027.1.
 
-O blueprint completo está em [`docs/blueprint.md`](docs/blueprint.md).
-O guia de uso, para a equipe da disciplina, está em [`docs/guia-da-equipe.md`](docs/guia-da-equipe.md).
-O cadastro das regras de uma questão, para monitores e professores, está em [`RULES.md`](RULES.md).
+| Para | Leia |
+|---|---|
+| Usar (equipe da disciplina) | [`docs/guia-da-equipe.md`](docs/guia-da-equipe.md) |
+| Cadastrar as regras de uma questão | [`RULES.md`](RULES.md) |
+| Começar a manter o projeto | [`docs/onboarding.md`](docs/onboarding.md) e [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| Relatar uma falha de segurança | [`SECURITY.md`](SECURITY.md) |
+| Achar qualquer outro documento | [`docs/README.md`](docs/README.md) |
+| O que cada sprint entregou | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ## Estrutura do repositório
 
@@ -23,9 +28,10 @@ O cadastro das regras de uma questão, para monitores e professores, está em [`
 | `backend/` | Projeto Python 3.13: motor de regras e analisador isolado (`ipc_analyzer`) e API pública (`ipc_api`) | Sprint 1 |
 | `frontend/` | SPA React + Vite + TypeScript | Sprint 2 |
 | `rulesets/` | Regras como dados (YAML por período), editadas por monitores e professores | Sprint 1 |
-| `docs/` | Blueprint, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 |
+| `docs/` | Blueprint, decisões, ADRs, runbook, onboarding, relatório de eficácia, matriz de mapeamento R-xx → fatos e contrato da API (`openapi.json`) | Sprint 1 (dividido na 28) |
 | `deploy/` | Compose da borda (Caddy com a SPA), da `api` e do `analyzer` endurecido; imagem do piloto no Render (`deploy/render/`) | Sprint 6 |
-| `database/` | Migrações SQL das contas e sessões, da telemetria, do registro de gerenciamento e da redefinição de senha (PostgreSQL/Supabase) | Sprints 13, 21, 23 e 24 |
+| `database/` | Migrações SQL das contas e sessões, da telemetria, do registro de gerenciamento, da redefinição de senha, da limpeza diária e da adoção por lista (PostgreSQL/Supabase) | Sprints 13, 21, 23, 24, 25 e 28 |
+| `scripts/` | `release.sh`: fast-forward da `main`, tag `sprint-NN` e GitHub Release | Sprint 28 |
 
 `rulesets/` fica fora do `backend/` para que uma mudança de regra seja um PR só de dados
 (NFR-17). `database/` também é separada: o esquema é usado pela API e pelas consultas dos
@@ -57,9 +63,13 @@ npm run dev
 ```
 
 O compose completo (página, API, `analyzer` endurecido e banco), com o `deploy/.env` que ele
-pede e os testes de isolamento, está em [`deploy/README.md`](deploy/README.md).
+pede, está em [`docs/onboarding.md`](docs/onboarding.md) e [`deploy/compose.md`](deploy/compose.md);
+os testes de isolamento, em [`deploy/seguranca.md`](deploy/seguranca.md).
 
-A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`:
+A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e na `main`. Desde a
+S28-04, um primeiro job decide o que roda: na `main`, o commit já passou pela CI completa na
+`develop`, e só a política de branches roda; um PR ou push que só muda arquivos `.md` pula os
+testes. Os jobs:
 
 - backend: ruff, mypy strict, import-linter, `ipc-rules validate` (ruleset, questões e casos
   golden) e pytest, com o contrato OpenAPI;
@@ -67,16 +77,19 @@ A CI (`.github/workflows/ci.yml`) roda em todo PR e em todo push na `develop` e 
 - frontend: tipos gerados do OpenAPI em dia, ESLint, TypeScript, Vitest e build;
 - e2e: o compose completo no Playwright, com login, registro e verificação de e-mail (Mailpit),
   gerenciamento e registro de ações, as seis listas, plágio, feedback com a IA falsa e o limite
-  por conta; uma pausa de 61 s separa os projetos, porque todos dividem as 30 verificações por
-  minuto da conta do desenvolvedor;
+  por conta; os projetos que mexem na própria conta (senha, tratamento, limite) têm cada um a sua,
+  criada pelo projeto "contas" (S28-04);
 - gabaritos: as respostas oficiais de períodos anteriores com zero violação, só quando o
   repositório privado está configurado (`rulesets/README.md`);
 - branch-policy: na `main`, falha se ela tiver algum commit que não esteja na `develop`.
 
+Fora da CI, à mão: "Deploy do piloto" (também depois de cada CI verde na `main`), "Carga no
+piloto" (k6 no Render, S28-01), "Backup do banco do piloto" (também todo domingo, S28-03) e
+"Auditoria de segurança" (também toda segunda-feira).
+
 No compose, os e-mails de verificação vão para o Mailpit (<http://127.0.0.1:8125>). Para
 entregar de verdade (Gmail ou Brevo), veja "Enviar de verdade a partir do compose" em
-[`deploy/README.md`](deploy/README.md); o link do e-mail só abre na própria máquina até o piloto
-estar no ar.
+[`deploy/compose.md`](deploy/compose.md).
 
 ### Portas locais
 
@@ -104,13 +117,12 @@ se a porta estiver ocupada, ele falha em vez de pular para outra.
 | `main` | Branch de release: cada push nela, com a CI verde, faz o deploy do piloto (`.github/workflows/deploy.yml`) | Só por *fast-forward* da `develop` |
 
 A `main` fica sempre igual ou atrás da `develop`. Por isso ela nunca recebe commit direto nem
-merge de PR pelo GitHub: o botão de merge cria um commit que não existe na `develop`. Uma release
-é feita assim:
+merge de PR pelo GitHub: o botão de merge cria um commit que não existe na `develop`. Desde a
+S28-04, uma release é feita pelo script, que confere a CI verde da `develop`, avança a `main` por
+fast-forward, cria a tag `sprint-NN` e publica o GitHub Release com a seção do `CHANGELOG.md`:
 
 ```bash
-git switch main
-git merge --ff-only develop
-git push origin main
+scripts/release.sh 28
 ```
 
 O job `branch-policy` da CI falha se a `main` tiver algum commit que não esteja na `develop`.
@@ -147,9 +159,10 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 25 | Endurecimento para o primeiro deploy: S25-01 CI fixada por SHA, Dependabot e auditoria semanal; S25-02 deploy seguro, roteiro do primeiro deploy e runbook; S25-03 limpeza diária do banco e expurgo de contas sem atividade (Q-19 d); S25-04 prazos ponta a ponta, limite geral por IP, seccomp e rlimits ampliados; S25-05 docstrings e dados pessoais fora do feedback por IA e cota persistida | Concluída (falta o primeiro deploy, `deploy/README.md`) |
 | 26 | Correção em lote e relatório: S26-01 cabeçalho e navegação no celular, títulos por tela e componentes comuns; S26-02 "Próximo aluno", Ctrl+Enter, rascunho em memória e editor com Tab, Limpar e Colar; S26-03 relatório agrupado por regra, com resumo, trecho e clique na linha; S26-04 prazos, cancelamento e sessão vencida iguais em todas as telas, busca no gerenciamento | Concluída |
 | 27 | Plágio por árvore canonizada (ADR-07): S27-01 árvore canonizada com reordenação por dependência, Dice e contenção; S27-02 uma solução contra até 100 da turma, com o peso pela raridade (IDF); S27-03 trechos em comum realçados nos dois códigos, Trocar A e B e Limpar | Concluída |
-| 28 | Carga, eficácia e passagem de bastão: k6 com login, relatório de eficácia, runbook, onboarding e releases | Próxima (aguarda autorização) |
+| 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (faltam o ensaio do rollback e a carga no piloto, que dependem da conta de verificação) |
 | 29 | Indícios de uso de IA (ADR-08): múltiplas violações, semelhança com referências geradas por IA e marcadores de estilo | Planejada |
 
+O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
 documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com a autorização do autor.
 
@@ -170,11 +183,14 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 ## Pendências do autor
 
 Passos que dependem de contas e segredos do autor (o passo a passo está em
-[`deploy/README.md`](deploy/README.md)):
+[`deploy/piloto.md`](deploy/piloto.md) e no [runbook](docs/runbook.md)):
 
-- [ ] Supabase em us-east-1 (Q-20), Render, Vercel e UptimeRobot (com o terceiro monitor, de `/health/slo`)
-- [ ] Envio de e-mail do piloto: Brevo com um remetente confirmado (Q-17)
+- [x] Supabase em us-east-1 (Q-20), Render, Vercel e Brevo (07/10/2026)
+- [ ] Conta de verificação do deploy e os secrets `PILOT_CHECK_*`; depois, o "Deploy do piloto" na
+      `main`, que confirma a P-12 e a P-15
+- [ ] Os três monitores do UptimeRobot (`/ready`, `/health/slo` e a página)
+- [ ] Chave do backup (`age-keygen`) e a variável `BACKUP_AGE_RECIPIENT`
+- [ ] Plano do Render: o Starter antes do primeiro prazo de 2027.1 (S28-01, ADR-03)
 - [ ] Cliente OAuth do Google (opcional) e provedor de IA do feedback (opcional, Q-16)
-- [ ] Primeiro deploy com login, que confirma a P-12 e a P-15, e o fast-forward da `main`
 - [ ] Repositório privado dos gabaritos e o token só de leitura (Q-14)
 - [ ] Revisão do guia da equipe e data da apresentação do Marco 2

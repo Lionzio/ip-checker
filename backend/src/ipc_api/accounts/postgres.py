@@ -37,7 +37,7 @@ _SELECT_ACCOUNT = """
 SELECT
     a.id, a.name, a.course, a.treatment::text AS treatment, a.role::text AS role,
     a.status::text AS status, a.ja_foi_monitor_chefe, a.password_hash, a.signup_method,
-    a.created_at, a.google_sub,
+    a.created_at, a.google_sub, a.check_account,
     array(
         SELECT e.email FROM app.account_email e
         WHERE e.account_id = a.id ORDER BY e.is_primary DESC, e.email
@@ -104,6 +104,7 @@ def _account(row: Any) -> Account:
         emails=tuple(row["emails"]),
         created_at=row["created_at"],
         google_sub=row["google_sub"],
+        check_account=row["check_account"],
     )
 
 
@@ -533,6 +534,16 @@ class PostgresAccountStore:
             inactive=row["inactive"],
             log=row["log"],
         )
+
+    async def record_adoption(self, account_id: UUID, semester: str, list_number: int) -> None:
+        async with _guard():
+            await self._pool.execute(
+                "INSERT INTO app.list_adoption (account_id, semester, list_number) "
+                "VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+                account_id,
+                semester,
+                list_number,
+            )
 
     async def take_feedback_quota(
         self, account_id: UUID, day: date, per_account: int, daily_cap: int
