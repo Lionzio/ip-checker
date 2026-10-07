@@ -55,6 +55,12 @@ A Sprint 28 (S28-01 a S28-04) foi concluída em 07/10/2026, no mesmo dia em que 
   só `.md` mudando, nenhum teste. O modelo de PR ganhou "Como foi testado" e os itens de dados,
   migração, contrato e documentação.
 
+Antes da primeira release pelo pipeline, as verificações do piloto rodaram contra o piloto de
+verdade pela primeira vez e acharam duas expectativas antigas nos testes (a CSP com o endereço do
+Render, de antes da mesma origem, e o `/auth/options` sem o `feedback_ai`); o piloto estava
+certo, e os testes foram corrigidos. Enquanto a conta de verificação não existe, o pipeline
+confere o que não precisa de login e avisa, em vez de falhar.
+
 ## Sprint 27 — Plágio por árvore canonizada
 
 A Sprint 27 (S27-01 a S27-03) foi concluída em 06/10/2026, com estas decisões de implementação:

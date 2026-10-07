@@ -12,6 +12,10 @@ name: Deploy do piloto
 #   5. só então publicar a página na Vercel e esperar o /version.json;
 #   6. conferir o piloto de fora (mesma origem, cabeçalhos, TLS, login) e rodar o smoke e2e.
 #
+# A conta de verificação (secrets PILOT_CHECK_*) só pode ser criada com o piloto no ar. Enquanto
+# ela não existe, o passo 6 confere tudo o que não precisa de login e avisa que o login e o smoke
+# e2e ficaram de fora; o resto do pipeline continua bloqueante.
+#
 # Se a API não sobe, a página não é publicada: a página nova nunca fica no ar com a API antiga. O
 # rollback está em docs/runbook.md.
 #
@@ -63,6 +67,7 @@ jobs:
     timeout-minutes: 45
     env:
       RELEASE: ${{ github.event.workflow_run.head_sha || github.sha }}
+      HAS_CHECK_ACCOUNT: ${{ secrets.PILOT_CHECK_LOGIN != '' && secrets.PILOT_CHECK_PASSWORD != '' }}
       PILOT_API_URL: ${{ vars.PILOT_API_URL }}
       PILOT_WEB_URL: ${{ vars.PILOT_WEB_URL }}
       GH_TOKEN: ${{ github.token }}
@@ -194,13 +199,13 @@ jobs:
           PILOT_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
         run: |
           if [ -z "$PILOT_LOGIN" ] || [ -z "$PILOT_PASSWORD" ]; then
-            echo "::error::Faltam os secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD (conta ativa usada nas verificações)."
-            exit 1
+            echo "::warning::Sem a conta de verificação (secrets PILOT_CHECK_*), o login pela página e o smoke e2e não foram conferidos. Crie a conta (deploy/piloto.md, passo 8)."
           fi
           uv run --no-sync pytest tests/pilot --no-cov -v
 
       - name: Smoke e2e no piloto (Playwright)
-        if: env.SKIP != '1'
+        # O smoke entra com a conta de verificação; sem ela, o passo anterior já avisou.
+        if: env.SKIP != '1' && env.HAS_CHECK_ACCOUNT == 'true'
         working-directory: frontend
         env:
           E2E_BASE_URL: ${{ env.PILOT_WEB_URL }}
