@@ -168,7 +168,8 @@ def test_login_validation_and_logout_through_the_page() -> None:
             headers=page,
         )
         assert response.status_code == 200
-        assert [v["rule_id"] for v in response.json()["violations"]] == ["R-34", "R-35"]
+        # R-02 desde a S23: a Lista 1 exige um comando condicional.
+        assert [v["rule_id"] for v in response.json()["violations"]] == ["R-02", "R-34", "R-35"]
 
         assert (
             client.post(f"{WEB}/api/v1/auth/logout", content=b"", headers=page).status_code == 204

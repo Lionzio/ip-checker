@@ -392,3 +392,24 @@ def test_default_limits_follow_the_blueprint() -> None:
 def test_invalid_campus_cidrs_prevent_startup() -> None:
     with pytest.raises(ValueError, match="IPC_RATE_LIMIT_CAMPUS_CIDRS"):
         ApiSettings.from_env({"IPC_RATE_LIMIT_CAMPUS_CIDRS": "campus"})
+
+
+def test_proxy_check_shows_only_proxy_headers_and_the_client_ip(analyzer: Analyzer) -> None:
+    # S30-03: diagnóstico do piloto; devolve a quem chama só os cabeçalhos de proxy e a chave.
+    with make_client(analyzer, BEHIND_PROXY) as client:
+        response = client.get(
+            "/api/v1/proxy-check",
+            headers={
+                "X-Forwarded-For": "203.0.113.9, 198.51.100.7",
+                "Cookie": "segredo=1",
+                "Authorization": "Bearer segredo",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json() == {
+        "headers": {"x-forwarded-for": ["203.0.113.9, 198.51.100.7"]},
+        "client_ip": "198.51.100.7",
+        "trusted_proxy_hops": 1,
+    }
