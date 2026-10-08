@@ -168,7 +168,12 @@ repositório.
    A conta de verificação só pode ser criada com a página no ar: entre como desenvolvedor na página
    da Vercel, registre a conta com um e-mail institucional seu que não seja da conta do
    desenvolvedor, confirme o e-mail, aprove-a como monitor em **Gerenciar** e não a use para mais
-   nada. Sem ela, o pipeline publica a versão nova, confere tudo o que não precisa de login e
+   nada. Os e-mails da conta do desenvolvedor são reservados a ela; um subendereço da mesma caixa
+   (como `usuario+verificacao@cin.ufpe.br`) é outro e-mail para o IP-Checker e chega na mesma caixa
+   (S30-01, 08/10/2026). A senha pode ser gerada e gravada no secret sem aparecer na tela:
+   `senha="$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)Aa!"; printf '%s' "$senha" | clip;
+   gh secret set PILOT_CHECK_PASSWORD --body "$senha"; unset senha`, colando-a (Ctrl+V) no cadastro
+   e limpando a área de transferência depois. Sem ela, o pipeline publica a versão nova, confere tudo o que não precisa de login e
    avisa que o login pela página e o smoke e2e ficaram de fora. A cada deploy, o passo
    das migrações marca essa conta no banco (`IPC_CHECK_ACCOUNT_LOGIN`, S28-02): as verificações
    dela não entram na telemetria, e ela não conta como membro no relatório de eficácia.
@@ -185,6 +190,8 @@ repositório.
    e alerta por e-mail: `<endereço do Render>/ready`, `<endereço do Render>/health/slo` e
    `<endereço da Vercel>/`. O primeiro também mantém o plano gratuito do Render acordado (ADR-03);
    o segundo é o alerta de latência e de erro ([`compose.md`](compose.md), "Telemetria e alertas").
+   O plano gratuito só consulta com HEAD e só aceita 2xx e 3xx; as rotas de operação respondem HEAD
+   desde a S30-04.
 
 ## Lista de conferência do primeiro deploy
 
@@ -195,9 +202,9 @@ repositório.
 - [ ] A página da Vercel abre, e `/version.json` traz o mesmo `release`.
 - [ ] Entrar com a conta do desenvolvedor pela página da Vercel funciona: o cookie da sessão é da
       origem da página e o *rewrite* de `/api/*` chega ao Render (P-15 a).
-- [ ] O limite por IP vê o IP real: depois de algumas verificações, o `/health/slo` conta as
-      requisições, e nenhuma pessoa da equipe recebe 429 sem motivo (P-15 b,
-      `IPC_TRUSTED_PROXY_HOPS=2`).
+- [ ] O limite por IP vê o IP real: o passo "Limite por IP no piloto" do "Deploy do piloto" ficou
+      verde (P-15 b; `IPC_TRUSTED_PROXY_HOPS=4`, `IPC_TRUST_FORWARDED_HEADER=1` e
+      `IPC_RATE_LIMIT_EDGE_HEADER=cf-connecting-ip`, S30-03).
 - [ ] O e-mail de verificação de um cadastro de teste chega à caixa de entrada, e o link abre a
       página da Vercel.
 - [ ] O workflow "Deploy do piloto" ficou verde, com as verificações e o smoke e2e.

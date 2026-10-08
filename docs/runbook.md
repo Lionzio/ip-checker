@@ -28,7 +28,9 @@ vem depois, para a `main` não publicar o erro de novo. Cronometre e anote no re
 2. **Página (Vercel):** em **Deployments**, abra o deploy anterior de Production e use **Instant
    Rollback** (ou **Promote to Production**).
 3. **Confira:** `curl -s <endereço do Render>/ready` e `<endereço da Vercel>/version.json` mostram o
-   mesmo `release`, o do commit anterior.
+   mesmo `release`, o do commit anterior. Para cronometrar, rode antes do passo 1, no Git Bash,
+   `scripts/rollback-check.sh <commit anterior>`: ele consulta os dois a cada 5 s e mostra o tempo
+   até o passo 3.
 4. **Git:** na `develop`, reverta o commit com problema por um PR (`git revert`), espere a CI verde e
    faça a release (fast-forward da `main`). O deploy seguinte publica a correção e alinha os painéis
    com a `main`.
@@ -52,7 +54,7 @@ o "Deploy do piloto" de novo). O Render guarda o deploy anterior mesmo quando el
 
 | Data | Quem | De → para | Render | Vercel | Total até o passo 3 | Observações |
 |---|---|---|---|---|---|---|
-| (pendente) | | | | | | O primeiro ensaio fica para depois do primeiro "Deploy do piloto" completo, com a conta de verificação |
+| (pendente) | | | | | | O primeiro ensaio (S30-08) fica com o autor: o agente da Sprint 30 não tem permissão para publicar pelos painéis. Releases disponíveis em 08/10/2026: `2a55908` (atual) e `715cd16` (anterior) |
 
 ## O deploy parou no meio
 
@@ -68,18 +70,43 @@ o "Deploy do piloto" de novo). O Render guarda o deploy anterior mesmo quando el
 Depois de corrigir a configuração, rode de novo em **Actions > Deploy do piloto > Run workflow**
 (branch `main`).
 
+**Release que muda o `render.yaml` (P-18):** o Render sincroniza o Blueprint no push da `main` e
+publica o commit novo na hora, antes do passo de migração do pipeline. Por isso, uma release com
+migração não muda o `render.yaml`; quando precisar dos dois, faça duas releases, a migração primeiro.
+
+**Limite por IP (S30-03):** o último passo do deploy confere que o limite pega o cliente certo pela
+página e direto no Render. Se ele ficar vermelho, a Vercel ou o Render mudaram os proxies: rode
+`curl -4 -s -X POST -H "Origin: <endereço da Vercel>" <endereço da Vercel>/api/v1/proxy-check`, que
+devolve os cabeçalhos de proxy da sua própria requisição e o IP que o limite usaria, e ajuste
+`IPC_TRUSTED_PROXY_HOPS`, `IPC_TRUST_FORWARDED_HEADER` ou `IPC_RATE_LIMIT_EDGE_HEADER` no
+`render.yaml`.
+
 ## Latência ou erros acima da meta (/health/slo)
 
 O `/health/slo` responde 503 quando, nos últimos 5 minutos e com pelo menos 20 requisições, o P95
 do `POST /api/v1/validate` passou de 200 ms ou mais de 1% das respostas foram 5xx. O corpo diz o
 motivo (`reasons`: `latencia` ou `erros`).
 
-- **Latência no plano gratuito:** esperada com login (0,1 CPU; S28-01 e ADR-03). Se acontece toda
-  vez que a equipe usa, é a hora de passar para o Starter (**Settings > Instance Type** no Render).
+- **Latência no plano gratuito:** a 20 por minuto, o P95 do servidor fica abaixo de 200 ms (S30-09);
+  acima disso, a cota de 0,1 CPU segura as rajadas. O piloto fica no gratuito por decisão do autor
+  (S30-11, ADR-03): veja se o alerta coincide com um prazo de lista e se as respostas `OVERLOADED`
+  subiram; elas são a degradação esperada (NFR-05), não uma falha.
 - **Latência no Starter:** veja se o Supabase está lento (**Reports** no painel) e rode o workflow
   "Carga no piloto" com uma taxa baixa, que separa a sessão no banco do analisador.
 - **Erros:** os logs do Render mostram o `outcome` de cada requisição (sem código nem IP). Muitos
   `ANALYZER_UNAVAILABLE` ou `DATABASE_UNAVAILABLE` levam às seções abaixo.
+
+### Registro dos exercícios de alerta
+
+Um exercício por período confere que o alerta chega (NFR-15: até 5 min). Como fazer sem tráfego
+real: baixe `IPC_SLO_P95_MS` no `render.yaml` por um PR (por exemplo, para 50), rode o workflow
+"Carga no piloto" por 10 minutos, acompanhe **Incidents** no UptimeRobot e o e-mail, e volte o valor
+para 200 no PR seguinte. Pelo `render.yaml`, e não pelo painel, para o arquivo e o serviço não
+divergirem.
+
+| Data | Quem | Como | Linha do tempo (UTC) | Do 503 ao e-mail |
+|---|---|---|---|---|
+| 08/10/2026 | Claude (agente), pelo autor | `IPC_SLO_P95_MS=50` em `2a55908` e `715cd16`; carga de 20 por minuto por 10 min | carga às 09:55:57; 503 entre 09:57:30 e 09:58:01; UptimeRobot detectou (HEAD) às 09:58:18, confirmou de 3 regiões às 09:59:01 e enviou o e-mail às 09:59:02 | 61 a 92 s |
 
 ## Banco fora do ar (DATABASE_UNAVAILABLE)
 
@@ -170,7 +197,14 @@ gerenciador de senhas ou num pendrive guardado. Sem ela, nenhum backup abre; com
    docker exec -i ipc-restore pg_restore --data-only --disable-triggers -U postgres -d ipchecker < ../dump
    ```
 
-   Confira algumas contagens (`SELECT count(*) FROM app.account;`) e apague o contêiner e o `dump`.
+   Compare as linhas por tabela com as do momento do backup, que vêm no artefato
+   (`ipc-piloto-AAAA-MM-DD.contagens.txt`) e no resumo do run (S30-07):
+
+   ```bash
+   docker exec -i ipc-restore psql -U postgres -d ipchecker -X -A -F " | " -t < ../deploy/backup/contagens.sql | diff - ipc-piloto-AAAA-MM-DD.contagens.txt
+   ```
+
+   Sem diferença, a restauração está certa. Apague o contêiner e o `dump`.
 4. **No piloto, de verdade:** só depois do ensaio. Avise a equipe, rode o backup à mão (para guardar
    o estado atual), apague os dados das tabelas afetadas e restaure com o mesmo
    `pg_restore --data-only`, usando a `PILOT_DATABASE_ADMIN_URL`. Depois, `/ready` e um login.
@@ -179,7 +213,7 @@ O ensaio de restauração é feito uma vez por semestre (NFR-20) e anotado aqui:
 
 | Data | Quem | Backup de | Resultado |
 |---|---|---|---|
-| (pendente) | | | O primeiro, depois do primeiro backup do piloto |
+| 08/10/2026 | Claude (agente), pelo autor | `ipc-piloto-2026-10-08` (run 37753358195) | Hash conferido, migrações e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 9 s, sem contar o acesso à chave privada (NFR-20: até 30 min) |
 
 ## Incidentes de segurança
 

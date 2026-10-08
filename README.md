@@ -11,7 +11,7 @@ questão, o painel de plágio (dois códigos ou contra a turma, por árvore cano
 IA ou por modelos de texto, a correção em lote, o gerenciamento da equipe com registro das ações, a
 telemetria anônima, o relatório de eficácia e os indícios de uso de IA (desligados no piloto até a
 coordenação aprovar a política). O piloto está no ar (Render, Vercel e Supabase) desde
-07/10/2026, na release `sprint-29`; o uso pela equipe é em 2027.1. As pendências restantes estão
+07/10/2026, na release `sprint-30` desde 08/10/2026; o uso pela equipe é em 2027.1. As pendências restantes estão
 planejadas nas Sprints 30 a 35 (seção 7.12 do blueprint), e a integração com outros 2 projetos da
 monitoria é só uma possibilidade, ainda não confirmada (seção 9 do blueprint e ADR-09).
 
@@ -166,7 +166,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 27 | Plágio por árvore canonizada (ADR-07): S27-01 árvore canonizada com reordenação por dependência, Dice e contenção; S27-02 uma solução contra até 100 da turma, com o peso pela raridade (IDF); S27-03 trechos em comum realçados nos dois códigos, Trocar A e B e Limpar | Concluída |
 | 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (faltam o ensaio do rollback e a carga no piloto, que dependem da conta de verificação) |
 | 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política e a calibração) |
-| 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Planejada (começa com a conta de verificação, ação do autor) |
+| 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026, menos o ensaio do rollback (S30-08, autor) e a decisão do RPO (S30-12) |
 | 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 e auditoria de segurança bloqueante com Semgrep | Planejada |
 | 32 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
 | 33 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
@@ -199,12 +199,13 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 [`deploy/piloto.md`](deploy/piloto.md) e no [runbook](docs/runbook.md).
 
 - [x] Supabase em us-east-1 (Q-20), Render, Vercel, Brevo e o deploy hook da Vercel (07/10/2026)
-- [ ] Conta de verificação do deploy e os secrets `PILOT_CHECK_*` (S30-01), que liberam o deploy
-      com login, a carga no piloto e o ensaio do rollback
-- [ ] Os três monitores do UptimeRobot (S30-04)
-- [ ] Chave do backup (`age-keygen`) e a variável `BACKUP_AGE_RECIPIENT` (S30-06)
-- [ ] Plano do Render, gratuito ou Starter, antes do primeiro prazo de 2027.1 (S30-11, ADR-03) e o
-      RPO do backup (S30-12, NFR-20)
+- [x] Conta de verificação do deploy e os secrets `PILOT_CHECK_*` (S30-01, 08/10/2026)
+- [x] Os três monitores do UptimeRobot (S30-04, 08/10/2026)
+- [x] Chave do backup (`age-keygen`) e a variável `BACKUP_AGE_RECIPIENT` (S30-06, 08/10/2026)
+- [x] Plano do Render: gratuito (S30-11, ADR-03, 08/10/2026)
+- [ ] Ensaio cronometrado do rollback pelos painéis do Render e da Vercel, com
+      `scripts/rollback-check.sh` (S30-08; runbook, "Voltar para a versão anterior")
+- [ ] RPO do backup: diário ou revisar a NFR-20 (S30-12; opções em 7.13.8 do blueprint)
 - [ ] Decisões com a coordenação e o NTI: política dos indícios de IA, Q-16 (provedor de IA), Q-17
       (remetente dos e-mails) e Q-22 (governança das regras) (Sprint 31; opções em 7.13)
 - [ ] Revisão do guia da equipe e data da apresentação do Marco 2 (S31-05)

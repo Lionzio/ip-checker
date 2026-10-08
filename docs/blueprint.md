@@ -954,6 +954,9 @@ Vale para as Sprints 30 a 35 e não se repete nelas; cada sprint lista só os te
 
 #### Sprint 30 — Piloto verificado ponta a ponta
 
+**Situação (08/10/2026):** concluída, menos o ensaio do rollback (S30-08), que fica com o autor, e a
+decisão do RPO (S30-12). O que cada task entregou está no [CHANGELOG](../CHANGELOG.md).
+
 **Objetivo:** o "Deploy do piloto" fecha verde sem nenhum passo pulado (login e e2e no piloto), com alerta, backup e rollback ensaiados e medidos, e com a P-12 (a) e a P-15 confirmadas ou corrigidas por evidência registrada.
 
 **Premissas:** confirma a P-12 (a) e a P-15 (a) e (b); mede a Q-20; usa a P-16 (UptimeRobot gratuito) e investiga a P-17 (capacidades do contêiner no Render), registradas em `docs/decisoes.md`. A P-12 (b), (c) e (d) e o repasse `/api/*` da P-15 (a) já foram confirmados no primeiro deploy (07/10/2026).
@@ -976,6 +979,11 @@ Vale para as Sprints 30 a 35 e não se repete nelas; cada sprint lista só os te
 | S30-12 | US-35 | Decisão | RPO do banco do piloto: o backup semanal dá RPO de até 7 dias, acima da meta de 24 h da NFR-20; escolher entre o backup diário (só o `cron` do `backup.yml` muda) e revisar a NFR-20 para o piloto (opções em 7.13.8) | `.github/workflows/backup.yml`, NFR-20 | Autor | — | S30-07 | Desbloqueio: decisão registrada na NFR-20; se diário, o `cron` alterado por PR e uma semana de artefatos diários |
 
 *Diagnóstico da S30-10 (a confirmar na própria task).* O `supervisord` roda como root (`user=root`) e encerra cada programa com `stopasgroup=true` e `killasgroup=true`, ou seja, manda o sinal ao grupo de processos de `ipc-api` (UID 10001) e de `ipc-analyzer` (UID 10002). Um processo root só sinaliza processos de outro usuário com a capacidade `CAP_KILL`; a hipótese (P-17) é que o Render roda o contêiner sem ela, e o `kill()` devolve `EPERM`, que o supervisord registra como `PermissionError`. Os processos acabam encerrados quando o Render destrói o contêiner, por isso nada quebra. Opções a avaliar na task: (a) um intermediário root por programa, que inicia o serviço com `setpriv --reuid ... --pdeathsig TERM` e apenas sai ao receber o sinal, para o kernel entregar o `SIGTERM` ao filho, sem precisar de `CAP_KILL` [A CONFIRMAR: se o `setpriv` da imagem mantém o `pdeathsig` depois de trocar o usuário]; (b) cada serviço encerrar-se sozinho quando o pai morre, configurando o `PR_SET_PDEATHSIG` no início do processo; (c) aceitar o registro e documentá-lo no runbook (só se (a) e (b) enfraquecerem o isolamento). A correção não pode dar ao analisador o mesmo UID da API nem rodar algum serviço como root.
+*Resultado (08/10/2026):* a P-17 se confirmou no Render, e as opções (a) e (b) não servem: o kernel
+entrega o `PR_SET_PDEATHSIG` com a mesma checagem de permissão do `kill()`. Foi aplicada uma quarta
+opção, sem sinal entre usuários: um lançador root por serviço fecha um pipe ao receber o `SIGTERM`, e
+um guardião com o usuário do serviço o encerra (`deploy/render/run_as.py`; P-17 em
+`docs/decisoes.md`).
 
 **ADRs:** atualiza o ADR-03 (medição da S30-09 e a decisão da S30-11). Sem ADR novo.
 
@@ -1245,6 +1253,10 @@ Adiada até a P-09. As perguntas estão na Q-12; a resposta desbloqueia a Sprint
 | A. Ficar no gratuito | Custo zero | Com login, P95 acima de 200 ms mesmo a 30 por minuto (S28-01); o `/health/slo` vai alertar com uso | NFR-01 não atendido; risco aceito no ADR-03 |
 | B. Starter (cerca de US$ 7 por mês) antes do primeiro prazo | Atende 500 por minuto com P95 de 28 ms na emulação (S28-01) | Custo mensal | S33-01 aplica e mede |
 | C. Starter só nos períodos de prazo | Custo menor | Troca manual de plano e risco de esquecer | Runbook com o roteiro de troca |
+
+**Decidido (08/10/2026, autor):** opção A, plano gratuito, sem orçamento para o Starter. A S30-09 mediu
+no Render P95 do servidor abaixo de 200 ms a 20 por minuto; o pico segue com a degradação do NFR-05
+(ADR-03, "Medição da S30-09 e decisão do plano").
 
 #### 7.13.7 Observabilidade (C8) — Autor
 
