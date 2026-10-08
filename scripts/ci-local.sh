@@ -123,7 +123,8 @@ if $e2e; then
   } > "$e2e_env"
   step "e2e: subir o compose (porta 28280)" docker compose -p "$compose_project" \
     -f deploy/compose.yaml --env-file "$e2e_env" up --build -d --wait --wait-timeout 300
-  step "e2e: Playwright" env E2E_BASE_URL=http://127.0.0.1:28280 E2E_PASSWORD="$dev_password" \
+  step "e2e: Playwright" env E2E_BASE_URL=http://127.0.0.1:28280 \
+    E2E_MAILPIT_URL=http://127.0.0.1:28225 E2E_PASSWORD="$dev_password" \
     bash -c "cd frontend && npx playwright install chromium > /dev/null && npm run -s e2e"
 else
   results+=("| Smoke e2e | pulado (use --e2e) | — |")
