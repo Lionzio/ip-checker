@@ -11,7 +11,7 @@ mudaram.
 ## Sprint 30 — Piloto verificado ponta a ponta
 
 A Sprint 30 (S30-01 a S30-12; US-17, US-19, US-20, US-22, US-26, US-32 e US-35) foi concluída em
-08/10/2026, menos o ensaio do rollback (S30-08) e a decisão do RPO (S30-12). A missão é o "Deploy do
+08/10/2026, menos o ensaio do rollback (S30-08), que fica com o autor. A missão é o "Deploy do
 piloto" verde sem nenhum passo pulado, com alerta, backup e rollback ensaiados e medidos; a persona é
 o monitor-mantenedor. O primeiro deploy completo é o run 37761090896 (`2a55908`): migração, Render,
 Vercel, verificações com login, smoke e2e no piloto e o limite por IP, todos verdes. Decisões de
@@ -45,12 +45,18 @@ implementação:
   para antes do lançador. A suíte do piloto roda sem `CAP_KILL` e confere o desligamento em menos de
   15 s, sem `CRIT`; nos logs do Render, nenhum `CRIT` desde a correção.
 - **S30-11 (autor):** plano gratuito, sem orçamento (ADR-03).
+- **S30-12 (autor):** backup diário, às 06:00 UTC; a NFR-20 continua com RPO de até 24 h.
+- **S30-03, só pela página:** para fechar o risco residual da P-15, o middleware da Vercel
+  (`frontend/scripts/edge-middleware.mjs`, Build Output API) manda em `/api/*` um segredo que só
+  a página e a API conhecem (`IPC_EDGE_SECRET`, cadastrado nos dois painéis) e o IP do cliente
+  que a Vercel determinou; com o segredo configurado, o Render responde 403 a `/api/*` sem ele
+  (`ipc_api/edge_gate.py`). As rotas de operação continuam abertas para o UptimeRobot.
 - **Achado (P-18):** uma release que muda o `render.yaml` é publicada pela sincronização do Blueprint
   antes da migração do pipeline; uma release com migração não muda o `render.yaml`.
 - **Pendentes:** S30-08, o ensaio cronometrado do rollback pelos painéis (com
   `scripts/rollback-check.sh`), fica com o autor, porque o agente não tem permissão para publicar
-  pelos painéis; S30-12, o RPO do backup (opções em 7.13.8), é decisão do autor; os 24 h verdes do
-  UptimeRobot se conferem em 09/10/2026.
+  pelos painéis; o segredo `IPC_EDGE_SECRET` é cadastrado pelo autor na Vercel e no Render; os 24 h
+  verdes do UptimeRobot se conferem em 09/10/2026.
 
 ## Sprint 29 — Indícios de uso de IA, nunca veredito
 

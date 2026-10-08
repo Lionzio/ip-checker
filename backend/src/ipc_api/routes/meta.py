@@ -199,6 +199,8 @@ PROXY_HEADERS = (
     "true-client-ip",
     "forwarded",
     "via",
+    # O IP que o middleware da página mandou (S30-03); o segredo nunca volta na resposta.
+    "x-ipc-client-ip",
 )
 
 
@@ -225,6 +227,7 @@ async def proxy_check(
             "client_ip": str(address) if address else None,
             "trusted_proxy_hops": config.trusted_proxy_hops,
             "trust_forwarded_header": config.trust_forwarded_header,
+            "edge_verified": bool(request.scope.get("state", {}).get("edge_verified")),
         },
         headers={"Cache-Control": "no-store"},
     )

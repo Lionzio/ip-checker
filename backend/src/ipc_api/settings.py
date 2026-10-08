@@ -14,6 +14,7 @@ from ipc_api.auth.google import GoogleConfig
 from ipc_api.auth.sessions import SessionConfig
 from ipc_api.auth.throttle import LoginThrottleConfig
 from ipc_api.edge import parse_origins
+from ipc_api.edge_gate import validate_edge_secret
 from ipc_api.feedback.providers import LlmSettings
 from ipc_api.feedback.service import FeedbackLimits
 from ipc_api.housekeeping import HousekeepingConfig
@@ -96,6 +97,9 @@ class ApiSettings:
     ai_indicators: bool = False
     #: Versão implantada (commit), mostrada em /ready para o pipeline saber que o deploy entrou.
     release: str | None = None
+    #: Segredo que o middleware da página manda em ``/api/*`` (S30-03, ``ipc_api.edge_gate``).
+    #: Vazio: a API atende qualquer origem de rede, como no compose.
+    edge_secret: str | None = field(default=None, repr=False)
     #: Banco de contas e sessões (S13-01), com o usuário da API, membro de ipc_app.
     database_url: str | None = field(default=None, repr=False)
     #: Cookie e tempos da sessão (S13-02, NFR-22).
@@ -171,6 +175,7 @@ class ApiSettings:
             # O Render informa o commit implantado em RENDER_GIT_COMMIT.
             release=env.get("IPC_RELEASE") or env.get("RENDER_GIT_COMMIT") or None,
             database_url=env.get("IPC_DATABASE_URL") or None,
+            edge_secret=validate_edge_secret(env.get("IPC_EDGE_SECRET")),
             session=_session_from_env(env),
             login_throttle=_login_throttle_from_env(env),
             allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),

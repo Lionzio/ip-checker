@@ -53,6 +53,11 @@ services:
       # nó da Vercel), mas o "Forwarded: for=" sempre traz o IP real: ele vem antes (S30-03).
       - key: IPC_TRUST_FORWARDED_HEADER
         value: "1"
+      # Segredo que só a página (middleware da Vercel) e a API conhecem: com ele, /api/* direto no
+      # Render recebe 403 (S30-03). O mesmo valor fica na Vercel (Environment Variables). Ordem para
+      # ligar: primeiro na Vercel e um deploy da página, depois aqui (docs/runbook.md, "Segredos").
+      - key: IPC_EDGE_SECRET
+        sync: false
       # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
       - key: IPC_DATABASE_URL
         sync: false
