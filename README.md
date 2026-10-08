@@ -161,7 +161,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 17 | Painel de plágio: S17-01 motor de similaridade (*winnowing* em tokens e na AST, corpus de pares); S17-02 comparação no analisador isolado e `POST /api/v1/similarity` com as faixas do FR-29; S17-03 painel com as duas áreas, a faixa escrita e o aviso de indício | Concluída |
 | 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
 | 19 | Marco 2: S19-01 painel de feedback na página (nome do aluno, anotação, texto editável e Copiar); S19-02 aviso de privacidade, guia da equipe, passo a passo das contas externas e apresentação revista | Concluída (primeiro deploy com login em 08/10/2026, S30-02) |
-| 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (repositório privado dos gabaritos criado em 08/10/2026; faltam os gabaritos do Notion, S32-01) |
+| 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (repositório privado dos gabaritos com as Listas 1 e 2 de 2026.2 desde 08/10/2026; faltam as demais, S32-01) |
 | 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (os três monitores do UptimeRobot no ar desde 08/10/2026, S30-04) |
 | 22 | Listas 3 e 4: S22-01 regras R-38 a R-60, exigência das Listas 3 (lista ou tupla) e 4 (`def`) e função aninhada na R-04 (Q-02 f); S22-02 Listas 3 e 4 habilitadas e e2e | Concluída (os 9 casos em aberto do mapeamento estão na pauta do Marco 2, `docs/marco-2.md`; S31-05 e S31-12) |
 | 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06); duas evasões do motor corrigidas na revisão de fim de sprint | Concluída |
@@ -217,8 +217,10 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Revisão do guia da equipe, data da apresentação do Marco 2 e as decisões da pauta
       `docs/marco-2.md`, com os 9 casos do mapeamento (S31-05 e S31-12)
 - [x] Repositório privado dos gabaritos e a chave só de leitura da CI (08/10/2026, ADR-10)
-- [ ] Os gabaritos do Notion no repositório privado e a variável `GABARITOS_REPO` (S32-01) e as
-      soluções anteriores a 2023 para calibrar os indícios (S32-02)
+- [x] Gabaritos das Listas 1 e 2 de 2026.2 (15 questões) no repositório privado e o job
+      "Gabaritos" ligado (`GABARITOS_REPO`), com zero violação (08/10/2026)
+- [ ] Os gabaritos das Listas 3 a 6 de 2026.2 e dos períodos anteriores (S32-01) e as soluções
+      anteriores a 2023 para calibrar os indícios (S32-02)
 - [ ] Ensaio do cadastro de questões reais de 2026.2 pela equipe (S31-13)
 - [ ] Ruleset e questões de 2027.1, com as referências por IA (S32-04 e S32-05)
 - [ ] Cliente OAuth do Google (opcional)
