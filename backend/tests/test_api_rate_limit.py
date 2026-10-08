@@ -358,6 +358,7 @@ def test_settings_from_environment() -> None:
             "IPC_TRUSTED_PROXY_HOPS": "1",
             "IPC_RATE_LIMIT_MAX_KEYS": "1000",
             "IPC_RATE_LIMIT_EDGE_HEADER": "CF-Connecting-IP",
+            "IPC_TRUST_FORWARDED_HEADER": "1",
             "IPC_RATE_LIMIT_EDGE_ANONYMOUS_PER_MIN": "45",
             "IPC_ADMISSION_CAPACITY": "8",
             "IPC_ADMISSION_MAX_WAITING": "32",
@@ -372,6 +373,7 @@ def test_settings_from_environment() -> None:
         campus_networks=parse_networks("150.161.0.0/16,2001:db8::/32"),
         trusted_proxy_hops=1,
         max_keys=1_000,
+        trust_forwarded_header=True,
         edge_ip_header="cf-connecting-ip",
         edge_anonymous_per_min=45,
     )
@@ -416,6 +418,7 @@ def test_proxy_check_shows_only_proxy_headers_and_the_client_ip(analyzer: Analyz
         "headers": {"x-forwarded-for": ["203.0.113.9, 198.51.100.7"]},
         "client_ip": "198.51.100.7",
         "trusted_proxy_hops": 1,
+        "trust_forwarded_header": False,
     }
 
 

@@ -117,7 +117,11 @@ class Authenticator:
         self._clock = clock
 
     def _ip_limit(self, scope: Scope) -> tuple[bytes, int]:
-        address = client_ip(scope, self._rate_limit.trusted_proxy_hops)
+        address = client_ip(
+            scope,
+            self._rate_limit.trusted_proxy_hops,
+            trust_forwarded=self._rate_limit.trust_forwarded_header,
+        )
         if address is None:
             return self._throttle.key("i", b"desconhecido"), self._throttle_config.ip_failures
         campus = any(

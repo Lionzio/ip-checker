@@ -4,7 +4,9 @@ Confirma a P-12 (a) e a P-15 (b): sem sessão, cada IP faz até 30 requisições
 de conta. Até a S30-03, o ``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render,
 diferente a cada requisição, e 33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
 
-Direto no Render, um ``X-Forwarded-For`` forjado ainda escolhe a chave do cliente, mas um segundo
+Pela página, a chave vem do ``Forwarded: for=``, que a Vercel sempre reescreve com o IP real (o
+``X-Forwarded-For`` e o ``X-Vercel-Forwarded-For`` às vezes chegam forjados, conforme o nó da
+Vercel). Direto no Render, quem forja os cabeçalhos escolhe a chave do cliente, mas um segundo
 limite, pelo IP que o Cloudflare do Render escreve (``cf-connecting-ip``), o segura em 60 por
 minuto.
 
@@ -53,9 +55,19 @@ def http() -> Iterator[httpx2.Client]:
         yield client
 
 
+def _forged(value: str) -> dict[str, str]:
+    """Os três cabeçalhos com que um cliente tenta escolher a própria chave."""
+    return {
+        "X-Forwarded-For": value,
+        "X-Vercel-Forwarded-For": value,
+        "Forwarded": f"for={value}",
+    }
+
+
 def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str:
-    headers = {"X-Forwarded-For": forged} if forged else {}
-    response = http.get(f"{base}/api/v1/proxy-check", headers=headers)
+    # POST, como as rotas de conta: a Vercel não trata os cabeçalhos igual em todo método e nó.
+    headers = {"Origin": _origin(WEB), **(_forged(forged) if forged else {})}
+    response = http.post(f"{base}/api/v1/proxy-check", headers=headers, content=b"")
     assert response.status_code == 200, response.text
     ip: str = response.json()["client_ip"]
     return ip
@@ -64,18 +76,19 @@ def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str
 def test_the_page_and_the_render_see_the_same_client(http: httpx2.Client) -> None:
     through_page = _client_ip(http, WEB)
 
-    # A Vercel sobrescreve o X-Forwarded-For: o valor forjado não chega ao Render.
-    assert _client_ip(http, WEB, forged=FORGED) == through_page
+    # A Vercel sempre reescreve o Forwarded com o IP real, que vem antes do X-Forwarded-For.
+    for _ in range(4):  # nós diferentes da Vercel
+        assert _client_ip(http, WEB, forged=FORGED) == through_page
     assert _client_ip(http, API) == through_page
 
 
 def _attempts(http: httpx2.Client, base: str, limit: int) -> list[int]:
-    """Tentativas sem sessão, cada uma com outro X-Forwarded-For forjado, até o 429."""
+    """Tentativas sem sessão, cada uma com outros cabeçalhos forjados, até o 429."""
     codes: list[int] = []
     for attempt in range(limit + 1):
         # Um token bem formado e inexistente: 422 INVALID_TOKEN, sem efeito no banco.
         body = {"token": secrets.token_urlsafe(32)[:43]}
-        headers = {"Origin": _origin(WEB), "X-Forwarded-For": f"203.0.113.{attempt + 1}"}
+        headers = {"Origin": _origin(WEB), **_forged(f"203.0.113.{attempt + 1}")}
         response = http.post(f"{base}/api/v1/auth/verify", json=body, headers=headers)
         codes.append(response.status_code)
         if response.status_code == 429:

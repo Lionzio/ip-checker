@@ -230,6 +230,7 @@ def _rate_limit_from_env(env: Mapping[str, str]) -> RateLimitConfig:
         campus_per_min=int(env.get("IPC_RATE_LIMIT_CAMPUS_PER_MIN", defaults.campus_per_min)),
         campus_networks=parse_networks(cidrs) if cidrs is not None else defaults.campus_networks,
         trusted_proxy_hops=int(env.get("IPC_TRUSTED_PROXY_HOPS", defaults.trusted_proxy_hops)),
+        trust_forwarded_header=env.get("IPC_TRUST_FORWARDED_HEADER", "0") == "1",
         max_keys=int(env.get("IPC_RATE_LIMIT_MAX_KEYS", defaults.max_keys)),
         api_ip_per_min=int(env.get("IPC_RATE_LIMIT_API_IP_PER_MIN", defaults.api_ip_per_min)),
         api_campus_per_min=int(
