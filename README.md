@@ -93,7 +93,9 @@ testes. Os jobs:
 
 Fora da CI, à mão: "Deploy do piloto" (também depois de cada CI verde na `main`), "Carga no
 piloto" (k6 no Render, S28-01), "Backup do banco do piloto" (também todo dia, S28-03 e S30-12) e
-"Auditoria de segurança" (também toda segunda-feira).
+"Auditoria de segurança" (também toda segunda-feira). Sem cota do GitHub Actions (2.000 minutos
+por mês em repositório privado, P-19), a CI roda nesta máquina com `scripts/ci-local.sh` e o
+backup com `scripts/backup-local.sh` (runbook, "Sem GitHub Actions").
 
 No compose, os e-mails de verificação vão para o Mailpit (<http://127.0.0.1:8125>). Para
 entregar de verdade (Gmail ou Brevo), veja "Enviar de verdade a partir do compose" em

@@ -14,6 +14,7 @@ S28-03). Cada seção começa pelo sintoma. A configuração das contas está em
 | O UptimeRobot acusa o `/health/slo` | Latência ou erros acima da meta |
 | Dados perdidos ou corrompidos no banco | Backup, "Restaurar um backup" |
 | Um segredo vazou ou alguém acessou o que não devia | Segredos e Incidentes de segurança |
+| Os jobs do GitHub Actions não começam ("spending limit") | Sem GitHub Actions (cota esgotada) |
 
 ## Voltar para a versão anterior (rollback)
 
@@ -246,6 +247,38 @@ O ensaio de restauração é feito uma vez por semestre (NFR-20) e anotado aqui:
 | Data | Quem | Backup de | Resultado |
 |---|---|---|---|
 | 08/10/2026 | Claude (agente), pelo autor | `ipc-piloto-2026-10-08` (run 37753358195) | Hash conferido, migrações e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 9 s, sem contar o acesso à chave privada (NFR-20: até 30 min) |
+
+## Sem GitHub Actions (cota esgotada)
+
+Em repositório privado, o GitHub Free dá 2.000 minutos de Actions por mês, somados entre **todos**
+os repositórios privados da conta (P-19). Quando acabam, e com o limite de gastos em US$ 0, nenhum
+job começa: o run aparece como falha, sem passos, e a anotação diz "recent account payments have
+failed or your spending limit needs to be increased". A cota volta no dia 1º do mês seguinte (veja
+o uso em **Settings > Billing and plans > Usage**, produto Actions).
+
+Até lá, nada roda sozinho: CI, "Deploy do piloto", backup diário, auditoria e carga. O piloto
+continua no ar, e o UptimeRobot continua avisando. O que fazer:
+
+- **Antes de cada merge,** rode a CI nesta máquina e cole o resumo no PR:
+  `scripts/ci-local.sh` (com `--e2e` para o smoke também; `--rapido` só para iterar). O merge
+  segue a regra de sempre, com o resumo local no lugar da CI verde.
+- **Backup:** rode `scripts/backup-local.sh` pelo menos uma vez por semana (o RPO do dia a dia fica
+  em até 7 dias enquanto a cota não volta). Ele pede a connection string do Supabase sem mostrá-la
+  e salva só o arquivo criptografado em `~/Desktop/IP-Checker/backups/piloto`. Guarde uma cópia
+  fora do computador.
+- **Deploy:** evite até a cota voltar. Se precisar (correção urgente), siga a ordem do pipeline à
+  mão: as migrações com `uv run python -m ipc_api.db.migrate up --login-role ipc_api` (a connection
+  string de admin em `IPC_DATABASE_ADMIN_URL`, digitada só no terminal), depois o Render
+  (**Manual Deploy > Deploy latest commit**) e, com o `/ready` no commit novo, a Vercel (o deploy
+  hook do projeto, em **Settings > Git > Deploy Hooks**, chamado com `curl -X POST`). Confira com
+  `curl -s <endereço do Render>/ready` e `<endereço da Vercel>/version.json`.
+- **Quando a cota voltar,** rode o "Deploy do piloto" à mão uma vez (**Actions > Deploy do piloto >
+  Run workflow**, `main`) para conferir tudo, e o "Backup do banco do piloto".
+
+Para gastar menos minutos (08/10/2026): a CI da `main` e a da `develop` depois do merge só
+conferem que o mesmo conteúdo já passou no PR; um PR que só muda `.md` não roda os testes; e
+vários pushes seguidos no mesmo PR cancelam a rodada anterior. Juntar mudanças pequenas num PR só
+também ajuda.
 
 ## Incidentes de segurança
 

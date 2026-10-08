@@ -20,7 +20,9 @@ Nenhuma regra de permissão é escrita em código: o motor só lê `rulesets/**`
 - O PR usa o modelo (`.github/pull_request_template.md`): o que muda, com o ID da task e dos itens
   do blueprint, e o checklist de autorrevisão.
 - O merge é *squash*, com a CI verde. Um PR que só muda arquivos `.md` não roda os testes (a CI
-  decide sozinha; S28-04).
+  decide sozinha; S28-04), e a `develop` não repete os testes de um PR já testado com o mesmo
+  conteúdo. Sem cota do GitHub Actions (P-19), rode `scripts/ci-local.sh` e cole o resumo no PR
+  antes do merge (runbook, "Sem GitHub Actions").
 - A `main` só avança por *fast-forward* da `develop`, com o `scripts/release.sh`, que também cria a
   tag `sprint-NN` e o GitHub Release. Cada push na `main` faz o deploy do piloto depois da CI.
 
