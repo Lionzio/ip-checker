@@ -1,9 +1,12 @@
 """O limite por IP no piloto pega o cliente certo, pela página e direto no Render (S30-03).
 
 Confirma a P-12 (a) e a P-15 (b): sem sessão, cada IP faz até 30 requisições por minuto nas rotas
-de conta, e um ``X-Forwarded-For`` forjado não escolhe a chave. Até a S30-03, o
-``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render, diferente a cada requisição, e
-33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
+de conta. Até a S30-03, o ``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render,
+diferente a cada requisição, e 33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
+
+Direto no Render, um ``X-Forwarded-For`` forjado ainda escolhe a chave do cliente, mas um segundo
+limite, pelo IP que o Cloudflare do Render escreve (``cf-connecting-ip``), o segura em 60 por
+minuto.
 
 O diagnóstico ``/api/v1/proxy-check`` devolve o IP que o limite usaria. As requisições saem por
 IPv4: uma máquina com IPv4 e IPv6 pode chegar à Vercel por um e ao Render pelo outro, e seriam
@@ -33,6 +36,8 @@ pytestmark = pytest.mark.skipif(
 
 #: Sem sessão, o cliente é o IP: 30 por minuto (RateLimitConfig.client_per_min).
 LIMIT = 30
+#: Sem sessão, pelo IP que a borda do Render viu (RateLimitConfig.edge_anonymous_per_min).
+EDGE_LIMIT = 60
 FORGED = "203.0.113.77"
 
 
@@ -56,31 +61,40 @@ def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str
     return ip
 
 
-def test_a_forged_forwarded_header_does_not_choose_the_key(http: httpx2.Client) -> None:
+def test_the_page_and_the_render_see_the_same_client(http: httpx2.Client) -> None:
     through_page = _client_ip(http, WEB)
 
+    # A Vercel sobrescreve o X-Forwarded-For: o valor forjado não chega ao Render.
     assert _client_ip(http, WEB, forged=FORGED) == through_page
     assert _client_ip(http, API) == through_page
-    assert _client_ip(http, API, forged=FORGED) == through_page
 
 
-def test_the_31st_attempt_in_a_minute_gets_429(http: httpx2.Client) -> None:
-    page = {"Origin": _origin(WEB)}
+def _attempts(http: httpx2.Client, base: str, limit: int) -> list[int]:
+    """Tentativas sem sessão, cada uma com outro X-Forwarded-For forjado, até o 429."""
     codes: list[int] = []
-    for attempt in range(LIMIT + 1):
-        # Um token bem formado e inexistente: 422 INVALID_TOKEN, sem efeito no banco. Metade das
-        # tentativas forja o cabeçalho, metade vai direto ao Render: todas contam para o mesmo IP.
+    for attempt in range(limit + 1):
+        # Um token bem formado e inexistente: 422 INVALID_TOKEN, sem efeito no banco.
         body = {"token": secrets.token_urlsafe(32)[:43]}
-        if attempt % 2 == 0:
-            forged = {"X-Forwarded-For": f"203.0.113.{attempt + 1}"}
-            url = f"{WEB}/api/v1/auth/verify"
-            response = http.post(url, json=body, headers={**page, **forged})
-        else:
-            response = http.post(f"{API}/api/v1/auth/verify", json=body, headers=page)
+        headers = {"Origin": _origin(WEB), "X-Forwarded-For": f"203.0.113.{attempt + 1}"}
+        response = http.post(f"{base}/api/v1/auth/verify", json=body, headers=headers)
         codes.append(response.status_code)
         if response.status_code == 429:
             assert response.json()["error"]["code"] == "RATE_LIMITED"
             break
+    return codes
 
-    assert 429 in codes, codes
+
+def test_through_the_page_the_31st_attempt_gets_429(http: httpx2.Client) -> None:
+    codes = _attempts(http, WEB, LIMIT)
+
+    assert codes[-1] == 429, codes
+    assert set(codes[:-1]) <= {422}, codes
+
+
+def test_forging_directly_on_the_render_still_hits_the_edge_limit(http: httpx2.Client) -> None:
+    # Direto no Render, o valor forjado vira a chave do cliente (o Render acrescenta ao cabeçalho
+    # sem limpá-lo), mas o limite pelo IP que o Cloudflare viu (60 por minuto) continua valendo.
+    codes = _attempts(http, API, EDGE_LIMIT)
+
+    assert codes[-1] == 429, codes
     assert set(codes[:-1]) <= {422}, codes

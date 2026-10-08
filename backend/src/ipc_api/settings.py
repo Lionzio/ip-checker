@@ -235,6 +235,10 @@ def _rate_limit_from_env(env: Mapping[str, str]) -> RateLimitConfig:
         api_campus_per_min=int(
             env.get("IPC_RATE_LIMIT_API_CAMPUS_PER_MIN", defaults.api_campus_per_min)
         ),
+        edge_ip_header=env.get("IPC_RATE_LIMIT_EDGE_HEADER", defaults.edge_ip_header).lower(),
+        edge_anonymous_per_min=int(
+            env.get("IPC_RATE_LIMIT_EDGE_ANONYMOUS_PER_MIN", defaults.edge_anonymous_per_min)
+        ),
     )
 
 
