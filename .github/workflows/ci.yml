@@ -16,9 +16,11 @@ jobs:
   changes:
     # Desde a S28-04, a CI pesada não roda duas vezes no mesmo commit nem quando só a documentação
     # mudou. A main só avança por fast-forward da develop (branch-policy), então o commit que chega
-    # nela já passou pela CI completa na develop: aqui só se confere que passou. Um PR ou push que
-    # só muda arquivos .md também pula os testes. Na dúvida (sem base para comparar, primeiro push
-    # de uma branch), roda tudo.
+    # nela já passou pela CI completa na develop: aqui só se confere que passou. Na develop, depois
+    # do merge squash, o conteúdo é o mesmo do último commit do PR, que já passou pela CI completa:
+    # também só se confere (cota de 2.000 minutos por mês, esgotada em 08/10/2026; P-19). Um PR ou
+    # push que só muda arquivos .md também pula os testes. Na dúvida (sem base para comparar,
+    # primeiro push de uma branch, conteúdo diferente do testado), roda tudo.
     name: O que precisa rodar
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -49,6 +51,22 @@ jobs:
               echo "::notice::$GITHUB_SHA já passou pela CI completa na develop; na main, só a política de branches."
             else
               echo "::warning::Nenhuma CI verde da develop para $GITHUB_SHA; roda tudo."
+            fi
+          elif [ "$EVENT" = "push" ] && [ "$GITHUB_REF" = "refs/heads/develop" ] && \
+               pr_head=$(gh api "repos/$REPOSITORY/commits/$GITHUB_SHA/pulls" \
+                 -q '[.[] | select(.merged_at != null)][0].head.sha // ""') && [ -n "$pr_head" ]; then
+            # Depois do merge squash de um PR (economia de minutos, 08/10/2026): se a árvore do
+            # commit é idêntica à do último commit do PR e a CI do PR passou nele, os testes já
+            # rodaram neste mesmo conteúdo. Comparar árvores pela API evita buscar o PR no git.
+            tested=$(gh api "repos/$REPOSITORY/actions/runs?head_sha=$pr_head&event=pull_request&status=success" \
+              -q '[.workflow_runs[] | select(.name == "CI")] | length')
+            tree_now=$(gh api "repos/$REPOSITORY/commits/$GITHUB_SHA" -q .commit.tree.sha)
+            tree_pr=$(gh api "repos/$REPOSITORY/commits/$pr_head" -q .commit.tree.sha)
+            if [ "$tested" != "0" ] && [ "$tree_now" = "$tree_pr" ]; then
+              heavy=false
+              echo "::notice::Mesmo conteúdo do PR ($pr_head), que já passou pela CI completa; aqui só se confere."
+            else
+              echo "::warning::O conteúdo difere do último commit testado do PR (ou a CI dele não passou); roda tudo."
             fi
           elif [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             changed=$(git diff --name-only "$BASE" "$GITHUB_SHA")
