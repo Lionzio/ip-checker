@@ -91,13 +91,15 @@ outros.
 
 Os gabaritos oficiais confirmam que o motor não aponta nada numa solução correta: cada um precisa
 ter **zero violação** na sua lista. Eles nunca entram neste repositório; ficam num repositório
-privado separado, que a CI baixa com um token só de leitura (job "Gabaritos" do `ci.yml`). Sem essa
-configuração, o job fica como *skipped* e o resto da CI segue normal.
+privado separado, [`Lionzio/ip-checker-gabaritos`](https://github.com/Lionzio/ip-checker-gabaritos),
+que a CI baixa com uma chave de implantação só de leitura (job "Gabaritos" do `ci.yml`, ADR-10).
+Enquanto a variável `GABARITOS_REPO` não existe, o job fica como *skipped* e o resto da CI segue
+normal. O README daquele repositório explica, para a equipe, como acrescentar gabaritos.
 
 **Organização do repositório privado:**
 
 ```
-<período>/lista-<n>/<questão>.py      ex.: 2025.2/lista-2/q03.py
+<período>/lista-<n>/L<n>-Q<m>.py      ex.: 2026.2/lista-3/L3-Q2.py
 excecoes.yaml                          opcional
 ```
 
@@ -107,19 +109,27 @@ questões de períodos anteriores não ficam cadastradas: para elas, registre no
 regras que o enunciado libera naquele arquivo e o motivo:
 
 ```yaml
-"2025.2/lista-2/q03.py":
+"2025.2/lista-2/L2-Q3.py":
   regras: ["R-37"]
   motivo: "o enunciado pede zip() fora do for"
 ```
 
-**Configuração (uma vez, feita por você no GitHub):**
+**Configuração (08/10/2026):** o repositório privado `Lionzio/ip-checker-gabaritos` já existe, com
+as pastas de 2026.2, e a chave de implantação só de leitura já está nele (**Settings > Deploy
+keys**), com a parte privada no segredo `GABARITOS_SSH_KEY` deste repositório. Falta:
 
-1. Crie um repositório **privado**, por exemplo `Lionzio/ip-checker-gabaritos`, e copie os
-   gabaritos do Notion para ele, na organização acima.
-2. Em **Settings > Developer settings > Personal access tokens > Fine-grained tokens**, crie um
-   token com acesso **só** a esse repositório e a permissão **Contents: Read-only**.
-3. No `Lionzio/ip-checker`, em **Settings > Secrets and variables > Actions**: crie o segredo
-   `GABARITOS_TOKEN` com o token e a variável `GABARITOS_REPO` com `dono/repositório`.
+1. Copiar os gabaritos do Notion para lá, na organização acima (S32-01; o README de lá mostra como
+   fazer pelo navegador).
+2. Depois do primeiro gabarito, ligar o job, uma vez:
+   `gh variable set GABARITOS_REPO --repo Lionzio/ip-checker --body Lionzio/ip-checker-gabaritos`.
+   Antes disso, o job falharia de propósito ("nenhum gabarito").
+
+Para trocar a chave (alguém saiu da equipe técnica): apague a chave em **Deploy keys** e, no Git
+Bash, gere outra, cadastre a parte pública e grave a privada sem mostrá-la:
+
+```bash
+ssh-keygen -q -t ed25519 -N "" -C ci-ip-checker-gabaritos -f ./gab && gh repo deploy-key add ./gab.pub --repo Lionzio/ip-checker-gabaritos --title "CI do ip-checker (só leitura)" && gh secret set GABARITOS_SSH_KEY --repo Lionzio/ip-checker < ./gab; rm -f ./gab ./gab.pub
+```
 
 Para rodar localmente, com o repositório privado clonado fora desta pasta:
 
