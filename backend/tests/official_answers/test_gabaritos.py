@@ -2,7 +2,8 @@
 
 Só roda com ``IPC_GABARITOS_DIR``, a pasta do repositório privado dos gabaritos (``harness.py``).
 Na CI, o job "Gabaritos" baixa esse repositório quando a variável ``GABARITOS_REPO`` está
-definida, com a chave só de leitura do segredo ``GABARITOS_SSH_KEY`` (ADR-10). Gabaritos de listas ainda não habilitadas ficam de fora.
+definida, com a chave só de leitura do segredo ``GABARITOS_SSH_KEY`` (ADR-10). Gabaritos de listas
+ainda não habilitadas ficam de fora.
 """
 
 from __future__ import annotations
