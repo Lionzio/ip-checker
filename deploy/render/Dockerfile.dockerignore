@@ -8,5 +8,6 @@
 !rulesets/
 !database/migrations/
 !deploy/render/supervisord.conf
+!deploy/render/run_as.py
 **/__pycache__/
 **/*.py[cod]

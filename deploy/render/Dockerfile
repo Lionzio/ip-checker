@@ -48,6 +48,8 @@ COPY rulesets /opt/ip-checker/rulesets
 # Migrações do banco de contas (S13-01): aplicadas antes do deploy, com a credencial de admin.
 COPY database/migrations /opt/ip-checker/database/migrations
 COPY deploy/render/supervisord.conf /etc/ipc/supervisord.conf
+# Lançador de cada serviço (S30-10): troca de usuário e desligamento sem CAP_KILL.
+COPY deploy/render/run_as.py /etc/ipc/run_as.py
 
 # PORT é a porta pública que o Render informa (10000 é o padrão dele).
 ENV PATH=/opt/venv/bin:$PATH \

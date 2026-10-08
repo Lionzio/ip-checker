@@ -73,7 +73,9 @@ class RateLimitConfig:
     campus_per_min: int = 1_000
     campus_networks: tuple[IPNetwork, ...] = (ipaddress.ip_network("150.161.0.0/16"),)
     #: Quantos proxies confiáveis há na frente da API. 0: o IP é o da conexão. 1 (Caddy no
-    #: compose, proxy do Render): o último endereço do X-Forwarded-For, escrito pelo proxy.
+    #: compose): o último endereço do X-Forwarded-For, escrito pelo proxy. No piloto, a Vercel e a
+    #: borda do Render (que acrescenta mais de uma entrada) somam 4 (S30-03, P-15 b, conferida
+    #: pelo teste do limite em ``tests/pilot``).
     trusted_proxy_hops: int = 0
     #: Teto de chaves em memória. Cheio, clientes novos recebem 429 até a varredura liberar espaço.
     max_keys: int = 50_000
@@ -214,6 +216,11 @@ def client_ip(scope: Scope, trusted_proxy_hops: int) -> IPAddress | None:
 
     Só as últimas ``trusted_proxy_hops`` entradas do ``X-Forwarded-For`` foram escritas por
     proxies nossos; tudo o que vem antes foi enviado pelo cliente e é ignorado.
+
+    Com menos entradas que proxies, a requisição passou por um caminho mais curto (no piloto, direto
+    no Render, sem a Vercel): todas foram escritas pelos nossos proxies, e a primeira é o cliente
+    que o proxy mais externo viu (S30-03). Antes, valia o IP da conexão, que no Render é um proxy
+    interno diferente a cada requisição, e o limite por IP não pegava ninguém.
     """
     peer = scope.get("client")
     peer_ip = _parse_ip(peer[0]) if peer else None
@@ -224,9 +231,9 @@ def client_ip(scope: Scope, trusted_proxy_hops: int) -> IPAddress | None:
         for value in Headers(scope=scope).getlist("x-forwarded-for")
         for part in value.split(",")
     ]
-    if len(forwarded) < trusted_proxy_hops:
+    if not forwarded:
         return peer_ip
-    return _parse_ip(forwarded[-trusted_proxy_hops]) or peer_ip
+    return _parse_ip(forwarded[-min(trusted_proxy_hops, len(forwarded))]) or peer_ip
 
 
 class ClientIdentifier:

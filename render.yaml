@@ -32,10 +32,13 @@ services:
         value: "0"
       - key: IPC_ENABLED_LISTS
         value: "1,2,3,4,5,6"
-      # A Vercel e a borda do Render acrescentam cada uma um endereço ao X-Forwarded-For: o IP do
-      # cliente é o penúltimo [PREMISSA P-15 b, a confirmar no primeiro deploy com login].
+      # Pela página, o X-Forwarded-For chega com o cliente (escrito pela Vercel), o IP da Vercel e
+      # as entradas da borda do Render: o cliente é a 4ª entrada a partir do fim. Direto no Render,
+      # há menos entradas, e a primeira é o cliente (S30-03). Com "2", o limite por IP pegava um
+      # proxy interno do Render, diferente a cada requisição, e não limitava ninguém (08/10/2026).
+      # [PREMISSA P-15 b: conferida pelo teste do limite em tests/pilot, depois do deploy.]
       - key: IPC_TRUSTED_PROXY_HOPS
-        value: "2"
+        value: "4"
       # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
       - key: IPC_DATABASE_URL
         sync: false

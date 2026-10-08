@@ -10,7 +10,9 @@ name: Deploy do piloto
 #      a conta de verificação, que fica fora da telemetria e do relatório de eficácia (S28-02);
 #   4. publicar a API no Render e esperar o /ready com a versão nova;
 #   5. só então publicar a página na Vercel e esperar o /version.json;
-#   6. conferir o piloto de fora (mesma origem, cabeçalhos, TLS, login) e rodar o smoke e2e.
+#   6. conferir o piloto de fora (mesma origem, cabeçalhos, TLS, login, feedback) e rodar o smoke
+#      e2e;
+#   7. conferir que o limite por IP pega o cliente certo (S30-03; gasta o limite do runner).
 #
 # A conta de verificação (secrets PILOT_CHECK_*) só pode ser criada com o piloto no ar. Enquanto
 # ela não existe, o passo 6 confere tudo o que não precisa de login e avisa que o login e o smoke
@@ -231,6 +233,16 @@ jobs:
           E2E_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
           E2E_NAME: ${{ secrets.PILOT_CHECK_NAME }}
         run: npm run e2e
+
+      - name: Limite por IP no piloto, pela página e direto no Render (S30-03)
+        # Por último: esgota o limite do IP do runner por 1 minuto, e o login dos passos acima
+        # receberia 429. Confere a cada deploy que o IPC_TRUSTED_PROXY_HOPS ainda acerta o
+        # cliente, mesmo que o Render ou a Vercel mudem os proxies.
+        if: env.SKIP != '1'
+        working-directory: backend
+        env:
+          PILOT_CHECK_RATE_LIMIT: "1"
+        run: uv run --no-sync pytest tests/pilot/test_rate_limit.py --no-cov -v
       - name: Relatório do Playwright (só em falha)
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

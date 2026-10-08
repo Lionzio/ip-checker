@@ -42,6 +42,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Só para a consulta das contagens (deploy/backup/contagens.sql); nenhum segredo no checkout.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: deploy/backup
       - name: Instalar o age
         run: |
           sudo apt-get update -qq
@@ -64,10 +69,21 @@ jobs:
           mkdir -p backup
           name="ipc-piloto-$(date -u +%Y-%m-%d)"
           # O dump em claro só existe no disco do runner, durante este passo.
-          docker run --rm -e DATABASE_URL -v "$PWD/backup:/out" --user "$(id -u):$(id -g)" \
-            "$POSTGRES_IMAGE" sh -c \
+          # As contagens saem logo depois do dump, na mesma conexão de leitura; o ensaio de
+          # restauração compara com elas (S30-07). Só nomes de tabela e números.
+          docker run --rm -e DATABASE_URL -v "$PWD/backup:/out" -v "$PWD/deploy/backup:/q:ro" \
+            --user "$(id -u):$(id -g)" "$POSTGRES_IMAGE" sh -c \
             'pg_dump --format=custom --schema=app --schema=telemetry --no-owner --no-privileges \
-               --file=/out/dump "$DATABASE_URL" && pg_restore --list /out/dump > /out/conteudo.txt'
+               --file=/out/dump "$DATABASE_URL" && pg_restore --list /out/dump > /out/conteudo.txt \
+             && psql "$DATABASE_URL" -X -A -F " | " -t -v ON_ERROR_STOP=1 -f /q/contagens.sql \
+               > /out/contagens.txt'
+          {
+            echo "### Linhas por tabela no momento do backup"
+            echo
+            echo "| Tabela | Linhas |"
+            echo "|---|---|"
+            sed 's/^/| /; s/$/ |/' backup/contagens.txt
+          } >> "$GITHUB_STEP_SUMMARY"
           tables=$(grep -c " TABLE DATA " backup/conteudo.txt || true)
           echo "Tabelas com dados no dump: $tables"
           if [ "$tables" -lt 5 ]; then
@@ -76,6 +92,8 @@ jobs:
           fi
           age --encrypt --recipient "$RECIPIENT" --output "backup/$name.dump.age" backup/dump
           shred -u backup/dump backup/conteudo.txt
+          # As contagens vão junto, em claro (só números): o ensaio confere a restauração com elas.
+          mv backup/contagens.txt "backup/$name.contagens.txt"
           (cd backup && sha256sum "$name.dump.age" > "$name.dump.age.sha256")
           echo "NAME=$name" >> "$GITHUB_ENV"
           ls -l backup

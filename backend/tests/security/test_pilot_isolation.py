@@ -1,8 +1,9 @@
 """Isolamento por processo na imagem do piloto (S11-01; NFR-07 e DoD item 11 na Fase 1).
 
 O Render roda um único contêiner, sem rede interna nem flags de contêiner. Este módulo sobe a
-imagem ``deploy/render/Dockerfile`` como o Render a roda (sem endurecimento do Docker, com uma
-variável que faz o papel de segredo) e confere, de dentro dela, o que o blueprint exige:
+imagem ``deploy/render/Dockerfile`` como o Render a roda (sem endurecimento do Docker, sem a
+capacidade ``CAP_KILL``, que o Render não dá (P-17), e com uma variável que faz o papel de segredo)
+e confere, de dentro dela, o que o blueprint exige:
 
 - a API roda como UID 10001 e o analisador como UID 10002, com o ambiente vazio;
 - o analisador não lê o ambiente da API nem o do supervisord;
@@ -10,7 +11,8 @@ variável que faz o papel de segredo) e confere, de dentro dela, o que o bluepri
   programa e gravar em disco falham;
 - só a API escuta fora do loopback;
 - o pior caso de 50 KB cabe nos 160 MiB por worker;
-- CORS, HSTS e a versão implantada se comportam como no piloto.
+- CORS, HSTS e a versão implantada se comportam como no piloto;
+- sem ``CAP_KILL``, o contêiner para em menos de 15 s, sem ``CRIT`` do supervisord (S30-10).
 
 Desde a Sprint 13, a API do piloto não sobe sem o banco de contas: um PostgreSQL de teste roda
 numa rede só dele, as migrações são aplicadas antes (como no deploy) e a credencial do banco é
@@ -20,6 +22,8 @@ mais um segredo que só a API pode ver.
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -46,6 +50,10 @@ CONTAINER = "ipc-security-test-pilot"
 #: Banco de contas do piloto nos testes: uma rede só para ele e a API.
 PILOT_NETWORK = "ipc-security-test-pilot-net"
 PILOT_DB = "ipc-security-test-pilot-db"
+#: Um segundo contêiner, só para conferir o desligamento (S30-10).
+STOP_CONTAINER = "ipc-security-test-pilot-stop"
+#: O ``stopwaitsecs`` do supervisord.
+STOP_WAIT_S = 15
 DATABASE_URL = f"postgresql://ipc_api:{DB_API_PASSWORD}@{PILOT_DB}:5432/ipchecker"
 #: Faz o papel de uma credencial no ambiente do Render: só a API pode recebê-la.
 CANARY_SECRET = "segredo-canario-7d1f"
@@ -184,8 +192,20 @@ def pilot() -> Iterator[str]:
         "python", "-m", "ipc_api.db.migrate", "up", "--login-role", "ipc_api",
         timeout=120,
     )  # fmt: skip
+    _run_pilot(CONTAINER)
+    try:
+        client = Client(CONTAINER, base="http://127.0.0.1:10000")
+        _wait_until_ready(CONTAINER)
+        yield client.container
+    finally:
+        _cleanup()
+
+
+def _run_pilot(name: str) -> None:
     docker(
-        "run", "--detach", "--name", CONTAINER, "--network", PILOT_NETWORK,
+        "run", "--detach", "--name", name, "--network", PILOT_NETWORK,
+        # Como no Render (P-17): sem CAP_KILL, o root não sinaliza processos de outro usuário.
+        "--cap-drop", "KILL",
         "-e", f"IPC_FAKE_SECRET={CANARY_SECRET}",
         "-e", f"IPC_CORS_ORIGINS={SPA}",
         "-e", "IPC_HSTS=1",
@@ -194,25 +214,23 @@ def pilot() -> Iterator[str]:
         "-e", f"IPC_DEV_INITIAL_PASSWORD={DEV_PASSWORD}",
         PILOT_IMAGE,
     )  # fmt: skip
-    try:
-        client = Client(CONTAINER, base="http://127.0.0.1:10000")
-        deadline = time.monotonic() + 90
-        while True:
-            state = docker("inspect", "--format", "{{.State.Status}}", CONTAINER).strip()
-            if state != "running":
-                pytest.fail(f"o contêiner do piloto parou:\n{docker('logs', CONTAINER)}")
-            if docker("exec", CONTAINER, "python", "-c", READY_PROBE, check=False).strip() == "200":
-                break
-            if time.monotonic() > deadline:
-                pytest.fail(f"o piloto não ficou pronto em 90 s:\n{docker('logs', CONTAINER)}")
-            time.sleep(1)
-        yield client.container
-    finally:
-        _cleanup()
+
+
+def _wait_until_ready(name: str) -> None:
+    deadline = time.monotonic() + 90
+    while True:
+        state = docker("inspect", "--format", "{{.State.Status}}", name).strip()
+        if state != "running":
+            pytest.fail(f"o contêiner do piloto parou:\n{docker('logs', name)}")
+        if docker("exec", name, "python", "-c", READY_PROBE, check=False).strip() == "200":
+            return
+        if time.monotonic() > deadline:
+            pytest.fail(f"o piloto não ficou pronto em 90 s:\n{docker('logs', name)}")
+        time.sleep(1)
 
 
 def _cleanup() -> None:
-    docker("rm", "--force", CONTAINER, PILOT_DB, check=False)
+    docker("rm", "--force", CONTAINER, STOP_CONTAINER, PILOT_DB, check=False)
     docker("network", "rm", PILOT_NETWORK, check=False)
 
 
@@ -246,10 +264,17 @@ def processes(pilot: str) -> list[dict[str, Any]]:
 
 
 def _by_role(found: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    roles: dict[str, list[dict[str, Any]]] = {"supervisord": [], "api": [], "analyzer": []}
+    roles: dict[str, list[dict[str, Any]]] = {
+        "supervisord": [],
+        "launcher": [],
+        "api": [],
+        "analyzer": [],
+    }
     for process in found:
         if "supervisord" in process["cmdline"]:
             roles["supervisord"].append(process)
+        elif "/etc/ipc/run_as.py" in process["cmdline"]:
+            roles["launcher"].append(process)  # lançador (root) e guardião de cada serviço
         elif "ipc_api.app" in process["cmdline"]:
             roles["api"].append(process)
         else:
@@ -269,21 +294,43 @@ def test_each_process_runs_as_its_own_user(processes: list[dict[str, Any]]) -> N
 
     assert [p["pid"] for p in roles["supervisord"]] == [1]
     assert roles["supervisord"][0]["uid"] == 0
+    # S30-10: um lançador root por serviço, filho do supervisord, e um guardião com o usuário do
+    # serviço, filho do lançador. Só o supervisord e os lançadores são root.
+    launchers = [p for p in roles["launcher"] if p["ppid"] == 1]
+    guardians = [p for p in roles["launcher"] if p["ppid"] != 1]
+    assert sorted(p["uid"] for p in launchers) == [0, 0]
+    assert sorted(p["uid"] for p in guardians) == [API_UID, ANALYZER_UID]
+    assert {p["ppid"] for p in guardians} == {p["pid"] for p in launchers}
     assert {p["uid"] for p in roles["api"]} == {API_UID}
     assert len(roles["analyzer"]) >= 4  # serviço, resource tracker, forkserver e o worker
     assert {p["uid"] for p in roles["analyzer"]} == {ANALYZER_UID}
 
 
-def test_analyzer_environment_has_no_secret(pilot: str) -> None:
+def test_analyzer_environment_has_no_secret(pilot: str, processes: list[dict[str, Any]]) -> None:
+    # Lido pelo próprio UID 10002: sem CAP_SYS_PTRACE, nem o root lê o ambiente de outro usuário.
     mine = [p for p in probe_as(ANALYZER_UID, PROCESSES_PROBE) if p["uid"] == ANALYZER_UID]
     analyzer = [p for p in mine if "python -c" not in p["cmdline"]]
+    readable = [p for p in analyzer if p["env"] is not None]
 
-    assert analyzer
-    for process in analyzer:
+    assert len(readable) >= 4  # serviço, resource tracker, forkserver e o worker
+    for process in readable:
         assert set(process["env"]) <= ANALYZER_ENV, process["cmdline"]
 
+    # S30-10: o guardião troca de usuário sem executar outro programa, e o kernel o deixa ilegível
+    # para os outros processos do mesmo usuário. O ambiente dele é o do lançador (lido pelo root,
+    # dono do lançador), que o env -i do supervisord.conf já limpou.
+    hidden = [p for p in analyzer if p["env"] is None]
+    assert [p["cmdline"].split()[3:5] for p in hidden] == [["/etc/ipc/run_as.py", "ipc-analyzer"]]
+    (launcher,) = [p for p in processes if p["pid"] == hidden[0]["ppid"]]
+    assert launcher["uid"] == 0
+    assert set(launcher["env"]) <= ANALYZER_ENV
+
     # Prova de que os segredos existem no contêiner e chegam a quem deve: a API.
-    (api,) = [p for p in probe_as(API_UID, PROCESSES_PROBE) if "ipc_api.app" in p["cmdline"]]
+    (api,) = [
+        p
+        for p in probe_as(API_UID, PROCESSES_PROBE)
+        if "ipc_api.app" in p["cmdline"] and "run_as.py" not in p["cmdline"]
+    ]
     assert "IPC_FAKE_SECRET" in api["env"]
     assert "IPC_DATABASE_URL" in api["env"]
 
@@ -409,3 +456,37 @@ def test_logs_have_no_secret(pilot: str) -> None:
     assert DEV_PASSWORD not in logs
     assert '"service": "api"' in logs
     assert '"service": "analyzer"' in logs
+
+
+def _stderr_logs(name: str) -> str:
+    executable = shutil.which("docker")
+    assert executable is not None
+    result = subprocess.run(  # noqa: S603 - argumentos fixos do próprio teste, sem shell
+        [executable, "logs", name],
+        capture_output=True,
+        encoding="utf-8",
+        timeout=60,
+        check=True,
+    )
+    return result.stderr
+
+
+def test_stopping_without_cap_kill_is_clean(pilot: str) -> None:
+    # S30-10 (P-17): sem CAP_KILL, o supervisord registrava "CRIT unknown problem killing" com
+    # PermissionError e esperava o stopwaitsecs. Agora os dois serviços saem pelo SIGTERM.
+    _run_pilot(STOP_CONTAINER)
+    try:
+        _wait_until_ready(STOP_CONTAINER)
+        started = time.monotonic()
+        docker("stop", "--time", str(STOP_WAIT_S + 10), STOP_CONTAINER, timeout=60)
+        elapsed = time.monotonic() - started
+        # O supervisord escreve os próprios avisos (o CRIT) na saída de erro do contêiner.
+        logs = docker("logs", STOP_CONTAINER) + _stderr_logs(STOP_CONTAINER)
+    finally:
+        docker("rm", "--force", STOP_CONTAINER, check=False)
+
+    assert "run_as ipc-api: CAP_KILL ausente" in logs
+    assert "CRIT" not in logs
+    assert "PermissionError" not in logs
+    assert logs.count("Finished server process") == 2, logs  # API e analisador, sem SIGKILL
+    assert elapsed < STOP_WAIT_S

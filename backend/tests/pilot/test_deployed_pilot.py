@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import socket
 import ssl
+import time
 from urllib.parse import urlsplit
 
 import httpx2
@@ -173,6 +174,49 @@ def test_login_validation_and_logout_through_the_page() -> None:
             client.post(f"{WEB}/api/v1/auth/logout", content=b"", headers=page).status_code == 204
         )
         assert client.get(f"{WEB}/api/v1/auth/me").status_code == 401
+
+
+@pytest.mark.skipif(
+    not (LOGIN and PASSWORD),
+    reason="defina PILOT_LOGIN e PILOT_PASSWORD (conta ativa de verificação)",
+)
+def test_feedback_through_the_page_within_30_s() -> None:
+    # S30-02 (P-15 a): o feedback passa pelo repasse da Vercel, que corta em 30 s.
+    with httpx2.Client(timeout=45, follow_redirects=False) as client:
+        page = {"Origin": _origin(WEB)}
+        login = client.post(
+            f"{WEB}/api/v1/auth/login", json={"login": LOGIN, "password": PASSWORD}, headers=page
+        )
+        assert login.status_code == 200, login.text
+        ai = client.get(f"{WEB}/api/v1/auth/options").json()["feedback_ai"]
+
+        started = time.monotonic()
+        response = client.post(
+            f"{WEB}/api/v1/feedback",
+            json={
+                "code": "x = 1\nfor i in range(3):\n    print(i)\n",
+                "list_number": 1,
+                "student_name": "Conta de verificação",
+            },
+            headers=page,
+        )
+        elapsed = time.monotonic() - started
+        client.post(f"{WEB}/api/v1/auth/logout", content=b"", headers=page)
+
+    assert response.status_code == 200, response.text
+    assert elapsed <= 30, f"{elapsed:.1f} s"
+    body = response.json()
+    assert body["status"] == "invalid"  # o código tem as violações R-34 e R-35
+    assert body["text"]
+    # Sem IA configurada no piloto, o texto sai dos modelos, sem provedor.
+    assert body["source"] in ({"llm", "template"} if ai else {"template"})
+
+
+def test_monitored_routes_answer_head(http: httpx2.Client) -> None:
+    # S30-04: o plano gratuito do UptimeRobot só consulta com HEAD. O /health/slo pode estar em
+    # 503 (fora da meta) logo depois das verificações; o que importa aqui é não ser 405.
+    assert http.head(f"{API}/ready").status_code == 200
+    assert http.head(f"{API}/health/slo").status_code in {200, 503}
 
 
 def test_api_sends_hsts_and_nosniff(http: httpx2.Client) -> None:
