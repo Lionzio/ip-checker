@@ -49,6 +49,10 @@ services:
       # que o cliente não forja (S30-03, medido em 08/10/2026 com /api/v1/proxy-check).
       - key: IPC_RATE_LIMIT_EDGE_HEADER
         value: cf-connecting-ip
+      # Pela página, o X-Forwarded-For às vezes chega com o valor forjado pelo cliente (depende do
+      # nó da Vercel), mas o "Forwarded: for=" sempre traz o IP real: ele vem antes (S30-03).
+      - key: IPC_TRUST_FORWARDED_HEADER
+        value: "1"
       # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
       - key: IPC_DATABASE_URL
         sync: false

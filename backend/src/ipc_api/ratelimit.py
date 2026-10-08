@@ -77,6 +77,11 @@ class RateLimitConfig:
     #: borda do Render (que acrescenta mais de uma entrada) somam 4 (S30-03, P-15 b, conferida
     #: pelo teste do limite em ``tests/pilot``).
     trusted_proxy_hops: int = 0
+    #: O cliente vem do ``for=`` do cabeçalho ``Forwarded`` (RFC 7239), quando ele existe. No
+    #: piloto, a Vercel o sobrescreve sempre com o IP real, mesmo quando o cliente manda um, ao
+    #: contrário do ``X-Forwarded-For``, que ela às vezes repassa forjado (S30-03, 08/10/2026).
+    #: Sem ``Forwarded`` (direto no Render), vale o ``X-Forwarded-For``.
+    trust_forwarded_header: bool = False
     #: Teto de chaves em memória. Cheio, clientes novos recebem 429 até a varredura liberar espaço.
     max_keys: int = 50_000
     #: Limite folgado de todo ``/api/*``, por IP, antes da sessão (S25-04). Uma página aberta faz
@@ -218,7 +223,28 @@ def _parse_ip(value: str | None) -> IPAddress | None:
     return address
 
 
-def client_ip(scope: Scope, trusted_proxy_hops: int) -> IPAddress | None:
+def _forwarded_for(scope: Scope) -> IPAddress | None:
+    """O ``for=`` do último elemento do ``Forwarded`` (RFC 7239), o do proxy mais próximo."""
+    values = Headers(scope=scope).getlist("forwarded")
+    if not values:
+        return None
+    last = ",".join(values).split(",")[-1]
+    for pair in last.split(";"):
+        name, _, value = pair.strip().partition("=")
+        if name.lower() != "for":
+            continue
+        node = value.strip().strip('"')
+        if node.startswith("["):  # IPv6, talvez com porta: "[2001:db8::1]:4711"
+            node = node[1:].partition("]")[0]
+        elif node.count(":") == 1:  # IPv4 com porta
+            node = node.partition(":")[0]
+        return _parse_ip(node)
+    return None
+
+
+def client_ip(
+    scope: Scope, trusted_proxy_hops: int, *, trust_forwarded: bool = False
+) -> IPAddress | None:
     """IP do cliente: o da conexão ou, atrás de proxies confiáveis, o que o proxy escreveu.
 
     Só as últimas ``trusted_proxy_hops`` entradas do ``X-Forwarded-For`` foram escritas por
@@ -228,7 +254,11 @@ def client_ip(scope: Scope, trusted_proxy_hops: int) -> IPAddress | None:
     no Render, sem a Vercel): todas foram escritas pelos nossos proxies, e a primeira é o cliente
     que o proxy mais externo viu (S30-03). Antes, valia o IP da conexão, que no Render é um proxy
     interno diferente a cada requisição, e o limite por IP não pegava ninguém.
+
+    Com ``trust_forwarded``, o ``for=`` do ``Forwarded`` vem antes de tudo, quando existe.
     """
+    if trust_forwarded and (address := _forwarded_for(scope)) is not None:
+        return address
     peer = scope.get("client")
     peer_ip = _parse_ip(peer[0]) if peer else None
     if trusted_proxy_hops <= 0:
@@ -262,7 +292,11 @@ class ClientIdentifier:
 
     def _ip(self, scope: Scope) -> tuple[bytes, bool]:
         """O valor que identifica o IP (o prefixo /64 no IPv6) e se ele é do campus."""
-        address = client_ip(scope, self._config.trusted_proxy_hops)
+        address = client_ip(
+            scope,
+            self._config.trusted_proxy_hops,
+            trust_forwarded=self._config.trust_forwarded_header,
+        )
         if address is None:
             # Sem IP reconhecível (não acontece atrás do uvicorn): todos dividem uma chave.
             return b"desconhecido", False

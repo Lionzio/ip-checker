@@ -215,12 +215,16 @@ async def proxy_check(
     ``X-Forwarded-For`` forjado não escolhe a chave do limite.
     """
     found = {name: request.headers.getlist(name) for name in PROXY_HEADERS}
-    address = client_ip(request.scope, settings.rate_limit.trusted_proxy_hops)
+    config = settings.rate_limit
+    address = client_ip(
+        request.scope, config.trusted_proxy_hops, trust_forwarded=config.trust_forwarded_header
+    )
     return JSONResponse(
         {
             "headers": {name: values for name, values in found.items() if values},
             "client_ip": str(address) if address else None,
-            "trusted_proxy_hops": settings.rate_limit.trusted_proxy_hops,
+            "trusted_proxy_hops": config.trusted_proxy_hops,
+            "trust_forwarded_header": config.trust_forwarded_header,
         },
         headers={"Cache-Control": "no-store"},
     )

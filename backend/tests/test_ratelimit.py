@@ -355,3 +355,34 @@ def test_the_edge_header_counts_only_when_configured(identifier: ClientIdentifie
     unreadable = scope("10.0.0.2", ["198.51.100.7"])
     unreadable["headers"].append((b"cf-connecting-ip", b"lixo"))
     assert len(ClientIdentifier(config).limits(unreadable)) == 2
+
+
+def _with_forwarded(value: str, forwarded: list[str]) -> dict[str, Any]:
+    request = scope("10.0.0.2", forwarded)
+    request["headers"].append((b"forwarded", value.encode()))
+    return request
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("for=198.51.100.7;host=api.example;proto=https", "198.51.100.7"),
+        ('for="[2001:db8::1]:4711"', "2001:db8::1"),
+        ("for=198.51.100.7:4711", "198.51.100.7"),
+        ("for=203.0.113.1, for=198.51.100.7", "198.51.100.7"),  # o último é o do nosso proxy
+        ("For=198.51.100.7", "198.51.100.7"),
+    ],
+)
+def test_the_forwarded_header_comes_first_when_trusted(value: str, expected: str) -> None:
+    # S30-03: pela página, a Vercel sempre reescreve o Forwarded com o IP real.
+    request = _with_forwarded(value, ["203.0.113.9, 18.0.0.1, 104.16.0.1, 10.0.0.8"])
+
+    assert str(client_ip(request, 4, trust_forwarded=True)) == expected
+    assert str(client_ip(request, 4)) == "203.0.113.9"  # sem confiar, vale o X-Forwarded-For
+
+
+@pytest.mark.parametrize("value", ["for=lixo", "by=10.0.0.1", "for=unknown", ""])
+def test_an_unreadable_forwarded_header_falls_back_to_x_forwarded_for(value: str) -> None:
+    request = _with_forwarded(value, ["198.51.100.7, 104.16.0.1, 10.0.0.8"])
+
+    assert str(client_ip(request, 4, trust_forwarded=True)) == "198.51.100.7"
