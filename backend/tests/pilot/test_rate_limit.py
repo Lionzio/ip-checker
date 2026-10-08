@@ -5,9 +5,9 @@ de conta, e um ``X-Forwarded-For`` forjado não escolhe a chave. Até a S30-03, 
 ``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render, diferente a cada requisição, e
 33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
 
-O diagnóstico ``/api/v1/proxy-check`` devolve o IP que o limite usaria. As requisições saem por IPv4:
-uma máquina com IPv4 e IPv6 pode chegar à Vercel por um e ao Render pelo outro, e seriam dois
-clientes de verdade.
+O diagnóstico ``/api/v1/proxy-check`` devolve o IP que o limite usaria. As requisições saem por
+IPv4: uma máquina com IPv4 e IPv6 pode chegar à Vercel por um e ao Render pelo outro, e seriam
+dois clientes de verdade.
 
 Ele esgota o limite do IP de quem roda por 1 minuto, por isso só roda quando pedido
 (``PILOT_CHECK_RATE_LIMIT=1``), no último passo do "Deploy do piloto", depois do smoke e2e.
