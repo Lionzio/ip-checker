@@ -4,7 +4,7 @@
 
 ### 1.1 Visão geral do IP-Checker
 
-O IP-Checker é um verificador web de uso restrito à equipe da disciplina (desenvolvedor, professores, monitores-chefe e monitores), sem execução de código, que confere se uma solução em Python de um aluno de Introdução à Programação respeita as regras de permissão da lista e da questão selecionadas (catálogo R-01…R-68, seção 3.1). Ele apoia a correção feita pela equipe: aponta as proibições, compara duas soluções em busca de plágio e redige, com uma LLM, um feedback para o aluno a partir do resultado do motor, que continua sendo o único a decidir se houve violação. O acesso é restrito porque o uso frequente de proibições é um dos principais indícios de solução gerada por IA: com a ferramenta aberta, um aluno poderia gerar o código com IA, ver as proibições e pedir à IA que as removesse (P-13, decisão de 02/10/2026). Todas as funções exigem conta aprovada e ativa, com e-mail `@cin.ufpe.br` ou `@ufpe.br`, criada por e-mail e senha ou pelo Google e aprovada manualmente por monitor-chefe, professor ou pelo desenvolvedor (ADR-04). O código é analisado apenas pela sua árvore sintática (AST), dentro de um serviço analisador isolado, sem segredos, sem rede de saída e com limites de tamanho, tempo e memória (ADR-01); a comparação de plágio roda no mesmo analisador (ADR-05). As regras ficam em um ruleset versionado e declarativo, sob a responsabilidade do professor (regras das listas) e dos monitores (regras das questões, com aprovação de monitor-chefe ou professor). Assim, mudar uma lista não exige mudar o motor (ADR-02). Cada violação aparece com regra, linha, coluna e mensagem em PT-BR. A telemetria agregada e anônima não guarda código, IP nem identificador de pessoa. As Sprints 1 a 12 foram concluídas em 01/10/2026: o MVP (Sprint 9) entregou o fluxo ponta a ponta seguro para a Lista 1, rodando localmente. As Sprints 13 a 19 (contas, registro com verificação por e-mail, perfil, gerenciamento da equipe, Google, mesma origem no piloto, painel de plágio, a montagem do feedback, o feedback na página, o aviso de privacidade e o guia da equipe) foram concluídas em 02/10/2026; falta o primeiro deploy com login, que depende das contas do autor. A Sprint 20 habilitou a Lista 2, com o `zip` condicional (R-37) e a exigência do laço (R-02), e deixou pronta a validação com os gabaritos de períodos anteriores. A Sprint 21 ligou a telemetria anônima (views do FR-17 e expurgo de 12 meses) e os alertas de latência e de erro, a Sprint 22 habilitou as Listas 3 e 4, e a Sprint 23, as Listas 5 e 6, com a recursão obrigatória (R-68), e o registro das ações de gerenciamento (REC-06). O acesso restrito, o painel de plágio e o feedback entram nas Sprints 13 a 19, antes de qualquer exposição na internet; as Listas 2 a 6 e a telemetria vieram em seguida (Sprints 20 a 23); a Sprint 24 trouxe as regras por questão, o comando `ipc-rules` e o "esqueci minha senha"; as Sprints 25 a 28 trouxeram o endurecimento para o primeiro deploy, a correção em lote, o plágio por árvore e a passagem de bastão (carga com login, relatório de eficácia, runbook, backup, onboarding e releases), e o piloto subiu em 07/10/2026 (Render, Vercel e Supabase), faltando o primeiro deploy pelo pipeline com a conta de verificação, que confirma a P-15; a Sprint 29 trouxe os indícios de uso de IA (ADR-08, Q-21), desligados no piloto até a coordenação aprovar a política. O piloto acontece em 2027.1, com a SPA na Vercel e o backend no Render, usado pela equipe na correção, e cada lista é habilitada antes de ser liberada aos alunos. O servidor do CIn só será adotado depois que os critérios de eficácia (P-09, em revisão na Q-15) forem atingidos (seção 7).
+O IP-Checker é um verificador web de uso restrito à equipe da disciplina (desenvolvedor, professores, monitores-chefe e monitores), sem execução de código, que confere se uma solução em Python de um aluno de Introdução à Programação respeita as regras de permissão da lista e da questão selecionadas (catálogo R-01…R-68, seção 3.1). Ele apoia a correção feita pela equipe: aponta as proibições, compara duas soluções em busca de plágio e redige, com uma LLM, um feedback para o aluno a partir do resultado do motor, que continua sendo o único a decidir se houve violação. O acesso é restrito porque o uso frequente de proibições é um dos principais indícios de solução gerada por IA: com a ferramenta aberta, um aluno poderia gerar o código com IA, ver as proibições e pedir à IA que as removesse (P-13, decisão de 02/10/2026). Todas as funções exigem conta aprovada e ativa, com e-mail `@cin.ufpe.br` ou `@ufpe.br`, criada por e-mail e senha ou pelo Google e aprovada manualmente por monitor-chefe, professor ou pelo desenvolvedor (ADR-04). O código é analisado apenas pela sua árvore sintática (AST), dentro de um serviço analisador isolado, sem segredos, sem rede de saída e com limites de tamanho, tempo e memória (ADR-01); a comparação de plágio roda no mesmo analisador (ADR-05). As regras ficam em um ruleset versionado e declarativo, sob a responsabilidade do professor (regras das listas) e dos monitores (regras das questões, com aprovação de monitor-chefe ou professor). Assim, mudar uma lista não exige mudar o motor (ADR-02). Cada violação aparece com regra, linha, coluna e mensagem em PT-BR. A telemetria agregada e anônima não guarda código, IP nem identificador de pessoa. As Sprints 1 a 12 foram concluídas em 01/10/2026: o MVP (Sprint 9) entregou o fluxo ponta a ponta seguro para a Lista 1, rodando localmente. As Sprints 13 a 19 (contas, registro com verificação por e-mail, perfil, gerenciamento da equipe, Google, mesma origem no piloto, painel de plágio, a montagem do feedback, o feedback na página, o aviso de privacidade e o guia da equipe) foram concluídas em 02/10/2026; falta o primeiro deploy com login, que depende das contas do autor. A Sprint 20 habilitou a Lista 2, com o `zip` condicional (R-37) e a exigência do laço (R-02), e deixou pronta a validação com os gabaritos de períodos anteriores. A Sprint 21 ligou a telemetria anônima (views do FR-17 e expurgo de 12 meses) e os alertas de latência e de erro, a Sprint 22 habilitou as Listas 3 e 4, e a Sprint 23, as Listas 5 e 6, com a recursão obrigatória (R-68), e o registro das ações de gerenciamento (REC-06). O acesso restrito, o painel de plágio e o feedback entram nas Sprints 13 a 19, antes de qualquer exposição na internet; as Listas 2 a 6 e a telemetria vieram em seguida (Sprints 20 a 23); a Sprint 24 trouxe as regras por questão, o comando `ipc-rules` e o "esqueci minha senha"; as Sprints 25 a 28 trouxeram o endurecimento para o primeiro deploy, a correção em lote, o plágio por árvore e a passagem de bastão (carga com login, relatório de eficácia, runbook, backup, onboarding e releases), e o piloto subiu em 07/10/2026 (Render, Vercel e Supabase), faltando o primeiro deploy pelo pipeline com a conta de verificação, que confirma a P-15; a Sprint 29 trouxe os indícios de uso de IA (ADR-08, Q-21), desligados no piloto até a coordenação aprovar a política. As Sprints 30 a 35 (plano de 07/10/2026, seção 7.12) tratam as pendências restantes: o piloto verificado ponta a ponta, as decisões com a coordenação e o NTI, os dados de calibração e de 2027.1, a prontidão para o período, os controles ainda [PLANEJADO] e a Fase 2; a integração com outros 2 projetos da monitoria é só uma possibilidade (seção 9, ADR-09). O piloto acontece em 2027.1, com a SPA na Vercel e o backend no Render, usado pela equipe na correção, e cada lista é habilitada antes de ser liberada aos alunos. O servidor do CIn só será adotado depois que os critérios de eficácia (P-09, em revisão na Q-15) forem atingidos (seção 7).
 
 ### 1.2 Falhas críticas corrigidas
 
@@ -276,6 +276,7 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-21 | Aluno | usar a interface no celular, pelo teclado e com leitor de tela | verificar meu código em qualquer dispositivo | Dado uma viewport de 360 px, Quando uso o fluxo completo, Então não há rolagem horizontal; Dado a CI, Quando roda o axe-core, Então há 0 violações *critical/serious* (NFR-19) | Should | FR-20 |
 | US-22 | Aluno | receber a verificação em menos de 1 s mesmo na véspera do prazo | não abandonar a ferramenta no momento de maior uso | Dado uma carga de 500 req/min, Quando verifico, Então o P95 no servidor é ≤ 200 ms (NFR-01, NFR-04); Dado uma carga de 1.500 req/min, Quando o sistema satura, Então recebo 503 com `Retry-After` em vez de um erro genérico (NFR-05) | Must | FR-19 |
 | US-23 | Professor/Coordenação | receber, ao fim do piloto, um relatório com os critérios de eficácia medidos | decidir com dados se o projeto migra para o servidor do CIn | Dado o fim do piloto, Quando o relatório é gerado, Então ele mostra, para cada critério da P-09, o valor medido, a meta e se foi atingido; Dado que a coordenação aprova a migração, Quando o runbook de migração é executado, Então o serviço passa a rodar no servidor do CIn com a mesma `ruleset_version` e sem perda da telemetria | Should | FR-17 |
+| US-35 | Monitor-mantenedor | ensaiar o rollback e a restauração do backup do piloto, com o tempo medido | saber, antes de um incidente de verdade, que o piloto volta ao ar e não perde as contas | Dado o runbook, Quando faço o rollback da API e da página, Então as duas voltam à versão anterior em ≤ 5 min e o tempo fica registrado; Dado o backup cifrado mais recente, Quando o restauro num banco descartável, Então as contagens batem com as do piloto e o RTO fica registrado (NFR-20) | Should | — |
 
 ### Épico E6 — Acesso restrito e gestão da equipe (P-13)
 
@@ -717,6 +718,7 @@ decisão atualiza o status do ADR antigo e aponta para o novo.
 | [ADR-06](adr/ADR-06-feedback-por-llm-com-moldura-deterministica.md) | Feedback por LLM com moldura determinística | Implementado na Sprint 18 |
 | [ADR-07](adr/ADR-07-plagio-por-arvore-canonizada-insensivel-a.md) | Plágio por árvore canonizada, insensível à ordem | Implementado na Sprint 27 |
 | [ADR-08](adr/ADR-08-indicios-de-uso-de-ia-nunca.md) | Indícios de uso de IA, nunca veredito | Implementado na Sprint 29; desligado no piloto até a política (S29-04) |
+| [ADR-09](adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md) | Integração com outros projetos da monitoria | Proposto em 07/10/2026 (Q-23); não confirmada |
 
 ## 7. Roadmap de Sprints e Tasks do MVP
 
@@ -729,6 +731,7 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1b — Acesso restrito e apoio à correção (Sprints 13–19):** login com aprovação, cargos e gerenciamento, Google, painel de plágio e feedback por LLM (P-13). Nada vai ao ar na internet antes do login completo (Sprint 16), e a apresentação a monitores-chefes e professores (Marco 2) passa para a Sprint 19.
 - **Fase 1c — Listas e governança (Sprints 20–24), com o piloto em 2027.1:** cada lista é habilitada (`ENABLED_LISTS`) antes da data em que é liberada aos alunos; telemetria e regras por questão.
 - **Fase 1d — Endurecimento, experiência e passagem de bastão (Sprints 25–29), criada em 06/10/2026 a partir da revisão de fim da Sprint 23:** primeiro deploy seguro, correção em lote, plágio por árvore, carga e eficácia, documentação para o próximo mantenedor e, se a Q-21 aprovar, os indícios de uso de IA. Como o ritmo real tem sido muito maior que 6 SP por sprint e não há calendário fixo (P-10), as datas da tabela são só a ordem prevista.
+- **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–35), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); os gabaritos, as questões de 2027.1 e a calibração dos indícios (32); a prontidão para 2027.1 (33); os controles ainda [PLANEJADO] (34); e a Fase 2, bloqueada pela P-09 e pela Q-12 (35). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
 - **Fase 2 — Servidor do CIn:** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
@@ -764,6 +767,12 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 27 (19/04–02/05) | Plágio por árvore | US-31 | ADR-07 implementada: cópias reordenadas ou reescritas em formas equivalentes dão ≥ 95%; contenção contra enchimento; comparação de uma solução contra a turma; trechos realçados nos dois códigos | Soluções independentes de exercícios curtos ficam mais parecidas (ameaça 20): o IDF da turma é obrigatório |
 | 28 (03/05–16/05) | Carga, eficácia e passagem de bastão | US-20, US-22, US-23 | Relatório k6 no Render, já com login; consultas do relatório de eficácia (P-09, Q-15), com a adoção por lista do critério 2; runbook com rollback ensaiado, backup semanal, onboarding e CONTRIBUTING; blueprint dividido; releases com tag | O relatório final de eficácia só sai no fim de 2027.1 (P-10) |
 | 29 (17/05–30/05) | Indícios de uso de IA | US-34 | ADR-08: painel com as múltiplas violações, a semelhança com soluções de referência geradas por IA e os marcadores de estilo, calibrado em soluções anteriores a 2023 | Risco de o painel ser lido como prova; a política com a coordenação precisa estar combinada antes de ligar |
+| 30 (31/05–13/06) | Piloto verificado ponta a ponta | US-17, US-19, US-20, US-22, US-26, US-32, US-35 | "Deploy do piloto" verde com login e e2e no piloto; UptimeRobot com alerta ensaiado; backup cifrado restaurado e rollback em ≤ 5 min, com os tempos no runbook; P-12 (a) e P-15 confirmadas; supervisord sem `PermissionError` | Começa com a conta de verificação (ação do autor); capacidades do contêiner no Render (P-17) |
+| 31 (14/06–27/06) | Decisões com a coordenação e auditoria bloqueante | US-11, US-13, US-15, US-23, US-32, US-34 | Política dos indícios, Q-16, Q-17 e Q-22 levadas com as opções de 7.13; Marco 2; gitleaks, pip-audit, npm audit e Semgrep bloqueantes no CI | Agenda da coordenação e do NTI |
+| 32 (28/06–11/07) | Gabaritos, questões de 2027.1 e calibração | US-13, US-14, US-34 | Job dos gabaritos rodando; calibração com ≤ 5% de faixa alta; ruleset de 2027.1 com questões e referências | Dados externos (Q-14, soluções anteriores a 2023, documento de permissões de 2027.1) |
+| 33 (12/07–25/07) | Prontidão para 2027.1 | US-12, US-19, US-22 | Plano do Render aplicado e medido; teste sintético diário; cenários do NFR-04 e do NFR-05; listas validadas habilitadas | Custo do Starter (decisão do autor); calendário da UFPE (P-10) |
+| 34 (26/07–08/08) | Controles de qualidade e observabilidade | US-14, US-15, US-17, US-21 | pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal e esquema do ruleset sem [PLANEJADO] | Variação de tempo dos runners; chave de API do Render para os logs |
+| 35 (09/08–22/08) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
 | Backlog (após o piloto) | Melhorias de experiência | US-02, US-10 | Upload de `.py`, tela de permissões, CodeMirror, alternância de tema, análise do fluxo de controle no plágio (ADR-07, alternativa D) | Dependem da avaliação do piloto |
 
 ### 7.2 Tasks do MVP (Sprints 1 a 9)
@@ -919,6 +928,386 @@ Situação: a Sprint 28 foi concluída em 07/10/2026. O que foi entregue e as de
 
 Situação: a Sprint 29 foi concluída em 07/10/2026. O que foi entregue e as decisões de implementação estão no [CHANGELOG](../CHANGELOG.md); os indícios ficam desligados no piloto até a coordenação aprovar a política e a calibração com soluções anteriores a 2023 ficar na meta (S29-04, `docs/indicios-de-ia.md`).
 
+### 7.12 Tasks das Sprints 30 a 35 (plano de 07/10/2026)
+
+Origem: a lista de pendências de 07/10/2026, depois da release da Sprint 29 (tag `sprint-29`, commit `03e3256`, no ar no piloto), que reúne as pendências do piloto adiadas pelo autor, as decisões em aberto, as premissas a confirmar, os critérios de sprints que ficaram abertos e os controles marcados como [PLANEJADO]. A ordem segue a prioridade definida pelo autor: (1) o piloto verificado ponta a ponta; (2) as decisões com a coordenação e o NTI; (3) os dados (gabaritos, questões de 2027.1 e calibração); (4) a prontidão para 2027.1; depois, os controles [PLANEJADO] e a Fase 2. O backlog posterior ao piloto (seção 7.1, "Backlog") não vira task.
+
+Cada task tem um **tipo**: **Engenharia** (executável pelo desenvolvedor no repositório), **Externa** (depende de outra pessoa ou de uma conta externa; a task acompanha a entrada esperada e o critério de desbloqueio, e nunca é dada como concluída sem a ação) ou **Decisão** (escolha do autor, da coordenação, do NTI ou do suporte de TI; as opções estão em 7.13). Responsáveis: **Autor** (o desenvolvedor), **Coordenação**, **NTI**, **Equipe** (monitores e monitores-chefe), **Professor**, **TI do CIn**. As estimativas seguem a P-02 (1 SP ≈ 2 h); tasks externas e de decisão não têm SP de engenharia. Nada aqui foi executado: o estado de cada pendência está na matriz de 7.14.
+
+#### 7.12.1 Base de testes de toda sprint
+
+Vale para as Sprints 30 a 35 e não se repete nelas; cada sprint lista só os testes que acrescenta. Sem *branch protection* (GitHub Free, P-02), "bloqueante" quer dizer: o PR só é mergeado na `develop` com o CI verde, conferido por quem faz o merge (`CONTRIBUTING.md`), e a `main` só avança com o CI verde da `develop` (`scripts/release.sh`).
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Lint e tipos do backend | ruff, `mypy --strict`, import-linter | `ci.yml`, job "Backend" (`uv run ruff check .`, `uv run mypy`, `uv run lint-imports`) | PR e push na `develop` (pulado na `main` e em mudança só de `.md`, S28-04) | 0 erros; 4 contratos do import-linter mantidos |
+| Unitários e integração do backend | pytest, com PostgreSQL de serviço | `ci.yml`, job "Backend" (`uv run pytest`) | idem | Todos passam; cobertura ≥ 90% (`--cov-fail-under=90`, `backend/pyproject.toml`) |
+| Regras e regressão do motor | `ipc-rules validate` e casos golden | `uv run ipc-rules validate ../rulesets/2026.2 --golden tests/golden` | idem | 0 FP e 0 FN; hoje 292 de 292 casos |
+| Contrato da API | pytest com schemathesis | `tests/test_api_contract.py` e `docs/openapi.json` em dia | idem | Contrato em dia e todos os status documentados conferidos |
+| Unitários do frontend | Vitest com RTL | `ci.yml`, job "Frontend" (`npm test`) | idem | Todos passam (hoje 229) |
+| Lint, tipos e builds do frontend | ESLint, `tsc`, Vite | `npm run lint`, `npm run typecheck`, `npm run build`, `npm run build:vercel` | idem | 0 erros; tipos gerados do OpenAPI em dia |
+| Segurança e isolamento | pytest pela borda do compose e imagem do piloto | `ci.yml`, job "Segurança" (`IPC_SECURITY_TESTS=1 uv run pytest tests/security`) | idem | Itens 1 a 22 da seção 8 verdes |
+| e2e no compose | Playwright com axe-core | `ci.yml`, job "Smoke e2e" (`npm run e2e`) | idem | Todos passam (hoje 51), sem violação grave no axe |
+| Verificação pós-deploy | pytest contra o piloto | `deploy.yml`, passo "Conferir o piloto" (`tests/pilot`) | `workflow_run` do CI na `main` e `workflow_dispatch` | `/ready` e `/version.json` com o commit, cabeçalhos da Vercel, repasse `/api/*`, TLS ≥ 1.2, CORS desligado e `ai_indicators` como esperado |
+| e2e no piloto | Playwright (`E2E_TARGET=pilot`) | `deploy.yml`, passo "Smoke e2e no piloto" | idem, só com a conta de verificação (`HAS_CHECK_ACCOUNT`) | `smoke` e `auth` verdes pela página da Vercel |
+| Auditoria | gitleaks, pip-audit, npm audit, Trivy | `audit.yml` | segunda-feira 09:00 UTC e manual | Hoje informativa; bloqueante desde a S31-03 |
+
+#### Sprint 30 — Piloto verificado ponta a ponta
+
+**Objetivo:** o "Deploy do piloto" fecha verde sem nenhum passo pulado (login e e2e no piloto), com alerta, backup e rollback ensaiados e medidos, e com a P-12 (a) e a P-15 confirmadas ou corrigidas por evidência registrada.
+
+**Premissas:** confirma a P-12 (a) e a P-15 (a) e (b); mede a Q-20; usa a P-16 (UptimeRobot gratuito) e investiga a P-17 (capacidades do contêiner no Render), registradas em `docs/decisoes.md`. A P-12 (b), (c) e (d) e o repasse `/api/*` da P-15 (a) já foram confirmados no primeiro deploy (07/10/2026).
+
+**Histórias:** US-17, US-19, US-20, US-22, US-26, US-32 e US-35 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S30-01 | US-17 | Externa | Criar a conta de verificação no piloto (registro com outro e-mail institucional, confirmação, aprovação como monitor) e gravar os secrets `PILOT_CHECK_LOGIN`, `PILOT_CHECK_PASSWORD` e `PILOT_CHECK_NAME` com `gh secret set` | `deploy/piloto.md` (passo 8), `docs/runbook.md` ("Conta de verificação") | Autor | — | — | Entrada: conta ativa como monitor. Desbloqueio: `gh secret list` mostra os três nomes, e o passo de migração do "Deploy do piloto" mostra "conta de verificação: marcada" |
+| S30-02 | US-26, US-32 | Engenharia | Primeiro deploy com login: "Deploy do piloto" por `workflow_dispatch` na `main`, com o login pela página e o smoke e2e no piloto; acrescentar a `tests/pilot` uma verificação do feedback pela origem da página (`POST /api/v1/feedback`, modelos de texto) com prazo de 30 s, que fecha a P-15 (a) | `backend/tests/pilot/test_deployed_pilot.py`, `.github/workflows/deploy.yml` | Autor | 1 | S30-01 | Os passos "Conferir o piloto" e "Smoke e2e no piloto" verdes, sem o aviso de conta ausente; o teste do feedback responde 200 em ≤ 30 s pela Vercel |
+| S30-03 | US-17 | Engenharia | Confirmar a P-12 (a) e a P-15 (b): uma verificação em `tests/pilot` que manda, de um mesmo cliente, logins sem sessão com valores forjados diferentes no início do `X-Forwarded-For` e confere que o limite por IP (30 por minuto sem sessão) conta todos como um só cliente; se falhar, corrigir `IPC_TRUSTED_PROXY_HOPS` no `render.yaml`. Registrar o resultado na P-12 e na P-15 | `backend/tests/pilot/test_deployed_pilot.py`, `backend/src/ipc_api/ratelimit.py` (`client_ip`), `render.yaml` | Autor | 1 | S30-01 | A 31ª tentativa em 60 s recebe 429 com `X-Forwarded-For` forjado; P-12 (a) e P-15 (b) marcadas como confirmadas, com a data e o run do workflow |
+| S30-04 | US-19 | Externa | Criar no UptimeRobot os três monitores HTTP(S), de 5 em 5 minutos, com alerta por e-mail: `<Render>/ready`, `<Render>/health/slo` e `<Vercel>/` | Painel do UptimeRobot; `deploy/piloto.md` (passo 9) | Autor | — | — | Entrada: os três monitores ativos. Desbloqueio: os três verdes por 24 h e o Render sem dormência (`/ready` abaixo de 1 s na primeira chamada do dia) |
+| S30-05 | US-19 | Engenharia | Exercício de alerta no piloto (pendente desde a S21): baixar `IPC_SLO_P95_MS` no Render por 10 min, gerar tráfego com o workflow "Carga no piloto" (20 por minuto) até o `/health/slo` responder 503, medir o tempo até o e-mail do UptimeRobot e voltar o valor | Painel do Render, `.github/workflows/load.yml`, `docs/runbook.md` ("Latência ou erros acima da meta") | Autor | 0,5 | S30-01, S30-04 | Alerta recebido em ≤ 5 min (NFR-15), valor restaurado, registro com data e tempos no runbook |
+| S30-06 | US-20, US-35 | Externa | Gerar a chave com `age-keygen`, guardar a privada fora do GitHub e gravar a pública na variável `BACKUP_AGE_RECIPIENT` | `docs/runbook.md` ("Backup") | Autor | — | — | Desbloqueio: `gh variable list` mostra `BACKUP_AGE_RECIPIENT` |
+| S30-07 | US-35 | Engenharia | Rodar o "Backup do banco do piloto" à mão e fazer o primeiro ensaio de restauração num PostgreSQL descartável, cronometrado | `.github/workflows/backup.yml`, `docs/runbook.md` ("Restaurar um backup") | Autor | 1 | S30-06 | Artefato `ipc-piloto-AAAA-MM-DD` com o `.sha256` conferido; contagens de `app.account` e `telemetry.validation_event` iguais às do piloto no momento do backup; RTO medido e registrado na tabela do runbook (NFR-20: RTO ≤ 30 min) |
+| S30-08 | US-35 | Engenharia | Primeiro ensaio cronometrado do rollback (pendente da S28-03): voltar a API (Render, **Rollback**) e a página (Vercel, **Instant Rollback**) para a release anterior e depois para a atual | `docs/runbook.md` ("Voltar para a versão anterior") | Autor | 0,5 | S30-02 | Do passo 1 ao passo 3 conferido em ≤ 5 min, com `/ready` e `/version.json` no commit anterior; registro na tabela do runbook |
+| S30-09 | US-22 | Engenharia | Carga no piloto de verdade (pendente da S28-01): workflow "Carga no piloto" com 20 por minuto por 5 min; registrar o P95 do servidor (`/health/slo`), o P95 do k6 e a diferença entre `sessao_ms` e `sem_banco_ms` (Q-20) | `.github/workflows/load.yml`, `deploy/load/pilot-load.js`, `docs/adr/ADR-03-topologia-de-implantacao-por-fase.md`, `docs/decisoes.md` (Q-20) | Autor | 1 | S30-01 | Resumo do workflow com os três números; ADR-03 e Q-20 atualizadas com a medição e a data |
+| S30-10 | US-17 | Engenharia | Corrigir o `PermissionError` do supervisord no desligamento (ver o diagnóstico abaixo): registrar as capacidades no boot, reproduzir com `docker run --cap-drop KILL`, aplicar a correção escolhida e cobri-la com um teste na suíte do piloto | `deploy/render/supervisord.conf`, `deploy/render/Dockerfile`, `backend/tests/security/test_pilot_isolation.py` | Autor | 2 | — | Na imagem com `--cap-drop KILL`, `docker stop` encerra os dois serviços em ≤ 15 s (`stopwaitsecs`) sem a linha `CRIT unknown problem killing`; no Render, um deploy e uma dormência sem essa linha nos logs; isolamento da suíte do piloto inalterado |
+| S30-11 | US-22 | Decisão | Plano do Render (ADR-03): gratuito ou Starter (cerca de US$ 7 por mês), com a medição da S30-09 (opções em 7.13.6) | `render.yaml` (`plan`), painel do Render | Autor | — | S30-09 | Decisão registrada no ADR-03; se Starter, `plan: starter` por PR e nova rodada da S30-09 com P95 do servidor ≤ 200 ms |
+| S30-12 | US-35 | Decisão | RPO do banco do piloto: o backup semanal dá RPO de até 7 dias, acima da meta de 24 h da NFR-20; escolher entre o backup diário (só o `cron` do `backup.yml` muda) e revisar a NFR-20 para o piloto (opções em 7.13.8) | `.github/workflows/backup.yml`, NFR-20 | Autor | — | S30-07 | Desbloqueio: decisão registrada na NFR-20; se diário, o `cron` alterado por PR e uma semana de artefatos diários |
+
+*Diagnóstico da S30-10 (a confirmar na própria task).* O `supervisord` roda como root (`user=root`) e encerra cada programa com `stopasgroup=true` e `killasgroup=true`, ou seja, manda o sinal ao grupo de processos de `ipc-api` (UID 10001) e de `ipc-analyzer` (UID 10002). Um processo root só sinaliza processos de outro usuário com a capacidade `CAP_KILL`; a hipótese (P-17) é que o Render roda o contêiner sem ela, e o `kill()` devolve `EPERM`, que o supervisord registra como `PermissionError`. Os processos acabam encerrados quando o Render destrói o contêiner, por isso nada quebra. Opções a avaliar na task: (a) um intermediário root por programa, que inicia o serviço com `setpriv --reuid ... --pdeathsig TERM` e apenas sai ao receber o sinal, para o kernel entregar o `SIGTERM` ao filho, sem precisar de `CAP_KILL` [A CONFIRMAR: se o `setpriv` da imagem mantém o `pdeathsig` depois de trocar o usuário]; (b) cada serviço encerrar-se sozinho quando o pai morre, configurando o `PR_SET_PDEATHSIG` no início do processo; (c) aceitar o registro e documentá-lo no runbook (só se (a) e (b) enfraquecerem o isolamento). A correção não pode dar ao analisador o mesmo UID da API nem rodar algum serviço como root.
+
+**ADRs:** atualiza o ADR-03 (medição da S30-09 e a decisão da S30-11). Sem ADR novo.
+
+**Critérios de aceite:**
+1. O run do "Deploy do piloto" na `main` termina verde com os passos "Conferir o piloto" e "Smoke e2e no piloto" executados, nenhum pulado e nenhum aviso de conta ausente.
+2. O feedback pela página responde em ≤ 30 s, e o login cria o cookie `__Host-ipc_session` com `HttpOnly`, `Secure` e `SameSite=Lax` pela origem da Vercel.
+3. A 31ª tentativa de login sem sessão em 60 s recebe 429, mesmo com `X-Forwarded-For` forjado.
+4. Os três monitores do UptimeRobot ficam verdes por 24 h, e o alerta de latência chega em ≤ 5 min no exercício.
+5. A restauração de um backup cifrado reproduz as contagens do banco, com o RTO registrado no runbook.
+6. O rollback dos dois serviços leva ≤ 5 min, com o tempo registrado no runbook.
+7. O ADR-03 tem o P95 do servidor medido no piloto, com login, e a decisão do plano.
+8. Os logs do Render não mostram `CRIT unknown problem killing` num deploy nem numa dormência.
+
+**Testes (além da base de 7.12.1):**
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Login com cookie pela página | pytest | `tests/pilot::test_login_validation_and_logout_through_the_page` | `deploy.yml` | 200 no login, cookie `__Host-` com os atributos, 200 na verificação, 204 na saída e 401 depois |
+| Feedback em até 30 s pela página (novo) | pytest | `tests/pilot` (S30-02) | `deploy.yml` | 200 em ≤ 30 s, `source` = `template` sem IA configurada |
+| `X-Forwarded-For` e `IPC_TRUSTED_PROXY_HOPS` (novo) | pytest | `tests/pilot` (S30-03) | `deploy.yml`, depois só à mão (gasta o limite por IP do runner) | 429 na 31ª tentativa com o valor forjado |
+| e2e no piloto | Playwright | `deploy.yml`, "Smoke e2e no piloto" | `deploy.yml` com a conta | `smoke.spec.ts` e `auth.spec.ts` verdes |
+| Carga no piloto | k6 | `load.yml` (20 por minuto, 5 min) | à mão | Sem 5xx; P95 do servidor registrado; ≤ 200 ms no plano escolhido para o prazo |
+| Encerramento sem `CAP_KILL` (novo) | pytest pela imagem do piloto | `tests/security/test_pilot_isolation.py` | job "Segurança" do CI | `docker stop` em ≤ 15 s, sem `CRIT` no log, isolamento por UID e seccomp mantidos |
+| Exercício de alerta | UptimeRobot | Runbook, S30-05 | à mão, uma vez | E-mail em ≤ 5 min |
+| Restauração do backup | age, `pg_restore` | Runbook, "Restaurar um backup" | à mão, uma vez por semestre | Contagens iguais; RTO registrado |
+| Rollback cronometrado | Painéis do Render e da Vercel | Runbook, "Voltar para a versão anterior" | à mão, uma vez por período | ≤ 5 min do passo 1 ao 3 |
+| Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
+
+**Definition of Done:** a da seção 8, mais: os registros de ensaio do runbook preenchidos com data, responsável e tempo; a P-12 e a P-15 atualizadas em `docs/decisoes.md` com a evidência (run do workflow); nenhum secret ou URL de hook em arquivo, log ou PR.
+
+**Riscos e bloqueios:** S30-02, S30-03, S30-05, S30-08 e S30-09 esperam a S30-01 (ação do autor, cerca de 10 min). O e-mail de verificação da conta nova pode cair no spam (remetente Gmail pelo Brevo, Q-17). A S30-03 gasta o limite de login por IP do runner por 1 min. Se a correção da S30-10 exigir capacidades que o Render não dá, vale a opção (c), com o motivo no runbook. O backup semanal não atende o RPO de 24 h da NFR-20 (S30-12).
+
+#### Sprint 31 — Decisões com a coordenação e auditoria bloqueante
+
+**Objetivo:** levar à coordenação, ao NTI e ao autor as decisões em aberto com as opções de 7.13, entregar o Marco 2 e tornar a auditoria de segurança bloqueante, com os achados triados.
+
+**Premissas:** Q-16, Q-17, Q-22 e ADR-08 (S29-04) seguem abertas até a decisão registrada; a NFR-13 passa a ser medida a cada PR.
+
+**Histórias:** US-11, US-23, US-32, US-34 e US-15 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S31-01 | US-34 | Decisão | Levar à coordenação a política dos indícios de IA (S29-04, ADR-08): o texto aos alunos e quem gera as referências (opções em 7.13.1) | `docs/indicios-de-ia.md` | Coordenação | — | — | Entrada: aprovação ou pedido de mudança, por escrito. Desbloqueio: a decisão registrada na Q-21 e no ADR-08, com a data |
+| S31-02 | US-32 | Decisão | Q-16: provedor de IA do feedback (opções em 7.13.2); se aprovado, o autor grava `IPC_LLM_*` no Render | `docs/decisoes.md` (Q-16), `deploy/compose.md` ("Feedback por IA") | Autor e Coordenação | — | — | Desbloqueio: Q-16 decidida; se houver provedor, um feedback no piloto com `source` = `llm` e o nome do aluno ausente do pedido ao provedor |
+| S31-03 | US-15 | Engenharia | Triar a auditoria semanal (S25-01) e torná-la bloqueante: corrigir ou justificar cada achado alto ou crítico corrigível, tirar o `continue-on-error` do `audit.yml` e rodar gitleaks, pip-audit e npm audit também no `ci.yml`, em todo PR (Trivy fica no semanal, por demorar) | `.github/workflows/audit.yml`, `.github/workflows/ci.yml` | Autor | 2 | — | Uma rodada do `audit.yml` sem achado aberto; PR com uma dependência vulnerável de teste falha no CI; NFR-13 e item 14 da seção 8 sem a ressalva "ainda não bloqueante" |
+| S31-04 | US-15 | Engenharia | Semgrep no CI (NFR-09): imagem fixada por digest, regras para Python e TypeScript, achados novos bloqueiam o PR | `.github/workflows/ci.yml`, `.semgrep.yml` (novo) [A CONFIRMAR o conjunto de regras] | Autor | 1 | — | Job verde na `develop`; um PR com `eval` sobre dado de requisição falha; NFR-09 sem [PLANEJADO] |
+| S31-05 | US-11 | Externa | Marco 2: revisar o guia da equipe e marcar a data da apresentação a monitores-chefes e professores | `docs/guia-da-equipe.md`; arquivo da apresentação [A CONFIRMAR: não está no repositório] | Autor | — | — | Entrada: data marcada e guia revisado. Desbloqueio: apresentação feita, com as decisões registradas em `docs/decisoes.md` |
+| S31-06 | US-23 | Externa | Criar o formulário da pesquisa de satisfação e a planilha do critério 3, como especificados (S28-02) | `docs/eficacia.md` (seções 3 e 4) | Equipe | — | — | Entrada: formulário anônimo e planilha sem dados de aluno. Desbloqueio: os dois links registrados em `docs/eficacia.md` |
+| S31-07 | US-11 | Decisão | Q-17: remetente definitivo dos e-mails e, se for `@cin.ufpe.br`, SPF, DKIM e DMARC conferidos com o NTI (opções em 7.13.3) | `docs/decisoes.md` (Q-17), `deploy/compose.md` ("Registro e e-mails"), `IPC_EMAIL_FROM` no Render | Autor e NTI | — | — | Desbloqueio: um e-mail de verificação entregue na caixa de entrada de um `@cin.ufpe.br` e de um `@ufpe.br`, fora do spam |
+| S31-08 | US-13 | Decisão | Q-22: governança das regras por fork e check de aprovação (opções em 7.13.4) | `RULES.md`, `.github/PULL_REQUEST_TEMPLATE/regras.md` | Autor | — | — | Desbloqueio: Q-22 decidida; se a opção B, uma task de implementação entra na sprint seguinte |
+
+**ADRs:** se a Q-16 escolher um provedor, o ADR-06 recebe a decisão. Sem ADR novo.
+
+**Critérios de aceite:**
+1. As decisões S31-01, S31-02, S31-07 e S31-08 estão registradas em `docs/decisoes.md`, com a data e quem decidiu, ou a sprint fecha com cada uma marcada "aguardando", com a entrada pendente.
+2. O `audit.yml` roda sem `continue-on-error`, e a última rodada não tem achado alto ou crítico corrigível aberto.
+3. Um PR de teste com um segredo falso, uma dependência vulnerável ou um `eval` sobre dado de requisição falha no CI (o PR é descartado depois).
+4. Os links do formulário e da planilha estão em `docs/eficacia.md`.
+
+**Testes (além da base de 7.12.1):**
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Segredos | gitleaks | `ci.yml` (novo) e `audit.yml` | PR, push e segunda-feira | 0 achados; o PR de teste com segredo falso falha |
+| Dependências Python | pip-audit 2.9.0 | `ci.yml` (novo) e `audit.yml` | idem | 0 vulnerabilidades corrigíveis |
+| Dependências npm | `npm audit --audit-level=high` | `ci.yml` (novo) e `audit.yml` | idem | 0 altas ou críticas |
+| Imagem do piloto | Trivy (`--severity HIGH,CRITICAL --ignore-unfixed`) | `audit.yml` | segunda-feira e manual | 0 achados |
+| Análise estática | Semgrep | `ci.yml` (novo) | PR e push | 0 achados novos; o PR de teste com `eval` falha |
+| Feedback com IA (se a Q-16 aprovar) | pytest com o provedor gravado | `tests/feedback` e uma verificação manual no piloto | depois da configuração | `source` = `llm`, nome do aluno trocado por `[ALUNO]`, texto validado |
+| Entrega de e-mail (Q-17) | registro real | runbook, roteiro do primeiro deploy | depois da decisão | E-mail na caixa de entrada em ≤ 5 min |
+| Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
+
+**Definition of Done:** a da seção 8, com o item 14 sem a ressalva de "ainda não bloqueante".
+
+**Riscos e bloqueios:** as decisões dependem da agenda da coordenação e do NTI; a sprint não espera por elas e as mantém como "aguardando". A triagem pode revelar uma vulnerabilidade sem correção: ela é registrada com a justificativa e revista a cada rodada.
+
+#### Sprint 32 — Dados: gabaritos, questões de 2027.1 e calibração dos indícios
+
+**Objetivo:** rodar os gabaritos de períodos anteriores no CI, calibrar os indícios de IA com soluções humanas (meta da ADR-08: no máximo 5% de faixa alta), cadastrar as questões de 2027.1 com as referências e, só com a política aprovada, ligar os indícios no piloto.
+
+**Premissas:** Q-14 (gabaritos fora do repositório); ADR-08 (faixas iniciais a calibrar); P-07 (numeração das questões por período).
+
+**Histórias:** US-13, US-14 e US-34 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S32-01 | US-14 | Externa | Criar o repositório privado dos gabaritos, no formato `<período>/lista-<n>/<questão>.py`, e o token só de leitura; gravar a variável `GABARITOS_REPO` e o secret `GABARITOS_TOKEN` | `rulesets/README.md` ("Gabaritos"), `backend/tests/official_answers/` | Autor | — | — | Desbloqueio: o job "Gabaritos (zero violação, Q-14)" do `ci.yml` roda (não fica "skipped") e passa |
+| S32-02 | US-34 | Externa | Obter as soluções humanas de períodos anteriores a 2023 para a calibração, no mesmo formato, fora do repositório [A CONFIRMAR: se os gabaritos da Q-14 trazem soluções de alunos ou só as respostas oficiais; se forem só oficiais, a fonte das soluções é a coordenação] | Pasta local fora do repositório | Autor e Coordenação | — | — | Entrada: pelo menos 200 soluções [PREMISSA] distribuídas pelas 6 listas. Desbloqueio: pasta disponível ao autor, sem dado de aluno no repositório |
+| S32-03 | US-34 | Engenharia | Calibrar os indícios: rodar `ipc-rules calibrate` nas soluções da S32-02, ajustar as faixas de `engine/indicators.py` por PR até a faixa alta ficar em ≤ 5%, e registrar a distribuição no ADR-08 | `backend/src/ipc_analyzer/cli.py`, `backend/src/ipc_analyzer/engine/indicators.py`, `docs/adr/ADR-08-indicios-de-uso-de-ia-nunca.md` | Autor | 2 | S32-02 | `uv run ipc-rules calibrate ../rulesets/2026.2 <pasta> --max-alto 5` sai com 0; os testes de `test_indicators.py` atualizados para as faixas novas |
+| S32-04 | US-13 | Externa | Criar o período 2027.1 no ruleset, a partir do documento de permissões validado pelo professor, e cadastrar as questões das listas liberadas (R-01) pelo `RULES.md` | `rulesets/2027.1/base.yaml` e `questions/` (novos) | Professor e Equipe | — | Documento de permissões de 2027.1 | Desbloqueio: `ipc-rules validate ../rulesets/2027.1 --golden tests/golden` verde, com pelo menos uma questão por lista habilitada |
+| S32-05 | US-34 | Externa | Gerar as referências por IA das questões cadastradas (S29-02), conforme a decisão da S31-01 sobre quem gera | `rulesets/2027.1/referencias/<questão>/*.py` (novos), `RULES.md` (passo 5) | Equipe (a decidir na S31-01) | — | S31-01, S32-04 | Desbloqueio: `ipc-rules validate` mostra "referências de IA: N em M questões", com M igual ao número de questões cadastradas |
+| S32-06 | US-34 | Engenharia | Ligar os indícios no piloto: `IPC_AI_INDICATORS` = `"1"` no `render.yaml`, o teste correspondente atualizado e a variável `PILOT_AI_INDICATORS` = `1` | `render.yaml`, `backend/tests/test_indicators_api.py`, `.github/workflows/deploy.yml` | Autor | 0,5 | S31-01 (aprovada), S32-03 | Deploy verde com `ai_indicators: true` no `/api/v1/auth/options` da Vercel e o painel visível numa verificação de teste com a conta de verificação |
+
+**ADRs:** atualiza o ADR-08 (faixas calibradas e, se for o caso, o status "ligado no piloto"). Sem ADR novo.
+
+**Critérios de aceite:**
+1. O job dos gabaritos roda no CI e passa com zero violação.
+2. A calibração mostra no máximo 5% de faixa alta nas soluções anteriores a 2023, e o ADR-08 registra a distribuição.
+3. O ruleset de 2027.1 é válido, com as questões e as referências das listas liberadas.
+4. Os indícios só ficam ligados no piloto se a S31-01 estiver aprovada e o critério 2 for cumprido; senão, a S32-06 continua bloqueada.
+
+**Testes (além da base de 7.12.1):**
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Gabaritos | pytest (`tests/official_answers`) | `ci.yml`, job "Gabaritos" | PR e push, com `GABARITOS_REPO` definido | Zero violação em cada gabarito |
+| Calibração dos indícios | `ipc-rules calibrate` | comando da S32-03 | à mão, a cada período | Sai com 0 (≤ 5% de faixa alta); a saída nunca mostra código |
+| Regras R-01 de 2027.1 | `ipc-rules validate` e casos golden | `uv run ipc-rules validate ../rulesets/2027.1 --golden tests/golden` | PR de regras | 0 FP e 0 FN; referências válidas |
+| Indícios no piloto (S32-06) | pytest | `tests/pilot::test_ai_indicators_are_on_only_when_expected` com `PILOT_AI_INDICATORS=1` | `deploy.yml` | `ai_indicators` igual ao esperado |
+| Caso de uso dos indícios | Playwright | `frontend/e2e/indicators.spec.ts` | CI (compose) | Faixa alta com `break`, `continue` e `pass`; nada numa solução limpa |
+| Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
+
+**Definition of Done:** a da seção 8; nenhum gabarito ou solução de aluno no repositório (Q-14, NFR-11).
+
+**Riscos e bloqueios:** a sprint inteira depende de dados externos (S32-01, S32-02 e S32-04). Sem as soluções anteriores a 2023, a calibração não sai, e os indícios continuam desligados no piloto. O documento de permissões de 2027.1 tem data incerta (P-10).
+
+#### Sprint 33 — Prontidão para 2027.1
+
+**Objetivo:** antes da primeira lista de 2027.1, ter o plano do Render decidido e aplicado, o monitoramento estável, um teste sintético diário da primeira verificação, os cenários de carga do NFR-04 e do NFR-05 e as listas habilitadas conforme o professor validar.
+
+**Premissas:** P-01 (pico de 500 por minuto), P-04 (NAT do campus), P-05 (disponibilidade), P-10 (calendário), ADR-03.
+
+**Histórias:** US-19, US-22 e US-12 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S33-01 | US-22 | Engenharia | Aplicar a decisão da S30-11: `plan` no `render.yaml` por PR e nova rodada do "Carga no piloto" | `render.yaml`, `.github/workflows/load.yml` | Autor | 0,5 | S30-11 | P95 do servidor ≤ 200 ms com login a 20 por minuto no plano escolhido, ou o risco aceito e registrado no ADR-03 |
+| S33-02 | US-19 | Engenharia | Teste sintético diário da primeira verificação (NFR-06): workflow agendado que entra com a conta de verificação, verifica uma solução da Lista 1 e mede o tempo | `.github/workflows/synthetic.yml` (novo), `backend/tests/pilot/` | Autor | 1 | S30-01 | Roda todo dia útil às 07:00 (horário de Brasília), falha se a verificação passar de 300 ms no servidor [A CONFIRMAR: medir pelo `latency_ms` do log ou pelo `/health/slo`] ou se der erro |
+| S33-03 | US-22 | Engenharia | Cenários de carga por release: o NFR-04 (500 por minuto por 15 min, 80% de 4 IPs) e o NFR-05 (1.500 por minuto, recusa com `Retry-After` em ≤ 100 ms e recuperação em ≤ 60 s), na emulação local, com `X-Forwarded-For` simulado e `IPC_TRUSTED_PROXY_HOPS` = 1 só no contêiner de teste | `deploy/load/run_load.py`, `deploy/load/pilot-load.js` | Autor | 2 | — | Relatório dos dois cenários no plano escolhido: 0 respostas 500, 502 ou 504; 503 com `Retry-After`; recuperação ≤ 60 s |
+| S33-04 | US-19 | Engenharia | Exercício de alertas a cada release (NFR-15): o roteiro da S30-05 entra no checklist da release e no runbook, com uma linha por release | `docs/runbook.md`, `scripts/release.sh` (mensagem final) | Autor | 0,5 | S30-05 | Tabela do runbook com uma linha por release desde a Sprint 33 |
+| S33-05 | US-12 | Externa | Habilitar as listas no piloto conforme o professor validar o ruleset de 2027.1 (`IPC_ENABLED_LISTS`) | `render.yaml` | Professor e Autor | — | S32-04 | Desbloqueio: `/api/v1/lists` do piloto mostra só as listas validadas, antes da data de liberação de cada uma |
+| S33-06 | US-19 | Externa | Conferir os monitores no início do período: UptimeRobot verde nos 7 dias anteriores à primeira lista, e os contatos de alerta atualizados | Painel do UptimeRobot | Autor | — | S30-04 | Disponibilidade ≥ 99,5% nos 7 dias (P-05, NFR-06) |
+
+**ADRs:** atualiza o ADR-03 com a medição da S33-01.
+
+**Critérios de aceite:**
+1. O plano do Render está aplicado e medido.
+2. O teste sintético roda há pelo menos 7 dias seguidos, sem falha.
+3. Os relatórios do NFR-04 e do NFR-05 estão anexados ao ADR-03.
+4. Só as listas validadas pelo professor estão habilitadas no piloto.
+
+**Testes (além da base de 7.12.1):**
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Sintético diário (novo) | pytest ou k6 contra o piloto | `synthetic.yml` | `schedule`, dias úteis | Verificação ≤ 300 ms e sem erro |
+| Capacidade (NFR-04) | k6 | `python deploy/load/run_load.py --plan <plano> --rate 500 --duration 15m` | antes de cada release | 0% de 5xx e < 0,1% de timeouts |
+| Estresse (NFR-05) | k6 | `run_load.py` com 1.500 por minuto | antes de cada release | 0 respostas 500, 502 ou 504; `Retry-After` em ≤ 100 ms; recuperação ≤ 60 s |
+| Carga no piloto | k6 | `load.yml` | depois da mudança de plano | P95 do servidor ≤ 200 ms |
+| Exercício de alerta | UptimeRobot | runbook | a cada release | E-mail em ≤ 5 min |
+| Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
+
+**Definition of Done:** a da seção 8, com o item do UptimeRobot cumprido.
+
+**Riscos e bloqueios:** o custo do Starter é decisão do autor (S30-11); sem ele, o NFR-01 não é atendido com login (ADR-03, S28-01). O calendário de 2027.1 depende da UFPE (P-10).
+
+#### Sprint 34 — Controles de qualidade e observabilidade
+
+**Objetivo:** tirar do estado [PLANEJADO] os controles de qualidade que não dependem da Fase 2: benchmark do motor, Lighthouse, cobertura por pasta, canário em produção e esquema do ruleset; a observabilidade com Prometheus e Grafana entra só se o autor decidir.
+
+**Premissas:** NFR-02, NFR-03, NFR-11 e NFR-16, com as metas da seção 3.3.
+
+**Histórias:** US-14, US-15, US-17 e US-21 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S34-01 | US-15 | Engenharia | `pytest-benchmark` no CI (NFR-02: P95 ≤ 50 ms por entrada de até 50 KB): corpus fixo de entradas, linha de base versionada, e o CI falha se o P95 regredir mais de 20% | `backend/pyproject.toml` (dependência de dev), `backend/tests/benchmark/` (novo), `.github/workflows/ci.yml` | Autor | 2 | — | Um PR que deixa o motor 30% mais lento falha; o item do benchmark da seção 8 sem [PLANEJADO] |
+| S34-02 | US-21 | Engenharia | Lighthouse CI nos PRs do `frontend/` (NFR-03): perfil móvel ("Slow 4G") sobre o build de produção | `.github/workflows/ci.yml`, `frontend/lighthouserc.json` (novo) | Autor | 1 | — | FCP < 1,5 s e JS inicial ≤ 350 KB gzip (NFR-03); um PR que estoura a meta falha |
+| S34-03 | US-15 | Engenharia | Cobertura com limite por pasta (NFR-16): ≥ 90% em `ipc_analyzer/engine` e ≥ 80% no restante, além do total | `backend/pyproject.toml`, `.github/workflows/ci.yml` | Autor | 0,5 | — | O CI falha se a pasta do motor cair abaixo de 90% |
+| S34-04 | US-17 | Engenharia | Busca mensal do canário em produção (NFR-11): um workflow agendado verifica, com a conta de verificação, um código com um marcador e procura o marcador no banco (com a credencial de administrador) e nos logs do Render [A CONFIRMAR: os logs pedem uma chave de API do Render, um secret novo `RENDER_API_KEY`] | `.github/workflows/canary.yml` (novo) | Autor | 2 | S30-01 | 0 ocorrências no banco e nos logs; o workflow falha com uma ocorrência plantada num teste |
+| S34-05 | US-14 | Engenharia | JSON Schema do ruleset e `ipc-rules compile` (C6): esquema gerado do modelo do carregador, para editores e para o CI, e um compilado com o SHA-256 | `rulesets/schema/ruleset.schema.json` (novo), `backend/src/ipc_analyzer/cli.py` | Autor | 2 | — | O esquema valida os rulesets de 2026.2 e 2027.1; o compilado tem o mesmo `ruleset_sha256` do manifesto; o item da C6 sem [PLANEJADO] |
+| S34-06 | US-17 | Decisão | Métricas `/metrics`, Grafana e Prometheus (opcionais, C8): manter o `/health/slo` com o UptimeRobot ou acrescentar o Grafana Cloud gratuito (opções em 7.13.7) | `docs/blueprint.md` (C8) | Autor | — | — | Desbloqueio: decisão registrada na C8; se aprovada, uma task de implementação entra na sprint seguinte |
+
+**ADRs:** nenhum; a decisão da S34-06, se positiva, atualiza a C8 da seção 5.2.1.
+
+**Critérios de aceite:**
+1. O CI falha num PR que regride o motor mais de 20%, ou que estoura a meta do Lighthouse, ou que baixa a cobertura do motor abaixo de 90%.
+2. O canário mensal roda e acha 0 ocorrências.
+3. O esquema e o compilado do ruleset existem e conferem com o manifesto.
+
+**Testes (além da base de 7.12.1):**
+
+| Teste | Ferramenta | Comando ou workflow | Gatilho | Critério de aprovação |
+|---|---|---|---|---|
+| Desempenho do motor | pytest-benchmark | `ci.yml` (novo) | PR e push | P95 ≤ 50 ms por entrada e regressão ≤ 20% sobre a linha de base |
+| Desempenho da página | Lighthouse CI | `ci.yml` (novo) | PR que muda `frontend/` | FCP < 1,5 s (móvel) e JS inicial ≤ 350 KB gzip |
+| Cobertura por pasta | pytest-cov | `ci.yml` | PR e push | ≥ 90% no motor, ≥ 80% no resto |
+| Canário em produção | pytest ou script, banco e logs | `canary.yml` (novo) | `schedule`, mensal | 0 ocorrências |
+| Esquema do ruleset | JSON Schema | `ipc-rules validate` e o esquema | PR de regras | Válido |
+| Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
+
+**Definition of Done:** a da seção 8, com os itens de benchmark e de cobertura sem [PLANEJADO].
+
+**Riscos e bloqueios:** a variação de tempo dos runners do GitHub pode gerar falsos alarmes no benchmark (mitigação: comparar mediana de 5 rodadas). O canário nos logs depende de uma chave de API do Render, que é um secret novo, gravado pelo autor.
+
+#### Sprint 35 — Fase 2: imagens no GHCR, deploy pelo servidor do CIn e staging (bloqueada)
+
+**Objetivo:** preparar a Fase 2 da ADR-03, só se a P-09 for atingida e a Q-12 for respondida pelo suporte de TI do CIn: imagens publicadas no GHCR por digest, deploy *pull-based* no servidor do CIn e um ambiente de staging.
+
+**Premissas:** P-09 (critérios de eficácia), Q-12 (requisitos do CIn), ADR-03 (Fase 2).
+
+**Histórias:** US-20 e US-23 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S35-01 | US-23 | Decisão | Migrar ou não para o servidor do CIn, com o relatório de eficácia de 2027.1 (P-09, `docs/eficacia.md`) | `docs/eficacia.md`, ADR-03 | Coordenação | — | Fim de 2027.1 | Desbloqueio: decisão registrada na P-09 |
+| S35-02 | US-20 | Externa | Q-12: o suporte de TI do CIn responde Docker, porta 443, subdomínio e TLS, saída para o PostgreSQL gerenciado e quem administra o sistema | `docs/decisoes.md` (Q-12) | TI do CIn | — | S35-01 | Desbloqueio: Q-12 respondida por escrito |
+| S35-03 | US-20 | Engenharia | Publicar as imagens no GHCR com a tag igual ao SHA e referenciá-las por digest no compose | `.github/workflows/ci.yml`, `deploy/compose.yaml` | Autor | 2 | S35-01 | `docker compose pull` com digests; o item do GHCR da seção 8 sem [PLANEJADO] |
+| S35-04 | US-20 | Engenharia | Deploy *pull-based* no servidor do CIn e ambiente de staging, com o mesmo `/ready` e as verificações de `tests/pilot` apontadas para lá | `deploy/` (novo roteiro), `.github/workflows/deploy.yml` | Autor | 3 | S35-02, S35-03 | Staging e produção verdes nas verificações; rollback ≤ 5 min ensaiado no servidor |
+
+**ADRs:** atualiza o ADR-03 (Fase 2).
+
+**Critérios de aceite:**
+1. As imagens são publicadas por digest.
+2. Staging e produção passam nas mesmas verificações do piloto.
+3. O rollback no servidor leva ≤ 5 min.
+
+**Testes:** a base de 7.12.1; as verificações de `tests/pilot` apontadas para o staging e a produção; o ensaio de rollback e a restauração do backup no servidor; a suíte de isolamento do NFR-07 no compose do servidor.
+
+**Definition of Done:** a da seção 8, com os itens de implantação da Fase 2 sem [PLANEJADO].
+
+**Riscos e bloqueios:** a sprint inteira está bloqueada pela P-09 e pela Q-12 e só é detalhada depois do piloto.
+
+### 7.13 Decisões em aberto: opções para quem decide
+
+Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada opção traz prós, contras e impacto no plano.
+
+#### 7.13.1 Política dos indícios de IA (S29-04, ADR-08) — Coordenação
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Aprovar `docs/indicios-de-ia.md` como está | Liga os indícios na S32-06, depois da calibração | Exige combinar o texto aos alunos já em 2027.1 | S32-06 executável |
+| B. Aprovar com mudanças no texto aos alunos ou em quem gera as referências | Ajusta à política da disciplina | Uma rodada a mais de revisão | S32-06 depois da revisão |
+| C. Não ligar no piloto | Nenhum risco de leitura como prova | Perde os indícios em 2027.1 | S32-05 e S32-06 saem do plano; o código fica desligado |
+
+#### 7.13.2 Provedor de IA do feedback (Q-16) — Autor e Coordenação
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Sem IA (como hoje) | Nenhum dado sai do servidor; custo zero | Texto menos personalizado | Nenhuma task |
+| B. Plano pago com termos de não retenção | Texto melhor, dentro da política proposta na Q-16 | Custo mensal; transferência internacional (LGPD, art. 33) a avaliar pela coordenação | S31-02 grava `IPC_LLM_*`; aviso de privacidade revisto |
+| C. Plano gratuito | Sem custo | Pode usar os dados para treino; contraria a proposta da Q-16 | Não recomendado pela Q-16 |
+
+#### 7.13.3 Remetente dos e-mails (Q-17) — Autor e NTI
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Manter o Brevo com o remetente Gmail verificado | Funciona hoje, sem DNS | Risco de spam; remetente pessoal | Nenhuma mudança de código |
+| B. Brevo com remetente `@cin.ufpe.br` | Remetente institucional | Exige SPF, DKIM e DMARC com o NTI | S31-07 com o NTI; `IPC_EMAIL_FROM` no Render |
+| C. SMTP institucional | Sem terceiro | O plano gratuito do Render bloqueia SMTP de saída (25, 465 e 587) | Só com o Starter ou na Fase 2 |
+
+#### 7.13.4 Governança das regras (Q-22) — Autor
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Manter o processo atual (merge confere a aprovação) | Simples; funciona com poucos monitores | Depende de quem faz o merge; quem tem escrita vê os workflows com segredos | Nenhuma task |
+| B. Monitores com papel Read, PR por fork e um check de aprovação no CI | Fork não recebe os segredos; aprovação conferida por máquina | Mais atrito para monitores; a Q-22 pede confirmar que o GitHub permite fork de repositório pessoal privado com papel Read | Uma task de implementação depois da decisão (cerca de 3 SP) |
+
+#### 7.13.5 Servidor do CIn (Q-12) — Suporte de TI do CIn
+
+Adiada até a P-09. As perguntas estão na Q-12; a resposta desbloqueia a Sprint 35.
+
+#### 7.13.6 Plano do Render (ADR-03) — Autor
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Ficar no gratuito | Custo zero | Com login, P95 acima de 200 ms mesmo a 30 por minuto (S28-01); o `/health/slo` vai alertar com uso | NFR-01 não atendido; risco aceito no ADR-03 |
+| B. Starter (cerca de US$ 7 por mês) antes do primeiro prazo | Atende 500 por minuto com P95 de 28 ms na emulação (S28-01) | Custo mensal | S33-01 aplica e mede |
+| C. Starter só nos períodos de prazo | Custo menor | Troca manual de plano e risco de esquecer | Runbook com o roteiro de troca |
+
+#### 7.13.7 Observabilidade (C8) — Autor
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. `/health/slo` e UptimeRobot (como hoje) | Sem conta nova | Só a janela de 5 min; sem histórico | Nenhuma task |
+| B. `/metrics` com `prometheus-client` e Grafana Cloud gratuito | Histórico e painéis | Conta nova; o `/metrics` precisa ficar fora da internet | Uma task de implementação (cerca de 3 SP) |
+
+#### 7.13.8 RPO do banco do piloto (NFR-20) — Autor
+
+| Opção | Prós | Contras | Impacto |
+|---|---|---|---|
+| A. Backup diário | Atende o RPO de 24 h | 7 vezes mais artefatos (90 dias de retenção) e mais minutos do Actions | `cron` do `backup.yml` muda por PR |
+| B. Manter semanal e revisar a NFR-20 para o piloto | Menos custo | Até 7 dias de dados de contas perdidos num desastre | NFR-20 revista, com o motivo |
+
+### 7.14 Matriz de rastreabilidade das pendências (07/10/2026)
+
+O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quando uma task fechar, o item é marcado aqui e na origem.
+
+| Pendência original | Seção da lista de 07/10/2026 | Sprint/Task | Tipo |
+|---|---|---|---|
+| Conta de verificação e `PILOT_CHECK_*` | 2 | S30-01 | Externa |
+| Primeiro deploy com login (S11, S16, S19, S25; P-15) | 2 e 5 | S30-02 | Engenharia |
+| UptimeRobot, três monitores (S11, S21) | 2 e 5 | S30-04, S33-06 | Externa |
+| Exercício de alerta no piloto (S21; NFR-15) | 5 e 6 | S30-05, S33-04 | Engenharia |
+| Chave do backup e `BACKUP_AGE_RECIPIENT` (S28-03) | 2 | S30-06 | Externa |
+| Ensaio de restauração do backup (S28-03; NFR-20) | 5 | S30-07 | Engenharia |
+| Ensaio cronometrado do rollback (S28-03) | 2 e 5 | S30-08 | Engenharia |
+| Carga no piloto de verdade (S28-01) e latência até o Supabase (Q-20) | 2, 4 e 5 | S30-09 | Engenharia |
+| Plano Starter (ADR-03) | 2 e 3 | S30-11 (decisão), S33-01 (aplicação) | Decisão |
+| P-12 (a): `X-Forwarded-For` | 4 | S30-03 | Engenharia |
+| P-15 (a): login com cookie e feedback em até 30 s | 4 | S30-02 | Engenharia |
+| P-15 (b): IP do cliente como penúltimo endereço | 4 | S30-03 | Engenharia |
+| `PermissionError` do supervisord | Dívida técnica | S30-10 | Engenharia |
+| Política dos indícios (S29-04, ADR-08) | 3 | S31-01 | Decisão |
+| Q-16: provedor de IA | 3 | S31-02 | Decisão |
+| Q-17: remetente dos e-mails | 3 | S31-07 | Decisão |
+| Q-22: governança das regras | 3 | S31-08 | Decisão |
+| Q-12: servidor do CIn | 3 | S35-02 | Externa |
+| Auditoria bloqueante (S25-01; NFR-13) | 5 e 6 | S31-03 | Engenharia |
+| Semgrep (NFR-09) | 6 | S31-04 | Engenharia |
+| Marco 2: guia e apresentação | 5 | S31-05 | Externa |
+| Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa |
+| Gabaritos de períodos anteriores (S20, Q-14) | 5 | S32-01 | Externa |
+| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S32-02 (dados), S32-03 | Externa e Engenharia |
+| Questões reais de 2027.1 (S24, R-01) | 5 | S32-04 | Externa |
+| Referências reais por IA (S29-02) | 5 | S32-05 | Externa |
+| Ligar os indícios no piloto | 3 | S32-06 | Engenharia (bloqueada) |
+| Listas habilitadas conforme o professor | Prioridade 4 | S33-05 | Externa |
+| Teste sintético diário (NFR-06) | 6 | S33-02 | Engenharia |
+| k6 por release: NFR-04 e NFR-05 | 6 | S33-03 | Engenharia |
+| Membros ativos sem o desenvolvedor (S28-02) | 4 | Premissa mantida; revista com a coordenação na S31-05 | Decisão |
+| Backup do Supabase gratuito (premissa) | 4 | Premissa mantida; o `backup.yml` já cobre (S30-07 ensaia) | Engenharia |
+| RPO de 24 h da NFR-20 com backup semanal (achado de 07/10/2026) | — | S30-12 | Decisão |
+| `pytest-benchmark` (NFR-02) | 6 | S34-01 | Engenharia |
+| Lighthouse CI (NFR-03) | 6 | S34-02 | Engenharia |
+| Cobertura por pasta (NFR-16) | 6 | S34-03 | Engenharia |
+| Canário mensal em produção (NFR-11) | 6 | S34-04 | Engenharia |
+| JSON Schema e `ipc-rules compile` (C6) | 6 | S34-05 | Engenharia |
+| `/metrics`, Grafana e Prometheus (C8, opcionais) | 6 | S34-06 | Decisão |
+| GHCR por digest, deploy por SSH e staging (Fase 2) | 6 | S35-03, S35-04 | Engenharia (bloqueada) |
+| Backlog de experiência e REC fora do escopo | 7 | Seção 7.1, "Backlog"; sem task | — |
+
 ## 8. Definition of Done (DoD)
 
 Cada item é verificado como sim ou não. Uma task ou história só está pronta quando todos os itens aplicáveis estão marcados como "sim".
@@ -996,3 +1385,85 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] O UptimeRobot monitora `/ready`, `/health/slo` e a SPA a cada 5 min, com alerta por e-mail, configurado pelo autor conforme `deploy/piloto.md` e registrado no runbook.
 - [ ] Toda migração de banco é reversível e foi testada antes de ir para o piloto (a partir da Sprint 13).
 - [ ] Os segredos novos (banco de contas, cliente OAuth, e-mail e LLM) existem só no ambiente da `api`, nunca no do `analyzer` nem no build da página (a partir da Sprint 13).
+
+## 9. Integração com outros projetos da monitoria (possibilidade)
+
+Existe a possibilidade, **não confirmada**, de o IP-Checker ser integrado a outros 2 projetos, mantidos por outros 2 monitores, cujos detalhes não são conhecidos (Q-23). Esta seção registra o que o IP-Checker oferece hoje, levantado do código em 07/10/2026, os pontos de integração candidatos e as lacunas, para que a conversa com esses monitores parta de fatos. Não há sprint de implementação: a decisão fica no ADR-09, com status Proposto.
+
+### 9.1 Mapa da API pública
+
+Levantado das rotas em `backend/src/ipc_api/routes/` e conferido com o `docs/openapi.json`, que é gerado do próprio app e conferido pelo CI (`tests/test_api_contract.py`). "Sessão" é o cookie `__Host-ipc_session` (`HttpOnly`, `Secure`, `SameSite=Lax`), criado pelo `POST /api/v1/auth/login` ou pelo Google; requisições que mudam estado com `Origin` de outro site recebem 403 `ORIGIN_MISMATCH`. Todo `/api/*` passa por um limite geral de 600 requisições por minuto por IP (6.000 nas faixas do campus); "Limitada" quer dizer que a rota também está em `LIMITED_ROUTES` (`backend/src/ipc_api/ratelimit.py`), com o limite por IP sem sessão (P-11).
+
+| Método | Rota | Autenticação | Entrada | Saída | Códigos | Limite de taxa | Arquivo |
+|---|---|---|---|---|---|---|---|
+| POST | `/api/v1/auth/login` | Nenhuma | `LoginRequest` (nome ou e-mail e senha) | `AccountResponse` e o cookie | 200, 401, 403, 422, 429, 503 | 30/min por IP sem sessão; bloqueio por falhas | `routes/auth.py` |
+| GET | `/api/v1/auth/options` | Nenhuma | — | `AuthOptions` (`google`, `feedback_ai`, `ai_indicators`) | 200 | Geral | `routes/auth.py` |
+| POST | `/api/v1/auth/logout` | Sessão (opcional) | — | — | 204, 403, 503 | Geral | `routes/auth.py` |
+| GET | `/api/v1/auth/me` | Sessão | — | `AccountResponse` | 200, 401, 503 | Geral | `routes/auth.py` |
+| POST | `/api/v1/auth/register` | Nenhuma | `RegisterRequest` | `RegisterResponse` | 201, 403, 409, 422, 429, 503 | Limitada | `routes/auth.py` |
+| POST | `/api/v1/auth/verify` | Nenhuma | `VerifyRequest` (token do e-mail) | `VerifyResponse` | 200, 403, 422, 429, 503 | Limitada | `routes/auth.py` |
+| POST | `/api/v1/auth/verify/resend` | Nenhuma | `ResendRequest` | — | 202, 403, 422, 429, 503 | Limitada; 1/min e 5/dia por conta | `routes/auth.py` |
+| POST | `/api/v1/auth/password/forgot` | Nenhuma | `ForgotPasswordRequest` | — | 202, 403, 422, 429, 503 | Limitada | `routes/auth.py` |
+| POST | `/api/v1/auth/password/reset` | Nenhuma | `ResetPasswordRequest` | — | 204, 403, 422, 429, 503 | Limitada | `routes/auth.py` |
+| GET | `/api/v1/auth/google/start` | Nenhuma | — | Redireciona ao Google | 303, 429 | Limitada | `routes/google.py` |
+| GET | `/api/v1/auth/google/callback` | Nenhuma | `code`, `state`, `error` (query) | Redireciona à página | 303, 422, 429 | Limitada | `routes/google.py` |
+| GET | `/api/v1/auth/google/pending` | Cadastro pelo Google em andamento | — | `GooglePending` | 200, 422 | Geral | `routes/google.py` |
+| POST | `/api/v1/auth/google/complete` | Cadastro pelo Google em andamento | `GoogleSignup` | `GoogleSignupResponse` | 201, 403, 409, 422, 429, 503 | Limitada | `routes/google.py` |
+| PATCH | `/api/v1/profile` | Sessão | `ProfileUpdate` | `AccountResponse` | 200, 401, 403, 409, 422, 503 | Geral | `routes/profile.py` |
+| POST | `/api/v1/profile/password` | Sessão | `PasswordChange` | — | 204, 401, 403, 422, 429, 503 | Limitada; 5 senhas atuais erradas em 15 min bloqueiam | `routes/profile.py` |
+| GET | `/api/v1/lists` | Sessão | — | Listas habilitadas e questões | 200, 401, 503 | Geral | `routes/meta.py` |
+| POST | `/api/v1/validate` | Sessão | `ValidateRequest` (`code`, `list_number`, `question_id`) | `ValidateResponse` (violações, avisos e, se ligados, `indicators`) | 200, 401, 403, 413, 422, 429, 503 | 30/min por conta | `routes/validate.py` |
+| POST | `/api/v1/similarity` | Sessão | `SimilarityRequest` (`code_a`, `code_b`) | `SimilarityResponse` | 200, 401, 403, 413, 422, 429, 503 | 30/min por conta, dividido com a verificação | `routes/similarity.py` |
+| POST | `/api/v1/similarity/batch` | Sessão | `SimilarityClassRequest` (até 100 soluções) | `SimilarityClassResponse` | 200, 401, 403, 413, 422, 429, 503 | idem | `routes/similarity.py` |
+| POST | `/api/v1/feedback` | Sessão | `FeedbackRequest` (`code`, `list_number`, `student_name`, `annotation`, `question_id`) | `FeedbackResponse` (`text`, `source`, `provider`) | 200, 401, 403, 413, 422, 429, 503 | idem, mais 60/dia por conta e 1.000/dia no servidor | `routes/feedback.py` |
+| GET | `/api/v1/admin/requests` | Sessão de monitor-chefe, professor ou desenvolvedor | — | `RequestsResponse` | 200, 401, 403, 503 | Geral | `routes/admin.py` |
+| POST | `/api/v1/admin/requests/{account_id}/approve` | idem | `RoleChoice` | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
+| POST | `/api/v1/admin/requests/{account_id}/reject` | idem | — | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
+| GET | `/api/v1/admin/members` | idem | — | `MembersResponse` | 200, 401, 403, 503 | Geral | `routes/admin.py` |
+| PATCH | `/api/v1/admin/members/{account_id}/role` | idem | `RoleChoice` | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
+| POST | `/api/v1/admin/members/{account_id}/remove` | idem | — | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
+| POST | `/api/v1/admin/members/{account_id}/reactivate` | idem | `RoleChoice` | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
+| GET | `/api/v1/admin/log` | Sessão de professor ou desenvolvedor (REC-06) | — | `ManagementLogResponse` | 200, 401, 403, 503 | Geral | `routes/admin.py` |
+| GET | `/health` | Nenhuma | — | `HealthResponse` | 200 | Livre | `routes/meta.py` |
+| GET | `/ready` | Nenhuma | — | `ReadyResponse` (versão do ruleset e `release`; consulta o banco) | 200, 503 | Livre | `routes/meta.py` |
+| GET | `/health/service` | Nenhuma | — | `ReadyResponse` (sem o banco; health check do Render) | 200, 503 | Livre | `routes/meta.py` |
+| GET | `/health/slo` | Nenhuma | — | `SloResponse` (P95 e 5xx dos últimos 5 min) | 200, 503 | Livre | `routes/meta.py` |
+
+O analisador tem uma API interna (`/internal/analyze`, `/internal/feedback-input`, `/internal/similarity`, `/internal/similarity/class`, `/internal/ruleset/manifest` e `/internal/health`, em `backend/src/ipc_analyzer/service/app.py`), que escuta só em `127.0.0.1` (Render) ou na rede interna `analyzer_net` (compose) e não é ponto de integração (ADR-01).
+
+### 9.2 Arquitetura atual, resumida para quem integra
+
+- **Componentes:** a página (React, Vercel) fala só com a própria origem; a Vercel repassa `/api/*` à API (FastAPI, Render, UID 10001), que chama o analisador (UID 10002, seccomp, sem rede de saída) por `127.0.0.1` (ADR-01, ADR-03, ADR-04).
+- **Dados:** contas, sessões, links de e-mail, registro de gerenciamento, cota de feedback e adoção por lista no esquema `app`, e telemetria anônima no esquema `telemetry`, no PostgreSQL do Supabase (us-east-1). O código do aluno nunca é guardado (NFR-11).
+- **Autenticação:** sessão por cookie de conta aprovada da equipe; não há chave de API, token de serviço nem OAuth para outros sistemas.
+- **Serviços externos:** Render (API), Vercel (página), Supabase (banco), Brevo (e-mail de verificação e de redefinição de senha), Google (entrada opcional, OIDC) e, se a Q-16 aprovar, um provedor de IA para o feedback.
+- **Dados pessoais (LGPD):** da equipe, nome, e-mails institucionais, curso, tratamento, cargo, status, resumo Argon2id da senha, identificador Google, atividade e o registro de gerenciamento (12 meses); dos alunos, só o código, analisado e descartado, e o nome digitado no feedback, que nunca vai à IA (`[ALUNO]`). Os servidores ficam nos EUA (transferência internacional, a avaliar com a coordenação junto com a Q-16).
+
+### 9.3 Pontos de integração candidatos e lacunas
+
+| Ponto candidato | O que já existe | Lacuna para outro sistema usar |
+|---|---|---|
+| Verificar, comparar ou gerar feedback por outro sistema | `/api/v1/validate`, `/similarity`, `/similarity/batch` e `/feedback`, versionados em `/api/v1` e descritos no `docs/openapi.json` | Só sessão de pessoa (cookie); falta autenticação entre serviços (por exemplo, uma conta de serviço com token próprio e limite próprio); o limite de 30/min por conta não serve a lotes |
+| Chamar a API de outro domínio pelo navegador | `IPC_CORS_ORIGINS` e `IPC_ALLOWED_ORIGINS` existem; no piloto o CORS está desligado (mesma origem) | Cada origem precisa ser liberada por configuração, e o cookie `SameSite=Lax` não vai em chamadas de outro site |
+| Embutir a página em outro sistema | — | A CSP tem `frame-ancestors 'none'`: embutir em `iframe` exige mudar a política |
+| Identidade compartilhada | Entrada pelo Google (OIDC), restrita aos domínios da UFPE | Nenhum SSO com outros sistemas; as contas e os cargos são só do IP-Checker |
+| Regras das listas | `rulesets/` em YAML, com versão (`ruleset_version`) e SHA-256 no manifesto interno | O manifesto é interno; não há rota pública que exponha o ruleset |
+| Dados agregados | Views anônimas em `telemetry` para o papel `ipc_reader` (FR-17, S28-02) | Acesso direto ao banco, sem API; outro sistema precisaria de um papel de leitura próprio |
+| Eventos para outro sistema | — | Não há webhooks nem fila de eventos |
+| Idempotência | `/validate`, `/similarity` e `/feedback` não guardam estado (o feedback gasta cota); as ações de gerenciamento recusam com 409 a transição já feita | Não há cabeçalho de idempotência; repetir um feedback gasta cota de novo |
+| Isolamento de dados | Uma única disciplina, sem identificador de inquilino | Atender outra disciplina ou outro sistema com dados separados exigiria um modelo de inquilinos |
+
+### 9.4 Perguntas aos outros 2 monitores
+
+1. Qual é o objetivo de cada projeto, quem são os usuários (alunos, monitores, professores) e em que período ele entra em uso?
+2. O projeto precisa **consumir** o IP-Checker (verificar, comparar, gerar feedback), **alimentá-lo** (enviar soluções, questões, regras, turmas) ou só **compartilhar** login e cargos?
+3. As chamadas partem do navegador do usuário ou de um servidor? De qual domínio?
+4. Qual o volume esperado por minuto e por dia, e em quais picos (véspera de prazo)?
+5. Que dados pessoais o projeto trata (de alunos ou da equipe)? Onde ficam hospedados e quem é o responsável pelo tratamento (LGPD)?
+6. Como o projeto autentica os usuários hoje? Usa o Google com contas `@cin.ufpe.br` ou `@ufpe.br`, outro provedor ou contas próprias?
+7. Ele precisa receber eventos do IP-Checker (por exemplo, quando uma verificação termina), ou basta chamar e esperar a resposta?
+8. Em que linguagem e plataforma está, e onde roda (Render, Vercel, servidor do CIn)?
+9. Há contrato de API (OpenAPI) ou versionamento do lado dele?
+10. Quem mantém cada projeto depois que o monitor sair, e quem aprova mudanças que afetem os dois lados?
+11. O projeto executa código de aluno? Se sim, como o isola (o IP-Checker nunca executa, ADR-01)?
+12. A coordenação já sabe da integração e a aprovou?
