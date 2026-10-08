@@ -112,11 +112,13 @@ jobs:
 
   gabaritos:
     # Gabaritos de períodos anteriores com zero violação (Q-14, S20). Eles são respostas oficiais e
-    # ficam num repositório privado separado: o job só roda quando a variável GABARITOS_REPO
-    # (dono/repositório) e o segredo GABARITOS_TOKEN (token só de leitura) estão definidos. A pasta
-    # gabaritos/ é ignorada pelo Git, e os testes mostram só arquivo, regra e linha, nunca o código.
+    # ficam num repositório privado separado (Lionzio/ip-checker-gabaritos): o job só roda quando
+    # a variável GABARITOS_REPO (dono/repositório) está definida, e baixa o repositório com uma chave
+    # de implantação só de leitura, cuja parte privada fica no segredo GABARITOS_SSH_KEY (ADR-10;
+    # antes, um token pessoal). A pasta gabaritos/ é ignorada pelo Git, e os testes mostram só
+    # arquivo, regra e linha, nunca o código.
     name: Gabaritos (zero violação, Q-14)
-    # PRs do Dependabot não recebem os segredos do Actions: sem o token, o checkout falharia.
+    # PRs do Dependabot não recebem os segredos do Actions: sem a chave, o checkout falharia.
     needs: changes
     if: >-
       needs.changes.outputs.heavy == 'true' &&
@@ -131,7 +133,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ vars.GABARITOS_REPO }}
-          token: ${{ secrets.GABARITOS_TOKEN }}
+          ssh-key: ${{ secrets.GABARITOS_SSH_KEY }}
           path: gabaritos
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
