@@ -491,6 +491,21 @@ def test_ready_reports_the_ruleset(client: TestClient) -> None:
     assert response.headers["Cache-Control"] == "no-store"
 
 
+@pytest.mark.parametrize("path", ["/health", "/ready", "/health/service", "/health/slo"])
+def test_operation_routes_answer_head(client: TestClient, path: str) -> None:
+    # S30-04: o plano gratuito do UptimeRobot só consulta com HEAD; 405 deixaria o monitor vermelho.
+    head = client.head(path)
+
+    assert head.status_code == client.get(path).status_code == 200
+    assert head.content == b""
+
+
+def test_head_on_ready_reports_the_outage(client: TestClient, analyzer: FakeAnalyzer) -> None:
+    analyzer.routes["/internal/health"] = fail(httpx2.ConnectError)
+
+    assert client.head("/ready").status_code == 503
+
+
 @pytest.mark.parametrize(
     "handler",
     [fail(httpx2.ConnectError), reply(503, {}), reply(200, {"status": "ok"})],

@@ -66,11 +66,16 @@ async def lists(
     return [item for item in manifest.lists if item.number in settings.enabled_lists]
 
 
+# HEAD nas rotas de operação (S30-04): o plano gratuito do UptimeRobot só consulta com HEAD (o
+# método é opção paga); sem estas rotas, a API responderia 405 e o monitor ficaria vermelho. Fora
+# do OpenAPI: é o mesmo contrato do GET, sem corpo.
+@router.head("/health", include_in_schema=False)
 @router.get("/health", tags=["operação"], summary="O processo da API está no ar")
 async def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+@router.head("/ready", include_in_schema=False)
 @router.get(
     "/ready",
     tags=["operação"],
@@ -109,6 +114,7 @@ async def ready(
     )
 
 
+@router.head("/health/service", include_in_schema=False)
 @router.get(
     "/health/service",
     tags=["operação"],
@@ -134,6 +140,7 @@ async def service_health(
     )
 
 
+@router.head("/health/slo", include_in_schema=False)
 @router.get(
     "/health/slo",
     tags=["operação"],

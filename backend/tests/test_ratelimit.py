@@ -226,7 +226,19 @@ def test_two_trusted_proxies_skip_the_last_address() -> None:
     forwarded = ["1.1.1.1, 198.51.100.7, 10.0.0.9"]
 
     assert str(client_ip(scope("10.0.0.2", forwarded), 2)) == "198.51.100.7"
-    assert str(client_ip(scope("10.0.0.2", ["198.51.100.7"]), 2)) == "10.0.0.2"
+
+
+def test_a_shorter_proxy_path_uses_the_first_forwarded_address() -> None:
+    # S30-03: no piloto, quem chama o Render direto passa por menos proxies que a página. Todas as
+    # entradas são dos nossos proxies, e a primeira é o cliente; o IP da conexão é um proxy interno
+    # que muda a cada requisição e deixaria o limite por IP sem efeito.
+    render_only = ["198.51.100.7, 10.0.0.8, 10.0.0.9"]
+
+    assert str(client_ip(scope("10.0.0.2", render_only), 4)) == "198.51.100.7"
+    assert str(client_ip(scope("10.0.0.2", ["198.51.100.7"]), 2)) == "198.51.100.7"
+    # Pela página, com o mesmo número de proxies configurado, vale a entrada da Vercel.
+    page = ["1.1.1.1, 198.51.100.7, 203.0.113.9, 10.0.0.8, 10.0.0.9"]
+    assert str(client_ip(scope("10.0.0.2", page), 4)) == "198.51.100.7"
 
 
 def test_unparseable_peer_has_no_ip() -> None:
