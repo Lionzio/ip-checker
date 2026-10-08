@@ -357,6 +357,8 @@ def test_settings_from_environment() -> None:
             "IPC_RATE_LIMIT_CAMPUS_CIDRS": "150.161.0.0/16,2001:db8::/32",
             "IPC_TRUSTED_PROXY_HOPS": "1",
             "IPC_RATE_LIMIT_MAX_KEYS": "1000",
+            "IPC_RATE_LIMIT_EDGE_HEADER": "CF-Connecting-IP",
+            "IPC_RATE_LIMIT_EDGE_ANONYMOUS_PER_MIN": "45",
             "IPC_ADMISSION_CAPACITY": "8",
             "IPC_ADMISSION_MAX_WAITING": "32",
             "IPC_ADMISSION_MAX_WAIT_S": "0.5",
@@ -370,6 +372,8 @@ def test_settings_from_environment() -> None:
         campus_networks=parse_networks("150.161.0.0/16,2001:db8::/32"),
         trusted_proxy_hops=1,
         max_keys=1_000,
+        edge_ip_header="cf-connecting-ip",
+        edge_anonymous_per_min=45,
     )
     assert settings.admission == AdmissionConfig(capacity=8, max_waiting=32, max_wait_s=0.5)
 
@@ -413,3 +417,13 @@ def test_proxy_check_shows_only_proxy_headers_and_the_client_ip(analyzer: Analyz
         "client_ip": "198.51.100.7",
         "trusted_proxy_hops": 1,
     }
+
+
+def test_proxy_check_also_answers_post(analyzer: Analyzer) -> None:
+    with make_client(analyzer, BEHIND_PROXY) as client:
+        response = client.post(
+            "/api/v1/proxy-check", headers={"X-Forwarded-For": "198.51.100.7"}, content=b""
+        )
+
+    assert response.status_code == 200
+    assert response.json()["client_ip"] == "198.51.100.7"

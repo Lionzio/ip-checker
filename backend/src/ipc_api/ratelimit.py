@@ -83,6 +83,13 @@ class RateLimitConfig:
     #: poucas chamadas por minuto; o teto só pega quem dispara requisições sem parar.
     api_ip_per_min: int = 600
     api_campus_per_min: int = 6_000
+    #: Cabeçalho em que a borda escreve o IP de quem se conectou a ela, sem aceitar o valor do
+    #: cliente: no Render, o Cloudflare (``cf-connecting-ip``). Vazio: desligado (S30-03).
+    edge_ip_header: str = ""
+    #: Sem sessão, um segundo limite por esse IP da borda, que o cliente não forja. Pela página, é
+    #: a saída da Vercel (vários IPs, divididos pela equipe); direto no Render, o próprio cliente,
+    #: que assim não escapa do limite forjando o ``X-Forwarded-For``.
+    edge_anonymous_per_min: int = 60
 
 
 # ---------------------------------------------------------------------------------------------
@@ -259,11 +266,15 @@ class ClientIdentifier:
         if address is None:
             # Sem IP reconhecível (não acontece atrás do uvicorn): todos dividem uma chave.
             return b"desconhecido", False
-        if isinstance(address, ipaddress.IPv6Address):
-            # Um assinante IPv6 recebe um /64 inteiro: o limite vale para o prefixo.
-            prefix = ipaddress.ip_network((address, 64), strict=False).network_address.packed
-            return prefix, self._is_campus(address)
-        return address.packed, self._is_campus(address)
+        return _ip_value(address), self._is_campus(address)
+
+    def _edge(self, scope: Scope) -> bytes | None:
+        """O IP que a borda viu (S30-03), se ela estiver configurada e o tiver escrito."""
+        header = self._config.edge_ip_header
+        if not header:
+            return None
+        address = _parse_ip(Headers(scope=scope).get(header, ""))
+        return _ip_value(address) if address is not None else None
 
     def gate(self, scope: Scope) -> tuple[bytes, int]:
         """A chave e o limite folgado de todo ``/api/*`` (S25-04)."""
@@ -281,7 +292,22 @@ class ClientIdentifier:
         account_id = scope.get("state", {}).get("account_id")
         # Sem sessão, o cliente é o IP: sair da conta não rende um limite maior.
         client_key = self._key(b"c", account_id if account_id else ip_value)
-        return [(ip_key, ip_limit, "ip"), (client_key, config.client_per_min, "client")]
+        limits: list[tuple[bytes, int, LimitScope]] = [
+            (ip_key, ip_limit, "ip"),
+            (client_key, config.client_per_min, "client"),
+        ]
+        edge = None if account_id else self._edge(scope)
+        if edge is not None:
+            # Uma chave a mais nunca afrouxa as outras: quem a forja só cria outro limite para si.
+            limits.append((self._key(b"e", edge), config.edge_anonymous_per_min, "ip"))
+        return limits
+
+
+def _ip_value(address: IPAddress) -> bytes:
+    if isinstance(address, ipaddress.IPv6Address):
+        # Um assinante IPv6 recebe um /64 inteiro: o limite vale para o prefixo.
+        return ipaddress.ip_network((address, 64), strict=False).network_address.packed
+    return address.packed
 
 
 # ---------------------------------------------------------------------------------------------

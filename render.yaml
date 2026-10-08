@@ -39,6 +39,11 @@ services:
       # [PREMISSA P-15 b: conferida pelo teste do limite em tests/pilot, depois do deploy.]
       - key: IPC_TRUSTED_PROXY_HOPS
         value: "4"
+      # Quem chama o Render direto pode forjar a 4ª entrada do X-Forwarded-For (o Render acrescenta
+      # sem limpar). Sem sessão, um segundo limite por IP usa o que o Cloudflare do Render escreve,
+      # que o cliente não forja (S30-03, medido em 08/10/2026 com /api/v1/proxy-check).
+      - key: IPC_RATE_LIMIT_EDGE_HEADER
+        value: cf-connecting-ip
       # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
       - key: IPC_DATABASE_URL
         sync: false

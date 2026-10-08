@@ -202,7 +202,8 @@ PROXY_HEADERS = (
 )
 
 
-@router.get("/api/v1/proxy-check", include_in_schema=False)
+# GET e POST: a Vercel pode tratar os cabeçalhos de um jeito em cada método.
+@router.api_route("/api/v1/proxy-check", methods=["GET", "POST"], include_in_schema=False)
 async def proxy_check(
     request: Request, settings: Annotated[ApiSettings, Depends(get_settings)]
 ) -> JSONResponse:

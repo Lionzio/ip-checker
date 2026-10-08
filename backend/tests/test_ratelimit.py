@@ -324,3 +324,34 @@ def test_keys_are_opaque_and_salted_per_process() -> None:
         assert ACCOUNT_A not in key
     assert limits_of(second, peer="203.0.113.5", account=ACCOUNT_A)["ip"][0] != keys["ip"][0]
     assert keys["ip"][0] != keys["client"][0]
+
+
+def _behind_render(forged: str, edge: str, account: bytes | None = None) -> dict[str, Any]:
+    # Direto no Render (S30-03): o forjado, o IP real (que o Cloudflare também escreve à parte) e os
+    # dois proxies da borda.
+    request = scope("10.0.0.2", [f"{forged}, {edge}, 162.158.0.1, 10.0.0.8"], account)
+    request["headers"].append((b"cf-connecting-ip", edge.encode()))
+    return request
+
+
+def test_without_a_session_the_edge_ip_is_a_second_key() -> None:
+    config = RateLimitConfig(trusted_proxy_hops=4, edge_ip_header="cf-connecting-ip")
+    identifier = ClientIdentifier(config)
+
+    first = identifier.limits(_behind_render("203.0.113.1", "198.51.100.7"))
+    second = identifier.limits(_behind_render("203.0.113.2", "198.51.100.7"))
+
+    assert [(limit, name) for _, limit, name in first] == [(120, "ip"), (30, "client"), (60, "ip")]
+    assert first[1][0] != second[1][0]  # o forjado escolhe a chave do cliente...
+    assert first[2][0] == second[2][0]  # ...mas não a da borda, que segura os dois
+    # Com sessão, a conta já é a chave do cliente: a borda (a Vercel, para a página) não entra.
+    signed_in = identifier.limits(_behind_render("203.0.113.1", "198.51.100.7", ACCOUNT_A))
+    assert [name for _, _, name in signed_in] == ["ip", "client"]
+
+
+def test_the_edge_header_counts_only_when_configured(identifier: ClientIdentifier) -> None:
+    assert len(identifier.limits(_behind_render("203.0.113.1", "198.51.100.7"))) == 2
+    config = RateLimitConfig(trusted_proxy_hops=4, edge_ip_header="cf-connecting-ip")
+    unreadable = scope("10.0.0.2", ["198.51.100.7"])
+    unreadable["headers"].append((b"cf-connecting-ip", b"lixo"))
+    assert len(ClientIdentifier(config).limits(unreadable)) == 2
