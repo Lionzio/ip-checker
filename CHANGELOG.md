@@ -11,7 +11,7 @@ mudaram.
 ## Sprint 30 — Piloto verificado ponta a ponta
 
 A Sprint 30 (S30-01 a S30-12; US-17, US-19, US-20, US-22, US-26, US-32 e US-35) foi concluída em
-08/10/2026, menos o ensaio do rollback (S30-08), que fica com o autor. A missão é o "Deploy do
+08/10/2026. A missão é o "Deploy do
 piloto" verde sem nenhum passo pulado, com alerta, backup e rollback ensaiados e medidos; a persona é
 o monitor-mantenedor. O primeiro deploy completo é o run 37761090896 (`2a55908`): migração, Render,
 Vercel, verificações com login, smoke e2e no piloto e o limite por IP, todos verdes. Decisões de
@@ -53,10 +53,14 @@ implementação:
   (`ipc_api/edge_gate.py`). As rotas de operação continuam abertas para o UptimeRobot.
 - **Achado (P-18):** uma release que muda o `render.yaml` é publicada pela sincronização do Blueprint
   antes da migração do pipeline; uma release com migração não muda o `render.yaml`.
-- **Pendentes:** S30-08, o ensaio cronometrado do rollback pelos painéis (com
-  `scripts/rollback-check.sh`), fica com o autor, porque o agente não tem permissão para publicar
-  pelos painéis; o segredo `IPC_EDGE_SECRET` é cadastrado pelo autor na Vercel e no Render; os 24 h
-  verdes do UptimeRobot se conferem em 09/10/2026.
+- **S30-08:** rollback ensaiado pelos painéis, com o autor cronometrando (`scripts/rollback-check.sh`):
+  a API voltou em cerca de 1 min e a página logo depois da confirmação, no total cerca de 4 min
+  (meta: até 5 min). Na Vercel, um Instant Rollback deixa os deploys novos fora de Production até o
+  **Promote** da versão atual; o runbook registra isso.
+- **Segredo da página ligado:** `IPC_EDGE_SECRET` cadastrado pelo autor, primeiro na Vercel e depois
+  no Render. O "Deploy do piloto" de 08/10/2026 (run 37775207076) confirmou, com login e e2e, que a
+  página funciona e que `/api/*` direto no Render recebe 403.
+- **Fica para 09/10/2026:** conferir os 24 h verdes do UptimeRobot (critério 4).
 
 ## Sprint 29 — Indícios de uso de IA, nunca veredito
 

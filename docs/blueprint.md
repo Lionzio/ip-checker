@@ -954,9 +954,9 @@ Vale para as Sprints 30 a 35 e não se repete nelas; cada sprint lista só os te
 
 #### Sprint 30 — Piloto verificado ponta a ponta
 
-**Situação (08/10/2026):** concluída, menos o ensaio do rollback (S30-08), que fica com o autor. O
-RPO foi decidido (S30-12: backup diário), e a API passou a atender `/api/*` só pela página, com o
-segredo do middleware da Vercel (S30-03). O que cada task entregou está no [CHANGELOG](../CHANGELOG.md).
+**Situação (08/10/2026):** concluída. O rollback foi ensaiado (S30-08), o RPO foi decidido (S30-12:
+backup diário), e a API passou a atender `/api/*` só pela página, com o segredo do middleware da
+Vercel (S30-03). Falta só conferir, em 09/10/2026, os 24 h verdes do UptimeRobot (critério 4). O que cada task entregou está no [CHANGELOG](../CHANGELOG.md).
 
 **Objetivo:** o "Deploy do piloto" fecha verde sem nenhum passo pulado (login e e2e no piloto), com alerta, backup e rollback ensaiados e medidos, e com a P-12 (a) e a P-15 confirmadas ou corrigidas por evidência registrada.
 

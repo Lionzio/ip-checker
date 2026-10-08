@@ -166,7 +166,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 27 | Plágio por árvore canonizada (ADR-07): S27-01 árvore canonizada com reordenação por dependência, Dice e contenção; S27-02 uma solução contra até 100 da turma, com o peso pela raridade (IDF); S27-03 trechos em comum realçados nos dois códigos, Trocar A e B e Limpar | Concluída |
 | 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (faltam o ensaio do rollback e a carga no piloto, que dependem da conta de verificação) |
 | 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política e a calibração) |
-| 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026, menos o ensaio do rollback (S30-08, autor) e a decisão do RPO (S30-12) |
+| 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026 |
 | 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 e auditoria de segurança bloqueante com Semgrep | Planejada |
 | 32 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
 | 33 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
@@ -203,8 +203,9 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Os três monitores do UptimeRobot (S30-04, 08/10/2026)
 - [x] Chave do backup (`age-keygen`) e a variável `BACKUP_AGE_RECIPIENT` (S30-06, 08/10/2026)
 - [x] Plano do Render: gratuito (S30-11, ADR-03, 08/10/2026)
-- [ ] Ensaio cronometrado do rollback pelos painéis do Render e da Vercel, com
-      `scripts/rollback-check.sh` (S30-08; runbook, "Voltar para a versão anterior")
+- [x] Ensaio cronometrado do rollback pelos painéis do Render e da Vercel (S30-08, 08/10/2026)
+- [x] Segredo da página `IPC_EDGE_SECRET` na Vercel e no Render: `/api/*` só pela página (S30-03,
+      08/10/2026)
 - [x] RPO do backup: backup diário (S30-12, 08/10/2026)
 - [ ] Decisões com a coordenação e o NTI: política dos indícios de IA, Q-16 (provedor de IA), Q-17
       (remetente dos e-mails) e Q-22 (governança das regras) (Sprint 31; opções em 7.13)

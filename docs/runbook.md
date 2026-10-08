@@ -25,8 +25,11 @@ vem depois, para a `main` não publicar o erro de novo. Cronometre e anote no re
 1. **API (Render):** no serviço `ip-checker-api`, abra **Events**, escolha o último deploy que
    funcionava e clique em **Rollback**. O Render sobe a imagem anterior e só troca quando ela
    responde `/health/service`.
-2. **Página (Vercel):** em **Deployments**, abra o deploy anterior de Production e use **Instant
-   Rollback** (ou **Promote to Production**).
+2. **Página (Vercel):** em **Deployments**, abra o deploy anterior de Production, use
+   **Deployment Actions > Instant Rollback** e confirme duas vezes (**Continue** e **Confirm
+   Rollback**). No plano Hobby, só dá para voltar ao deploy imediatamente anterior. Depois de um
+   Instant Rollback, os deploys novos não entram em Production sozinhos: para voltar à versão
+   atual, abra o deploy dela e use **Deployment Actions > Promote**, que desfaz o rollback.
 3. **Confira:** `curl -s <endereço do Render>/ready` e `<endereço da Vercel>/version.json` mostram o
    mesmo `release`, o do commit anterior. Para cronometrar, rode antes do passo 1, no Git Bash,
    `scripts/rollback-check.sh <commit anterior>`: ele consulta os dois a cada 5 s e mostra o tempo
@@ -54,7 +57,7 @@ o "Deploy do piloto" de novo). O Render guarda o deploy anterior mesmo quando el
 
 | Data | Quem | De → para | Render | Vercel | Total até o passo 3 | Observações |
 |---|---|---|---|---|---|---|
-| (pendente) | | | | | | O primeiro ensaio (S30-08) fica com o autor: o agente da Sprint 30 não tem permissão para publicar pelos painéis. Releases disponíveis em 08/10/2026: `2a55908` (atual) e `715cd16` (anterior) |
+| 08/10/2026 | Claude (agente), com o autor cronometrando | `8104253` → `64649b3` e volta | Rollback pedido às 08:29 e no ar às 08:30 (cerca de 1 min) | Instant Rollback no ar às 08:33:30, segundos depois da confirmação | Cerca de 4 min, com o tempo de achar o menu da Vercel (meta: até 5 min) | Horário de Brasília. A volta: Vercel por **Promote** às 08:34:52 e Render às 08:40:30 (o primeiro clique de confirmação no Render não pegou, com a página ainda carregando). Releases depois da volta: `8104253` nos dois |
 
 ## O deploy parou no meio
 
@@ -164,6 +167,13 @@ Para ligar ou trocar, sem derrubar a página:
 4. Limpe a área de transferência (`echo limpo | clip`) e confira: rode o "Deploy do piloto" de
    novo. O último passo verifica que `/api/*` direto no Render recebe 403 e que a página continua
    funcionando.
+
+Depois do passo 2, antes de mexer no Render, confira que a página já manda o segredo: o
+diagnóstico pela página mostra o cabeçalho `x-ipc-client-ip`, que o middleware só acrescenta
+quando tem o segredo (`curl -4 -s -X POST -H "Origin: <endereço da Vercel>"
+<endereço da Vercel>/api/v1/proxy-check`). O "Deploy do piloto" de um commit que já está no ar não
+espera a página nova, porque o `/version.json` não muda. Com o segredo também no Render, o mesmo
+diagnóstico mostra `"edge_verified": true`.
 
 Para desligar, apague a variável no Render primeiro e depois na Vercel. Um valor com menos de 32
 caracteres faz a API não subir (o deploy fica vermelho, e a versão anterior continua no ar).
