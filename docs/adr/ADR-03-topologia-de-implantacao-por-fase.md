@@ -4,7 +4,7 @@
 
 **Título:** Implantação em três fases: Docker Compose local, Vercel + Render no piloto de 2027.1 e Docker Compose no servidor do CIn.
 
-**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim.
+**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim. Medido no Render de verdade na S30-09 (08/10/2026) e decidido pelo autor na S30-11: fica no **plano gratuito** (ver "Medição da S30-09 e decisão do plano" no fim).
 
 **Contexto:** O projeto tem um único desenvolvedor com 4 a 8 h por semana (P-02, Q-13) e pouco orçamento. O servidor do CIn só será usado depois de comprovada a eficácia (P-03). O pico de referência é de 500 req/min (P-01), com P95 ≤ 200 ms. O `analyzer` precisa ficar separado de dados e credenciais (ADR-01). O rate limit em memória só é consistente com uma única instância da `api`, o que vale em todas as fases.
 
@@ -55,3 +55,28 @@ primeiro prazo da Lista 1 em 2027.1, e não só no pico, como a S12-02 recomenda
 pode seguir no gratuito para a configuração e os testes da equipe, sabendo que o `/health/slo`
 vai acusar latência acima de 200 ms. A decisão de custo é do autor; o workflow "Carga no piloto",
 rodado depois da conta de verificação, confirma ou desmente a emulação no Render de verdade.
+
+## Medição da S30-09 e decisão do plano (08/10/2026)
+
+O workflow "Carga no piloto" (`load.yml`) rodou no Render de verdade, plano gratuito, com login
+pela conta de verificação e pela página da Vercel. O k6 mede do GitHub até a Vercel e o Render, com
+a rede no meio; o P95 do servidor vem do `/health/slo`, consultado a cada 30 s durante a carga.
+
+| Rodada | Taxa | Duração | Falhas | k6: P50 / P95 / P99 | Servidor: P95 | `/auth/me` P95 | `/auth/options` P95 |
+|---|---|---|---|---|---|---|---|
+| 1 | 20/min | 5 min | 0% (101 respostas 200) | 135 / 282 / 380 ms | 127 a 195 ms | 155 ms | 159 ms |
+| 2 | 20/min | 10 min | 0% (201 respostas 200) | 96 / 272 / 366 ms | 181 a 195 ms | 118 ms | 104 ms |
+
+**Leitura:** no Render de verdade, a 20 por minuto, o P95 do servidor ficou abaixo dos 200 ms do
+NFR-01, melhor que a emulação da S28-01 (383 ms a 30 por minuto): o `--cpus 0.1` local é mais
+pessimista que a cota do Render. A sessão no banco soma cerca de 10 ms (Q-20). O pico de 500 por
+minuto não foi medido no piloto; na emulação, o gratuito degrada como o NFR-05 pede (14,8% de
+`OVERLOADED`, sem 500/502/504).
+
+**Decisão (S30-11, autor, 08/10/2026):** o backend fica no **plano gratuito**; não há orçamento
+para o Starter. Consequências: o NFR-01 vale para o uso medido (até cerca de 20 por minuto); no pico
+de referência (500 por minuto), o piloto recusa parte das verificações com `OVERLOADED` e uma
+mensagem de tentar de novo, em vez de cair (NFR-05). A S33-03 mede os cenários do NFR-04 e do NFR-05
+no piloto, e o `/health/slo` com o UptimeRobot avisa quando a latência passar da meta. A S33-01 deixa
+de aplicar o Starter e passa a registrar o comportamento no pico com o plano gratuito.
+

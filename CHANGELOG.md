@@ -8,6 +8,50 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 30 — Piloto verificado ponta a ponta
+
+A Sprint 30 (S30-01 a S30-12; US-17, US-19, US-20, US-22, US-26, US-32 e US-35) foi concluída em
+08/10/2026, menos o ensaio do rollback (S30-08) e a decisão do RPO (S30-12). A missão é o "Deploy do
+piloto" verde sem nenhum passo pulado, com alerta, backup e rollback ensaiados e medidos; a persona é
+o monitor-mantenedor. O primeiro deploy completo é o run 37761090896 (`2a55908`): migração, Render,
+Vercel, verificações com login, smoke e2e no piloto e o limite por IP, todos verdes. Decisões de
+implementação:
+
+- **S30-01 (autor):** conta de verificação "Lionzio", com um subendereço da caixa institucional do
+  autor (os e-mails da conta do desenvolvedor são reservados a ela), e os secrets `PILOT_CHECK_*`.
+- **S30-02:** `tests/pilot` ganhou o feedback pela página em até 30 s; o teste do login esperava as
+  violações sem a exigência R-02 da Lista 1 (Sprint 23), porque nunca tinha rodado sem a conta.
+- **S30-03:** o limite por IP do piloto não limitava ninguém: com 2 saltos, a chave era um proxy
+  interno do Render, diferente a cada requisição. Com o diagnóstico `/api/v1/proxy-check` (devolve a
+  quem chama só os cabeçalhos de proxy e o IP que o limite usaria, sem log), a estrutura real foi
+  medida: o cliente vem do `Forwarded: for=`, que a Vercel sempre reescreve, e, sem ele, da 4ª
+  entrada do `X-Forwarded-For` a partir do fim (ou da primeira, direto no Render); sem sessão, um
+  segundo limite de 60 por minuto usa o `cf-connecting-ip`, que o cliente não forja. O último passo
+  do deploy (`tests/pilot/test_rate_limit.py`) confere tudo a cada release. Risco residual na P-15.
+- **S30-04:** o plano gratuito do UptimeRobot só consulta com HEAD, e a API respondia 405: as rotas
+  de operação respondem HEAD, fora do OpenAPI. Os três monitores foram criados, de 5 em 5 min, com
+  alerta por e-mail.
+- **S30-05:** exercício de alerta com `IPC_SLO_P95_MS=50` por uma release e 10 min de carga: do 503
+  ao e-mail do UptimeRobot, 61 a 92 s (NFR-15: até 5 min). A meta voltou a 200 ms, escrita no
+  `render.yaml` (P-18).
+- **S30-06 e S30-07:** chave `age` gerada fora do repositório e `BACKUP_AGE_RECIPIENT` gravada; o
+  backup passou a registrar as linhas por tabela (`deploy/backup/contagens.sql`) no resumo do run e
+  no artefato. Ensaio de restauração: linhas iguais nas 9 tabelas, RTO técnico de 9 s.
+- **S30-09:** carga no Render com login, 20 por minuto: P95 do servidor entre 127 e 195 ms, k6 com
+  P95 de 272 a 282 ms do GitHub à página, 0% de falhas; a sessão no banco soma cerca de 10 ms (Q-20).
+- **S30-10:** o Render roda sem `CAP_KILL` (P-17), e nem o `kill()` nem o `PR_SET_PDEATHSIG` de um
+  root alcançam outro usuário. `deploy/render/run_as.py`: o supervisord sinaliza um lançador root,
+  que fecha um pipe; um guardião com o usuário do serviço o encerra. O `env -i` do analisador veio
+  para antes do lançador. A suíte do piloto roda sem `CAP_KILL` e confere o desligamento em menos de
+  15 s, sem `CRIT`; nos logs do Render, nenhum `CRIT` desde a correção.
+- **S30-11 (autor):** plano gratuito, sem orçamento (ADR-03).
+- **Achado (P-18):** uma release que muda o `render.yaml` é publicada pela sincronização do Blueprint
+  antes da migração do pipeline; uma release com migração não muda o `render.yaml`.
+- **Pendentes:** S30-08, o ensaio cronometrado do rollback pelos painéis (com
+  `scripts/rollback-check.sh`), fica com o autor, porque o agente não tem permissão para publicar
+  pelos painéis; S30-12, o RPO do backup (opções em 7.13.8), é decisão do autor; os 24 h verdes do
+  UptimeRobot se conferem em 09/10/2026.
+
 ## Sprint 29 — Indícios de uso de IA, nunca veredito
 
 A Sprint 29 (S29-01 a S29-04; ADR-08, Q-21, US-34) foi concluída em 07/10/2026. A missão é dar à
