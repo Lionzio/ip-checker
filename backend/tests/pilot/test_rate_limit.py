@@ -1,25 +1,23 @@
 """O limite por IP no piloto pega o cliente certo, pela página e direto no Render (S30-03).
 
 Confirma a P-12 (a) e a P-15 (b): sem sessão, cada IP faz até 30 requisições por minuto nas rotas
-de conta. Antes da S30-03, o ``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render,
-diferente a cada requisição, e 33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
+de conta, e um ``X-Forwarded-For`` forjado não escolhe a chave. Até a S30-03, o
+``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render, diferente a cada requisição, e
+33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
 
-O teste alterna requisições pela página (com um ``X-Forwarded-For`` forjado, que a Vercel precisa
-descartar) e direto no Render (sem forjar): as duas formas têm de cair na mesma chave, o IP do
-runner, e a 31ª tentativa (ou antes, se outra verificação já gastou parte do minuto) recebe 429.
+O diagnóstico ``/api/v1/proxy-check`` devolve o IP que o limite usaria. As requisições saem por IPv4:
+uma máquina com IPv4 e IPv6 pode chegar à Vercel por um e ao Render pelo outro, e seriam dois
+clientes de verdade.
 
-Ele esgota o limite do IP do runner por 1 minuto, por isso só roda quando pedido
+Ele esgota o limite do IP de quem roda por 1 minuto, por isso só roda quando pedido
 (``PILOT_CHECK_RATE_LIMIT=1``), no último passo do "Deploy do piloto", depois do smoke e2e.
-
-Limite conhecido: quem chama o Render direto **e** forja o cabeçalho escolhe a própria chave,
-porque o Render acrescenta ao ``X-Forwarded-For`` sem limpá-lo; o bloqueio de login por conta
-(5 falhas em 15 min) continua valendo (registrado na P-15).
 """
 
 from __future__ import annotations
 
 import os
 import secrets
+from collections.abc import Iterator
 from urllib.parse import urlsplit
 
 import httpx2
@@ -35,6 +33,7 @@ pytestmark = pytest.mark.skipif(
 
 #: Sem sessão, o cliente é o IP: 30 por minuto (RateLimitConfig.client_per_min).
 LIMIT = 30
+FORGED = "203.0.113.77"
 
 
 def _origin(url: str) -> str:
@@ -42,23 +41,46 @@ def _origin(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}"
 
 
-def test_the_ip_limit_counts_the_real_client_on_both_paths() -> None:
+@pytest.fixture(scope="module")
+def http() -> Iterator[httpx2.Client]:
+    transport = httpx2.HTTPTransport(local_address="0.0.0.0")  # noqa: S104 - só sai por IPv4
+    with httpx2.Client(transport=transport, timeout=30, follow_redirects=False) as client:
+        yield client
+
+
+def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str:
+    headers = {"X-Forwarded-For": forged} if forged else {}
+    response = http.get(f"{base}/api/v1/proxy-check", headers=headers)
+    assert response.status_code == 200, response.text
+    ip: str = response.json()["client_ip"]
+    return ip
+
+
+def test_a_forged_forwarded_header_does_not_choose_the_key(http: httpx2.Client) -> None:
+    through_page = _client_ip(http, WEB)
+
+    assert _client_ip(http, WEB, forged=FORGED) == through_page
+    assert _client_ip(http, API) == through_page
+    assert _client_ip(http, API, forged=FORGED) == through_page
+
+
+def test_the_31st_attempt_in_a_minute_gets_429(http: httpx2.Client) -> None:
     page = {"Origin": _origin(WEB)}
     codes: list[int] = []
-    with httpx2.Client(timeout=30, follow_redirects=False) as client:
-        for attempt in range(LIMIT + 1):
-            # Um token bem formado e inexistente: 422 INVALID_TOKEN, sem efeito no banco.
-            body = {"token": secrets.token_urlsafe(32)[:43]}
-            if attempt % 2 == 0:
-                forged = {"X-Forwarded-For": f"203.0.113.{attempt + 1}"}
-                url = f"{WEB}/api/v1/auth/verify"
-                response = client.post(url, json=body, headers={**page, **forged})
-            else:
-                response = client.post(f"{API}/api/v1/auth/verify", json=body, headers=page)
-            codes.append(response.status_code)
-            if response.status_code == 429:
-                assert response.json()["error"]["code"] == "RATE_LIMITED"
-                break
+    for attempt in range(LIMIT + 1):
+        # Um token bem formado e inexistente: 422 INVALID_TOKEN, sem efeito no banco. Metade das
+        # tentativas forja o cabeçalho, metade vai direto ao Render: todas contam para o mesmo IP.
+        body = {"token": secrets.token_urlsafe(32)[:43]}
+        if attempt % 2 == 0:
+            forged = {"X-Forwarded-For": f"203.0.113.{attempt + 1}"}
+            url = f"{WEB}/api/v1/auth/verify"
+            response = http.post(url, json=body, headers={**page, **forged})
+        else:
+            response = http.post(f"{API}/api/v1/auth/verify", json=body, headers=page)
+        codes.append(response.status_code)
+        if response.status_code == 429:
+            assert response.json()["error"]["code"] == "RATE_LIMITED"
+            break
 
     assert 429 in codes, codes
     assert set(codes[:-1]) <= {422}, codes

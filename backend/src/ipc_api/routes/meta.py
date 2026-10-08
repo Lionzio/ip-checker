@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import JSONResponse
 
 from ipc_api.accounts.models import StoreUnavailable
 from ipc_api.auth.deps import get_authenticator, require_active_account
@@ -18,6 +19,7 @@ from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
 from ipc_api.deps import get_analyzer, get_housekeeping, get_settings, get_slo, get_telemetry
 from ipc_api.errors import analyzer_unavailable, database_unavailable
 from ipc_api.housekeeping import Housekeeping
+from ipc_api.ratelimit import client_ip
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     HealthResponse,
@@ -185,4 +187,39 @@ async def slo(
             inactive=housekeeping.stats.removed.inactive,
             log=housekeeping.stats.removed.log,
         ),
+    )
+
+
+#: Cabeçalhos de proxy que o diagnóstico devolve (S30-03); nenhum outro sai na resposta.
+PROXY_HEADERS = (
+    "x-forwarded-for",
+    "x-real-ip",
+    "x-vercel-forwarded-for",
+    "cf-connecting-ip",
+    "true-client-ip",
+    "forwarded",
+    "via",
+)
+
+
+@router.get("/api/v1/proxy-check", include_in_schema=False)
+async def proxy_check(
+    request: Request, settings: Annotated[ApiSettings, Depends(get_settings)]
+) -> JSONResponse:
+    """Diagnóstico do IP do cliente atrás da Vercel e do Render (S30-03, P-15 b).
+
+    Devolve a quem chama só os cabeçalhos de proxy da própria requisição e o IP que o limite por IP
+    usaria. É o mesmo que o cliente já sabe (o próprio IP) mais os endereços dos proxies; nada vai
+    para o log, a telemetria ou o banco. O teste do piloto o usa para conferir que um
+    ``X-Forwarded-For`` forjado não escolhe a chave do limite.
+    """
+    found = {name: request.headers.getlist(name) for name in PROXY_HEADERS}
+    address = client_ip(request.scope, settings.rate_limit.trusted_proxy_hops)
+    return JSONResponse(
+        {
+            "headers": {name: values for name, values in found.items() if values},
+            "client_ip": str(address) if address else None,
+            "trusted_proxy_hops": settings.rate_limit.trusted_proxy_hops,
+        },
+        headers={"Cache-Control": "no-store"},
     )
