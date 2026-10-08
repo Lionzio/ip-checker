@@ -8,6 +8,17 @@
  * no build, para montar o *rewrite*; ele nunca entra no código da página.
  */
 
+/** Nome da função de Edge Runtime do middleware de `/api/*` (S30-03). */
+export const MIDDLEWARE = "_middleware";
+
+/** Configuração da função do middleware (`.vc-config.json`). */
+export const MIDDLEWARE_FUNCTION_CONFIG = {
+  runtime: "edge",
+  entrypoint: "index.js",
+  // O segredo entra pelo painel da Vercel (Environment Variables), nunca pelo repositório.
+  envVarsInUse: ["IPC_EDGE_SECRET"],
+};
+
 /** Um ano, como na API e na borda do compose. */
 export const HSTS = "max-age=31536000; includeSubDomains";
 
@@ -76,8 +87,16 @@ export function buildOutputConfig({ apiOrigin }) {
         continue: true,
       },
       { src: "/version.json", headers: { "Cache-Control": "no-store" }, continue: true },
+      // S30-03: antes do repasse, o middleware acrescenta o segredo da página e o IP do cliente
+      // (scripts/edge-middleware.mjs); a API recusa /api/* sem o segredo.
+      {
+        src: "/api/(.*)",
+        middlewarePath: MIDDLEWARE,
+        middlewareRawSrc: ["/api/:path*"],
+        continue: true,
+      },
       // Mesma origem (S16-02): a API no Render atende /api/* pela origem da página. Os cookies e o
-      // retorno do Google ficam aqui; o Render vê o IP do cliente no X-Forwarded-For (P-15 b).
+      // retorno do Google ficam aqui.
       { src: "/api/(.*)", dest: `${apiOrigin}/api/$1` },
       { handle: "filesystem" },
       // Página única: qualquer outro caminho devolve o index.html.

@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { HSTS, buildOutputConfig, contentSecurityPolicy, parseApiOrigin } from "./vercel-config.mjs";
+import {
+  HSTS,
+  MIDDLEWARE,
+  MIDDLEWARE_FUNCTION_CONFIG,
+  buildOutputConfig,
+  contentSecurityPolicy,
+  parseApiOrigin,
+} from "./vercel-config.mjs";
 
 const API = "https://ip-checker-api.onrender.com";
 
@@ -80,10 +87,28 @@ describe("buildOutputConfig", () => {
   });
 
   it("repassa /api/* ao Render antes de servir os arquivos (mesma origem, S16-02)", () => {
-    const rewrite = config.routes.findIndex((route) => route.src === "/api/(.*)");
+    const rewrite = config.routes.findIndex((route) => route.dest === `${API}/api/$1`);
     const handle = config.routes.findIndex((route) => route.handle === "filesystem");
 
     expect(config.routes[rewrite]).toEqual({ src: "/api/(.*)", dest: `${API}/api/$1` });
     expect(rewrite).toBeLessThan(handle);
+  });
+
+  it("passa /api/* pelo middleware do segredo antes do repasse (S30-03)", () => {
+    const middleware = config.routes.findIndex((route) => route.middlewarePath === MIDDLEWARE);
+    const rewrite = config.routes.findIndex((route) => route.dest === `${API}/api/$1`);
+
+    expect(config.routes[middleware]).toEqual({
+      src: "/api/(.*)",
+      middlewarePath: "_middleware",
+      middlewareRawSrc: ["/api/:path*"],
+      continue: true,
+    });
+    expect(middleware).toBeLessThan(rewrite);
+    expect(MIDDLEWARE_FUNCTION_CONFIG).toEqual({
+      runtime: "edge",
+      entrypoint: "index.js",
+      envVarsInUse: ["IPC_EDGE_SECRET"],
+    });
   });
 });

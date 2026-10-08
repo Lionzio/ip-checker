@@ -419,6 +419,7 @@ def test_proxy_check_shows_only_proxy_headers_and_the_client_ip(analyzer: Analyz
         "client_ip": "198.51.100.7",
         "trusted_proxy_hops": 1,
         "trust_forwarded_header": False,
+        "edge_verified": False,
     }
 
 

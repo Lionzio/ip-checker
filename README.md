@@ -89,7 +89,7 @@ testes. Os jobs:
 - branch-policy: na `main`, falha se ela tiver algum commit que não esteja na `develop`.
 
 Fora da CI, à mão: "Deploy do piloto" (também depois de cada CI verde na `main`), "Carga no
-piloto" (k6 no Render, S28-01), "Backup do banco do piloto" (também todo domingo, S28-03) e
+piloto" (k6 no Render, S28-01), "Backup do banco do piloto" (também todo dia, S28-03 e S30-12) e
 "Auditoria de segurança" (também toda segunda-feira).
 
 No compose, os e-mails de verificação vão para o Mailpit (<http://127.0.0.1:8125>). Para
@@ -205,7 +205,7 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Plano do Render: gratuito (S30-11, ADR-03, 08/10/2026)
 - [ ] Ensaio cronometrado do rollback pelos painéis do Render e da Vercel, com
       `scripts/rollback-check.sh` (S30-08; runbook, "Voltar para a versão anterior")
-- [ ] RPO do backup: diário ou revisar a NFR-20 (S30-12; opções em 7.13.8 do blueprint)
+- [x] RPO do backup: backup diário (S30-12, 08/10/2026)
 - [ ] Decisões com a coordenação e o NTI: política dos indícios de IA, Q-16 (provedor de IA), Q-17
       (remetente dos e-mails) e Q-22 (governança das regras) (Sprint 31; opções em 7.13)
 - [ ] Revisão do guia da equipe e data da apresentação do Marco 2 (S31-05)

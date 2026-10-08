@@ -33,7 +33,7 @@ import time
 from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -211,7 +211,7 @@ class FixedWindowCounter:
 # ---------------------------------------------------------------------------------------------
 
 
-def _parse_ip(value: str | None) -> IPAddress | None:
+def parse_ip(value: str | None) -> IPAddress | None:
     if not value:
         return None
     try:
@@ -238,7 +238,7 @@ def _forwarded_for(scope: Scope) -> IPAddress | None:
             node = node[1:].partition("]")[0]
         elif node.count(":") == 1:  # IPv4 com porta
             node = node.partition(":")[0]
-        return _parse_ip(node)
+        return parse_ip(node)
     return None
 
 
@@ -255,12 +255,17 @@ def client_ip(
     que o proxy mais externo viu (S30-03). Antes, valia o IP da conexão, que no Render é um proxy
     interno diferente a cada requisição, e o limite por IP não pegava ninguém.
 
-    Com ``trust_forwarded``, o ``for=`` do ``Forwarded`` vem antes de tudo, quando existe.
+    Com ``trust_forwarded``, o ``for=`` do ``Forwarded`` vem antes de tudo, quando existe. E,
+    antes ainda, o IP que o middleware da página mandou junto com o segredo conferido
+    (``ipc_api.edge_gate``, S30-03).
     """
+    verified = scope.get("state", {}).get("edge_client_ip")
+    if verified is not None:
+        return cast("IPAddress", verified)
     if trust_forwarded and (address := _forwarded_for(scope)) is not None:
         return address
     peer = scope.get("client")
-    peer_ip = _parse_ip(peer[0]) if peer else None
+    peer_ip = parse_ip(peer[0]) if peer else None
     if trusted_proxy_hops <= 0:
         return peer_ip
     forwarded = [
@@ -270,7 +275,7 @@ def client_ip(
     ]
     if not forwarded:
         return peer_ip
-    return _parse_ip(forwarded[-min(trusted_proxy_hops, len(forwarded))]) or peer_ip
+    return parse_ip(forwarded[-min(trusted_proxy_hops, len(forwarded))]) or peer_ip
 
 
 class ClientIdentifier:
@@ -307,7 +312,7 @@ class ClientIdentifier:
         header = self._config.edge_ip_header
         if not header:
             return None
-        address = _parse_ip(Headers(scope=scope).get(header, ""))
+        address = parse_ip(Headers(scope=scope).get(header, ""))
         return _ip_value(address) if address is not None else None
 
     def gate(self, scope: Scope) -> tuple[bytes, int]:
@@ -330,7 +335,9 @@ class ClientIdentifier:
             (ip_key, ip_limit, "ip"),
             (client_key, config.client_per_min, "client"),
         ]
-        edge = None if account_id else self._edge(scope)
+        # Pela página, com o segredo conferido, a borda é a Vercel e o cliente já é confiável.
+        verified = scope.get("state", {}).get("edge_verified")
+        edge = None if account_id or verified else self._edge(scope)
         if edge is not None:
             # Uma chave a mais nunca afrouxa as outras: quem a forja só cria outro limite para si.
             limits.append((self._key(b"e", edge), config.edge_anonymous_per_min, "ip"))

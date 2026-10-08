@@ -1,6 +1,6 @@
 name: Backup do banco do piloto
 
-# Backup semanal criptografado dos esquemas app (contas, sessões, registro de gerenciamento, cota e
+# Backup diário (S30-12, para o RPO de 24 h da NFR-20) criptografado dos esquemas app (contas, sessões, registro de gerenciamento, cota e
 # adoção) e telemetry (S28-03). O dump é conferido (pg_restore --list), criptografado com a chave
 # pública age de BACKUP_AGE_RECIPIENT e guardado como artefato do workflow por 90 dias. Só quem tem
 # a chave privada, fora do GitHub, consegue abrir. Como restaurar: docs/runbook.md, "Restaurar um
@@ -12,7 +12,8 @@ name: Backup do banco do piloto
 
 on:
   schedule:
-    - cron: "0 6 * * 0"
+    # Todo dia às 06:00 UTC (03:00 em Recife), longe do uso da equipe.
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:

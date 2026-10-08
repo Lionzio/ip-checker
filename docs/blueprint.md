@@ -215,7 +215,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-17 | Manutenibilidade | Evolução de regras sem tocar no código | % de PRs de regra que alteram só dados | 100% dos PRs com label `rules` alteram apenas `rulesets/**` e `backend/tests/golden/**` | Conferido por quem faz o merge, com o modelo `.github/PULL_REQUEST_TEMPLATE/regras.md` (sem job de CI nem CODEOWNERS; Q-22) |
 | NFR-18 | Correção | Precisão do motor | Falsos positivos e falsos negativos no corpus golden | 0 FP e 0 FN, com ≥ 3 casos por R-xx (P-08) | `pytest` golden na CI |
 | NFR-19 | Acessibilidade | Conformidade com WCAG 2.1 AA | Violações axe *critical/serious*; fluxo por teclado | 0 violações; fluxo completo operável só pelo teclado | Playwright com axe-core na CI e checklist manual por release |
-| NFR-20 | Portabilidade e recuperação | Implantação reproduzível | RTO; RPO da telemetria | RTO ≤ 30 min (VM limpa + `docker compose up`); RPO ≤ 24 h | Backup semanal criptografado (`backup.yml`, S28-03) e ensaio de restauração uma vez por semestre (`docs/runbook.md`) |
+| NFR-20 | Portabilidade e recuperação | Implantação reproduzível | RTO; RPO da telemetria | RTO ≤ 30 min (VM limpa + `docker compose up`); RPO ≤ 24 h | Backup diário criptografado (`backup.yml`, S28-03; diário desde a S30-12) e ensaio de restauração uma vez por semestre (`docs/runbook.md`) |
 | NFR-21 | Compatibilidade | Gramática alinhada à do Dikastis, Python 3.13+ (Q-01) | Divergências no corpus de sintaxe específica de versão | 0 | Testes de corpus por versão na CI |
 | NFR-22 | Segurança | Autenticação e sessão | Parâmetros e atributos conferidos | Senha em Argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 iterações, paralelismo 1); sessão no servidor com identificador aleatório de 256 bits guardado só como hash; cookie `HttpOnly`, `Secure` e `SameSite=Lax`, rotacionado no login e invalidado no logout, na troca de senha, na mudança de cargo e na remoção; expiração após 12 h sem uso e em no máximo 7 dias [PREMISSA, Q-19]; tokens de verificação de 256 bits, de uso único e válidos por 24 h; limite de tentativas por conta e por IP nas rotas de autenticação, com espera progressiva depois de 5 falhas em 15 min [PREMISSA] | Suíte de segurança da autenticação (seção 8, itens 16 a 20) |
 | NFR-23 | Segurança | Autorização sem brechas | Rotas sem verificação; combinações cargo × ação × alvo testadas | 0 rotas da API sem exigência de sessão, além das listadas no FR-22; 100% da matriz do FR-27 testada por chamada direta à API | Teste que percorre o OpenAPI sem sessão (401 em tudo) e teste de matriz na CI |
@@ -661,7 +661,7 @@ Nas Fases 0 e 2, o banco é um contêiner `postgres` fixado por digest, só na r
 | Hospedagem | Fase 0: Docker Compose local. Fase 1 (piloto em 2027.1): SPA na Vercel e backend em 1 serviço Docker no Render (plano Starter recomendado). Fase 2: Docker Compose no servidor do CIn (ADR-03) | No piloto, custo baixo e nenhum servidor para administrar (decisão do projeto, Q-10). Nas Fases 0 e 2, redes `internal: true`, `read_only`, `cap_drop`, `pids_limit` e `mem_limit` testáveis (NFR-07) | VM de nuvem com Compose já no piloto: isolamento completo, mas exige administrar o sistema operacional com 4 a 8 h por semana. Kubernetes: custo operacional desproporcional |
 | Isolamento por processo (Fase 1) | `supervisord`, UIDs distintos para `api` e `analyzer` e `pyseccomp` (libseccomp) nos workers | Compensa a falta de rede interna e de flags de contêiner no Render: o analisador não lê o ambiente da API, não abre sockets de rede e não executa programas | nsjail ou bubblewrap: dependem de *user namespaces*, em geral indisponíveis em PaaS |
 | Imagem base | `python:3.13-slim` (Debian), fixada por digest | glibc instala wheels binárias sem compilação, a superfície é reduzida e há atualizações de segurança do Debian | Alpine: o musl força compilar wheels e tem diferenças de comportamento. Distroless: depuração mais difícil para a equipe (reavaliar após o MVP) |
-| Telemetria/BD | PostgreSQL gerenciado (Supabase, §2 do rascunho) com `asyncpg` e o papel `ipc_writer`, que só faz INSERT | Backup semanal próprio e criptografado (`backup.yml`, S28-03) [PREMISSA: o plano gratuito do Supabase não guarda backups que se possam baixar], SQL para as views do FR-17 e menor privilégio via conexão Postgres direta | supabase-py/REST com chave de serviço: credencial com privilégio amplo. SQLite: perde dados a cada deploy (§19 do rascunho) |
+| Telemetria/BD | PostgreSQL gerenciado (Supabase, §2 do rascunho) com `asyncpg` e o papel `ipc_writer`, que só faz INSERT | Backup diário próprio e criptografado (`backup.yml`, S28-03 e S30-12) [PREMISSA: o plano gratuito do Supabase não guarda backups que se possam baixar], SQL para as views do FR-17 e menor privilégio via conexão Postgres direta | supabase-py/REST com chave de serviço: credencial com privilégio amplo. SQLite: perde dados a cada deploy (§19 do rascunho) |
 | Observabilidade | structlog (JSON), prometheus-client, Grafana Alloy e Grafana Cloud [PREMISSA: plano gratuito], mais o UptimeRobot (linha seguinte) | Logs, métricas e alertas (NFR-14, NFR-15) sem servidor próprio | Prometheus, Grafana e Loki auto-hospedados: três serviços a mais para operar na VM |
 | Keep-alive e monitoramento externo (Fase 1) | UptimeRobot, plano gratuito, checagem de `/ready` a cada 5 min e da SPA | O serviço gratuito do Render dorme após 15 min sem tráfego; uma checagem a cada 5 min o mantém acordado e ainda mede a disponibilidade (NFR-06) e alerta por e-mail (US-19). Um único serviço acordado o mês todo cabe nas 750 h/mês do plano gratuito | Cron do GitHub Actions: o intervalo mínimo é de 5 min e as execuções costumam atrasar, o que deixaria o serviço dormir. Render Starter: elimina a dormência, mas custa cerca de US$ 7/mês |
 | Repositório e CI/CD | Monorepo no GitHub e GitHub Actions (GHCR [PLANEJADO, Fase 2]) | Ruleset, motor e contrato mudam no mesmo PR; a aprovação de regras é conferida por quem faz o merge (Q-22), porque o GitHub Free não aplica CODEOWNERS em repositório privado | Dois repositórios (§20–21 do rascunho): contrato e ruleset ficam dessincronizados entre front e back |
@@ -954,8 +954,9 @@ Vale para as Sprints 30 a 35 e não se repete nelas; cada sprint lista só os te
 
 #### Sprint 30 — Piloto verificado ponta a ponta
 
-**Situação (08/10/2026):** concluída, menos o ensaio do rollback (S30-08), que fica com o autor, e a
-decisão do RPO (S30-12). O que cada task entregou está no [CHANGELOG](../CHANGELOG.md).
+**Situação (08/10/2026):** concluída, menos o ensaio do rollback (S30-08), que fica com o autor. O
+RPO foi decidido (S30-12: backup diário), e a API passou a atender `/api/*` só pela página, com o
+segredo do middleware da Vercel (S30-03). O que cada task entregou está no [CHANGELOG](../CHANGELOG.md).
 
 **Objetivo:** o "Deploy do piloto" fecha verde sem nenhum passo pulado (login e e2e no piloto), com alerta, backup e rollback ensaiados e medidos, e com a P-12 (a) e a P-15 confirmadas ou corrigidas por evidência registrada.
 
@@ -1271,6 +1272,8 @@ no Render P95 do servidor abaixo de 200 ms a 20 por minuto; o pico segue com a d
 |---|---|---|---|
 | A. Backup diário | Atende o RPO de 24 h | 7 vezes mais artefatos (90 dias de retenção) e mais minutos do Actions | `cron` do `backup.yml` muda por PR |
 | B. Manter semanal e revisar a NFR-20 para o piloto | Menos custo | Até 7 dias de dados de contas perdidos num desastre | NFR-20 revista, com o motivo |
+
+**Decidido (08/10/2026, autor):** opção A, backup diário; a NFR-20 fica como está (RPO ≤ 24 h).
 
 ### 7.14 Matriz de rastreabilidade das pendências (07/10/2026)
 

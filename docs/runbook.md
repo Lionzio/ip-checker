@@ -142,9 +142,31 @@ Trocar um segredo (vazou, ou alguém saiu da equipe técnica):
 | Cliente OAuth do Google | Google Cloud, **Credentials** | `IPC_GOOGLE_CLIENT_SECRET` no Render |
 | Chaves das IAs | Painel de cada provedor | `IPC_LLM_API_KEY` e `IPC_LLM_FALLBACK_API_KEY` no Render |
 | Deploy hooks | Render (**Settings > Deploy Hook**, regenerar) e Vercel (apagar e criar) | `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` no GitHub |
+| Segredo da página (`IPC_EDGE_SECRET`) | Gere um novo (abaixo) | Vercel e Render, na ordem abaixo |
 
 Trocar uma variável no Render reinicia o serviço; as sessões abertas continuam válidas, porque
 ficam no banco.
+
+### Segredo da página (`IPC_EDGE_SECRET`, S30-03)
+
+Com ele, a API só atende `/api/*` pela página: o middleware da Vercel o manda junto, e o Render
+responde 403 ao que chega sem ele. O mesmo valor fica nos dois painéis e em nenhum outro lugar.
+Para ligar ou trocar, sem derrubar a página:
+
+1. No Git Bash, gere o valor e copie para a área de transferência, sem mostrá-lo:
+   `openssl rand -hex 32 | tr -d '\n' | clip`.
+2. **Vercel primeiro:** no projeto, **Settings > Environment Variables**, crie (ou edite)
+   `IPC_EDGE_SECRET` em **Production**, cole o valor e marque como **Sensitive**. Depois rode o
+   "Deploy do piloto" (**Actions > Deploy do piloto > Run workflow**, branch `main`): só um deploy
+   novo da página lê o valor. Enquanto o Render não o tem, ele ignora o cabeçalho.
+3. **Render depois:** no serviço, **Environment**, preencha `IPC_EDGE_SECRET` com o mesmo valor e
+   salve. O serviço reinicia em cerca de 1 minuto e passa a recusar o acesso direto.
+4. Limpe a área de transferência (`echo limpo | clip`) e confira: rode o "Deploy do piloto" de
+   novo. O último passo verifica que `/api/*` direto no Render recebe 403 e que a página continua
+   funcionando.
+
+Para desligar, apague a variável no Render primeiro e depois na Vercel. Um valor com menos de 32
+caracteres faz a API não subir (o deploy fica vermelho, e a versão anterior continua no ar).
 
 ## Conta de verificação do deploy
 
@@ -160,8 +182,8 @@ as verificações dela não entram na telemetria, e ela não conta como membro n
 
 ## Backup
 
-O workflow "Backup do banco do piloto" (`.github/workflows/backup.yml`, S28-03) roda todo domingo e
-à mão. Ele faz o `pg_dump` dos esquemas `app` (contas, sessões, registro de gerenciamento, cota de
+O workflow "Backup do banco do piloto" (`.github/workflows/backup.yml`, S28-03) roda todo dia às
+06:00 UTC (diário desde a S30-12, para o RPO de 24 h da NFR-20) e à mão. Ele faz o `pg_dump` dos esquemas `app` (contas, sessões, registro de gerenciamento, cota de
 feedback e adoção) e `telemetry`, confere o dump com o `pg_restore --list`, criptografa com o
 [age](https://github.com/FiloSottile/age) e guarda o arquivo como artefato do workflow por 90 dias.
 O dump tem dados pessoais da equipe (nomes, e-mails e resumos de senha), por isso só sai

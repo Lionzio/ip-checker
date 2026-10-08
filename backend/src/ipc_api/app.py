@@ -38,6 +38,7 @@ from ipc_api.auth.sessions import Authenticator
 from ipc_api.auth.throttle import LoginThrottle
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
 from ipc_api.edge import SecurityHeadersMiddleware
+from ipc_api.edge_gate import EdgeGateMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.feedback.providers import LlmConfig, Provider, Slot, build_provider
 from ipc_api.feedback.service import Ai, FeedbackService
@@ -280,6 +281,8 @@ def create_app(
         OriginCheckMiddleware,
         allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),
     )
+    # S30-03: no piloto, /api/* só pela página (segredo do middleware da Vercel).
+    app.add_middleware(EdgeGateMiddleware, secret=config.edge_secret)
     app.add_middleware(
         RequestContextMiddleware, max_body_bytes=config.max_body_bytes, slo=app.state.slo
     )

@@ -4,7 +4,9 @@ Confirma a P-12 (a) e a P-15 (b): sem sessão, cada IP faz até 30 requisições
 de conta. Até a S30-03, o ``IPC_TRUSTED_PROXY_HOPS`` apontava para um proxy interno do Render,
 diferente a cada requisição, e 33 tentativas seguidas não recebiam nenhum 429 (08/10/2026).
 
-Pela página, a chave vem do ``Forwarded: for=``, que a Vercel sempre reescreve com o IP real (o
+Com ``IPC_EDGE_SECRET`` cadastrado na Vercel e no Render, ``/api/*`` só atende pela página: o
+middleware da Vercel manda o segredo e o IP do cliente, e o Render direto recebe 403. Antes disso,
+pela página, a chave vem do ``Forwarded: for=``, que a Vercel sempre reescreve com o IP real (o
 ``X-Forwarded-For`` e o ``X-Vercel-Forwarded-For`` às vezes chegam forjados, conforme o nó da
 Vercel). Direto no Render, quem forja os cabeçalhos escolhe a chave do cliente, mas um segundo
 limite, pelo IP que o Cloudflare do Render escreve (``cf-connecting-ip``), o segura em 60 por
@@ -56,30 +58,54 @@ def http() -> Iterator[httpx2.Client]:
 
 
 def _forged(value: str) -> dict[str, str]:
-    """Os três cabeçalhos com que um cliente tenta escolher a própria chave."""
+    """Os cabeçalhos com que um cliente tenta escolher a própria chave."""
     return {
         "X-Forwarded-For": value,
         "X-Vercel-Forwarded-For": value,
         "Forwarded": f"for={value}",
+        "X-Real-IP": value,
+        "X-IPC-Client-IP": value,
     }
 
 
-def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str:
+def _proxy_check(http: httpx2.Client, base: str, forged: str | None = None) -> httpx2.Response:
     # POST, como as rotas de conta: a Vercel não trata os cabeçalhos igual em todo método e nó.
     headers = {"Origin": _origin(WEB), **(_forged(forged) if forged else {})}
-    response = http.post(f"{base}/api/v1/proxy-check", headers=headers, content=b"")
+    return http.post(f"{base}/api/v1/proxy-check", headers=headers, content=b"")
+
+
+def _client_ip(http: httpx2.Client, base: str, forged: str | None = None) -> str:
+    response = _proxy_check(http, base, forged)
     assert response.status_code == 200, response.text
     ip: str = response.json()["client_ip"]
     return ip
 
 
-def test_the_page_and_the_render_see_the_same_client(http: httpx2.Client) -> None:
+@pytest.fixture(scope="module")
+def page_only(http: httpx2.Client) -> bool:
+    """Com ``IPC_EDGE_SECRET`` nos dois painéis, a API só atende pela página (S30-03)."""
+    response = _proxy_check(http, WEB)
+    assert response.status_code == 200, response.text
+    verified: bool = response.json()["edge_verified"]
+    return verified
+
+
+def test_the_page_sees_the_real_client_whatever_the_client_sends(http: httpx2.Client) -> None:
     through_page = _client_ip(http, WEB)
 
-    # A Vercel sempre reescreve o Forwarded com o IP real, que vem antes do X-Forwarded-For.
     for _ in range(4):  # nós diferentes da Vercel
         assert _client_ip(http, WEB, forged=FORGED) == through_page
-    assert _client_ip(http, API) == through_page
+
+
+def test_the_render_answers_api_only_through_the_page(http: httpx2.Client, page_only: bool) -> None:
+    if not page_only:
+        # Antes do segredo: direto no Render, sem forjar, o cliente é o mesmo da página.
+        assert _client_ip(http, API) == _client_ip(http, WEB)
+        return
+    for forged in (None, FORGED):
+        response = _proxy_check(http, API, forged)
+        assert response.status_code == 403, response.text
+        assert response.json()["error"]["code"] == "ORIGIN_MISMATCH"
 
 
 def _attempts(http: httpx2.Client, base: str, limit: int) -> list[int]:
@@ -104,9 +130,14 @@ def test_through_the_page_the_31st_attempt_gets_429(http: httpx2.Client) -> None
     assert set(codes[:-1]) <= {422}, codes
 
 
-def test_forging_directly_on_the_render_still_hits_the_edge_limit(http: httpx2.Client) -> None:
-    # Direto no Render, o valor forjado vira a chave do cliente (o Render acrescenta ao cabeçalho
-    # sem limpá-lo), mas o limite pelo IP que o Cloudflare viu (60 por minuto) continua valendo.
+def test_forging_directly_on_the_render_still_hits_the_edge_limit(
+    http: httpx2.Client, page_only: bool
+) -> None:
+    if page_only:
+        pytest.skip("com o segredo nos dois painéis, o Render direto já recebe 403")
+    # Antes do segredo: direto no Render, o valor forjado vira a chave do cliente (o Render
+    # acrescenta ao cabeçalho sem limpá-lo), mas o limite pelo IP que o Cloudflare viu (60 por
+    # minuto) continua valendo.
     codes = _attempts(http, API, EDGE_LIMIT)
 
     assert codes[-1] == 429, codes
