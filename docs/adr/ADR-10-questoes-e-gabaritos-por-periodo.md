@@ -4,6 +4,8 @@
 
 **Status:** Aceito em 08/10/2026 (decisão de engenharia sobre a Q-14, já aprovada pelo autor). O repositório dos gabaritos e a chave da CI foram criados no mesmo dia; a troca de período por um arquivo (S31-09), o `ipc-rules new-period` (S31-10) e os gabaritos com as questões do próprio período (S31-11) entram na Sprint 31.
 
+**Revisão (09/10/2026):** a ADR-11 permite que a API do piloto baixe os gabaritos e os guarde só em memória, para a comparação com o gabarito (Q-24); eles continuam fora do repositório principal, da imagem, do disco, dos logs e do navegador. Os dois repositórios continuam (decisão do autor de 09/10/2026).
+
 **Contexto:** A numeração das questões reinicia a cada período (P-07), e as regras de cada questão (R-01) mudam com os enunciados. Os enunciados ficam no Dikastis e os gabaritos oficiais no Notion (Q-14). O ruleset precisa de revisão por PR com professor ou monitor-chefe (C-02, `RULES.md`), histórico e validação no CI (FR-21), e o analisador isolado não acessa banco nem rede (ADR-01). Os gabaritos são respostas oficiais: não podem ir para o repositório principal, para a imagem do piloto nem para os logs. Até 08/10/2026, o período ativo estava escrito em dois arquivos (`deploy/render/supervisord.conf` e `backend/Dockerfile`), e o teste dos gabaritos só usava as questões do período ativo.
 
 **Decisão:**

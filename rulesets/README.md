@@ -118,7 +118,7 @@ regras que o enunciado libera naquele arquivo e o motivo:
 as pastas de 2026.2, e a chave de implantação só de leitura já está nele (**Settings > Deploy
 keys**), com a parte privada no segredo `GABARITOS_SSH_KEY` deste repositório. Falta:
 
-1. Copiar os gabaritos do Notion para lá, na organização acima (S32-01; o README de lá mostra como
+1. Copiar os gabaritos do Notion para lá, na organização acima (S33-01; o README de lá mostra como
    fazer pelo navegador).
 2. Depois do primeiro gabarito, ligar o job, uma vez:
    `gh variable set GABARITOS_REPO --repo Lionzio/ip-checker --body Lionzio/ip-checker-gabaritos`.

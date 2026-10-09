@@ -63,7 +63,7 @@ quem aprova, e quem da equipe recebe acesso aos gabaritos.
 ## 6. Piloto em 2027.1 (10 min)
 
 Os critérios de eficácia (P-09), a pesquisa de fim de piloto (S31-06) e as listas habilitadas no
-começo do período (S33-05). **Decidir:** a data de início do uso pela equipe.
+começo do período (S34-05). **Decidir:** a data de início do uso pela equipe.
 
 ## Registro
 

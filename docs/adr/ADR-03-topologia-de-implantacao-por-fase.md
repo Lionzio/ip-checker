@@ -76,7 +76,7 @@ minuto não foi medido no piloto; na emulação, o gratuito degrada como o NFR-0
 **Decisão (S30-11, autor, 08/10/2026):** o backend fica no **plano gratuito**; não há orçamento
 para o Starter. Consequências: o NFR-01 vale para o uso medido (até cerca de 20 por minuto); no pico
 de referência (500 por minuto), o piloto recusa parte das verificações com `OVERLOADED` e uma
-mensagem de tentar de novo, em vez de cair (NFR-05). A S33-03 mede os cenários do NFR-04 e do NFR-05
-no piloto, e o `/health/slo` com o UptimeRobot avisa quando a latência passar da meta. A S33-01 deixa
+mensagem de tentar de novo, em vez de cair (NFR-05). A S34-03 mede os cenários do NFR-04 e do NFR-05
+no piloto, e o `/health/slo` com o UptimeRobot avisa quando a latência passar da meta. A S34-01 deixa
 de aplicar o Starter e passa a registrar o comportamento no pico com o plano gratuito.
 
