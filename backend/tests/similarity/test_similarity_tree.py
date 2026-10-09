@@ -265,7 +265,7 @@ def test_two_50_kb_codes_are_compared_in_under_one_second() -> None:
         timings = []
         for _ in range(3):
             start = time.perf_counter()
-            result = asyncio.run(pool.compare(big, other))
+            result, _ = asyncio.run(pool.compare(big, other))
             timings.append(time.perf_counter() - start)
     finally:
         pool.close()

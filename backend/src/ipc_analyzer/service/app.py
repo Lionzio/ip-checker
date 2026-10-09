@@ -27,6 +27,7 @@ from starlette.exceptions import HTTPException
 
 from ipc_analyzer.engine.analysis import resolve_question
 from ipc_analyzer.engine.feedback import FeedbackInput
+from ipc_analyzer.engine.gabarito import GabaritoComparison
 from ipc_analyzer.engine.guards import (
     DEFAULT_LIMITS,
     InputError,
@@ -60,6 +61,8 @@ class AnalyzeRequest(BaseModel):
     question_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,32}$")
     #: Calcula também os indícios de uso de IA (ADR-08); a API só pede quando estão ligados.
     indicators: bool = False
+    #: O gabarito oficial da questão (ADR-11), vindo da memória da API; nunca volta na resposta.
+    gabarito: str | None = None
 
 
 class IndicatorOut(BaseModel):
@@ -114,6 +117,35 @@ class SyntaxErrorOut(BaseModel):
     message: str
 
 
+class LinesOut(BaseModel):
+    first: int
+    last: int
+
+
+class GabaritoOut(BaseModel):
+    """Comparação com o gabarito (ADR-11): só nomes de construções e linhas do aluno."""
+
+    percent: float
+    token_counts: list[int]
+    common: list[str]
+    only_student: list[str]
+    only_gabarito: list[str]
+    student_lines: list[LinesOut]
+
+    @classmethod
+    def of(cls, comparison: GabaritoComparison) -> GabaritoOut:
+        return cls(
+            percent=comparison.percent,
+            token_counts=list(comparison.token_counts),
+            common=list(comparison.common),
+            only_student=list(comparison.only_student),
+            only_gabarito=list(comparison.only_gabarito),
+            student_lines=[
+                LinesOut(first=first, last=last) for first, last in comparison.student_lines
+            ],
+        )
+
+
 class AnalyzeResponse(BaseModel):
     ruleset_version: str
     status: Literal["valid", "invalid", "syntax_error"]
@@ -122,6 +154,7 @@ class AnalyzeResponse(BaseModel):
     violations: list[ViolationOut]
     truncated: bool
     indicators: IndicatorsOut | None = None
+    gabarito: GabaritoOut | None = None
 
     @classmethod
     def from_result(cls, result: AnalysisResult) -> AnalyzeResponse:
@@ -153,6 +186,7 @@ class AnalyzeResponse(BaseModel):
             indicators=(
                 IndicatorsOut.of(result.indicators) if result.indicators is not None else None
             ),
+            gabarito=GabaritoOut.of(result.gabarito) if result.gabarito is not None else None,
         )
 
 
@@ -161,6 +195,8 @@ class SimilarityRequest(BaseModel):
 
     first: str
     second: str
+    #: O gabarito da questão (ADR-11): cada código é comparado também com ele.
+    gabarito: str | None = None
 
 
 class MetricsOut(BaseModel):
@@ -198,9 +234,15 @@ class SimilarityResponse(BaseModel):
     syntax_error: SyntaxErrorOut | None
     metrics: MetricsOut | None = None
     matches: list[MatchOut] = []
+    #: Com o gabarito: a semelhança de A e de B com ele, na ordem (ADR-11, item 5).
+    gabarito: list[GabaritoOut | None] | None = None
 
     @classmethod
-    def from_result(cls, result: Similarity | InvalidSide) -> SimilarityResponse:
+    def from_result(
+        cls,
+        result: Similarity | InvalidSide,
+        gabarito: tuple[GabaritoComparison | None, ...] = (),
+    ) -> SimilarityResponse:
         if isinstance(result, InvalidSide):
             problem = result.problem
             return cls(
@@ -223,6 +265,11 @@ class SimilarityResponse(BaseModel):
                 MatchOut(a_first=m.a.first, a_last=m.a.last, b_first=m.b.first, b_last=m.b.last)
                 for m in result.matches
             ],
+            gabarito=(
+                [None if item is None else GabaritoOut.of(item) for item in gabarito]
+                if gabarito
+                else None
+            ),
         )
 
 
@@ -358,6 +405,19 @@ def _error(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
 
 
+def _check_gabarito(gabarito: str | None) -> None:
+    """O gabarito vem da API, que já limita o tamanho; um acima do limite é recusado do mesmo
+    jeito que um código, sem citar o conteúdo."""
+    if gabarito is None:
+        return
+    size = len(gabarito.encode("utf-8", errors="surrogatepass"))
+    if size > DEFAULT_LIMITS.max_bytes:
+        raise PayloadTooLargeError(
+            f"O gabarito tem {thousands(size)} bytes; o limite é "
+            f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
+        )
+
+
 def _pool(request: Request) -> AnalyzerPool:
     pool: AnalyzerPool = request.app.state.pool
     return pool
@@ -445,6 +505,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 f"O código tem {thousands(size)} bytes; o limite é "
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
+        _check_gabarito(body.gabarito)
         # A questão é conferida aqui, antes do worker: uma questão inexistente nem entra na fila.
         resolve_question(ruleset, body.list_number, body.question_id)
         result = await pool.analyze(
@@ -453,6 +514,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             body.question_id,
             deadline=_deadline(request),
             indicators=body.indicators,
+            gabarito=body.gabarito,
         )
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
@@ -496,8 +558,11 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                     f"Código {label}: o código tem {thousands(size)} bytes; o limite é "
                     f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
                 )
-        result = await pool.compare(body.first, body.second, deadline=_deadline(request))
-        response = SimilarityResponse.from_result(result)
+        _check_gabarito(body.gabarito)
+        result, gabarito = await pool.compare(
+            body.first, body.second, deadline=_deadline(request), gabarito=body.gabarito
+        )
+        response = SimilarityResponse.from_result(result, gabarito)
         request.state.outcome = response.status
         return response
 

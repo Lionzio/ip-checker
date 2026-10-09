@@ -9,6 +9,7 @@ from ipc_analyzer.engine.parse import SyntaxProblem
 from ipc_analyzer.engine.ruleset import Category
 
 if TYPE_CHECKING:
+    from ipc_analyzer.engine.gabarito import GabaritoComparison
     from ipc_analyzer.engine.indicators import Indicators
 
 AnalysisStatus = Literal["valid", "invalid", "syntax_error"]
@@ -43,3 +44,5 @@ class AnalysisResult:
     truncated: bool = False
     #: Indícios de uso de IA (ADR-08), só quando pedidos e só para a equipe; ``None`` sem indício.
     indicators: Indicators | None = None
+    #: Comparação com o gabarito da questão (ADR-11), quando a API mandou o gabarito.
+    gabarito: GabaritoComparison | None = None
