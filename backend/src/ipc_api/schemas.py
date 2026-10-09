@@ -17,7 +17,8 @@ from ipc_api.errors import ErrorCode
 
 Category = Literal["ANULACAO", "PROIBIDO_NA_QUESTAO", "FORA_DA_LISTA", "NAO_CONSTA", "EXIGENCIA"]
 Status = Literal["valid", "invalid", "syntax_error"]
-Notice = Literal["QUESTION_RULES_NOT_APPLIED"]
+Notice = Literal["QUESTION_RULES_NOT_APPLIED", "QUESTION_RULES_NOT_REGISTERED"]
+QuestionId = Annotated[str, StringConstraints(pattern=r"^L[1-6]-Q[1-9]\d?$")]
 ListNumber = Annotated[int, Field(ge=1, le=6)]
 Position = Annotated[int, Field(ge=1, le=1_000_000)]
 Message = Annotated[str, StringConstraints(min_length=1, max_length=1_000)]
@@ -78,6 +79,13 @@ class FeedbackResponse(_Strict):
 class SimilarityRequest(_Strict):
     code_a: str = Field(description="Código de um aluno. Nunca é executado.")
     code_b: str = Field(description="Código do outro aluno. Nunca é executado.")
+    question_id: QuestionId | None = Field(
+        default=None,
+        description=(
+            "Questão do período ativo (ADR-11): com o gabarito dela, A e B também são comparados "
+            "com ele, e a resposta traz o alerta de possível vazamento."
+        ),
+    )
 
 
 BandId = Literal[
@@ -141,6 +149,37 @@ class SimilarityResponse(_Strict):
     matches: list[SimilarityMatch] = Field(
         default_factory=list, description="Os trechos em comum, na ordem do código A."
     )
+    gabarito: SimilarityGabarito | None = Field(
+        default=None,
+        description="Com a questão escolhida: A e B comparados com o gabarito (ADR-11, item 5).",
+    )
+
+
+GabaritoStatus = Literal["compared", "no_gabarito", "unavailable", "not_compared"]
+
+
+class GabaritoSide(_Strict):
+    similarity: Percent = Field(description="Semelhança com o gabarito, com uma casa decimal.")
+    band: SimilarityBand
+
+
+class SimilarityGabarito(_Strict):
+    question_id: QuestionId
+    status: GabaritoStatus = Field(
+        description=(
+            "compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do "
+            "ar neste servidor); not_compared (um dos códigos não pôde ser comparado)."
+        )
+    )
+    a: GabaritoSide | None
+    b: GabaritoSide | None
+    leak_alert: bool = Field(
+        description=(
+            "Possível vazamento do gabarito: A com B, A com o gabarito e B com o gabarito acima "
+            "do limiar, com os dois códigos acima do tamanho mínimo (ADR-11, item 5)."
+        )
+    )
+    message: Message
 
 
 class ClassSolution(_Strict):
@@ -203,10 +242,11 @@ IndicatorLevel = Literal["baixo", "medio", "alto"]
 
 
 class Indicator(_Strict):
-    signal: Literal["multiplas_violacoes", "referencia_ia", "estilo"] = Field(
+    signal: Literal["multiplas_violacoes", "referencia_ia", "gabarito", "estilo"] = Field(
         description=(
             "multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma "
-            "solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa)."
+            "solução gerada por IA para a questão), gabarito (semelhança com o gabarito oficial, "
+            "ADR-11) ou estilo (marcadores, sem peso na faixa)."
         )
     )
     kind: Annotated[str, StringConstraints(pattern=r"^[a-z_]{1,40}$")] = Field(
@@ -231,6 +271,37 @@ class Indicators(AnalyzerIndicators):
     notice: Message = Field(description="Indícios não são prova; a confirmação é a conversa.")
 
 
+class LineSpan(_Strict):
+    first: Position
+    last: Position
+
+
+Construct = Annotated[str, StringConstraints(min_length=1, max_length=120)]
+
+
+class GabaritoComparison(_Strict):
+    """Comparação com o gabarito oficial da questão (ADR-11, FR-32): só porcentagem, nomes de
+    construções e linhas do aluno; nenhum texto do gabarito."""
+
+    question_id: QuestionId
+    status: GabaritoStatus = Field(
+        description=(
+            "compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do "
+            "ar neste servidor); not_compared (o código não pôde ser comparado)."
+        )
+    )
+    similarity: Percent | None = Field(description="Semelhança com o gabarito (ADR-07).")
+    band: SimilarityBand | None
+    short_code: bool = Field(description="Código curto: soluções independentes se parecem.")
+    common: list[Construct] = Field(max_length=30, description="Construções dos dois.")
+    only_student: list[Construct] = Field(max_length=30, description="Só no código do aluno.")
+    only_gabarito: list[Construct] = Field(max_length=30, description="Só no gabarito.")
+    student_lines: list[LineSpan] = Field(
+        max_length=100, description="Trechos do aluno com a estrutura de um trecho do gabarito."
+    )
+    message: Message
+
+
 class ValidateResponse(_Strict):
     request_id: str = Field(
         description="Identificador da requisição (ULID), também no X-Request-Id."
@@ -250,6 +321,10 @@ class ValidateResponse(_Strict):
             "(IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno."
         ),
     )
+    gabarito: GabaritoComparison | None = Field(
+        default=None,
+        description="Com uma questão escolhida: a comparação com o gabarito dela (ADR-11).",
+    )
 
 
 class QuestionInfo(_Strict):
@@ -267,6 +342,13 @@ class ListInfo(_Strict):
         description=(
             "Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando "
             "a lista não tem nenhuma."
+        ),
+    )
+    gabaritos: list[QuestionId] = Field(
+        default_factory=list,
+        description=(
+            "Questões do período ativo com gabarito para comparar (ADR-11), mesmo sem regra "
+            "cadastrada; só os números, nunca o gabarito."
         ),
     )
 
@@ -551,6 +633,20 @@ class AnalyzerFeedbackInput(_Strict):
         return self
 
 
+class AnalyzerLines(_Strict):
+    first: Position
+    last: Position
+
+
+class AnalyzerGabarito(_Strict):
+    percent: Percent
+    token_counts: list[Annotated[int, Field(ge=0)]] = Field(min_length=2, max_length=2)
+    common: list[Construct] = Field(max_length=30)
+    only_student: list[Construct] = Field(max_length=30)
+    only_gabarito: list[Construct] = Field(max_length=30)
+    student_lines: list[AnalyzerLines] = Field(max_length=100)
+
+
 class AnalyzerSimilarity(_Strict):
     status: Literal["compared", "syntax_error"]
     percent: float | None = Field(ge=0, le=100)
@@ -559,6 +655,7 @@ class AnalyzerSimilarity(_Strict):
     syntax_error: SyntaxErrorInfo | None
     metrics: SimilarityMetrics | None = None
     matches: list[SimilarityMatch] = Field(default_factory=list, max_length=100)
+    gabarito: list[AnalyzerGabarito | None] | None = Field(default=None, max_length=2)
 
     @model_validator(mode="after")
     def _status_matches_content(self) -> Self:
@@ -605,6 +702,7 @@ class AnalyzerResult(_Strict):
     violations: list[Violation] = Field(max_length=MAX_VIOLATIONS)
     truncated: bool
     indicators: AnalyzerIndicators | None = None
+    gabarito: AnalyzerGabarito | None = None
 
     @model_validator(mode="after")
     def _status_matches_content(self) -> Self:

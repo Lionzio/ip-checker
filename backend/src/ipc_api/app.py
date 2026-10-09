@@ -11,6 +11,7 @@ ao analyzer. O banco de contas vem de ``IPC_DATABASE_URL`` (S13-01).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
@@ -42,6 +43,8 @@ from ipc_api.edge_gate import EdgeGateMiddleware
 from ipc_api.errors import ApiError, ErrorCode, error_response
 from ipc_api.feedback.providers import LlmConfig, Provider, Slot, build_provider
 from ipc_api.feedback.service import Ai, FeedbackService
+from ipc_api.gabaritos import Gabaritos
+from ipc_api.gabaritos import load as load_gabaritos
 from ipc_api.housekeeping import Housekeeping
 from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
@@ -178,6 +181,7 @@ def create_app(
     google_transport: httpx2.AsyncBaseTransport | None = None,
     llm_providers: Sequence[Provider] | None = None,
     telemetry_sink: TelemetrySink | None = None,
+    gabaritos_transport: httpx2.AsyncBaseTransport | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
@@ -195,6 +199,7 @@ def create_app(
         client = AnalyzerClient(
             config.analyzer_url, config.analyzer_timeout_s, transport=analyzer_transport
         )
+        gabaritos_task: asyncio.Task[None] | None = None
         try:
             await seed_developer(store, hasher, config.developer, clock())
             app.state.authenticator = Authenticator(
@@ -232,6 +237,13 @@ def create_app(
                 redirect_uri=f"{config.accounts.public_base_url}/api/v1/auth/google/callback",
             )
             app.state.analyzer = client
+            # Os gabaritos chegam em segundo plano (ADR-11): a API fica pronta sem esperar por eles.
+            app.state.gabaritos = Gabaritos(
+                status="loading" if config.gabaritos.enabled else "disabled"
+            )
+            gabaritos_task = asyncio.create_task(
+                load_gabaritos(config.gabaritos, app.state.gabaritos, gabaritos_transport)
+            )
             # O semáforo pertence ao laço de eventos que atende as requisições.
             app.state.admission = Admission(config.admission)
             app.state.telemetry = await _start_telemetry(
@@ -242,6 +254,8 @@ def create_app(
             app.state.housekeeping.start()
             yield
         finally:
+            if gabaritos_task is not None and not gabaritos_task.done():
+                gabaritos_task.cancel()
             adoption = getattr(app.state, "adoption", None)
             if adoption is not None:
                 await adoption.drain()

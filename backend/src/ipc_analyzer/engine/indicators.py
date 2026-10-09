@@ -331,9 +331,10 @@ def _gabarito_signal(
             kind="gabarito",
             level=level,
             reason=(
-                f"{_percent(comparison.percent)}% de semelhança com o gabarito oficial da questão "
-                f"{question_id}: a solução pode ter vindo de um gabarito que circula entre os "
-                "alunos, ou de uma IA que chegou à mesma solução."
+                f"{_percent(comparison.percent)}% de semelhança com o gabarito oficial "
+                f"{f'da questão {question_id}' if question_id else 'da questão escolhida'}: a "
+                "solução pode ter vindo de um gabarito que circula entre os alunos, ou de uma IA "
+                "que chegou à mesma solução."
             ),
             lines=lines,
         )

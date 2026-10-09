@@ -17,6 +17,7 @@ from ipc_api.edge import parse_origins
 from ipc_api.edge_gate import validate_edge_secret
 from ipc_api.feedback.providers import LlmSettings
 from ipc_api.feedback.service import FeedbackLimits
+from ipc_api.gabaritos import GabaritosConfig
 from ipc_api.housekeeping import HousekeepingConfig
 from ipc_api.mail import EmailConfig
 from ipc_api.ratelimit import RateLimitConfig, parse_networks
@@ -124,6 +125,8 @@ class ApiSettings:
     housekeeping: HousekeepingConfig = field(default_factory=HousekeepingConfig)
     #: Limites dos alertas de latência e de erro em /health/slo (S21-02, NFR-15).
     slo: SloConfig = field(default_factory=SloConfig)
+    #: Gabaritos na memória da API e o alerta de possível vazamento (ADR-11, S32-02).
+    gabaritos: GabaritosConfig = field(default_factory=GabaritosConfig)
 
     def check(self) -> None:
         """Recusa configurações perigosas na subida (S25-04).
@@ -183,6 +186,7 @@ class ApiSettings:
             email=EmailConfig.from_env(env),
             google=GoogleConfig.from_env(env),
             llm=LlmSettings.from_env(env),
+            gabaritos=GabaritosConfig.from_env(env),
             feedback_limits=FeedbackLimits.from_env(env),
             accounts=AccountsConfig(
                 public_base_url=env.get("IPC_PUBLIC_BASE_URL", AccountsConfig().public_base_url)

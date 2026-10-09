@@ -7,6 +7,7 @@ from fastapi import Request
 from ipc_api.admission import Admission
 from ipc_api.adoption import Adoption
 from ipc_api.clients.analyzer import AnalyzerClient
+from ipc_api.gabaritos import Gabaritos
 from ipc_api.housekeeping import Housekeeping
 from ipc_api.settings import ApiSettings
 from ipc_api.slo import SloMonitor
@@ -21,6 +22,11 @@ def get_analyzer(request: Request) -> AnalyzerClient:
 def get_admission(request: Request) -> Admission:
     admission: Admission = request.app.state.admission
     return admission
+
+
+def get_gabaritos(request: Request) -> Gabaritos:
+    gabaritos: Gabaritos = request.app.state.gabaritos
+    return gabaritos
 
 
 def get_settings(request: Request) -> ApiSettings:
