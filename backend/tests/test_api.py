@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable, Iterator
-from typing import Any
+from typing import Any, cast
 
 import httpx2
 import pytest
@@ -145,6 +145,8 @@ def test_valid_code(client: TestClient, analyzer: FakeAnalyzer) -> None:
         "truncated": False,
         # Os indícios de IA ficam desligados por padrão (S29).
         "indicators": None,
+        # Sem questão, não há comparação com o gabarito (ADR-11).
+        "gabarito": None,
     }
     assert response.headers["X-Request-Id"] == body["request_id"]
     assert response.headers["Cache-Control"] == "no-store"
@@ -442,8 +444,10 @@ def test_lists_show_only_enabled_lists(client: TestClient) -> None:
     response = client.get("/api/v1/lists")
 
     assert response.status_code == 200
-    # As questões cadastradas vêm junto de cada lista (FR-03), em ordem.
-    assert response.json() == MANIFEST["lists"]
+    # As questões cadastradas vêm junto de cada lista (FR-03), em ordem; sem gabaritos neste
+    # servidor, nenhuma questão tem gabarito para comparar (ADR-11).
+    lists = cast("list[dict[str, Any]]", MANIFEST["lists"])
+    assert response.json() == [{**item, "gabaritos": []} for item in lists]
 
 
 def test_lists_follow_enabled_lists_setting(analyzer: FakeAnalyzer) -> None:

@@ -30,6 +30,8 @@ export type SyntaxErrorInfo = Schemas["SyntaxErrorInfo"];
 export type ListInfo = Schemas["ListInfo"];
 /** Uma questão com regra específica cadastrada no período (R-01, Sprint 24). */
 export type QuestionInfo = Schemas["QuestionInfo"];
+export type GabaritoComparison = Schemas["GabaritoComparison"];
+export type SimilarityGabarito = Schemas["SimilarityGabarito"];
 export type ErrorResponse = Schemas["ErrorResponse"];
 /** A conta logada (Sprint 13). O tratamento só aparece para o próprio titular. */
 export type Account = Schemas["AccountResponse"];

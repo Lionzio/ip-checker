@@ -391,7 +391,7 @@ def test_similarity_with_the_gabarito_compares_each_side(client: TestClient) -> 
     )
 
     body = response.json()
-    assert [item["percent"] for item in body["gabarito"]][0] == 100.0
+    assert body["gabarito"][0]["percent"] == 100.0
     assert body["gabarito"][1]["percent"] < 80.0
     assert "canario_gab" not in response.text
 

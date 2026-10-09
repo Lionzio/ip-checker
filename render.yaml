@@ -58,6 +58,13 @@ services:
       # ligar: primeiro na Vercel e um deploy da página, depois aqui (docs/runbook.md, "Segredos").
       - key: IPC_EDGE_SECRET
         sync: false
+      # Gabaritos na memória da API (ADR-11, S32-02): baixados do repositório privado ao subir,
+      # com uma credencial só de leitura restrita a ele (S32-01; docs/runbook.md, "Gabaritos").
+      # Sem o token, a comparação fica desligada, com um aviso, e o resto da API segue normal.
+      - key: IPC_GABARITOS_REPO
+        value: Lionzio/ip-checker-gabaritos
+      - key: IPC_GABARITOS_TOKEN
+        sync: false
       # Banco de contas (Supabase), com o usuário ipc_api criado pela migração do pipeline.
       - key: IPC_DATABASE_URL
         sync: false

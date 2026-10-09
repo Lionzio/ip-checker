@@ -158,6 +158,12 @@ services:
       # Mudar só no exercício de falha (deploy/compose.md, "Telemetria e alertas").
       IPC_SLO_P95_MS: ${IPC_SLO_P95_MS:-200}
       IPC_SLO_MIN_REQUESTS: ${IPC_SLO_MIN_REQUESTS:-20}
+      # Gabaritos (ADR-11, Sprint 32): no piloto, a API os baixa do repositório privado e os
+      # guarda só em memória; aqui, ela lê uma pasta montada só para leitura. O padrão são os
+      # gabaritos sintéticos do e2e; o deploy/.env pode apontar para o clone dos oficiais.
+      IPC_GABARITOS_DIR: /gabaritos
+    volumes:
+      - ${IPC_GABARITOS_HOST_DIR:-../frontend/e2e/gabaritos-sinteticos}:/gabaritos:ro
     healthcheck:
       test:
         - CMD

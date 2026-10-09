@@ -11,6 +11,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 export const NOTICE_TEXTS: Record<Notice, string> = {
   QUESTION_RULES_NOT_APPLIED:
     "Nenhuma questão foi escolhida: valeram só as permissões da lista. Em caso de divergência, vale o enunciado.",
+  QUESTION_RULES_NOT_REGISTERED:
+    "Esta questão não tem regra cadastrada: valeram só as permissões da lista, e o código foi comparado com o gabarito. Em caso de divergência, vale o enunciado.",
 };
 
 /** Títulos dos estados em que basta esperar e tentar de novo (FR-20: limite de taxa e sobrecarga). */

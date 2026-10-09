@@ -1,12 +1,20 @@
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { BAND_STYLES, PERCENT } from "../bands";
 import { type CodeEditorHandle, CodeEditor, type LineRange } from "../components/CodeEditor";
 import { Button, ErrorText } from "../components/ui";
 import { useApiCall } from "../hooks/useApiCall";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 import { classBytes, MAX_CLASS, MAX_CLASS_BYTES, parseClass } from "../plagiarismClass";
-import type { PlagiarismClient } from "../services/client";
-import type { SimilarityBand, SimilarityClassResponse, SimilarityMatch, SimilarityResponse } from "../types/api";
+import { ApiError, type PlagiarismClient, type ValidationClient } from "../services/client";
+import type {
+  ListInfo,
+  SimilarityBand,
+  SimilarityClassResponse,
+  SimilarityGabarito,
+  SimilarityMatch,
+  SimilarityResponse,
+} from "../types/api";
 import { INPUT } from "../ui";
 
 /**
@@ -14,29 +22,16 @@ import { INPUT } from "../ui";
  * estreitas) com os trechos em comum realçados, ou uma solução contra a turma, em que o que todos
  * escrevem quase não conta. A comparação roda no analisador isolado, e nada é guardado.
  */
-const BAND_STYLES: Record<SimilarityBand["id"], string> = {
-  plagio: "border-red-400 bg-red-100 text-red-900 dark:border-red-500 dark:bg-red-950 dark:text-red-100",
-  altas_chances:
-    "border-orange-400 bg-orange-100 text-orange-900 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-100",
-  requer_atencao:
-    "border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-500 dark:bg-amber-950 dark:text-amber-100",
-  ligeiramente_suspeito:
-    "border-sky-400 bg-sky-100 text-sky-900 dark:border-sky-500 dark:bg-sky-950 dark:text-sky-100",
-  sem_suspeitas:
-    "border-green-400 bg-green-100 text-green-900 dark:border-green-500 dark:bg-green-950 dark:text-green-100",
-};
-
 /** A comparação de dois códigos de 50 KB leva menos de 1 s; o resto cobre a fila e a rede. */
 export const PLAGIARISM_TIMEOUT_MS = 15_000;
 /** Contra a turma, o analisador tem até 10 s. */
 export const CLASS_TIMEOUT_MS = 20_000;
 
-const PERCENT = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
 type Mode = "pair" | "class";
 
 interface PlagiarismProps {
-  client: PlagiarismClient;
+  /** As listas dão as questões com gabarito (S32-07). */
+  client: PlagiarismClient & Pick<ValidationClient, "listLists">;
   /** A API respondeu 401: a sessão venceu ou foi encerrada. */
   onUnauthenticated: () => void;
 }
@@ -60,6 +55,8 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
   const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState<number | null>(null);
   const [sync, setSync] = useState(true);
+  const [lists, setLists] = useState<ListInfo[]>([]);
+  const [questionId, setQuestionId] = useState<string | null>(null);
   const pair = useApiCall(PLAGIARISM_TIMEOUT_MS, onUnauthenticated);
   const editorA = useRef<CodeEditorHandle>(null);
   const editorB = useRef<CodeEditorHandle>(null);
@@ -70,6 +67,16 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
   const [classError, setClassError] = useState<string | null>(null);
   const group = useApiCall(CLASS_TIMEOUT_MS, onUnauthenticated);
 
+  // As questões com gabarito (ADR-11, item 5): sem elas, o seletor nem aparece.
+  useEffect(() => {
+    const controller = new AbortController();
+    client.listLists(controller.signal).then(setLists, (error: unknown) => {
+      if (!controller.signal.aborted && error instanceof ApiError && error.status === 401) onUnauthenticated();
+    });
+    return () => controller.abort();
+  }, [client, onUnauthenticated]);
+  const withGabarito = lists.flatMap((list) => (list.gabaritos ?? []).map((id) => ({ id, list: list.number })));
+
   // Os trechos só valem para os códigos que foram comparados.
   const fresh = compared !== null && compared.codeA === codeA && compared.codeB === codeB;
   const matches: SimilarityMatch[] = fresh ? (compared.result.matches ?? []) : [];
@@ -79,7 +86,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
     setError(null);
     setCompared(null);
     setCurrent(null);
-    const outcome = await pair.run((signal) => client.compare(first, second, signal));
+    const outcome = await pair.run((signal) => client.compare(first, second, signal, questionId));
     if (outcome === null) return;
     if (outcome.ok) setCompared({ codeA: first, codeB: second, result: outcome.value });
     else setError(outcome.message);
@@ -102,6 +109,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
         result: {
           ...result,
           matches: (result.matches ?? []).map((m) => ({ a_first: m.b_first, a_last: m.b_last, b_first: m.a_first, b_last: m.a_last })),
+          gabarito: result.gabarito ? { ...result.gabarito, a: result.gabarito.b, b: result.gabarito.a } : result.gabarito,
         },
       });
     }
@@ -208,6 +216,27 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
               />
             </div>
           </div>
+          {withGabarito.length > 0 && (
+            <div className="flex max-w-md min-w-0 flex-col gap-1">
+              <label htmlFor="gabarito-questao" className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                Questão (para comparar também com o gabarito)
+              </label>
+              <select
+                id="gabarito-questao"
+                value={questionId ?? ""}
+                onChange={(event) => setQuestionId(event.target.value === "" ? null : event.target.value)}
+                disabled={pair.loading}
+                className={INPUT}
+              >
+                <option value="">Sem questão (só A com B)</option>
+                {withGabarito.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.id} (Lista {item.list})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={!readyPair}>
               {pair.loading ? "Verificando…" : "Verificar"}
@@ -236,6 +265,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
               </p>
             )}
             {compared !== null && <PairResult result={compared.result} matches={matches} current={current} onShow={show} />}
+            {compared !== null && compared.result.gabarito && <GabaritoPair gabarito={compared.result.gabarito} />}
           </section>
         </form>
       ) : (
@@ -290,6 +320,51 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
         </form>
       )}
     </div>
+  );
+}
+
+/** A e B comparados com o gabarito e o alerta de possível vazamento (S32-07; ADR-11, item 5). */
+function GabaritoPair({ gabarito }: { gabarito: SimilarityGabarito }) {
+  const sides = [
+    ["A", gabarito.a],
+    ["B", gabarito.b],
+  ] as const;
+  return (
+    <section
+      aria-label="Comparação com o gabarito"
+      className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+    >
+      <h3 className="text-lg font-semibold">Comparação com o gabarito · {gabarito.question_id}</h3>
+      {gabarito.leak_alert && (
+        <div
+          role="alert"
+          className="rounded-md border border-red-300 bg-red-50 p-3 text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
+        >
+          <p className="font-semibold">Possível vazamento do gabarito</p>
+          <p className="text-sm">{gabarito.message}</p>
+        </div>
+      )}
+      {gabarito.status === "compared" ? (
+        <>
+          <ul className="flex flex-col gap-2">
+            {sides.map(([label, side]) =>
+              side ? (
+                <li key={label} className="flex flex-wrap items-center gap-3">
+                  <span className="font-medium">Código {label} com o gabarito:</span>
+                  <span className="text-xl font-bold">{PERCENT.format(side.similarity)}%</span>
+                  <Band band={side.band} />
+                </li>
+              ) : null,
+            )}
+          </ul>
+          {!gabarito.leak_alert && <p className="text-sm text-slate-600 dark:text-slate-300">{gabarito.message}</p>}
+        </>
+      ) : (
+        <p role="note" className="text-sm text-slate-700 dark:text-slate-200">
+          {gabarito.message}
+        </p>
+      )}
+    </section>
   );
 }
 

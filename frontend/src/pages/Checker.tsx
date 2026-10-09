@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { type CodeEditorHandle, CodeEditor } from "../components/CodeEditor";
 import { FeedbackPanel } from "../components/FeedbackPanel";
+import { GabaritoPanel } from "../components/GabaritoPanel";
 import { IndicatorsPanel } from "../components/IndicatorsPanel";
 import { ListSelector } from "../components/ListSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
@@ -11,6 +12,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useValidateCode } from "../hooks/useValidateCode";
 import { PAGE_TITLES } from "../labels";
 import { ApiError, type FeedbackClient, type ValidationClient } from "../services/client";
+import { questionOptions } from "../questions";
 import type { ListInfo, ValidateRequest } from "../types/api";
 
 interface CheckerProps {
@@ -68,7 +70,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   }, [state]);
 
   const loading = state.kind === "loading";
-  const questions = listNumber === null ? null : (lists.find((list) => list.number === listNumber)?.questions ?? []);
+  const currentList = listNumber === null ? undefined : lists.find((list) => list.number === listNumber);
+  const questions = listNumber === null ? null : questionOptions(currentList);
+  const registered = questionId !== null && (currentList?.questions ?? []).some((question) => question.id === questionId);
   const canVerify = listNumber !== null && code.trim() !== "" && !loading;
   const stale =
     verified !== null && (verified.code !== code || verified.list_number !== listNumber || verified.question_id !== questionId);
@@ -111,7 +115,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
           <p className="text-sm text-slate-600 dark:text-slate-300">
             {questionId === null
               ? "Sem questão, valem só as permissões da lista: se o enunciado liberar ou proibir algo, vale o enunciado."
-              : `Valem as permissões da lista e as regras da questão ${questionId}, cadastradas a partir do enunciado.`}
+              : registered
+                ? `Valem as permissões da lista e as regras da questão ${questionId}, cadastradas a partir do enunciado.`
+                : `A questão ${questionId} não tem regra cadastrada: valem as permissões da lista, e o código é comparado com o gabarito.`}
           </p>
           {listsError !== null && (
             <div className="flex flex-wrap items-center gap-3">
@@ -148,6 +154,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
             onSelectLines={selectLines}
             headingRef={headingRef}
           />
+          {state.kind === "success" && state.response.gabarito && (
+            <GabaritoPanel comparison={state.response.gabarito} onSelectLines={selectLines} />
+          )}
           {state.kind === "success" && state.response.indicators && (
             <IndicatorsPanel indicators={state.response.indicators} onSelectLines={selectLines} />
           )}

@@ -704,6 +704,63 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * GabaritoComparison
+         * @description Comparação com o gabarito oficial da questão (ADR-11, FR-32): só porcentagem, nomes de
+         *     construções e linhas do aluno; nenhum texto do gabarito.
+         */
+        GabaritoComparison: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Status
+             * @description compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do ar neste servidor); not_compared (o código não pôde ser comparado).
+             * @enum {string}
+             */
+            status: "compared" | "no_gabarito" | "unavailable" | "not_compared";
+            /**
+             * Similarity
+             * @description Semelhança com o gabarito (ADR-07).
+             */
+            similarity: number | null;
+            band: components["schemas"]["SimilarityBand"] | null;
+            /**
+             * Short Code
+             * @description Código curto: soluções independentes se parecem.
+             */
+            short_code: boolean;
+            /**
+             * Common
+             * @description Construções dos dois.
+             */
+            common: string[];
+            /**
+             * Only Student
+             * @description Só no código do aluno.
+             */
+            only_student: string[];
+            /**
+             * Only Gabarito
+             * @description Só no gabarito.
+             */
+            only_gabarito: string[];
+            /**
+             * Student Lines
+             * @description Trechos do aluno com a estrutura de um trecho do gabarito.
+             */
+            student_lines: components["schemas"]["LineSpan"][];
+            /** Message */
+            message: string;
+        };
+        /** GabaritoSide */
+        GabaritoSide: {
+            /**
+             * Similarity
+             * @description Semelhança com o gabarito, com uma casa decimal.
+             */
+            similarity: number;
+            band: components["schemas"]["SimilarityBand"];
+        };
         /** GooglePending */
         GooglePending: {
             /**
@@ -752,10 +809,10 @@ export interface components {
         Indicator: {
             /**
              * Signal
-             * @description multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa).
+             * @description multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão), gabarito (semelhança com o gabarito oficial, ADR-11) ou estilo (marcadores, sem peso na faixa).
              * @enum {string}
              */
-            signal: "multiplas_violacoes" | "referencia_ia" | "estilo";
+            signal: "multiplas_violacoes" | "referencia_ia" | "gabarito" | "estilo";
             /**
              * Kind
              * @description O que foi observado, como variedade, salto_de_lista ou referencia.
@@ -791,6 +848,13 @@ export interface components {
              */
             notice: string;
         };
+        /** LineSpan */
+        LineSpan: {
+            /** First */
+            first: number;
+            /** Last */
+            last: number;
+        };
         /** ListInfo */
         ListInfo: {
             /** Number */
@@ -802,6 +866,11 @@ export interface components {
              * @description Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando a lista não tem nenhuma.
              */
             questions?: components["schemas"]["QuestionInfo"][];
+            /**
+             * Gabaritos
+             * @description Questões do período ativo com gabarito para comparar (ADR-11), mesmo sem regra cadastrada; só os números, nunca o gabarito.
+             */
+            gabaritos?: string[];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1136,6 +1205,26 @@ export interface components {
             /** Notice */
             notice: string;
         };
+        /** SimilarityGabarito */
+        SimilarityGabarito: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Status
+             * @description compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do ar neste servidor); not_compared (um dos códigos não pôde ser comparado).
+             * @enum {string}
+             */
+            status: "compared" | "no_gabarito" | "unavailable" | "not_compared";
+            a: components["schemas"]["GabaritoSide"] | null;
+            b: components["schemas"]["GabaritoSide"] | null;
+            /**
+             * Leak Alert
+             * @description Possível vazamento do gabarito: A com B, A com o gabarito e B com o gabarito acima do limiar, com os dois códigos acima do tamanho mínimo (ADR-11, item 5).
+             */
+            leak_alert: boolean;
+            /** Message */
+            message: string;
+        };
         /**
          * SimilarityMatch
          * @description Linhas do código A com a mesma estrutura de linhas do código B (S27-03).
@@ -1183,6 +1272,11 @@ export interface components {
              * @description Código do outro aluno. Nunca é executado.
              */
             code_b: string;
+            /**
+             * Question Id
+             * @description Questão do período ativo (ADR-11): com o gabarito dela, A e B também são comparados com ele, e a resposta traz o alerta de possível vazamento.
+             */
+            question_id?: string | null;
         };
         /** SimilarityResponse */
         SimilarityResponse: {
@@ -1217,6 +1311,8 @@ export interface components {
              * @description Os trechos em comum, na ordem do código A.
              */
             matches?: components["schemas"]["SimilarityMatch"][];
+            /** @description Com a questão escolhida: A e B comparados com o gabarito (ADR-11, item 5). */
+            gabarito?: components["schemas"]["SimilarityGabarito"] | null;
         };
         /** SimilaritySyntaxError */
         SimilaritySyntaxError: {
@@ -1362,7 +1458,7 @@ export interface components {
             /** Question Id */
             question_id: string | null;
             /** Notices */
-            notices: "QUESTION_RULES_NOT_APPLIED"[];
+            notices: ("QUESTION_RULES_NOT_APPLIED" | "QUESTION_RULES_NOT_REGISTERED")[];
             syntax_error: components["schemas"]["SyntaxErrorInfo"] | null;
             /** Violations */
             violations: components["schemas"]["Violation"][];
@@ -1373,6 +1469,8 @@ export interface components {
             truncated: boolean;
             /** @description Indícios de uso de IA (ADR-08), só quando estão ligados neste servidor (IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno. */
             indicators?: components["schemas"]["Indicators"] | null;
+            /** @description Com uma questão escolhida: a comparação com o gabarito dela (ADR-11). */
+            gabarito?: components["schemas"]["GabaritoComparison"] | null;
         };
         /** VerifyRequest */
         VerifyRequest: {

@@ -2449,6 +2449,140 @@
         ],
         "title": "ForgotPasswordRequest"
       },
+      "GabaritoComparison": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "pattern": "^L[1-6]-Q[1-9]\\d?$",
+            "title": "Question Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "no_gabarito",
+              "unavailable",
+              "not_compared"
+            ],
+            "title": "Status",
+            "description": "compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do ar neste servidor); not_compared (o código não pôde ser comparado)."
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity",
+            "description": "Semelhança com o gabarito (ADR-07)."
+          },
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityBand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "short_code": {
+            "type": "boolean",
+            "title": "Short Code",
+            "description": "Código curto: soluções independentes se parecem."
+          },
+          "common": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Common",
+            "description": "Construções dos dois."
+          },
+          "only_student": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Only Student",
+            "description": "Só no código do aluno."
+          },
+          "only_gabarito": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Only Gabarito",
+            "description": "Só no gabarito."
+          },
+          "student_lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineSpan"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Student Lines",
+            "description": "Trechos do aluno com a estrutura de um trecho do gabarito."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "status",
+          "similarity",
+          "band",
+          "short_code",
+          "common",
+          "only_student",
+          "only_gabarito",
+          "student_lines",
+          "message"
+        ],
+        "title": "GabaritoComparison",
+        "description": "Comparação com o gabarito oficial da questão (ADR-11, FR-32): só porcentagem, nomes de\nconstruções e linhas do aluno; nenhum texto do gabarito."
+      },
+      "GabaritoSide": {
+        "properties": {
+          "similarity": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Similarity",
+            "description": "Semelhança com o gabarito, com uma casa decimal."
+          },
+          "band": {
+            "$ref": "#/components/schemas/SimilarityBand"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "similarity",
+          "band"
+        ],
+        "title": "GabaritoSide"
+      },
       "GooglePending": {
         "properties": {
           "email": {
@@ -2546,10 +2680,11 @@
             "enum": [
               "multiplas_violacoes",
               "referencia_ia",
+              "gabarito",
               "estilo"
             ],
             "title": "Signal",
-            "description": "multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão) ou estilo (marcadores, sem peso na faixa)."
+            "description": "multiplas_violacoes (o padrão das violações), referencia_ia (semelhança com uma solução gerada por IA para a questão), gabarito (semelhança com o gabarito oficial, ADR-11) ou estilo (marcadores, sem peso na faixa)."
           },
           "kind": {
             "type": "string",
@@ -2659,6 +2794,29 @@
         "title": "Indicators",
         "description": "Indícios de uso de IA (ADR-08, S29): para a equipe decidir com quem conversar."
       },
+      "LineSpan": {
+        "properties": {
+          "first": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "First"
+          },
+          "last": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Last"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "first",
+          "last"
+        ],
+        "title": "LineSpan"
+      },
       "ListInfo": {
         "properties": {
           "number": {
@@ -2680,6 +2838,15 @@
             "type": "array",
             "title": "Questions",
             "description": "Questões com regra específica cadastrada no período (R-01), em ordem; vazio quando a lista não tem nenhuma."
+          },
+          "gabaritos": {
+            "items": {
+              "type": "string",
+              "pattern": "^L[1-6]-Q[1-9]\\d?$"
+            },
+            "type": "array",
+            "title": "Gabaritos",
+            "description": "Questões do período ativo com gabarito para comparar (ADR-11), mesmo sem regra cadastrada; só os números, nunca o gabarito."
           }
         },
         "additionalProperties": false,
@@ -3549,6 +3716,68 @@
         ],
         "title": "SimilarityClassResponse"
       },
+      "SimilarityGabarito": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "pattern": "^L[1-6]-Q[1-9]\\d?$",
+            "title": "Question Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "no_gabarito",
+              "unavailable",
+              "not_compared"
+            ],
+            "title": "Status",
+            "description": "compared; no_gabarito (a questão não tem gabarito); unavailable (gabaritos fora do ar neste servidor); not_compared (um dos códigos não pôde ser comparado)."
+          },
+          "a": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GabaritoSide"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "b": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GabaritoSide"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "leak_alert": {
+            "type": "boolean",
+            "title": "Leak Alert",
+            "description": "Possível vazamento do gabarito: A com B, A com o gabarito e B com o gabarito acima do limiar, com os dois códigos acima do tamanho mínimo (ADR-11, item 5)."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "status",
+          "a",
+          "b",
+          "leak_alert",
+          "message"
+        ],
+        "title": "SimilarityGabarito"
+      },
       "SimilarityMatch": {
         "properties": {
           "a_first": {
@@ -3635,6 +3864,19 @@
             "type": "string",
             "title": "Code B",
             "description": "Código do outro aluno. Nunca é executado."
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^L[1-6]-Q[1-9]\\d?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id",
+            "description": "Questão do período ativo (ADR-11): com o gabarito dela, A e B também são comparados com ele, e a resposta traz o alerta de possível vazamento."
           }
         },
         "additionalProperties": false,
@@ -3721,6 +3963,17 @@
             "type": "array",
             "title": "Matches",
             "description": "Os trechos em comum, na ordem do código A."
+          },
+          "gabarito": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityGabarito"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Com a questão escolhida: A e B comparados com o gabarito (ADR-11, item 5)."
           }
         },
         "additionalProperties": false,
@@ -4051,7 +4304,10 @@
           "notices": {
             "items": {
               "type": "string",
-              "const": "QUESTION_RULES_NOT_APPLIED"
+              "enum": [
+                "QUESTION_RULES_NOT_APPLIED",
+                "QUESTION_RULES_NOT_REGISTERED"
+              ]
             },
             "type": "array",
             "title": "Notices"
@@ -4088,6 +4344,17 @@
               }
             ],
             "description": "Indícios de uso de IA (ADR-08), só quando estão ligados neste servidor (IPC_AI_INDICATORS) e há algum. Nunca prova; nunca vão para o feedback do aluno."
+          },
+          "gabarito": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GabaritoComparison"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Com uma questão escolhida: a comparação com o gabarito dela (ADR-11)."
           }
         },
         "additionalProperties": false,
