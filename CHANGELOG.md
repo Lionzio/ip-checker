@@ -34,6 +34,11 @@ evidência de cada PR é o `scripts/ci-local.sh --e2e`, com o resumo no PR. Deci
   falso, uma dependência vulnerável e um `eval` sobre o corpo da requisição falham nos mesmos
   comandos (provado nesta máquina; a primeira rodada no Actions fica para a volta da cota).
 
+- **Release (decisão do autor, P-19):** sem a cota do Actions, `scripts/release.sh 31 --ci-local`
+  aceita a rodada completa e sem falha do `ci-local.sh --e2e` na árvore da `develop`, e o deploy é
+  à mão pelo runbook. O teste de tempo da similaridade passou a medir o NFR-25 sem a instrumentação
+  de cobertura, que sozinha o fazia passar de 2 s no Windows.
+
 Aguardando (a sprint não espera por elas, critério de aceite 1):
 
 | Task | Entrada pendente | Com quem |
