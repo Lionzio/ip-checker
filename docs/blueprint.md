@@ -1041,7 +1041,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | 20 | Falta o repositório privado dos gabaritos | Em parte: repositório e chave da CI criados hoje (H-02); faltam os gabaritos do Notion | S33-01 |
 | 21 | Falta o terceiro monitor do UptimeRobot | Resolvido em 08/10/2026 | S30-04 |
 | 22 | Os casos em aberto do mapeamento seguem para o Marco 2 | Resolvido: decididos pelo autor em 09/10/2026 (ruleset `2026.2.5`); Marco 2 em 19/10/2026 | S31-05, S31-12 |
-| 24 | Nenhuma questão real cadastrada ainda | Planejado: ensaio em 2026.2 e as questões de 2027.1, com a troca de período sem código | S31-09, S31-10, S31-13, S33-04 |
+| 24 | Nenhuma questão real cadastrada ainda | Ensaio feito em 09/10/2026 (L3-Q9, `docs/ensaio-cadastro.md`); falta o cadastro de 2027.1 pela equipe, com a troca de período sem código | S31-09, S31-10, S31-13, S33-04 |
 | 25 | Falta o primeiro deploy | Resolvido em 07/10/2026 | S25-02 |
 | 28 | Faltam o ensaio do rollback e a carga no piloto | Resolvido em 08/10/2026 | S30-08, S30-09 |
 | 29 | Desligada no piloto até a política e a calibração | Planejado | S31-01, S33-02, S33-03, S33-06 |

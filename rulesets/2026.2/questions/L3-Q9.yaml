@@ -1,0 +1,13 @@
+# Ensaio do cadastro (S31-13): questão criada para o ensaio, a pedido do autor em 09/10/2026. Não
+# é uma questão aplicada aos alunos; o enunciado completo está em docs/ensaio-cadastro.md.
+question_id: L3-Q9
+list: 3
+title: "Ensaio: média da turma sem sum()"
+source: >-
+  Enunciado do ensaio (docs/ensaio-cadastro.md): "Converta as notas para float usando map().
+  Não use sum(), sort() nem sorted(): faça as contas com um laço for."
+allow_facts:
+  - builtin:map
+deny:
+  - R-55
+  - R-48

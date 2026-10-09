@@ -8,6 +8,14 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Depois da Sprint 31.1 (não publicado no piloto)
+
+Mudanças na `develop` que chegam ao piloto na próxima release.
+
+- **09/10/2026, ensaio do cadastro (S31-13):** a questão L3-Q9 ("Ensaio: média da turma sem
+  sum()"), criada para o ensaio a pedido do autor, libera `map()` e proíbe `sum()`, `sort()` e
+  `sorted()`; enunciado e resultado em `docs/ensaio-cadastro.md`, com testes no backend e no e2e.
+
 ## Sprint 31.1 — Casos do Marco 2 e decisões do autor
 
 Release extra entre as Sprints 31 e 32, pedida pelo autor em 09/10/2026, com a CI local como evidência
