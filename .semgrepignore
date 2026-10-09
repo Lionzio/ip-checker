@@ -1,0 +1,11 @@
+# O que o Semgrep não varre (S31-04). Os casos de teste das regras ficam de fora da varredura: eles
+# existem para disparar as regras e são conferidos à parte, com semgrep --test .semgrep/.
+.semgrep/
+node_modules/
+.venv/
+dist/
+build/
+frontend/.vercel/
+frontend/test-results/
+frontend/playwright-report/
+frontend/src/types/openapi.ts

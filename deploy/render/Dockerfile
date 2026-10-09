@@ -8,7 +8,7 @@
 # Nas Fases 0 e 2 cada serviço tem o próprio contêiner (backend/Dockerfile e deploy/compose.yaml).
 
 # As mesmas imagens fixadas por digest do backend/Dockerfile.
-ARG PYTHON_IMAGE=python:3.13-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b
+ARG PYTHON_IMAGE=python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.21
 
 FROM ${UV_IMAGE} AS uv
@@ -34,6 +34,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --group pilot --no-editable
 
 FROM ${PYTHON_IMAGE} AS runtime
+
+# O runtime não instala nada: sem o pip da imagem base (e as bibliotecas que ele embute, que o
+# Trivy aponta), nem o pacote do ensurepip (S31-03).
+RUN rm -rf /usr/local/lib/python3.13/site-packages/pip \
+    /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
+    /usr/local/lib/python3.13/ensurepip/_bundled /usr/local/bin/pip /usr/local/bin/pip3*
 
 # Um usuário sem login para cada processo: o analisador (10002) não lê o ambiente da API (10001).
 RUN groupadd --system --gid 10001 ipc-api \

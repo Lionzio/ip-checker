@@ -10,7 +10,7 @@
 
 # Imagens fixadas por digest: uma atualização da base é sempre uma mudança revisada neste arquivo.
 # python:3.13-slim (Python 3.13.15, Debian), multiarquitetura.
-ARG PYTHON_IMAGE=python:3.13-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b
+ARG PYTHON_IMAGE=python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.12.21
 
 FROM ${UV_IMAGE} AS uv
@@ -43,6 +43,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # sem segredos e sem shell de login para o usuário do serviço.
 # ---------------------------------------------------------------------------------------------
 FROM ${PYTHON_IMAGE} AS runtime
+
+# O runtime não instala nada: sem o pip da imagem base (e as bibliotecas que ele embute, que o
+# Trivy aponta), nem o pacote do ensurepip (S31-03).
+RUN rm -rf /usr/local/lib/python3.13/site-packages/pip \
+    /usr/local/lib/python3.13/site-packages/pip-*.dist-info \
+    /usr/local/lib/python3.13/ensurepip/_bundled /usr/local/bin/pip /usr/local/bin/pip3*
 
 RUN groupadd --system --gid 10001 analyzer \
     && useradd --system --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent \

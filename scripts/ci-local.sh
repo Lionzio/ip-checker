@@ -4,9 +4,9 @@
 #
 # Uso, no Git Bash, na raiz do repositório (Docker Desktop aberto):
 #
-#   scripts/ci-local.sh            # backend, gabaritos, segurança e frontend
+#   scripts/ci-local.sh            # backend, gabaritos, segurança, auditoria e frontend
 #   scripts/ci-local.sh --e2e      # também o smoke e2e (compose separado + Playwright)
-#   scripts/ci-local.sh --rapido   # sem a segurança e sem o e2e (só para iterar)
+#   scripts/ci-local.sh --rapido   # sem a segurança, a auditoria e o e2e (só para iterar)
 #
 # No fim, imprime um resumo em Markdown para colar no PR. O banco de teste, o compose do e2e e as
 # senhas sorteadas são descartados ao sair; o ambiente de desenvolvimento (deploy/.env, porta 8180)
@@ -95,6 +95,42 @@ if $security; then
     bash -c "cd backend && '$uv' run pytest tests/security --no-cov -q -p no:cacheprovider"
 else
   results+=("| Segurança | pulada (--rapido) | — |")
+fi
+
+# --- Auditoria (S31-03 e S31-04): os passos do job "Auditoria" do ci.yml ----------------------
+if $security; then
+  repo_mount=$(pwd -W 2>/dev/null || pwd)
+  history_mount=$repo_mount
+  if [ -f .git ]; then
+    # Numa worktree, o .git aponta para fora da pasta montada: o gitleaks lê um clone local.
+    history_clone=$(mktemp -d)
+    git clone -q --no-local --branch "$(git branch --show-current)" . "$history_clone"
+    history_mount=$(cd "$history_clone" && (pwd -W 2>/dev/null || pwd))
+  fi
+  step "Auditoria: segredos no histórico (gitleaks)" env MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$history_mount:/repo:ro" \
+    zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
+    git /repo --redact --no-banner --log-level warn --exit-code 1 \
+    --gitleaks-ignore-path /repo/.gitleaksignore
+  step "Auditoria: Semgrep (testes das regras)" env MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$repo_mount:/src:ro" -w /src \
+    semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
+    semgrep --test --metrics=off --disable-version-check .semgrep/
+  step "Auditoria: Semgrep (varredura)" env MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$repo_mount:/src:ro" -w /src \
+    semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
+    semgrep scan --config .semgrep/ip-checker.yml --error --metrics=off --disable-version-check \
+    --quiet
+  audit_requirements=$(mktemp)
+  step "Auditoria: dependências Python (pip-audit)" bash -c \
+    "cd backend && '$uv' export --locked --no-hashes --no-emit-project --format requirements-txt \
+     > '$audit_requirements' && '$uv' tool run --from pip-audit==2.9.0 pip-audit --strict \
+     -r '$audit_requirements'"
+  rm -f "$audit_requirements"
+  if [ -n "${history_clone:-}" ]; then rm -rf "$history_clone"; fi
+  step "Auditoria: dependências npm (npm audit)" bash -c "cd frontend && npm audit --audit-level=high"
+else
+  results+=("| Auditoria | pulada (--rapido) | — |")
 fi
 
 # --- Frontend -------------------------------------------------------------------------------
