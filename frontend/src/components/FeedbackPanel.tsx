@@ -28,17 +28,28 @@ interface Generated {
   verificationId: string;
   text: string;
   source: FeedbackResponse["source"];
+  provider: string | null;
+  /** O servidor tem IA para o "Aprimorar com IA" (S32-13). */
+  canEnhance: boolean;
+  /** O texto sem IA de antes do aprimoramento, para o Desfazer. */
+  plain: string | null;
 }
 
-const SOURCE_NOTES: Record<FeedbackResponse["source"], string> = {
-  llm: "Escrito com IA a partir do resultado do IP-Checker. Revise antes de copiar.",
-  template:
-    "Montado sem IA, por modelos de texto (nenhuma IA está configurada ou nenhuma respondeu a tempo). Revise antes de copiar.",
-};
+/** O que vai à IA no aprimoramento, mostrado antes do primeiro clique (S32-14, Q-16). */
+export const ENHANCE_PRIVACY =
+  "Ao aprimorar, o código (sem comentários, sem o nome do aluno e sem dados pessoais), a anotação e o resultado vão a um provedor de IA gratuito, que pode usá-los para treinar modelos.";
+
+function sourceNote(generated: Generated): string {
+  return generated.source === "llm"
+    ? `Aprimorado por IA${generated.provider ? ` (${generated.provider})` : ""} a partir do texto sem IA. Revise antes de copiar.`
+    : "Montado sem IA, a partir do resultado do IP-Checker. Revise antes de copiar.";
+}
 
 /**
  * Feedback para o aluno (S19-01, FR-30): Nome do aluno, Anotação, Gerar feedback, o texto num campo
- * editável e Copiar. O texto aparece num campo de texto, nunca como HTML.
+ * editável e Copiar. Desde a Sprint 32 (Q-16), o texto é montado sem IA, e o **Aprimorar com IA**
+ * pede a uma cadeia de IAs que o detalhe; **Desfazer** volta ao texto sem IA. O texto aparece num
+ * campo de texto, nunca como HTML.
  */
 export function FeedbackPanel({
   client,
@@ -55,7 +66,9 @@ export function FeedbackPanel({
   const [generated, setGenerated] = useState<Generated | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const { run, cancel, loading } = useApiCall(FEEDBACK_TIMEOUT_MS, onUnauthenticated);
+  const enhancing = useApiCall(FEEDBACK_TIMEOUT_MS, onUnauthenticated);
   const copyRef = useRef<HTMLButtonElement>(null);
 
   const current = generated !== null && generated.verificationId === verificationId ? generated : null;
@@ -68,30 +81,64 @@ export function FeedbackPanel({
     if (current !== null) copyRef.current?.focus();
   }, [current?.verificationId, current?.source]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function body(enhance: boolean) {
+    return {
+      code: request.code,
+      list_number: request.list_number,
+      question_id: request.question_id ?? null,
+      student_name: student.trim(),
+      annotation: annotation.trim() === "" ? null : annotation,
+      enhance,
+    };
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setCopied(null);
-    const name = student.trim();
-    const outcome = await run((signal) =>
-      client.feedback(
-        {
-          code: request.code,
-          list_number: request.list_number,
-          question_id: request.question_id ?? null,
-          student_name: name,
-          annotation: annotation.trim() === "" ? null : annotation,
-        },
-        signal,
-      ),
-    );
+    setNotice(null);
+    const outcome = await run((signal) => client.feedback(body(false), signal));
     if (outcome === null) return;
     if (!outcome.ok) {
       setError(outcome.message);
       return;
     }
-    setGenerated({ verificationId, text: outcome.value.text, source: outcome.value.source });
-    onGenerated?.({ student: name, code: request.code });
+    const value = outcome.value;
+    setGenerated({
+      verificationId,
+      text: value.text,
+      source: value.source,
+      provider: value.provider ?? null,
+      canEnhance: value.can_enhance ?? false,
+      plain: null,
+    });
+    onGenerated?.({ student: student.trim(), code: request.code });
+  }
+
+  async function enhance() {
+    if (current === null) return;
+    const before = current;
+    setError(null);
+    setCopied(null);
+    setNotice(null);
+    const outcome = await enhancing.run((signal) => client.feedback(body(true), signal));
+    if (outcome === null) return;
+    if (!outcome.ok) {
+      setError(outcome.message);
+      return;
+    }
+    const value = outcome.value;
+    if (value.source !== "llm") {
+      setNotice(value.notice ?? "Nenhuma IA respondeu agora: fica o texto sem IA.");
+      return;
+    }
+    setGenerated({ ...before, text: value.text, source: "llm", provider: value.provider ?? null, plain: before.text });
+  }
+
+  function undo() {
+    if (current === null || current.plain === null) return;
+    setGenerated({ ...current, text: current.plain, source: "template", provider: null, plain: null });
+    setNotice(null);
   }
 
   async function copy() {
@@ -187,8 +234,18 @@ export function FeedbackPanel({
               className={INPUT}
             />
           </label>
-          <p className="text-sm text-slate-600 dark:text-slate-300">{SOURCE_NOTES[current.source]}</p>
-          <div className="flex items-center gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">{sourceNote(current)}</p>
+          {current.canEnhance && current.source === "template" && (
+            <p id="aviso-ia" className="text-sm text-slate-600 dark:text-slate-300">
+              {ENHANCE_PRIVACY}
+            </p>
+          )}
+          {notice !== null && (
+            <p role="note" className="text-sm text-amber-900 dark:text-amber-200">
+              {notice}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
             <button
               ref={copyRef}
               type="button"
@@ -197,6 +254,35 @@ export function FeedbackPanel({
             >
               Copiar
             </button>
+            {current.canEnhance && current.source === "template" && (
+              <button
+                type="button"
+                onClick={() => void enhance()}
+                disabled={enhancing.loading || loading}
+                aria-describedby="aviso-ia"
+                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 disabled:opacity-60 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                {enhancing.loading ? "Aprimorando…" : "Aprimorar com IA"}
+              </button>
+            )}
+            {enhancing.loading && (
+              <button
+                type="button"
+                onClick={enhancing.cancel}
+                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+            )}
+            {current.plain !== null && (
+              <button
+                type="button"
+                onClick={undo}
+                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
+              >
+                Desfazer
+              </button>
+            )}
             <span role="status" className="text-sm">
               {copied}
             </span>

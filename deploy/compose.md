@@ -126,12 +126,30 @@ e recrie a API: `docker compose -f deploy/compose.yaml up -d api`. Os gabaritos 
 máquina e na memória do contêiner; nada vai para a imagem. No piloto, a API os baixa do GitHub com a
 credencial do runbook ("Credencial dos gabaritos").
 
-## Feedback por IA (S18): onde ficam as chaves
+## Feedback por IA (S18, S32-12): onde ficam as chaves
 
-O botão **Gerar feedback** funciona sempre. A ordem é: a **IA principal**; se ela falhar, demorar
-ou responder algo que não passa na validação, a **IA de reserva**; se nenhuma responder a tempo
-(prazo total de 28 s), ou se nenhuma estiver configurada, o texto é **montado por modelos**, sem
-IA e sem enviar nada para fora. A abertura e a frase obrigatória são as mesmas nos três casos.
+Desde a Sprint 32 (Q-16), o **Gerar feedback** monta o texto sem IA, sem enviar nada para fora. O
+**Aprimorar com IA** manda esse texto às IAs configuradas, em ordem: se uma falhar, demorar, estiver
+sem cota (429, e então ela fica de fora por `IPC_LLM_COOLDOWN_S`, padrão 60 s) ou responder algo que
+não passa na validação, vai a seguinte; se nenhuma responder a tempo (prazo total de 28 s), fica o
+texto sem IA, com um aviso. A abertura e a frase obrigatória são sempre as do texto sem IA.
+
+**Cadeia (`IPC_LLM_CHAIN`, recomendada no piloto):** uma lista de nomes curtos, na ordem, e as
+variáveis de cada nome, com o nome em maiúsculas no meio:
+
+```text
+IPC_LLM_CHAIN=gemini,groq
+IPC_LLM_GEMINI_PROVIDER=gemini
+IPC_LLM_GEMINI_MODEL=<um modelo do plano gratuito>
+IPC_LLM_GEMINI_API_KEY=<chave>
+IPC_LLM_GROQ_PROVIDER=openai_compat
+IPC_LLM_GROQ_BASE_URL=https://api.groq.com/openai/v1
+IPC_LLM_GROQ_MODEL=<um modelo do plano gratuito>
+IPC_LLM_GROQ_API_KEY=<chave>
+```
+
+Sem `IPC_LLM_CHAIN`, valem as duas vagas antigas, da tabela abaixo (principal e reserva), como no
+compose.
 
 As chaves ficam só em variáveis de ambiente da `api`, nunca no Git nem na página:
 

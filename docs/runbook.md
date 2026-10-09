@@ -144,7 +144,7 @@ Trocar um segredo (vazou, ou alguém saiu da equipe técnica):
 | Senha do `postgres` | Supabase, **Project Settings > Database** | `PILOT_DATABASE_ADMIN_URL` no GitHub |
 | Chave do Brevo | Brevo, **SMTP & API > API Keys** (crie a nova e apague a velha) | `IPC_EMAIL_API_KEY` no Render |
 | Cliente OAuth do Google | Google Cloud, **Credentials** | `IPC_GOOGLE_CLIENT_SECRET` no Render |
-| Chaves das IAs | Painel de cada provedor | `IPC_LLM_API_KEY` e `IPC_LLM_FALLBACK_API_KEY` no Render |
+| Chaves das IAs | Painel de cada provedor | `IPC_LLM_<NOME>_API_KEY` de cada IA da cadeia (ou `IPC_LLM_API_KEY` e `IPC_LLM_FALLBACK_API_KEY`) no Render |
 | Deploy hooks | Render (**Settings > Deploy Hook**, regenerar) e Vercel (apagar e criar) | `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` no GitHub |
 | Segredo da página (`IPC_EDGE_SECRET`) | Gere um novo (abaixo) | Vercel e Render, na ordem abaixo |
 | Credencial dos gabaritos (`IPC_GABARITOS_TOKEN`) | GitHub, **Settings > Developer settings > Fine-grained tokens** (regenerar ou criar outra) | `IPC_GABARITOS_TOKEN` no Render (abaixo) |
@@ -209,6 +209,29 @@ funcionando sem a comparação.
 **Gabarito novo:** a API só lê os gabaritos ao subir. Depois de um push no repositório dos
 gabaritos, reinicie o serviço no Render (**Manual Deploy > Restart service**) para que os novos
 entrem na comparação.
+
+### IAs do Aprimorar com IA (S32-11)
+
+O **Aprimorar com IA** (Q-16) usa uma cadeia de provedores gratuitos. Quem cria as contas e as
+chaves é o autor; os valores ficam só no Render.
+
+1. **Gemini:** no Google AI Studio, crie uma chave de API do plano gratuito e escolha um modelo
+   disponível nele [A CONFIRMAR no painel: os modelos gratuitos mudam].
+2. **Groq:** no console da Groq, crie uma chave de API e escolha um modelo do plano gratuito
+   [A CONFIRMAR no painel].
+3. No Render, **Environment**, preencha (as chaves por último, copiadas do painel de cada um):
+   `IPC_LLM_CHAIN` = `gemini,groq`; `IPC_LLM_GEMINI_PROVIDER` = `gemini`; `IPC_LLM_GEMINI_MODEL`;
+   `IPC_LLM_GEMINI_API_KEY`; `IPC_LLM_GROQ_PROVIDER` = `openai_compat`; `IPC_LLM_GROQ_BASE_URL` =
+   `https://api.groq.com/openai/v1`; `IPC_LLM_GROQ_MODEL`; `IPC_LLM_GROQ_API_KEY`. Salve: o serviço
+   reinicia. Uma configuração incompleta (um nome da cadeia sem provedor, sem modelo ou sem chave)
+   impede a API de subir, com a mensagem do que falta: a versão anterior continua no ar.
+4. Confira na página: depois de **Gerar feedback**, aparece **Aprimorar com IA**; o texto
+   aprimorado diz qual IA escreveu.
+
+**Mais uma IA:** acrescente o nome em `IPC_LLM_CHAIN` (na posição em que ela deve ser tentada) e as
+variáveis `IPC_LLM_<NOME>_*`. **Cota esgotada:** a IA que responde 429 fica fora da cadeia por 60 s
+(`IPC_LLM_COOLDOWN_S`) e a seguinte responde; se todas estiverem sem cota, a página fica com o
+texto sem IA e um aviso. **Trocar de provedor:** mude a ordem ou os nomes em `IPC_LLM_CHAIN`.
 
 ## Conta de verificação do deploy
 

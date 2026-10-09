@@ -174,7 +174,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política, S31-01, e a calibração, S33-03) |
 | 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026 |
 | 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 com os 9 casos do mapeamento, auditoria de segurança bloqueante com Semgrep, troca de período sem código (`ipc-rules new-period`) e gabaritos com as questões do próprio período (ADR-10) | Engenharia concluída em 09/10/2026; decisões da coordenação e do NTI, Marco 2 e ensaio aguardando |
-| 32 | Comparação com o gabarito: na verificação (semelhança, construções e linhas do aluno), no plágio (A×gabarito, B×gabarito e o alerta de possível vazamento) e nos indícios, sem o gabarito sair do servidor (ADR-11); feedback sem IA por padrão, com o "Aprimorar com IA" por uma cadeia de provedores gratuitos (Q-16) | Planejada |
+| 32 | Comparação com o gabarito: na verificação (semelhança, construções e linhas do aluno), no plágio (A×gabarito, B×gabarito e o alerta de possível vazamento) e nos indícios, sem o gabarito sair do servidor (ADR-11); feedback sem IA por padrão, com o "Aprimorar com IA" por uma cadeia de provedores gratuitos (Q-16) | Engenharia concluída em 09/10/2026; aguardando a credencial dos gabaritos (S32-01) e as chaves das IAs (S32-11) no Render |
 | 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
 | 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
 | 35 | Controles de qualidade: pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset | Planejada |
@@ -227,6 +227,10 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Formulário da pesquisa e planilha do critério 3, com os links em `docs/eficacia.md` (S31-06)
 - [ ] Ensaio do cadastro de questões reais de 2026.2 pela equipe (S31-13)
 - [ ] Ruleset e questões de 2027.1, com as referências por IA (S33-04 e S33-05)
+- [ ] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; runbook,
+      "Credencial dos gabaritos")
+- [ ] Contas e chaves das IAs gratuitas do Aprimorar com IA e a cadeia no Render (S32-11; runbook,
+      "IAs do Aprimorar com IA")
 - [ ] Cliente OAuth do Google (opcional)
 - [ ] Possível integração com outros 2 projetos da monitoria: as perguntas da seção 9.4 do
       blueprint aos monitores responsáveis (Q-23, ADR-09)

@@ -261,3 +261,47 @@ async def test_the_fake_provider_keeps_the_prompts() -> None:
 
     assert await fake.generate(PROMPT, timeout_s=1) == FAKE_TEXT
     assert fake.prompts == [PROMPT]
+
+
+# --- Cadeia do "Aprimorar com IA" (S32-12) --------------------------------------------------------
+
+
+def test_the_chain_reads_one_ai_per_name_in_order() -> None:
+    settings = LlmSettings.from_env(
+        {
+            "IPC_LLM_CHAIN": "gemini, groq",
+            "IPC_LLM_GEMINI_PROVIDER": "gemini",
+            "IPC_LLM_GEMINI_MODEL": "gemini-modelo",
+            "IPC_LLM_GEMINI_API_KEY": "chave-gemini",
+            "IPC_LLM_GROQ_PROVIDER": "openai_compat",
+            "IPC_LLM_GROQ_BASE_URL": "https://api.groq.com/openai/v1",
+            "IPC_LLM_GROQ_MODEL": "groq-modelo",
+            "IPC_LLM_GROQ_API_KEY": "chave-groq",
+            "IPC_LLM_COOLDOWN_S": "120",
+        }
+    )
+
+    assert [name for name, _ in settings.configured] == ["gemini", "groq"]
+    assert settings.configured[1][1].base_url == "https://api.groq.com/openai/v1"
+    assert settings.cooldown_s == 120
+    assert "chave-groq" not in repr(settings)
+
+
+def test_without_the_chain_the_two_old_slots_remain() -> None:
+    settings = LlmSettings.from_env({"IPC_LLM_PROVIDER": "fake"})
+
+    assert [name for name, _ in settings.configured] == ["primary"]
+
+
+@pytest.mark.parametrize(
+    ("env", "message"),
+    [
+        ({"IPC_LLM_CHAIN": "gemini,gemini"}, "distintos"),
+        ({"IPC_LLM_CHAIN": "1gemini"}, "distintos"),
+        ({"IPC_LLM_CHAIN": "groq"}, "IPC_LLM_GROQ_PROVIDER está vazia"),
+    ],
+    ids=["repetido", "nome-invalido", "sem-configuracao"],
+)
+def test_an_invalid_chain_is_refused(env: dict[str, str], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        LlmSettings.from_env(env)

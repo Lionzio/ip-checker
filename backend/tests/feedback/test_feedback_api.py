@@ -1,4 +1,4 @@
-"""``POST /api/v1/feedback`` com o analyzer de verdade e um provedor falso (S18-02; US-32).
+"""``POST /api/v1/feedback`` com o analyzer de verdade e um provedor falso (S18-02; US-32; S32-12).
 
 Confere cada critério da US-32 por chamada à API: as frases obrigatórias, a apresentação e as
 autorreferências pelo tratamento, a recusa de texto que contradiz o motor e, no fim, que nenhuma
@@ -95,7 +95,9 @@ def ask(
     **extra: Any,
 ) -> httpx2.Response:
     api, store = stack
-    body = {"code": code, "list_number": 1, "student_name": STUDENT, **extra}
+    # Estes testes conferem o texto da IA: pedem o "Aprimorar com IA" (S32-12), salvo se o
+    # teste disser outra coisa.
+    body = {"code": code, "list_number": 1, "student_name": STUDENT, "enhance": True, **extra}
     return api.post(
         "/api/v1/feedback", json=body, headers=cookie_header(open_session(store, account))
     )
@@ -335,7 +337,7 @@ def test_when_the_primary_ai_fails_the_fallback_writes(analyzer: TestClient) -> 
     with TestClient(app, base_url=BASE_URL) as api:
         body = api.post(
             "/api/v1/feedback",
-            json={"code": VALID, "list_number": 1, "student_name": STUDENT},
+            json={"code": VALID, "list_number": 1, "student_name": STUDENT, "enhance": True},
             headers=cookie_header(open_session(store, member(store))),
         ).json()
 
@@ -356,8 +358,8 @@ def test_feedback_needs_a_session(stack: tuple[TestClient, MemoryAccountStore]) 
 
 
 def test_prompt_type_is_the_provider_contract(provider: Recorder) -> None:
-    # O provedor recebe só regras (system) e dados delimitados (user).
-    assert Prompt.__dataclass_fields__.keys() == {"system", "user"}
+    # O provedor recebe só regras (system), dados delimitados (user) e o teto da resposta.
+    assert Prompt.__dataclass_fields__.keys() == {"system", "user", "max_output_tokens"}
 
 
 def test_an_analysis_limit_comes_back_as_is(stack: tuple[TestClient, MemoryAccountStore]) -> None:
@@ -381,3 +383,83 @@ def test_an_unavailable_analyzer_is_503() -> None:
         )
 
     assert (response.status_code, response.json()["error"]["code"]) == (503, "ANALYZER_UNAVAILABLE")
+
+
+# --- Sem IA por padrão e o "Aprimorar com IA" (Q-16, S32-12) ------------------------------------
+
+
+def test_generating_is_without_ai_and_spends_no_quota(
+    stack: tuple[TestClient, MemoryAccountStore], provider: Recorder
+) -> None:
+    api, store = stack
+    api.app.state.feedback.limits = FeedbackLimits(per_account_day=1, daily_cap=100)  # type: ignore[attr-defined]
+    ana = member(store)
+
+    plain = [ask(stack, ana, enhance=False).json() for _ in range(3)]
+    enhanced = ask(stack, ana)
+
+    assert {(body["source"], body["provider"], body["notice"]) for body in plain} == {
+        ("template", None, None)
+    }
+    # Os três textos sem IA não chamaram a IA; o aprimoramento chamou uma vez.
+    assert len(provider.prompts) == 1
+    # Só o aprimoramento gasta a cota (1 por dia aqui): os três textos sem IA não contaram.
+    assert enhanced.status_code == 200
+    assert enhanced.json()["source"] == "llm"
+    assert ask(stack, ana).status_code == 429
+
+
+def test_enhancing_without_ai_keeps_the_text_and_says_why(analyzer: TestClient) -> None:
+    store = MemoryAccountStore()
+    settings = replace(SETTINGS, llm=LlmSettings())
+    app, _ = make_app(settings, store=store, analyzer_transport=_bridge(analyzer))
+    with TestClient(app, base_url=BASE_URL) as api:
+        body = api.post(
+            "/api/v1/feedback",
+            json={"code": VALID, "list_number": 1, "student_name": STUDENT, "enhance": True},
+            headers=cookie_header(open_session(store, member(store))),
+        ).json()
+
+    assert (body["source"], body["provider"]) == ("template", None)
+    assert "não está configurado" in body["notice"]
+
+
+def test_when_no_ai_answers_the_text_stays_without_ai(analyzer: TestClient) -> None:
+    class Busy(FakeProvider):
+        async def generate(self, prompt: Prompt, *, timeout_s: float) -> str:
+            self.prompts.append(prompt)
+            raise ProviderError("HTTP 429", status=429)
+
+    store = MemoryAccountStore()
+    first, second = Busy(), Busy()
+    app, _ = make_app(
+        SETTINGS, store=store, analyzer_transport=_bridge(analyzer), llm_providers=[first, second]
+    )
+    with TestClient(app, base_url=BASE_URL) as api:
+        body = api.post(
+            "/api/v1/feedback",
+            json={"code": VALID, "list_number": 1, "student_name": STUDENT, "enhance": True},
+            headers=cookie_header(open_session(store, member(store))),
+        ).json()
+
+    assert (body["source"], body["provider"]) == ("template", None)
+    assert "Nenhuma IA respondeu" in body["notice"]
+    assert body["text"].startswith("Olá, Isabella Schultz")
+    assert (len(first.prompts), len(second.prompts)) == (1, 1)
+
+
+def test_the_answer_says_whether_the_page_can_enhance(
+    stack: tuple[TestClient, MemoryAccountStore], analyzer: TestClient
+) -> None:
+    assert ask(stack, member(stack[1]), enhance=False).json()["can_enhance"] is True
+    store = MemoryAccountStore()
+    app, _ = make_app(
+        replace(SETTINGS, llm=LlmSettings()), store=store, analyzer_transport=_bridge(analyzer)
+    )
+    with TestClient(app, base_url=BASE_URL) as api:
+        body = api.post(
+            "/api/v1/feedback",
+            json={"code": VALID, "list_number": 1, "student_name": STUDENT},
+            headers=cookie_header(open_session(store, member(store))),
+        ).json()
+    assert body["can_enhance"] is False

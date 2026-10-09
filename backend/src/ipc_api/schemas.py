@@ -59,6 +59,13 @@ class FeedbackRequest(_Strict):
         default=None,
         description="Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).",
     )
+    enhance: bool = Field(
+        default=False,
+        description=(
+            "Aprimorar com IA (Q-16, S32-12): a versão sem IA vai às IAs configuradas, em ordem, "
+            "para detalhar e exemplificar. Só este pedido gasta a cota diária de feedbacks."
+        ),
+    )
 
 
 class FeedbackResponse(_Strict):
@@ -67,12 +74,20 @@ class FeedbackResponse(_Strict):
     text: str = Field(description="O texto para o aluno; a página o mostra como texto puro.")
     source: Literal["llm", "template"] = Field(
         description=(
-            "llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de "
-            "texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo)."
+            "llm: o trecho livre veio de uma IA e foi validado (Aprimorar com IA); template: "
+            "montado por modelos de texto, sem IA (o padrão desde a Sprint 32, Q-16)."
         )
     )
-    provider: Literal["primary", "fallback"] | None = Field(
-        description="Qual IA escreveu o trecho livre: a principal ou a de reserva."
+    provider: Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,19}$")] | None = Field(
+        description="Qual IA da cadeia escreveu o trecho livre, quando foi uma."
+    )
+    can_enhance: bool = Field(
+        default=False,
+        description="Há IA configurada neste servidor: a página mostra o Aprimorar com IA.",
+    )
+    notice: Message | None = Field(
+        default=None,
+        description="Por que o texto ficou sem IA num pedido de aprimoramento.",
     )
 
 

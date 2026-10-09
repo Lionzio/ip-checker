@@ -168,7 +168,14 @@ describe("cliente simulado", () => {
     await expect(anonymous.validate(request("x = 1"))).rejects.toMatchObject(unauthenticated);
     await expect(anonymous.compare("x = 1", "y = 2")).rejects.toMatchObject(unauthenticated);
     await expect(
-      anonymous.feedback({ code: "x = 1", list_number: 1, question_id: null, student_name: "Ana", annotation: null }),
+      anonymous.feedback({
+        code: "x = 1",
+        list_number: 1,
+        question_id: null,
+        student_name: "Ana",
+        annotation: null,
+        enhance: false,
+      }),
     ).rejects.toMatchObject(unauthenticated);
   });
 
@@ -183,13 +190,14 @@ describe("cliente simulado", () => {
     });
 
     const ai = await client.feedback({
-      code: "# simular: ia\nif True:\n    print(1)\n",
+      code: "if True:\n    print(1)\n",
       list_number: 1,
       question_id: null,
       student_name: "Ana",
       annotation: null,
+      enhance: true,
     });
     expect(ai.source).toBe("llm");
-    expect(ai.provider).toBe("primary");
+    expect(ai.provider).toBe("gemini");
   });
 });

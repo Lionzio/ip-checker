@@ -246,3 +246,13 @@ def test_similarity_without_question_is_unchanged(api: TestClient) -> None:
     response = api.post("/api/v1/similarity", json={"code_a": STUDENT, "code_b": INDEPENDENT})
 
     assert response.json()["gabarito"] is None
+
+
+def test_feedback_works_for_a_question_that_only_has_a_gabarito(api: TestClient) -> None:
+    body = {"code": STUDENT, "list_number": 1, "student_name": "Ana", "question_id": "L1-Q1"}
+
+    response = api.post("/api/v1/feedback", json=body)
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "template"
+    assert CANARY not in response.text

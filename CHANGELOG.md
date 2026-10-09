@@ -8,10 +8,35 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
-## Depois da Sprint 31.1 (não publicado no piloto)
+## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 
-Mudanças na `develop` que chegam ao piloto na próxima release.
+A Sprint 32 (S32-01 a S32-14; US-32, US-34, US-37 e US-38; ADR-11 e ADR-06 revisto) fechou a
+engenharia em 09/10/2026. A missão é dar à equipe, na correção, a distância entre o código do aluno
+e a solução oficial e um sinal de que o gabarito pode estar circulando, sem guardar nada e sem
+expor o gabarito, e deixar o feedback sem IA por padrão, com a IA só a pedido (Q-16). A persona é
+quem corrige, com o Tech Lead cuidando da confidencialidade (NFR-27). Com a cota do Actions esgotada
+(P-19), a evidência de cada PR é o `scripts/ci-local.sh --e2e`.
 
+Aguardando o autor (sem elas, o piloto funciona como antes, com os avisos):
+
+| Task | Entrada pendente |
+|---|---|
+| S32-01 | A credencial só de leitura dos gabaritos no Render (`IPC_GABARITOS_TOKEN`; runbook, "Credencial dos gabaritos"). Até lá, a página avisa que os gabaritos não estão disponíveis |
+| S32-11 | As contas e chaves das IAs gratuitas e a cadeia no Render (`IPC_LLM_CHAIN`; runbook, "IAs do Aprimorar com IA"). Até lá, o botão Aprimorar com IA não aparece |
+
+Medição local do NFR-28 (09/10/2026, esta máquina, só o motor): a análise do maior gabarito de
+2026.2 (137 linhas) com a comparação levou 25,7 ms na mediana e 34,2 ms no P95, contra 7,9 ms e
+8,9 ms sem ela; bem abaixo dos 200 ms. A carga no piloto fica para o "Carga no piloto", com a cota
+de volta.
+
+- **09/10/2026, Aprimorar com IA (S32-12 a S32-14; Q-16, ADR-06 revisto).** O **Gerar
+  feedback** monta o texto sem IA e não gasta cota. O **Aprimorar com IA** manda essa versão, com o
+  mesmo contexto de antes (código sem comentários, anotação, resultado, nome trocado por `[ALUNO]`),
+  a uma cadeia de IAs (`IPC_LLM_CHAIN`, por exemplo `gemini,groq`), em ordem, com fallback por erro,
+  prazo, cota esgotada (a IA que responde 429 fica fora por 60 s) ou texto reprovado na validação;
+  sem resposta válida, fica o texto sem IA com um aviso. Na página, o botão aparece só com IA
+  configurada (`can_enhance`), com o aviso de que os planos gratuitos podem usar os dados para
+  treino, e **Desfazer** volta ao texto sem IA. Sem a cadeia, valem a principal e a de reserva.
 - **09/10/2026, comparação com o gabarito (S32-02 a S32-09; ADR-11, FR-32, US-37, US-38).** A API
   baixa os gabaritos do repositório privado ao subir (`IPC_GABARITOS_REPO` e
   `IPC_GABARITOS_TOKEN`, só leitura) e os guarda só na memória; no compose, lê uma pasta

@@ -17,7 +17,7 @@ from ipc_api.accounts.models import Account, StoreUnavailable
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
-from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings
+from ipc_api.deps import get_admission, get_analyzer, get_gabaritos, get_request_id, get_settings
 from ipc_api.errors import (
     ApiError,
     ErrorCode,
@@ -27,6 +27,7 @@ from ipc_api.errors import (
 )
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
+from ipc_api.gabaritos import Gabaritos
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import FeedbackRequest, FeedbackResponse
@@ -34,6 +35,12 @@ from ipc_api.settings import ApiSettings
 from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
+
+NO_AI = "O Aprimorar com IA não está configurado neste servidor: fica o texto sem IA."
+NO_ANSWER = (
+    "Nenhuma IA respondeu agora (fora do ar, sem cota ou com um texto que não passou na "
+    "conferência): fica o texto sem IA. Tente de novo em alguns minutos."
+)
 
 router = APIRouter(
     prefix="/api/v1", tags=["feedback"], dependencies=[Depends(require_active_account)]
@@ -82,6 +89,7 @@ async def feedback(
     admission: Annotated[Admission, Depends(get_admission)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
     request_id: Annotated[str, Depends(get_request_id)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
 ) -> FeedbackResponse:
     # O texto fala de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
@@ -97,11 +105,13 @@ async def feedback(
             ErrorCode.LIST_NOT_ENABLED,
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
-    await check_question(analyzer, body.list_number, body.question_id)
+    # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista, como na verificação.
+    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    question_id = body.question_id if check is not None and check.registered else None
     try:
         async with admission.slot():
             data = await analyzer.feedback_input(
-                body.code, body.list_number, request_id=request_id, question_id=body.question_id
+                body.code, body.list_number, request_id=request_id, question_id=question_id
             )
     except Overloaded:
         raise overloaded() from None
@@ -121,21 +131,33 @@ async def feedback(
             f"O código tem um erro de sintaxe{where}: as permissões não foram verificadas, "
             "então não há feedback. Corrija o código e verifique de novo.",
         )
-    # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
-    try:
-        await service.take_quota(account.id)
-    except StoreUnavailable:
-        raise database_unavailable() from None
     role = account.role
     assert role is not None  # noqa: S101 - conta ativa sempre tem cargo (CHECK no banco)
     evaluator = Evaluator(name=account.name, role=role.value, treatment=account.treatment.value)
-    result = await service.write(
-        student=student,
-        annotation=annotation,
-        evaluator=evaluator,
-        items=[Item(kind=item.kind, label=item.label) for item in data.items],
-        code=data.code,
-    )
+    items = [Item(kind=item.kind, label=item.label) for item in data.items]
+    # Q-16 (opção A): o texto sem IA é o padrão e não gasta cota.
+    result = service.write(student=student, annotation=annotation, evaluator=evaluator, items=items)
+    notice: str | None = None
+    if body.enhance:
+        if not service.ai_enabled:
+            notice = NO_AI
+        else:
+            # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
+            try:
+                await service.take_quota(account.id)
+            except StoreUnavailable:
+                raise database_unavailable() from None
+            enhanced = await service.enhance(
+                student=student,
+                annotation=annotation,
+                evaluator=evaluator,
+                items=items,
+                code=data.code,
+            )
+            if enhanced is None:
+                notice = NO_ANSWER
+            else:
+                result = enhanced
     request.state.outcome = result.source
     return FeedbackResponse(
         request_id=request_id,
@@ -143,4 +165,6 @@ async def feedback(
         text=result.text,
         source=result.source,
         provider=result.provider,
+        can_enhance=service.ai_enabled,
+        notice=notice,
     )

@@ -104,17 +104,20 @@ ADMIN_VALIDATION_MESSAGE = (
 
 
 def _ais(config: ApiSettings, injected: Sequence[Provider] | None) -> list[Ai]:
-    """A IA principal e a de reserva configuradas; nos testes, os provedores falsos dados."""
+    """As IAs da cadeia do "Aprimorar com IA" (S32-12), em ordem; nos testes, os provedores
+    falsos dados, com os nomes da configuração ou, sem ela, primary, fallback, ia3..."""
     configured = config.llm.configured
     if injected is not None:
-        slots: tuple[Slot, ...] = ("primary", "fallback")
+        defaults: tuple[Slot, ...] = ("primary", "fallback")
         return [
             Ai(
-                slots[index],
+                configured[index][0]
+                if index < len(configured)
+                else (defaults[index] if index < len(defaults) else f"ia{index + 1}"),
                 provider,
                 configured[index][1] if index < len(configured) else LlmConfig(),
             )
-            for index, provider in enumerate(injected[:2])
+            for index, provider in enumerate(injected)
         ]
     ais = []
     for slot, llm in configured:
