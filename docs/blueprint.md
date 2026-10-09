@@ -1040,7 +1040,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | 19 | Falta o primeiro deploy com login | Resolvido em 08/10/2026 (run 37754224989) | S30-02 |
 | 20 | Falta o repositório privado dos gabaritos | Em parte: repositório e chave da CI criados hoje (H-02); faltam os gabaritos do Notion | S33-01 |
 | 21 | Falta o terceiro monitor do UptimeRobot | Resolvido em 08/10/2026 | S30-04 |
-| 22 | Os casos em aberto do mapeamento seguem para o Marco 2 | Planejado: pauta pronta hoje (H-03) | S31-05, S31-12 |
+| 22 | Os casos em aberto do mapeamento seguem para o Marco 2 | Resolvido: decididos pelo autor em 09/10/2026 (ruleset `2026.2.5`); Marco 2 em 19/10/2026 | S31-05, S31-12 |
 | 24 | Nenhuma questão real cadastrada ainda | Planejado: ensaio em 2026.2 e as questões de 2027.1, com a troca de período sem código | S31-09, S31-10, S31-13, S33-04 |
 | 25 | Falta o primeiro deploy | Resolvido em 07/10/2026 | S25-02 |
 | 28 | Faltam o ensaio do rollback e a carga no piloto | Resolvido em 08/10/2026 | S30-08, S30-09 |
@@ -1330,6 +1330,8 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | B. Aprovar com mudanças no texto aos alunos ou em quem gera as referências | Ajusta à política da disciplina | Uma rodada a mais de revisão | S33-06 depois da revisão |
 | C. Não ligar no piloto | Nenhum risco de leitura como prova | Perde os indícios em 2027.1 | S33-05 e S33-06 saem do plano; o código fica desligado |
 
+**Decidido (09/10/2026):** opção A, a política aprovada como está (Q-21).
+
 #### 7.13.2 Provedor de IA do feedback (Q-16) — Autor e Coordenação
 
 | Opção | Prós | Contras | Impacto |
@@ -1337,6 +1339,12 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | A. Sem IA (como hoje) | Nenhum dado sai do servidor; custo zero | Texto menos personalizado | Nenhuma task |
 | B. Plano pago com termos de não retenção | Texto melhor, dentro da política proposta na Q-16 | Custo mensal; transferência internacional (LGPD, art. 33) a avaliar pela coordenação | S31-02 grava `IPC_LLM_*`; aviso de privacidade revisto |
 | C. Plano gratuito | Sem custo | Pode usar os dados para treino; contraria a proposta da Q-16 | Não recomendado pela Q-16 |
+
+**Decidido (09/10/2026, autor):** A e C combinadas. O feedback sem IA é o padrão; o botão "Aprimorar com IA"
+manda a versão determinística a provedores gratuitos (Gemini, Groq e outros), em cadeia com fallback,
+para detalhar, expandir e exemplificar. Risco aceito pelo autor e levado ao Marco 2 (Q-16). A
+implementação (cadeia de provedores, limites de cota de cada um, aviso de privacidade e testes) fica
+para uma sprint a planejar.
 
 #### 7.13.3 Remetente dos e-mails (Q-17) — Autor e NTI
 
@@ -1346,12 +1354,16 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | B. Brevo com remetente `@cin.ufpe.br` | Remetente institucional | Exige SPF, DKIM e DMARC com o NTI | S31-07 com o NTI; `IPC_EMAIL_FROM` no Render |
 | C. SMTP institucional | Sem terceiro | O plano gratuito do Render bloqueia SMTP de saída (25, 465 e 587) | Só com o Starter ou na Fase 2 |
 
+**Decidido (09/10/2026, autor):** opção A.
+
 #### 7.13.4 Governança das regras (Q-22) — Autor
 
 | Opção | Prós | Contras | Impacto |
 |---|---|---|---|
 | A. Manter o processo atual (merge confere a aprovação) | Simples; funciona com poucos monitores | Depende de quem faz o merge; quem tem escrita vê os workflows com segredos | Nenhuma task |
 | B. Monitores com papel Read, PR por fork e um check de aprovação no CI | Fork não recebe os segredos; aprovação conferida por máquina | Mais atrito para monitores; a Q-22 pede confirmar que o GitHub permite fork de repositório pessoal privado com papel Read | Uma task de implementação depois da decisão (cerca de 3 SP) |
+
+**Decidido (09/10/2026, autor):** opção A.
 
 #### 7.13.5 Servidor do CIn (Q-12) — Suporte de TI do CIn
 

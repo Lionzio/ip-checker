@@ -192,12 +192,13 @@
   expect: [R-02 EXIGENCIA 1, R-47 FORA_DA_LISTA 2, R-47 FORA_DA_LISTA 2]
 
 - id: E27-dunder-name
-  rule: R-04
+  rule: R-59
   list: 1
   code: |
     if __name__ == "__main__":
         print("oi")
-  expect: [R-04 NAO_CONSTA 1]
+  # Desde 09/10/2026, o if __name__ == "__main__" é da R-59, a partir da Lista 4 (caso 1 do Marco 2).
+  expect: [R-59 FORA_DA_LISTA 1]
 
 - id: E28-for-else
   rule: R-04

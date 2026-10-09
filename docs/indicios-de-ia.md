@@ -1,7 +1,7 @@
 # Indícios de uso de IA: política e calibração
 
-Rascunho da política da S29-04 (ADR-08, Q-21), **para aprovação da coordenação da disciplina**.
-Enquanto não for aprovada, o painel fica **desligado no piloto** (`IPC_AI_INDICATORS=0` no
+Política da S29-04 (ADR-08, Q-21), **aprovada em 09/10/2026** (opção A de 7.13.1 do blueprint). Até a
+calibração ficar na meta (S33-03), o painel fica **desligado no piloto** (`IPC_AI_INDICATORS=0` no
 `render.yaml`, conferido por um teste e pelo pipeline de deploy) e só funciona no ambiente local.
 
 ## Missão

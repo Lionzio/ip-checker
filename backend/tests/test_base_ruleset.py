@@ -70,15 +70,23 @@ def test_permissions_start_at_their_list(
         ("node:List", {"R-38", "R-39"}),  # matriz = lista de listas (5.2.3)
         ("node:Tuple", {"R-40"}),  # inclusive a atribuição múltipla (Q-02 d)
         ("call:user", {"R-59"}),
+        # Casos 1, 2 e 7 do Marco 2 (decisões do autor de 09/10/2026).
+        ("call:user_kwarg", {"R-59"}),
+        ("builtin:__name__", {"R-59"}),
+        ("kwarg:dict.*", {"R-62"}),
+        ("kwarg:update.*", {"R-66"}),
+        ("kwarg:enumerate.start", {"R-63"}),
         ("op:Add", {"R-18", "R-21"}),
         ("kwarg:print.end", {"R-32"}),
         ("node:For", {"R-34"}),
         ("builtin:zip", {"R-37", "R-64"}),  # Q-04: condicional até a Lista 4, livre depois
-        ("target:for_unpack", {"R-37", "R-63", "R-64", "R-65"}),  # Q-02 (d): zip, enumerate, items
+        # Q-02 (d): zip, enumerate e items; desde 09/10/2026, qualquer iterável a partir da Lista 3
+        # (R-40, casos 3 e 8 do Marco 2).
+        ("target:for_unpack", {"R-37", "R-40", "R-63", "R-64", "R-65"}),
         ("node:Dict", {"R-61"}),
         ("node:Lambda", {"R-67"}),
         ("method:items", {"R-65"}),
-        # Q-02 (e) revista em 09/10/2026, provisória até o Marco 2 (caso 10).
+        # Q-02 (e) revista em 09/10/2026 e ratificada pelo autor (caso 10 do Marco 2).
         ("node:GeneratorExp", {"R-41"}),
     ],
 )
@@ -96,7 +104,7 @@ def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: s
         "builtin:getattr",
         "builtin:__import__",
         "kwarg:sorted.key",  # Q-02 (c): key= não consta, nem com lambda (R-67)
-        "kwarg:enumerate.start",  # Q-02 (c): só end= consta
+        "kwarg:enumerate.inicio",  # só o start= foi liberado (caso 7 do Marco 2)
     ],
 )
 def test_not_yet_permitted_facts_fall_to_default_deny(
@@ -158,7 +166,15 @@ def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:
     assert requirements == {
         1: {"node:If", "node:IfExp"},
         2: {"node:For", "node:While"},
-        3: {"node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple"},
+        # A lista de um split() comprova a Lista 3 desde 09/10/2026 (caso 6 do Marco 2).
+        3: {
+            "node:List",
+            "node:Tuple",
+            "node:ListComp",
+            "builtin:list",
+            "builtin:tuple",
+            "method:split",
+        },
         4: {"node:FunctionDef"},
         5: {"node:Dict", "builtin:dict"},
         6: {"derived:recursion"},  # R-68, recursão direta ou mútua (C-03)

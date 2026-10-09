@@ -165,13 +165,14 @@
     print(a)
   expect: []
 
-- id: R-02-split-alone-does-not-count-L3
+- id: R-02-split-counts-L3
   rule: R-02
   list: 3
   code: |
     palavras = input().split()
     print(len(palavras))
-  expect: [R-02 EXIGENCIA 1]
+  # A lista recebida de split() comprova o assunto da Lista 3 (caso 6 do Marco 2).
+  expect: []
 
 - id: R-02-without-def-L4
   rule: R-02

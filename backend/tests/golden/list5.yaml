@@ -81,8 +81,8 @@
   code: |
     d = dict(a=1)
     print(d)
-  # Argumento nomeado só consta no end= do print (Q-02 c): caso a observar no mapeamento.
-  expect: [R-04 NAO_CONSTA 1]
+  # Os argumentos nomeados de dict() fazem parte da Lista 5 (caso 7 do Marco 2).
+  expect: []
 
 - id: R-63-enumerate-unpacking-L5
   rule: R-63
@@ -113,8 +113,8 @@
         for i, x in enumerate(v):
             print(i, x)
     mostra([1])
-  # Na Lista 4, vários nomes no for só valem com zip (R-37), e enumerate() é da Lista 5.
-  expect: [R-37 NAO_CONSTA 2, R-63 FORA_DA_LISTA 2]
+  # Vários nomes no for valem desde a Lista 3 (R-40, caso 3 do Marco 2); enumerate() é da Lista 5.
+  expect: [R-63 FORA_DA_LISTA 2]
 
 - id: R-63-enumerate-start-keyword-L5
   rule: R-63
@@ -124,8 +124,8 @@
     for i, x in enumerate("ab", start=1):
         d[i] = x
     print(d)
-  # start= não consta (Q-02 c); enumerate("ab", 1) é permitido.
-  expect: [R-04 NAO_CONSTA 2]
+  # O start= faz parte da Lista 5 (caso 7 do Marco 2), como enumerate("ab", 1).
+  expect: []
 
 - id: R-63-unpacking-a-list-of-pairs-L5
   rule: R-63
@@ -135,8 +135,8 @@
     for a, b in [(1, 2)]:
         d[a] = b
     print(d)
-  # O for não percorre zip(), enumerate() nem .items(): caso a observar no mapeamento.
-  expect: [R-63 NAO_CONSTA 2]
+  # Vários nomes no for valem com qualquer sequência de pares (R-40, caso 8 do Marco 2).
+  expect: []
 
 - id: R-64-zip-in-for-L5
   rule: R-64
@@ -208,8 +208,8 @@
     d = {"a": (1, 2)}
     for x, y in d.values():
         print(x, y)
-  # Só .items() libera vários nomes no for; .values() não.
-  expect: [R-63 NAO_CONSTA 2]
+  # Vários nomes no for valem com qualquer sequência de pares, inclusive .values() (caso 8).
+  expect: []
 
 - id: R-66-get-and-update-L5
   rule: R-66
@@ -245,7 +245,8 @@
     d = {}
     d.update(a=1)
     print(d)
-  expect: [R-04 NAO_CONSTA 2]
+  # Os argumentos nomeados de update() fazem parte da Lista 5 (caso 7 do Marco 2).
+  expect: []
 
 - id: R-67-lambda-L5
   rule: R-67
@@ -284,4 +285,25 @@
     f = lambda x=1: x
     print(f(), d)
   # Valor padrão de parâmetro não consta, também no lambda (Q-02 f).
+  expect: [R-04 NAO_CONSTA 2]
+
+- id: R-62-dict-keyword-arguments-before-list-L4
+  rule: R-62
+  list: 4
+  code: |
+    def f():
+        return 1
+    d = dict(a=1)
+    print(d, f())
+  # dict() e o argumento nomeado dele são da Lista 5.
+  expect: [R-62 FORA_DA_LISTA 3, R-62 FORA_DA_LISTA 3]
+
+- id: R-63-other-enumerate-keyword-L5
+  rule: R-63
+  list: 5
+  code: |
+    d = {}
+    for i, x in enumerate("ab", inicio=1):
+        d[i] = x
+  # Só o start= foi liberado; outro nome continua sem constar.
   expect: [R-04 NAO_CONSTA 2]

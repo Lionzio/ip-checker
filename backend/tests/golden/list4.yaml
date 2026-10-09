@@ -1,6 +1,6 @@
 # Corpus golden: permissões da Lista 4, funções e escopo de variável (R-59 e R-60). Todo código da
 # Lista 4 precisa de um def (R-02, Q-05). Parâmetro com valor padrão e função dentro de função não
-# constam (Q-02 f); argumento nomeado na chamada e if __name__ são casos em aberto (mapeamento).
+# constam (Q-02 f); argumento nomeado na chamada e if __name__ são permitidos (casos 1 e 2 do Marco 2).
 
 - id: R-59-def-return-L4
   rule: R-59
@@ -67,7 +67,8 @@
     def f(x):
         return x
     print(f(x=1))
-  expect: [R-04 NAO_CONSTA 3]
+  # Os "parâmetros" da R-59 incluem o argumento nomeado na chamada (caso 2 do Marco 2).
+  expect: []
 
 - id: R-59-main-guard-L4
   rule: R-59
@@ -77,7 +78,8 @@
         print(1)
     if __name__ == "__main__":
         main()
-  expect: [R-04 NAO_CONSTA 3]
+  # Permitido a partir da Lista 4 (caso 1 do Marco 2).
+  expect: []
 
 - id: R-60-return-multi-L4
   rule: R-60
@@ -106,3 +108,13 @@
         return 1, 2
     print(f())
   expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3, R-60 FORA_DA_LISTA 2]
+
+- id: R-40-unpack-list-of-pairs-L4
+  rule: R-40
+  list: 4
+  code: |
+    def mostra(pares):
+        for a, b in pares:
+            print(a, b)
+    mostra([(1, 2)])
+  expect: []

@@ -287,7 +287,7 @@ def test_every_log_line_follows_the_schema(
         "latency_ms": None,
         "payload_bytes": len(b'{"code":"for i in range(3):\\n    print(i)\\n","list_number":1}'),
         "list_number": 1,
-        "ruleset_version": "2026.2.4",
+        "ruleset_version": "2026.2.5",
         "outcome": "invalid",
     }
     assert isinstance(api_line["latency_ms"], float)
