@@ -12,7 +12,7 @@ IA ou por modelos de texto, a correção em lote, o gerenciamento da equipe com 
 telemetria anônima, o relatório de eficácia e os indícios de uso de IA (desligados no piloto até a
 coordenação aprovar a política). O piloto está no ar (Render, Vercel e Supabase) desde
 07/10/2026, na release `sprint-30` desde 08/10/2026; o uso pela equipe é em 2027.1. As pendências restantes estão
-planejadas nas Sprints 30 a 35 (seção 7.12 do blueprint), e a integração com outros 2 projetos da
+planejadas nas Sprints 30 a 36 (seção 7.12 do blueprint), e a integração com outros 2 projetos da
 monitoria é só uma possibilidade, ainda não confirmada (seção 9 do blueprint e ADR-09).
 
 | Para | Leia |
@@ -23,8 +23,9 @@ monitoria é só uma possibilidade, ainda não confirmada (seção 9 do blueprin
 | Relatar uma falha de segurança | [`SECURITY.md`](SECURITY.md) |
 | Achar qualquer outro documento | [`docs/README.md`](docs/README.md) |
 | O que cada sprint entregou | [`CHANGELOG.md`](CHANGELOG.md) |
-| O que vem a seguir (Sprints 30 a 35) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.12 a 7.14 |
+| O que vem a seguir (Sprints 30 a 36) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.12 a 7.14 |
 | A pauta do Marco 2 (casos do mapeamento e decisões da coordenação) | [`docs/marco-2.md`](docs/marco-2.md) |
+| A comparação com o gabarito (Sprint 32) | [`docs/adr/ADR-11-comparacao-com-o-gabarito.md`](docs/adr/ADR-11-comparacao-com-o-gabarito.md) |
 | Questões e gabaritos por período | [`docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md`](docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md), [`RULES.md`](RULES.md) e [`rulesets/README.md`](rulesets/README.md) |
 | Os endpoints da API e a possível integração com outros projetos | [`docs/blueprint.md`](docs/blueprint.md), seção 9, e [`docs/adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md`](docs/adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md) |
 
@@ -161,22 +162,23 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 17 | Painel de plágio: S17-01 motor de similaridade (*winnowing* em tokens e na AST, corpus de pares); S17-02 comparação no analisador isolado e `POST /api/v1/similarity` com as faixas do FR-29; S17-03 painel com as duas áreas, a faixa escrita e o aviso de indício | Concluída |
 | 18 | Feedback por LLM: S18-01 provedores (`openai_compat` e `gemini`), com IA principal e de reserva; S18-02 abertura e frase obrigatória pelo backend, nome do aluno trocado por `[ALUNO]`, texto validado e, sem IA, feedback montado por modelos; `POST /api/v1/feedback` | Concluída |
 | 19 | Marco 2: S19-01 painel de feedback na página (nome do aluno, anotação, texto editável e Copiar); S19-02 aviso de privacidade, guia da equipe, passo a passo das contas externas e apresentação revista | Concluída (primeiro deploy com login em 08/10/2026, S30-02) |
-| 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (repositório privado dos gabaritos com as Listas 1 e 2 de 2026.2 desde 08/10/2026; faltam as demais, S32-01) |
+| 20 | Lista 2: S20-01 `zip` condicional (R-37), exigência do laço (R-02) e Lista 2 habilitada; S20-02 harness e job da CI para os gabaritos de períodos anteriores | Concluída (repositório privado dos gabaritos com as Listas 1 e 2 de 2026.2 desde 08/10/2026; faltam as demais, S33-01) |
 | 21 | Telemetria e alertas: S21-01 eventos anônimos no banco, views do FR-17 e expurgo de 12 meses; S21-02 `/health/slo` (P95 e 5xx) para o UptimeRobot e exercício de falha | Concluída (os três monitores do UptimeRobot no ar desde 08/10/2026, S30-04) |
 | 22 | Listas 3 e 4: S22-01 regras R-38 a R-60, exigência das Listas 3 (lista ou tupla) e 4 (`def`) e função aninhada na R-04 (Q-02 f); S22-02 Listas 3 e 4 habilitadas e e2e | Concluída (os 9 casos em aberto do mapeamento estão na pauta do Marco 2, `docs/marco-2.md`; S31-05 e S31-12) |
 | 23 | Listas 5 e 6: S23-01 regras R-61 a R-67, exigência do dicionário (L5) e da recursão direta ou mútua (R-68, L6); S23-02 Listas 5 e 6 habilitadas e e2e; S23-03 registro das ações de gerenciamento (REC-06); duas evasões do motor corrigidas na revisão de fim de sprint | Concluída |
-| 24 | Regras por questão: S24-01 questões em `rulesets/<período>/questions/` com precedência sobre a lista e seletor na página; S24-02 `ipc-rules validate` na CI, registro único de predicados e `facts/` dividido; S24-03 `RULES.md` e modelo de PR de regras; S24-04 "esqueci minha senha" por link de e-mail | Concluída (questões reais: ensaio em 2026.2 na S31-13 e as de 2027.1 na S32-04) |
+| 24 | Regras por questão: S24-01 questões em `rulesets/<período>/questions/` com precedência sobre a lista e seletor na página; S24-02 `ipc-rules validate` na CI, registro único de predicados e `facts/` dividido; S24-03 `RULES.md` e modelo de PR de regras; S24-04 "esqueci minha senha" por link de e-mail | Concluída (questões reais: ensaio em 2026.2 na S31-13 e as de 2027.1 na S33-04) |
 | 25 | Endurecimento para o primeiro deploy: S25-01 CI fixada por SHA, Dependabot e auditoria semanal; S25-02 deploy seguro, roteiro do primeiro deploy e runbook; S25-03 limpeza diária do banco e expurgo de contas sem atividade (Q-19 d); S25-04 prazos ponta a ponta, limite geral por IP, seccomp e rlimits ampliados; S25-05 docstrings e dados pessoais fora do feedback por IA e cota persistida | Concluída (primeiro deploy em 07/10/2026) |
 | 26 | Correção em lote e relatório: S26-01 cabeçalho e navegação no celular, títulos por tela e componentes comuns; S26-02 "Próximo aluno", Ctrl+Enter, rascunho em memória e editor com Tab, Limpar e Colar; S26-03 relatório agrupado por regra, com resumo, trecho e clique na linha; S26-04 prazos, cancelamento e sessão vencida iguais em todas as telas, busca no gerenciamento | Concluída |
 | 27 | Plágio por árvore canonizada (ADR-07): S27-01 árvore canonizada com reordenação por dependência, Dice e contenção; S27-02 uma solução contra até 100 da turma, com o peso pela raridade (IDF); S27-03 trechos em comum realçados nos dois códigos, Trocar A e B e Limpar | Concluída |
 | 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (rollback ensaiado e carga no piloto em 08/10/2026, S30-08 e S30-09) |
-| 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política, S31-01, e a calibração, S32-03) |
+| 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política, S31-01, e a calibração, S33-03) |
 | 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026 |
 | 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 com os 9 casos do mapeamento, auditoria de segurança bloqueante com Semgrep, troca de período sem código (`ipc-rules new-period`) e gabaritos com as questões do próprio período (ADR-10) | Planejada |
-| 32 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
-| 33 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
-| 34 | Controles de qualidade: pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset | Planejada |
-| 35 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging | Bloqueada (P-09 e Q-12) |
+| 32 | Comparação com o gabarito: na verificação (semelhança, construções e linhas do aluno), no plágio (A×gabarito, B×gabarito e o alerta de possível vazamento) e nos indícios, sem o gabarito sair do servidor (ADR-11) | Planejada |
+| 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
+| 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
+| 35 | Controles de qualidade: pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset | Planejada |
+| 36 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging | Bloqueada (P-09 e Q-12) |
 
 O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
@@ -219,10 +221,10 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Repositório privado dos gabaritos e a chave só de leitura da CI (08/10/2026, ADR-10)
 - [x] Gabaritos das Listas 1 e 2 de 2026.2 (15 questões) no repositório privado e o job
       "Gabaritos" ligado (`GABARITOS_REPO`), com zero violação (08/10/2026)
-- [ ] Os gabaritos das Listas 3 a 6 de 2026.2 e dos períodos anteriores (S32-01) e as soluções
-      anteriores a 2023 para calibrar os indícios (S32-02)
+- [ ] Os gabaritos das Listas 3 a 6 de 2026.2 e dos períodos anteriores (S33-01) e as soluções
+      anteriores a 2023 para calibrar os indícios (S33-02)
 - [ ] Ensaio do cadastro de questões reais de 2026.2 pela equipe (S31-13)
-- [ ] Ruleset e questões de 2027.1, com as referências por IA (S32-04 e S32-05)
+- [ ] Ruleset e questões de 2027.1, com as referências por IA (S33-04 e S33-05)
 - [ ] Cliente OAuth do Google (opcional)
 - [ ] Possível integração com outros 2 projetos da monitoria: as perguntas da seção 9.4 do
       blueprint aos monitores responsáveis (Q-23, ADR-09)

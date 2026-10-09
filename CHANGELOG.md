@@ -18,6 +18,7 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
   comprehension* continua na R-04. Origem: o gabarito oficial L3-Q8 de 2026.2, que usa
   `" ".join(str(num) for num in ...)` e agora tem zero violação, como os outros 22 de 2026.2. Quatro
   casos golden novos (Listas 2, 3 e 6 e a *dict comprehension*) e o caso da Lista 3 atualizado.
+- **09/10/2026, plano:** a comparação com o gabarito (ADR-11, Q-24, FR-32, US-37, US-38) vira a nova Sprint 32; as antigas Sprints 32 a 35 passam a 33 a 36, com as tasks renumeradas. O NFR-27 admite os gabaritos na memória da API do piloto; o NFR-28 mede o custo da comparação.
 - **08/10/2026:** CI e backup locais sem a cota do GitHub Actions (P-19), o repositório dos gabaritos
   (ADR-10) e a pauta do Marco 2.
 
