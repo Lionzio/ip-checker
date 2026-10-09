@@ -8,9 +8,10 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
-## Depois da Sprint 31 (não publicado no piloto)
+## Sprint 31.1 — Casos do Marco 2 e decisões do autor
 
-Mudanças na `develop` que chegam ao piloto na próxima release.
+Release extra entre as Sprints 31 e 32, pedida pelo autor em 09/10/2026, com a CI local como evidência
+e o deploy à mão (P-19).
 
 - **09/10/2026, ruleset `2026.2.5`: os casos do Marco 2, decididos pelo autor.** Passam a ser
   permitidos: o `if __name__ == "__main__":` e o argumento nomeado numa função do aluno, a partir
@@ -25,6 +26,8 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
   feedback sem IA como padrão e um "Aprimorar com IA" futuro, com provedores gratuitos em cadeia;
   Q-17 e Q-22 mantêm como está; questões e gabaritos cadastrados por monitores, monitores-chefes,
   professores e o desenvolvedor; Marco 2 em 19/10/2026.
+- **Plano:** o "Aprimorar com IA" (Q-16) entra na Sprint 32 (S32-11 a S32-14). `scripts/release.sh`
+  aceita releases extras (`31.1`).
 
 ## Sprint 31 — Auditoria bloqueante e período sem código
 

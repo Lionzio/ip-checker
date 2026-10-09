@@ -8,6 +8,7 @@
 #   scripts/release.sh 28              # faz a release da Sprint 28
 #   scripts/release.sh 28 --dry-run    # só mostra o que faria
 #   scripts/release.sh 31 --ci-local   # sem a cota do Actions (P-19): vale a CI desta máquina
+#   scripts/release.sh 31.1 --ci-local # release extra entre duas sprints (seção "## Sprint 31.1")
 #
 # Recusa se: a árvore tem mudanças; a main não é ancestral da develop (ela só avança por
 # fast-forward); a CI da ponta da develop não está verde; a tag já existe; o CHANGELOG.md não tem a
@@ -32,7 +33,7 @@ for option in "${@:2}"; do
     *) usage ;;
   esac
 done
-[[ "$sprint" =~ ^[0-9]+$ ]] || usage
+[[ "$sprint" =~ ^[0-9]+(\.[0-9]+)?$ ]] || usage
 tag="sprint-$sprint"
 
 fail() {
