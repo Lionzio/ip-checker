@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import BASE_RULESET
-from ipc_analyzer.engine.ruleset import RulesetError
+from conftest import BASE_RULESET, RULESETS
+from ipc_analyzer.engine.ruleset import RulesetError, resolve_ruleset_path
 from ipc_analyzer.runtime.limits import MIB
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app
@@ -185,7 +185,9 @@ def test_settings_from_environment() -> None:
 def test_settings_defaults_point_to_the_repository_ruleset() -> None:
     settings = AnalyzerSettings.from_env({})
 
-    assert settings.ruleset_path == BASE_RULESET
+    # A raiz rulesets/: o analisador carrega o período da linha de rulesets/ATIVO (S31-09).
+    assert settings.ruleset_path == RULESETS
+    assert resolve_ruleset_path(settings.ruleset_path) == BASE_RULESET
     assert settings.pool == PoolConfig()
 
 

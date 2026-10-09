@@ -954,7 +954,7 @@ Vale para as Sprints 30 a 36 e não se repete nelas; cada sprint lista só os te
 |---|---|---|---|---|
 | Lint e tipos do backend | ruff, `mypy --strict`, import-linter | `ci.yml`, job "Backend" (`uv run ruff check .`, `uv run mypy`, `uv run lint-imports`) | PR e push na `develop` (pulado na `main` e em mudança só de `.md`, S28-04) | 0 erros; 4 contratos do import-linter mantidos |
 | Unitários e integração do backend | pytest, com PostgreSQL de serviço | `ci.yml`, job "Backend" (`uv run pytest`) | idem | Todos passam; cobertura ≥ 90% (`--cov-fail-under=90`, `backend/pyproject.toml`) |
-| Regras e regressão do motor | `ipc-rules validate` e casos golden | `uv run ipc-rules validate ../rulesets/2026.2 --golden tests/golden` | idem | 0 FP e 0 FN; hoje 292 de 292 casos |
+| Regras e regressão do motor | `ipc-rules validate` e casos golden | `uv run ipc-rules validate ../rulesets --golden tests/golden` (o período de `rulesets/ATIVO`, S31-09) | idem | 0 FP e 0 FN; hoje 296 de 296 casos |
 | Contrato da API | pytest com schemathesis | `tests/test_api_contract.py` e `docs/openapi.json` em dia | idem | Contrato em dia e todos os status documentados conferidos |
 | Unitários do frontend | Vitest com RTL | `ci.yml`, job "Frontend" (`npm test`) | idem | Todos passam (hoje 229) |
 | Lint, tipos e builds do frontend | ESLint, `tsc`, Vite | `npm run lint`, `npm run typecheck`, `npm run build`, `npm run build:vercel` | idem | 0 erros; tipos gerados do OpenAPI em dia |

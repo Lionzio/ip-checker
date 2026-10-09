@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-# Valida o ruleset de um período (FR-21, US-14): uv run ipc-rules validate ../rulesets/2026.2
+# Valida o ruleset do período ativo (FR-21, US-14): uv run ipc-rules validate ../rulesets
 ipc-rules = "ipc_analyzer.cli:main"
 
 [dependency-groups]

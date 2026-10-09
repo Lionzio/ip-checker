@@ -7,11 +7,13 @@ separado, que a CI baixa com um token só de leitura para ``IPC_GABARITOS_DIR``.
     ├── <período>/lista-<n>/<questão>.py      ex.: 2025.2/lista-2/q03.py
     └── excecoes.yaml                          opcional
 
-Um gabarito pode usar algo que só o enunciado libera. Desde a Sprint 24, um gabarito do período do
-ruleset ativo cujo nome é a questão (``2026.2/lista-3/L3-Q2.py``) é analisado com as regras dela,
-cadastradas em ``rulesets/<período>/questions/`` (R-01). Como a numeração reinicia a cada período
-(P-07), as questões de períodos anteriores não ficam cadastradas; para eles, o ``excecoes.yaml``
-diz quais regras o enunciado libera naquele arquivo, e por quê:
+Cada gabarito é analisado com o ruleset do seu período, ``rulesets/<período>/``, quando a pasta
+existe (S31-11); senão, com o do período ativo. Um gabarito pode usar algo que só o enunciado
+libera: desde a Sprint 24, um gabarito cujo nome é a questão (``2026.2/lista-3/L3-Q2.py``) é
+analisado com as regras dela, cadastradas em ``rulesets/<período>/questions/`` do mesmo período
+(R-01). Como a numeração reinicia a cada período (P-07), um período sem pasta não tem questões
+cadastradas; para ele, o ``excecoes.yaml`` diz quais regras o enunciado libera naquele arquivo, e
+por quê:
 
     "2025.2/lista-2/q03.py":
       regras: ["R-37"]
@@ -23,13 +25,13 @@ O resultado traz só o caminho do arquivo, a regra e a linha, nunca o código.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
 from ipc_analyzer.engine.analysis import analyze_source
-from ipc_analyzer.engine.ruleset import QUESTION_ID, CompiledRuleset
+from ipc_analyzer.engine.ruleset import BASE_FILE, QUESTION_ID, CompiledRuleset, load_ruleset
 
 EXCEPTIONS_FILE = "excecoes.yaml"
 _LIST_DIR = re.compile(r"lista-([1-6])")
@@ -53,6 +55,25 @@ class Gabarito:
     def question_id(self) -> str | None:
         """A questão, quando o nome do arquivo é a numeração oficial (``L3-Q2.py``)."""
         return self.file.stem if QUESTION_ID.fullmatch(self.file.stem) else None
+
+
+@dataclass(slots=True)
+class PeriodRulesets:
+    """O ruleset de cada período, carregado uma vez (S31-11): o de ``<rulesets>/<período>/`` se a
+    pasta existe; senão, o ``active``, o do período ativo."""
+
+    rulesets: Path
+    active: CompiledRuleset
+    _loaded: dict[str, CompiledRuleset] = field(default_factory=dict)
+
+    def for_gabarito(self, gabarito: Gabarito) -> CompiledRuleset:
+        period = gabarito.period
+        if period is None or period == self.active.ruleset.period:
+            return self.active
+        if period not in self._loaded:
+            base = self.rulesets / period / BASE_FILE
+            self._loaded[period] = load_ruleset(base) if base.is_file() else self.active
+        return self._loaded[period]
 
 
 def discover(root: Path) -> tuple[list[Gabarito], list[str]]:

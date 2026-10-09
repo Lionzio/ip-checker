@@ -56,7 +56,7 @@ COPY database/migrations /opt/ip-checker/database/migrations
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    IPC_RULESET_PATH=/opt/ip-checker/rulesets/2026.2/base.yaml
+    IPC_RULESET_PATH=/opt/ip-checker/rulesets
 
 USER 10001:10001
 WORKDIR /opt/ip-checker

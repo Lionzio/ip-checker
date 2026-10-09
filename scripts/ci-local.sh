@@ -78,7 +78,7 @@ step "Backend: ruff" backend run ruff check .
 step "Backend: formatação" backend run ruff format --check .
 step "Backend: mypy" backend run mypy
 step "Backend: fronteiras" backend run lint-imports
-step "Ruleset e golden" backend run ipc-rules validate ../rulesets/2026.2 --golden tests/golden
+step "Ruleset e golden" backend run ipc-rules validate ../rulesets --golden tests/golden
 step "Backend: pytest (cobertura >= 90%)" env \
   IPC_TEST_DATABASE_URL="postgresql://postgres:$pg_password@127.0.0.1:$pg_port/ipc_test" \
   bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider"

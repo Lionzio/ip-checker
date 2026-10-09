@@ -53,7 +53,7 @@ Pré-requisitos: [uv](https://docs.astral.sh/uv/) (instala o Python 3.13 sozinho
 cd backend
 uv sync
 uv run pytest
-uv run ipc-rules validate ../rulesets/2026.2 --golden tests/golden
+uv run ipc-rules validate ../rulesets --golden tests/golden
 ```
 
 Os testes do banco (migrações e repositório de contas) só rodam com um PostgreSQL de teste em

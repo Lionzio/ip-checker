@@ -12,6 +12,12 @@ mudaram.
 
 Mudanças na `develop` que chegam ao piloto na próxima release.
 
+- **09/10/2026, período ativo num lugar só (S31-09 a S31-11).** O arquivo `rulesets/ATIVO` tem a
+  única linha com o período ativo (`2026.2`); o analisador (`IPC_RULESET_PATH=/opt/ip-checker/rulesets`
+  nas duas imagens e no supervisord), a CI, o `ci-local.sh` e o `ipc-rules validate ../rulesets`
+  leem dali, e um teste falha se a configuração repetir o período. `ipc-rules new-period 2027.1
+  --from 2026.2` cria a pasta do período novo, validada, sem questões e sem ativá-lo. O harness dos
+  gabaritos usa o ruleset do período de cada gabarito, quando `rulesets/<período>/` existe.
 - **09/10/2026, ruleset `2026.2.4`: expressão geradora a partir da Lista 3.** A R-41 (*list
   comprehension*) passa a casar também `node:GeneratorExp`, por decisão provisória do autor
   (revisão da Q-02 e), a ratificar no Marco 2 (caso 10 de `docs/marco-2.md`). A *dict

@@ -8,10 +8,12 @@ from typing import Any
 import pytest
 import yaml
 
-from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset, resolve_ruleset_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BASE_RULESET = REPO_ROOT / "rulesets" / "2026.2" / "base.yaml"
+RULESETS = REPO_ROOT / "rulesets"
+#: O ``base.yaml`` do período ativo, o da linha de ``rulesets/ATIVO`` (S31-09).
+BASE_RULESET = resolve_ruleset_path(RULESETS)
 
 _MINIMAL: dict[str, Any] = {
     "schema_version": 2,

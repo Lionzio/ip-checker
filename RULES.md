@@ -56,10 +56,11 @@ O que **não** dá para cadastrar numa questão:
 
 ```bash
 cd backend
-uv run ipc-rules validate ../rulesets/2026.2
+uv run ipc-rules validate ../rulesets
 ```
 
-O comando mostra o arquivo e o campo de cada erro e sai com código diferente de zero se algo estiver
+`../rulesets` vale pelo período ativo, o da linha de `rulesets/ATIVO`; para validar outro período,
+passe a pasta dele (`../rulesets/2027.1`). O comando mostra o arquivo e o campo de cada erro e sai com código diferente de zero se algo estiver
 errado. Ele também **avisa** quando a questão libera uma proibição geral (R-05 a R-14).
 
 Se quiser conferir o efeito, rode o ambiente local (`deploy/README.md`), escolha a lista e a questão
@@ -100,3 +101,25 @@ A pasta tem o nome da questão, que precisa estar cadastrada em `questions/`; ca
 solução em Python válido, de até 50 KB, e o nome do arquivo (sem `.py`) aparece no painel. O
 `ipc-rules validate` recusa uma referência inválida e mostra quantas há. Vão no mesmo PR da questão
 ou num PR à parte, com a mesma aprovação.
+
+## 6. Um período novo (S31-09, S31-10)
+
+A numeração das questões reinicia a cada período (P-07), e cada período tem a sua pasta em
+`rulesets/`. Para preparar o período seguinte, antes de cadastrar as questões dele:
+
+```bash
+cd backend
+uv run ipc-rules new-period 2027.1 --from 2026.2
+```
+
+O comando copia o `base.yaml` do período anterior, troca só o `period` e a `ruleset_version`
+(`2027.1.0`), cria `questions/` e `referencias/` vazias e valida a pasta nova; ele nunca
+sobrescreve um período que já existe. Depois:
+
+1. confira o `base.yaml` novo com o documento de permissões do período: se o documento mudou, a
+   mudança entra no mesmo PR, com a fonte de cada regra (`source`);
+2. cadastre as questões do período, como nos passos 1 a 5;
+3. para **ativar** o período, troque a única linha de `rulesets/ATIVO` (`2027.1`), num PR à parte.
+   O analisador, a CI e o `ipc-rules validate ../rulesets` passam a usar o período novo; nenhum
+   outro arquivo muda. A pasta do período anterior fica: os gabaritos dele continuam conferidos com
+   as questões dele (S31-11).

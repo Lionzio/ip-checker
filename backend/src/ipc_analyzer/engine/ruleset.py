@@ -590,6 +590,12 @@ def compile_ruleset(
     )
 
 
+#: Arquivo do ruleset de um período, em ``rulesets/<período>/``.
+BASE_FILE = "base.yaml"
+#: Na raiz de ``rulesets/``, a única linha com o período ativo (``2026.2``). Trocar de período é
+#: mudar só essa linha: o analisador, o ``ipc-rules`` e a CI apontam para a raiz (S31-09).
+ACTIVE_FILE = "ATIVO"
+PERIOD = re.compile(r"\d{4}\.[12]")
 #: Pasta das regras por questão, ao lado do ``base.yaml`` (R-01, P-07).
 QUESTIONS_DIR = "questions"
 #: Pasta das soluções de referência geradas por IA, uma subpasta por questão (S29-02).
@@ -609,16 +615,50 @@ class Reference:
     source: str
 
 
+def active_period(root: Path) -> str:
+    """O período ativo, lido do arquivo ``ATIVO`` da raiz ``rulesets/`` (S31-09)."""
+    file = root / ACTIVE_FILE
+    try:
+        period = file.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise RulesetError(f"não foi possível ler o período ativo {file}: {exc}") from exc
+    if not PERIOD.fullmatch(period):
+        raise RulesetError(
+            f"período ativo inválido em {file}: {period!r} (use o formato 2026.2, uma linha só)"
+        )
+    if not (root / period / BASE_FILE).is_file():
+        raise RulesetError(f"período ativo {period} sem {root / period / BASE_FILE}")
+    return period
+
+
+def resolve_ruleset_path(path: Path) -> Path:
+    """O ``base.yaml`` a carregar: aceita o próprio arquivo, a pasta de um período ou a raiz
+    ``rulesets/``, que tem o arquivo ``ATIVO`` e aponta para o período ativo (S31-09)."""
+    if not path.is_dir():
+        return path
+    if (path / ACTIVE_FILE).exists():
+        return path / active_period(path) / BASE_FILE
+    return path / BASE_FILE
+
+
 def load_ruleset(path: Path) -> CompiledRuleset:
     """Lê, valida e compila o ruleset e as questões da pasta ``questions/`` ao lado dele.
 
+    ``path`` é o ``base.yaml``, a pasta do período ou a raiz ``rulesets/`` (período ativo).
     Qualquer problema, num arquivo só que seja, vira ``RulesetError`` (fail-fast, FR-15).
     """
+    path = resolve_ruleset_path(path)
     raw, data = _read_yaml(path, "o ruleset")
     try:
         ruleset = Ruleset.model_validate(data)
     except ValidationError as exc:
         raise RulesetError(_describe(exc, path, "ruleset inválido")) from exc
+    folder_period = path.parent.name
+    if PERIOD.fullmatch(folder_period) and folder_period != ruleset.period:
+        raise RulesetError(
+            f"ruleset inválido: {path}\n  - period: {ruleset.period} numa pasta do período "
+            f"{folder_period}"
+        )
     digest = hashlib.sha256(raw)
     questions: list[CompiledQuestion] = []
     folder = path.parent / QUESTIONS_DIR
