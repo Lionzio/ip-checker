@@ -266,8 +266,12 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
   em até 7 dias enquanto a cota não volta). Ele pede a connection string do Supabase sem mostrá-la
   e salva só o arquivo criptografado em `~/Desktop/IP-Checker/backups/piloto`. Guarde uma cópia
   fora do computador.
-- **Deploy:** evite até a cota voltar. Se precisar (correção urgente), siga a ordem do pipeline à
-  mão: as migrações com `uv run python -m ipc_api.db.migrate up --login-role ipc_api` (a connection
+- **Release:** `scripts/release.sh NN --ci-local` (decisão do autor de 09/10/2026) aceita, no lugar
+  da CI do Actions, uma rodada completa e sem falha do `scripts/ci-local.sh --e2e` na mesma árvore
+  da ponta da `develop`; rode a CI local de novo na `develop` atualizada se o último PR não foi o
+  último commit testado. A `main` e a tag avançam, e o deploy é à mão, como abaixo.
+- **Deploy:** evite até a cota voltar. Se precisar (correção urgente ou release com `--ci-local`),
+  siga a ordem do pipeline à mão: as migrações com `uv run python -m ipc_api.db.migrate up --login-role ipc_api` (a connection
   string de admin em `IPC_DATABASE_ADMIN_URL`, digitada só no terminal), depois o Render
   (**Manual Deploy > Deploy latest commit**) e, com o `/ready` no commit novo, a Vercel (o deploy
   hook do projeto, em **Settings > Git > Deploy Hooks**, chamado com `curl -X POST`). Confira com

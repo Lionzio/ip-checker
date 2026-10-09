@@ -8,7 +8,9 @@
 #   scripts/ci-local.sh --e2e      # também o smoke e2e (compose separado + Playwright)
 #   scripts/ci-local.sh --rapido   # sem a segurança, a auditoria e o e2e (só para iterar)
 #
-# No fim, imprime um resumo em Markdown para colar no PR. O banco de teste, o compose do e2e e as
+# No fim, imprime um resumo em Markdown para colar no PR. Uma rodada completa (com --e2e), sem
+# nenhuma falha e sem mudanças não commitadas, fica registrada pela árvore do commit em
+# .git/ci-local-verde: é a evidência que o scripts/release.sh --ci-local aceita (P-19). O banco de teste, o compose do e2e e as
 # senhas sorteadas são descartados ao sair; o ambiente de desenvolvimento (deploy/.env, porta 8180)
 # não é tocado.
 set -uo pipefail
@@ -173,4 +175,11 @@ echo
 echo "| Passo | Resultado | Tempo |"
 echo "|---|---|---|"
 printf '%s\n' "${results[@]}"
+if [ "$failed" = 0 ] && $e2e && $security && [ -z "$dirty" ]; then
+  # A árvore, e não o commit: o merge squash cria outro commit com o mesmo conteúdo.
+  tree=$(git rev-parse 'HEAD^{tree}')
+  echo "$tree $(date '+%Y-%m-%dT%H:%M:%S%z') $sha" >> "$(git rev-parse --git-common-dir)/ci-local-verde"
+  echo
+  echo "Registrado em .git/ci-local-verde (árvore ${tree:0:12}): vale para o release.sh --ci-local."
+fi
 exit "$failed"

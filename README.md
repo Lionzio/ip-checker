@@ -173,7 +173,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 28 | Carga, eficácia e passagem de bastão: S28-01 k6 com login (local e no piloto) e recomendação do Starter; S28-02 adoção por lista e relatório de eficácia, sem a conta de verificação; S28-03 onboarding, CONTRIBUTING, SECURITY, runbook completo e backup semanal criptografado; S28-04 blueprint dividido, controles corrigidos, releases com tag, checksum das migrações, e2e sem pausa e CI mais leve | Concluída (rollback ensaiado e carga no piloto em 08/10/2026, S30-08 e S30-09) |
 | 29 | Indícios de uso de IA (ADR-08): S29-01 múltiplas violações (variedade, repetição, salto de lista, fora do documento) e marcadores de estilo; S29-02 semelhança com soluções de referência por questão; S29-03 painel com motivo, linhas e perguntas para a conversa; S29-04 política, `ipc-rules calibrate` e chave `IPC_AI_INDICATORS` | Concluída (desligada no piloto até a política, S31-01, e a calibração, S33-03) |
 | 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026 |
-| 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 com os 9 casos do mapeamento, auditoria de segurança bloqueante com Semgrep, troca de período sem código (`ipc-rules new-period`) e gabaritos com as questões do próprio período (ADR-10) | Planejada |
+| 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 com os 9 casos do mapeamento, auditoria de segurança bloqueante com Semgrep, troca de período sem código (`ipc-rules new-period`) e gabaritos com as questões do próprio período (ADR-10) | Engenharia concluída em 09/10/2026; decisões da coordenação e do NTI, Marco 2 e ensaio aguardando |
 | 32 | Comparação com o gabarito: na verificação (semelhança, construções e linhas do aluno), no plágio (A×gabarito, B×gabarito e o alerta de possível vazamento) e nos indícios, sem o gabarito sair do servidor (ADR-11) | Planejada |
 | 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Planejada (depende de dados externos) |
 | 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Planejada |
@@ -221,8 +221,10 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Repositório privado dos gabaritos e a chave só de leitura da CI (08/10/2026, ADR-10)
 - [x] Gabaritos das Listas 1 e 2 de 2026.2 (15 questões) no repositório privado e o job
       "Gabaritos" ligado (`GABARITOS_REPO`), com zero violação (08/10/2026)
-- [ ] Os gabaritos das Listas 3 a 6 de 2026.2 e dos períodos anteriores (S33-01) e as soluções
+- [x] Gabaritos da Lista 3 de 2026.2 (8 questões; 23 no total), com zero violação (09/10/2026)
+- [ ] Os gabaritos das Listas 4 a 6 de 2026.2 e dos períodos anteriores (S33-01) e as soluções
       anteriores a 2023 para calibrar os indícios (S33-02)
+- [ ] Formulário da pesquisa e planilha do critério 3, com os links em `docs/eficacia.md` (S31-06)
 - [ ] Ensaio do cadastro de questões reais de 2026.2 pela equipe (S31-13)
 - [ ] Ruleset e questões de 2027.1, com as referências por IA (S33-04 e S33-05)
 - [ ] Cliente OAuth do Google (opcional)
