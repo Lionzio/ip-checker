@@ -2,7 +2,7 @@
 
 **Título:** Painel de indícios explicáveis de uso de IA, calibrado em soluções humanas, com a conversa com o aluno como a única confirmação.
 
-**Status:** Aceito em 06/10/2026 (Q-21), com o sinal de múltiplas violações pedido pelo autor; implementado na Sprint 29 (07/10/2026), desligado no piloto até a coordenação aprovar a política e a calibração ficar na meta (S29-04, `docs/indicios-de-ia.md`).
+**Status:** Aceito em 06/10/2026 (Q-21), com o sinal de múltiplas violações pedido pelo autor; implementado na Sprint 29 (07/10/2026), desligado no piloto até a calibração ficar na meta (S33-03); a política (`docs/indicios-de-ia.md`) foi aprovada em 09/10/2026.
 
 **Contexto:** O uso frequente de proibições já é o principal indício que a equipe usa (P-13). Detectores genéricos de texto gerado por IA não servem para código de alunos de introdução: o código é curto, convergente (muitas soluções corretas são quase iguais) e parecido com o que um modelo escreve; esses detectores têm muitos falsos positivos, penalizam quem escreve bem ou estudou fora, e a própria OpenAI retirou o seu classificador em 2023 por baixa precisão. Não há marca d'água nas respostas dos assistentes que a equipe possa conferir.
 

@@ -52,6 +52,10 @@ def _const_kind(value: object) -> str:
     return type(value).__name__
 
 
+#: Funções cujos argumentos nomeados são chaves de dicionário: ``dict(a=1)`` e ``d.update(a=1)``.
+_FREE_KEYWORDS = frozenset({"dict", "update"})
+
+
 def _callee_name(func: ast.expr) -> str:
     if isinstance(func, ast.Name):
         return func.id
@@ -164,6 +168,10 @@ class _Extractor:
                     self.emit("kwarg:**", node)
                 elif visit.callee_is_student:
                     self.emit("call:user_kwarg", node)
+                elif visit.callee in _FREE_KEYWORDS:
+                    # Em dict(a=1) e d.update(a=1), o nome é uma chave do dicionário, não uma
+                    # opção da função: qualquer nome vale o mesmo fato (caso 7 do Marco 2).
+                    self.emit(f"kwarg:{visit.callee}.*", node)
                 else:
                     self.emit(f"kwarg:{visit.callee}.{node.arg}", node)
             case ast.Call(func=ast.Name(id=name)) if self.is_student(name, visit, node):
@@ -239,6 +247,10 @@ class _Extractor:
                 for_target = id(node.target)
             if isinstance(node, ast.For):
                 self._mark_for_header(node, visit)
+        elif isinstance(node, ast.comprehension) and not node.is_async:
+            # O for de uma compreensão conta como comando for para o zip() da R-37 (caso 5 do
+            # Marco 2, decisão do autor de 09/10/2026): [a + b for a, b in zip(x, y)].
+            self._mark_for_header(node, visit)
 
         children: list[_Visit] = []
         for child in ast.iter_child_nodes(node):
@@ -262,12 +274,13 @@ class _Extractor:
             )
         return children
 
-    def _mark_for_header(self, loop: ast.For, visit: _Visit) -> None:
+    def _mark_for_header(self, loop: ast.For | ast.comprehension, visit: _Visit) -> None:
         """Marca o iterável do ``for`` que libera vários nomes no alvo.
 
         ``zip()`` built-in (R-37 e R-64): o próprio ``zip`` e o alvo levam o número de sequências.
-        ``enumerate()`` built-in (R-63) e ``x.items()`` (R-65): o alvo leva o nome. Só o comando
-        ``for`` conta: numa compreensão ou dentro de outra chamada do cabeçalho, nada é marcado.
+        ``enumerate()`` built-in (R-63) e ``x.items()`` (R-65): o alvo leva o nome. Contam o comando
+        ``for`` e, desde 09/10/2026, o ``for`` de uma compreensão (caso 5 do Marco 2); dentro de
+        outra chamada do cabeçalho, nada é marcado.
         """
         match loop.iter:
             case ast.Call(func=ast.Name(id="zip" | "enumerate" as name) as func, args=args):

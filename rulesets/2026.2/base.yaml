@@ -10,7 +10,7 @@
 # A R-01 (regras por questão) fica em questions/, um arquivo por questão (RULES.md).
 
 schema_version: 2
-ruleset_version: "2026.2.4"
+ruleset_version: "2026.2.5"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -376,17 +376,19 @@ rules:
     name: "Tuplas"
     effect: allow
     since_list: 3
-    # Inclui a atribuição múltipla (a, b = 1, 2), que monta uma tupla (decisão Q-02, item d).
-    match: ["node:Tuple"]
-    message: "Tuplas (inclusive a atribuição múltipla a, b = ...) só são permitidas a partir da Lista {allowed_from_list}."
+    # Inclui a atribuição múltipla (a, b = 1, 2), que monta uma tupla (decisão Q-02, item d), e,
+    # desde 09/10/2026, vários nomes no alvo de qualquer for (for a, b in pares:), com qualquer
+    # iterável (casos 3 e 8 do Marco 2, decisão do autor). Na Lista 2, o alvo continua só com o zip
+    # da R-37.
+    match: ["node:Tuple", "target:for_unpack"]
+    message: "Tuplas (inclusive a atribuição múltipla a, b = ... e vários nomes no for) só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 3: Tuplas"
   - id: "R-41"
     name: "List comprehension"
     effect: allow
     since_list: 3
-    # A expressão geradora (x for x in v) entra aqui desde 09/10/2026: a Q-02 (e) foi revista pelo
-    # autor, provisoriamente, até a ratificação no Marco 2 (caso 10 de docs/marco-2.md). A dict
-    # comprehension continua fora (R-04).
+    # A expressão geradora (x for x in v) entra aqui desde 09/10/2026: a Q-02 (e) foi revista e
+    # ratificada pelo autor (caso 10 de docs/marco-2.md). A dict comprehension continua fora (R-04).
     match: ["node:ListComp", "node:GeneratorExp"]
     message: "List comprehension e expressão geradora só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 3: List comprehension"
@@ -519,11 +521,13 @@ rules:
     name: "Funções (def, parâmetros e return)"
     effect: allow
     since_list: 4
-    # Parâmetro com valor padrão e função dentro de função não constam (decisão Q-02, item f);
-    # argumento nomeado na chamada (f(x=1)) é um caso em aberto no mapeamento e segue na R-04.
-    # A recursão é uma chamada de função (call:user): permitida desde a Lista 4 e obrigatória na 6.
-    match: ["node:FunctionDef", "node:Return", "call:user"]
-    message: "Funções (def, return e a chamada de uma função sua) só são permitidas a partir da Lista {allowed_from_list}."
+    # Parâmetro com valor padrão e função dentro de função não constam (decisão Q-02, item f).
+    # Desde 09/10/2026 (decisões do autor, casos 1 e 2 do Marco 2): os "parâmetros" incluem o
+    # argumento nomeado na chamada de uma função do aluno (f(x=1)), e o if __name__ == "__main__":
+    # é permitido a partir desta lista. A recursão é uma chamada de função (call:user): permitida
+    # desde a Lista 4 e obrigatória na 6.
+    match: ["node:FunctionDef", "node:Return", "call:user", "call:user_kwarg", "builtin:__name__"]
+    message: "Funções (def, return, a chamada de uma função sua, inclusive com argumentos nomeados, e o if __name__ == \"__main__\") só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 4: Funções com def, parâmetros e return"
   - id: "R-60"
     name: "Retorno de múltiplos valores"
@@ -549,7 +553,9 @@ rules:
     name: "dict()"
     effect: allow
     since_list: 5
-    match: ["builtin:dict"]
+    # Os argumentos nomeados de dict() (dict(a=1)) fazem parte da Lista 5 (caso 7 do Marco 2,
+    # decisão do autor de 09/10/2026); o nome de cada um é uma chave livre, então o fato é dict.*.
+    match: ["builtin:dict", "kwarg:dict.*"]
     message: "dict() só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.3, Lista 5: dict()"
   - id: "R-63"
@@ -557,8 +563,10 @@ rules:
     effect: allow
     since_list: 5
     # O alvo "i, x" do for só é permitido quando o iterável do comando for é enumerate(...).
+    # O start= de enumerate() faz parte da Lista 5 (caso 7 do Marco 2, decisão do autor).
     match:
       - "builtin:enumerate"
+      - "kwarg:enumerate.start"
       - fact: "target:for_unpack"
         when:
           predicate: enumerate_in_for_header
@@ -599,7 +607,9 @@ rules:
     name: "get() e update()"
     effect: allow
     since_list: 5
-    match: ["method:get", "method:update"]
+    # Os argumentos nomeados de update() (d.update(a=1)) fazem parte da Lista 5 (caso 7 do
+    # Marco 2, decisão do autor de 09/10/2026); como em dict(), o fato é update.*.
+    match: ["method:get", "method:update", "kwarg:update.*"]
     message: "{construct} só é permitido a partir da Lista {allowed_from_list}."
     source: "Permissões, p.3, Lista 5: get(), update()"
   - id: "R-67"
@@ -629,9 +639,10 @@ requirements:
     source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
   - id: "R-02"
     list: 3
-    require_any: ["node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple"]
-    message: "A solução não usa o assunto da Lista 3: é obrigatório usar uma lista ou uma tupla (literal, list(), tuple() ou list comprehension). Sem isso, a questão é anulada."
-    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisão Q-05"
+    # Uma lista recebida de split() comprova o assunto (caso 6 do Marco 2, decisão do autor).
+    require_any: ["node:List", "node:Tuple", "node:ListComp", "builtin:list", "builtin:tuple", "method:split"]
+    message: "A solução não usa o assunto da Lista 3: é obrigatório usar uma lista ou uma tupla (literal, list(), tuple(), list comprehension ou a lista de um split()). Sem isso, a questão é anulada."
+    source: "Permissões, p.1, Introdução (é obrigatória a implementação do assunto de cada lista); decisões Q-05 e caso 6 do Marco 2"
   - id: "R-02"
     list: 4
     require_any: ["node:FunctionDef"]

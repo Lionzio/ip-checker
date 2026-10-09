@@ -1040,7 +1040,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | 19 | Falta o primeiro deploy com login | Resolvido em 08/10/2026 (run 37754224989) | S30-02 |
 | 20 | Falta o repositório privado dos gabaritos | Em parte: repositório e chave da CI criados hoje (H-02); faltam os gabaritos do Notion | S33-01 |
 | 21 | Falta o terceiro monitor do UptimeRobot | Resolvido em 08/10/2026 | S30-04 |
-| 22 | Os casos em aberto do mapeamento seguem para o Marco 2 | Planejado: pauta pronta hoje (H-03) | S31-05, S31-12 |
+| 22 | Os casos em aberto do mapeamento seguem para o Marco 2 | Resolvido: decididos pelo autor em 09/10/2026 (ruleset `2026.2.5`); Marco 2 em 19/10/2026 | S31-05, S31-12 |
 | 24 | Nenhuma questão real cadastrada ainda | Planejado: ensaio em 2026.2 e as questões de 2027.1, com a troca de período sem código | S31-09, S31-10, S31-13, S33-04 |
 | 25 | Falta o primeiro deploy | Resolvido em 07/10/2026 | S25-02 |
 | 28 | Faltam o ensaio do rollback e a carga no piloto | Resolvido em 08/10/2026 | S30-08, S30-09 |
@@ -1115,13 +1115,13 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 
 #### Sprint 32 — Comparação com o gabarito (incluída em 09/10/2026)
 
-**Objetivo:** a verificação mostra, junto com as violações, a semelhança do código do aluno com o gabarito oficial da questão; o plágio compara A e B também com o gabarito e alerta um possível vazamento; os indícios ganham o sinal do gabarito; nenhum texto do gabarito sai do servidor (ADR-11).
+**Objetivo:** a verificação mostra, junto com as violações, a semelhança do código do aluno com o gabarito oficial da questão; o plágio compara A e B também com o gabarito e alerta um possível vazamento; os indícios ganham o sinal do gabarito; nenhum texto do gabarito sai do servidor (ADR-11). Incluído em 09/10/2026 (Q-16): o feedback passa a ser sem IA por padrão, com o botão "Aprimorar com IA" usando uma cadeia de provedores gratuitos com fallback (S32-11 a S32-14).
 
 **Missão, persona e execução:** a missão é dar à equipe, na hora da correção, a distância entre o código do aluno e a solução oficial, e um sinal de que o gabarito pode estar circulando, sem guardar nada e sem expor o gabarito. A persona é quem corrige (monitor, monitor-chefe ou professor; US-37 e US-38), com o Tech Lead cuidando da confidencialidade (NFR-27). Execução: a credencial do autor primeiro (S32-01); depois, em PRs pequenos, o carregamento na API (S32-02), a comparação no analisador (S32-03), as rotas (S32-04, S32-05), as telas (S32-06, S32-07), o sinal dos indícios (S32-08), os testes de confidencialidade e desempenho (S32-09) e a documentação (S32-10). O carregamento entra numa release sem migração (P-18).
 
 **Premissas:** Q-24 decidida pelo autor (1B 2B 3A 4B 5A 6B); a troca de período sem código (S31-09, S31-10) já está pronta; o limiar do alerta (95%) e o tamanho mínimo são [PREMISSA] até a calibração (S33-02 e S33-03); a credencial só de leitura é criada pelo autor [A CONFIRMAR: a validade máxima que o GitHub aceita para ela, que define a troca no runbook].
 
-**Histórias:** US-37 e US-38 (seção 4); FR-32; NFR-27 (revisto) e NFR-28.
+**Histórias:** US-37 e US-38 (seção 4); FR-32; NFR-27 (revisto) e NFR-28; US-32, FR-30 e NFR-26 para o "Aprimorar com IA" (Q-16).
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
@@ -1135,6 +1135,10 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | S32-08 | US-34 | Engenharia | Indícios de IA: a semelhança com o gabarito como sinal novo, nas faixas de referência, só com `IPC_AI_INDICATORS` | `engine/indicators.py`, painel de indícios | Autor | 1 | S32-03 | Testes do sinal; desligado no piloto (S31-01) |
 | S32-09 | US-37, US-38 | Engenharia | Confidencialidade e desempenho: testes canário (um gabarito sintético com marcador nunca aparece nas respostas, nos logs, na telemetria nem no disco), a imagem do piloto sem gabaritos, isolamento do analisador inalterado e a carga com a comparação (NFR-28) | `tests/security/`, `tests/test_log_contract.py`, `deploy/load/` | Autor | 1 | S32-04, S32-05 | Todos os canários com 0 ocorrência; P95 ≤ 200 ms local; suíte do piloto verde |
 | S32-10 | US-37, US-38 | Engenharia | Documentação: guia da equipe (como ler a comparação e o alerta), runbook (credencial, troca, "gabaritos indisponíveis"), ADR-11 como Aceito, CHANGELOG e README | `docs/`, `README.md`, `CHANGELOG.md` | Autor | 0,5 | S32-02 a S32-09 | Revisados no PR |
+| S32-11 | US-32 | Externa | Criar as contas gratuitas e as chaves dos provedores da cadeia do "Aprimorar com IA" (Q-16): pelo menos Gemini e Groq, e outros gratuitos que o autor escolher; gravar no Render só pelos nomes (`IPC_LLM_CHAIN` e `IPC_LLM_<PROVEDOR>_*`, `sync: false`), com o passo a passo do runbook | Painéis dos provedores e do Render; `docs/runbook.md` | Autor | — | — | Desbloqueio: o diagnóstico do feedback mostra os provedores configurados (só os nomes), e um "Aprimorar com IA" no piloto responde |
+| S32-12 | US-32 | Engenharia | Feedback sem IA como padrão e o "Aprimorar com IA" no backend (Q-16, A e C): o **Gerar feedback** devolve sempre a versão determinística (`compose.template_text`), sem chamar IA; uma rota nova recebe a versão determinística e o mesmo contexto já enviado hoje (código sem comentários nem docstrings, anotação e resultado, nome trocado por `[ALUNO]`, dados pessoais mascarados) e pede à IA para detalhar, expandir, exemplificar e melhorar, mantendo a abertura e a frase obrigatória. Cadeia de N provedores (`IPC_LLM_CHAIN`, em ordem), com fallback por erro, prazo, cota esgotada (429) ou resposta reprovada na validação (NFR-26), e uma pausa por provedor depois de 429; tudo falhando, devolve a versão determinística com o aviso. A cota diária por conta e o teto do servidor valem para o aprimoramento | `backend/src/ipc_api/feedback/` (`providers.py`, `service.py`), `routes/feedback.py`, `settings.py`, `render.yaml`, OpenAPI | Autor | 2 | — | Testes com provedores falsos: ordem da cadeia, fallback em cada tipo de falha, pausa depois de 429, partes fixas preservadas, nada inventado sobre violações, chave nunca em log nem em resposta |
+| S32-13 | US-32 | Engenharia | Tela do feedback: o botão **Aprimorar com IA** ao lado do texto determinístico, com a espera, o aviso quando nenhuma IA responde, o rótulo "aprimorado por IA" e **Desfazer** (volta ao texto determinístico); continua editável e com Copiar | `frontend/src/` (feedback) | Autor | 1 | S32-12 | Vitest e e2e com o provedor falso; axe sem violações graves; cabe em 375 px |
+| S32-14 | US-32 | Engenharia | Privacidade e documentação do aprimoramento: o aviso de privacidade diz que o "Aprimorar com IA" envia o código (sem nome nem dados pessoais) a provedores gratuitos que podem usá-lo para treino; FR-30 e ADR-06 revistos; runbook (chaves, cotas, troca de provedor); guia da equipe | `frontend/src/` (aviso), `docs/blueprint.md`, `docs/adr/ADR-06-*.md`, `docs/runbook.md`, `docs/guia-da-equipe.md` | Autor | 0,5 | S32-12 | Revisados no PR; o aviso aparece antes do primeiro aprimoramento |
 
 **ADRs:** ADR-11 (Proposto → Aceito no fim da sprint); ADR-10 e NFR-27 revistos pela ADR-11.
 
@@ -1144,6 +1148,8 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 3. No plágio, A×gabarito e B×gabarito aparecem com a questão escolhida; o alerta aparece com os três acima do limiar e os códigos acima do tamanho mínimo, e não aparece nos pares independentes do corpus de `tests/similarity` (0 alerta falso).
 4. Sem a credencial ou com o download falho, a verificação e o plágio funcionam como antes, com o aviso, e o `/ready` responde 200.
 5. P95 do `/validate` com a comparação ≤ 200 ms (NFR-28), medido localmente e, com a cota do Actions de volta, pelo "Carga no piloto".
+6. O **Gerar feedback** devolve o texto determinístico sem chamar nenhuma IA; o **Aprimorar com IA** passa pela cadeia na ordem configurada e, com o primeiro provedor fora do ar ou sem cota, responde pelo seguinte; com todos falhando, volta o texto determinístico com o aviso (S32-12, S32-13).
+7. O texto aprimorado mantém a abertura e a frase obrigatória, não cita violação que o motor não achou (NFR-26) e não leva o nome do aluno ao provedor; o aviso de privacidade fala do envio a provedores gratuitos (S32-14).
 
 **Testes (além da base de 7.12.1):**
 
@@ -1156,11 +1162,13 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | Telas | Vitest e Playwright | `npm test`, `npm run e2e` | PR | Verde; axe sem violações graves; 375 px |
 | Desempenho | pytest e k6 | orçamento da similaridade; "Carga no piloto" | PR; à mão | NFR-28 |
 | Gabaritos reais | harness | `tests/official_answers` | PR | Zero violação, como antes |
+| Cadeia do "Aprimorar com IA" | pytest com provedores falsos | `tests/feedback/` | PR | Ordem, fallback por erro, prazo, 429 e validação; partes fixas preservadas; nenhuma chave em log |
+| Feedback na tela | Vitest e Playwright (provedor falso) | `npm test`, `npm run e2e` | PR | Determinístico por padrão; Aprimorar e Desfazer; axe; 375 px |
 | Regressão | `scripts/ci-local.sh --e2e` (P-19) | — | PR | Verde |
 
 **Definition of Done:** a da seção 8, mais: nenhum texto do gabarito fora do servidor (critério 2); a credencial só no Render e no runbook pelo nome; o ADR-11 como Aceito.
 
-**Riscos e bloqueios:** a credencial depende do autor (S32-01) e vence (troca no runbook); o limiar do alerta é premissa até a S33-02 e a S33-03; a comparação aumenta o tempo da verificação (NFR-28); sem a cota do Actions até 01/11 (P-19), a evidência vem da CI local.
+**Riscos e bloqueios:** os provedores gratuitos mudam limites e termos sem aviso e podem usar os dados para treino (risco aceito pelo autor, Q-16), e as chaves dependem do autor (S32-11); a credencial depende do autor (S32-01) e vence (troca no runbook); o limiar do alerta é premissa até a S33-02 e a S33-03; a comparação aumenta o tempo da verificação (NFR-28); sem a cota do Actions até 01/11 (P-19), a evidência vem da CI local.
 
 
 #### Sprint 33 — Dados: gabaritos, questões de 2027.1 e calibração dos indícios
@@ -1330,6 +1338,8 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | B. Aprovar com mudanças no texto aos alunos ou em quem gera as referências | Ajusta à política da disciplina | Uma rodada a mais de revisão | S33-06 depois da revisão |
 | C. Não ligar no piloto | Nenhum risco de leitura como prova | Perde os indícios em 2027.1 | S33-05 e S33-06 saem do plano; o código fica desligado |
 
+**Decidido (09/10/2026):** opção A, a política aprovada como está (Q-21).
+
 #### 7.13.2 Provedor de IA do feedback (Q-16) — Autor e Coordenação
 
 | Opção | Prós | Contras | Impacto |
@@ -1337,6 +1347,11 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | A. Sem IA (como hoje) | Nenhum dado sai do servidor; custo zero | Texto menos personalizado | Nenhuma task |
 | B. Plano pago com termos de não retenção | Texto melhor, dentro da política proposta na Q-16 | Custo mensal; transferência internacional (LGPD, art. 33) a avaliar pela coordenação | S31-02 grava `IPC_LLM_*`; aviso de privacidade revisto |
 | C. Plano gratuito | Sem custo | Pode usar os dados para treino; contraria a proposta da Q-16 | Não recomendado pela Q-16 |
+
+**Decidido (09/10/2026, autor):** A e C combinadas. O feedback sem IA é o padrão; o botão "Aprimorar com IA"
+manda a versão determinística a provedores gratuitos (Gemini, Groq e outros), em cadeia com fallback,
+para detalhar, expandir e exemplificar. Risco aceito pelo autor e levado ao Marco 2 (Q-16). A
+implementação entra na Sprint 32 (S32-11 a S32-14).
 
 #### 7.13.3 Remetente dos e-mails (Q-17) — Autor e NTI
 
@@ -1346,12 +1361,16 @@ Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada
 | B. Brevo com remetente `@cin.ufpe.br` | Remetente institucional | Exige SPF, DKIM e DMARC com o NTI | S31-07 com o NTI; `IPC_EMAIL_FROM` no Render |
 | C. SMTP institucional | Sem terceiro | O plano gratuito do Render bloqueia SMTP de saída (25, 465 e 587) | Só com o Starter ou na Fase 2 |
 
+**Decidido (09/10/2026, autor):** opção A.
+
 #### 7.13.4 Governança das regras (Q-22) — Autor
 
 | Opção | Prós | Contras | Impacto |
 |---|---|---|---|
 | A. Manter o processo atual (merge confere a aprovação) | Simples; funciona com poucos monitores | Depende de quem faz o merge; quem tem escrita vê os workflows com segredos | Nenhuma task |
 | B. Monitores com papel Read, PR por fork e um check de aprovação no CI | Fork não recebe os segredos; aprovação conferida por máquina | Mais atrito para monitores; a Q-22 pede confirmar que o GitHub permite fork de repositório pessoal privado com papel Read | Uma task de implementação depois da decisão (cerca de 3 SP) |
+
+**Decidido (09/10/2026, autor):** opção A.
 
 #### 7.13.5 Servidor do CIn (Q-12) — Suporte de TI do CIn
 

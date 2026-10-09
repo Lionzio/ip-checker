@@ -5,6 +5,9 @@ questão dizem o que o **enunciado** permite ou proíbe explicitamente, além da
 lista. Quando a pessoa escolhe a questão na página, essas regras prevalecem sobre as da lista,
 inclusive sobre as proibições gerais (C-02).
 
+Cadastram questões e gabaritos: monitores, monitores-chefes, professores e o desenvolvedor
+(decisão do autor de 09/10/2026). Aprova um monitor-chefe ou professor, nunca quem cadastrou (passo 4).
+
 > Só cadastre o que está escrito no enunciado. Se o enunciado não diz nada sobre uma construção,
 > valem as permissões da lista: não precisa de cadastro.
 

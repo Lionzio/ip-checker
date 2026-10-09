@@ -200,8 +200,9 @@ def zip_marks(source: str) -> list[tuple[str, int, int | None]]:
             "for a, b in zip(zip('a', 'b'), 'c'):\n    print(a)\n",
             [("target:for_unpack", 5, 2), ("builtin:zip", 13, 2), ("builtin:zip", 17, None)],
         ),
-        # Numa compreensão não é o comando for, e o alvo é um node:Tuple comum.
-        ("x = [a for a, b in zip('ab', 'cd')]\n", [("builtin:zip", 20, None)]),
+        # O for de uma compreensão conta como comando for (caso 5 do Marco 2); o alvo é um
+        # node:Tuple comum.
+        ("x = [a for a, b in zip('ab', 'cd')]\n", [("builtin:zip", 20, 2)]),
         # Um zip do aluno não é o built-in: o alvo fica sem marca.
         ("zip = 3\nfor a, b in zip:\n    print(a)\n", [("target:for_unpack", 5, None)]),
         ("for a, b in 'ab':\n    print(a)\n", [("target:for_unpack", 5, None)]),

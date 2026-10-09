@@ -41,7 +41,7 @@ from ipc_analyzer.engine.predicates import REGISTRY
 # ---------------------------------------------------------------------------
 
 # Nomes seguem as regras de identificador do Python, inclusive com acentos (ex.: method:média).
-_FACT_RE = re.compile(r"(?P<kind>[a-z]+):(?P<name>\*\*|[^\W\d]\w*(?:\.[^\W\d]\w*)?)")
+_FACT_RE = re.compile(r"(?P<kind>[a-z]+):(?P<name>\*\*|[^\W\d]\w*(?:\.(?:[^\W\d]\w*|\*))?)")
 
 # Classes abstratas do módulo ast: nunca aparecem como nó concreto na árvore.
 _ABSTRACT_NODES = frozenset(

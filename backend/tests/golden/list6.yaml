@@ -113,7 +113,7 @@
   code: |
     f = lambda n: f(n - 1) if n > 0 else 0
     print(f(3))
-  # Só funções com def entram no grafo de chamadas (C-03): caso a observar no mapeamento.
+  # Só funções com def entram no grafo de chamadas (C-03); o caso 9 do Marco 2 manteve assim.
   expect: [R-68 EXIGENCIA 1]
 
 - id: R-68-not-required-in-L4

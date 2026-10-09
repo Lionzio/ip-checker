@@ -8,6 +8,27 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 31.1 — Casos do Marco 2 e decisões do autor
+
+Release extra entre as Sprints 31 e 32, pedida pelo autor em 09/10/2026, com a CI local como evidência
+e o deploy à mão (P-19).
+
+- **09/10/2026, ruleset `2026.2.5`: os casos do Marco 2, decididos pelo autor.** Passam a ser
+  permitidos: o `if __name__ == "__main__":` e o argumento nomeado numa função do aluno, a partir
+  da Lista 4 (R-59); vários nomes no `for` com qualquer iterável, a partir da Lista 3 (R-40); o
+  `zip()` de 2 ou mais sequências no `for` de uma compreensão (R-37); e, na Lista 5, os argumentos
+  nomeados de `dict()` e `update()` e o `start=` de `enumerate()` (R-62, R-66 e R-63). A lista de um
+  `split()` comprova o assunto da Lista 3 (R-02). A expressão geradora foi ratificada; a recursão por
+  `lambda` continua sem contar. No motor: o fato `kwarg:<função>.*` para os argumentos nomeados de
+  `dict()` e `update()`, que são chaves livres, e o predicado do `zip` também no `for` das
+  compreensões. Casos golden: 303.
+- **09/10/2026, decisões do autor:** política dos indícios de IA aprovada (Q-21); Q-16 com o
+  feedback sem IA como padrão e um "Aprimorar com IA" futuro, com provedores gratuitos em cadeia;
+  Q-17 e Q-22 mantêm como está; questões e gabaritos cadastrados por monitores, monitores-chefes,
+  professores e o desenvolvedor; Marco 2 em 19/10/2026.
+- **Plano:** o "Aprimorar com IA" (Q-16) entra na Sprint 32 (S32-11 a S32-14). `scripts/release.sh`
+  aceita releases extras (`31.1`).
+
 ## Sprint 31 — Auditoria bloqueante e período sem código
 
 A Sprint 31 (S31-01 a S31-13; US-11, US-13, US-15, US-23, US-32, US-34 e US-36) fechou a engenharia em

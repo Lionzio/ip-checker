@@ -77,14 +77,15 @@
         a += 1
   expect: [R-40 FORA_DA_LISTA 1, R-40 FORA_DA_LISTA 1]
 
-- id: R-37-unpack-list-of-tuples-L3
-  rule: R-37
+- id: R-40-unpack-list-of-tuples-L3
+  rule: R-40
   list: 3
   code: |
     pares = [(1, 2), (3, 4)]
     for a, b in pares:
         print(a, b)
-  expect: [R-37 NAO_CONSTA 2]
+  # Vários nomes no for valem com qualquer iterável a partir da Lista 3 (caso 3 do Marco 2).
+  expect: []
 
 - id: R-41-comprehension-L3
   rule: R-41
@@ -604,3 +605,40 @@
     for i in range(1):
         t = tuple("ab")
   expect: [R-58 FORA_DA_LISTA 2]
+
+- id: R-37-zip-in-list-comprehension-L3
+  rule: R-37
+  list: 3
+  code: |
+    x = [1, 2]
+    y = [3, 4]
+    print([a + b for a, b in zip(x, y)])
+  # O for da compreensão conta como comando for para o zip() (caso 5 do Marco 2).
+  expect: []
+
+- id: R-37-zip-one-sequence-in-list-comprehension-L3
+  rule: R-37
+  list: 3
+  code: |
+    x = [1, 2]
+    print([a for a in zip(x)])
+  # A condição de 2 ou mais sequências continua valendo na compreensão.
+  expect: [R-37 NAO_CONSTA 2]
+
+- id: R-41-zip-in-generator-expression-L4
+  rule: R-37
+  list: 4
+  code: |
+    def produto(x, y):
+        return sum(a * b for a, b in zip(x, y))
+    print(produto([1], [2]))
+  expect: []
+
+- id: R-59-main-guard-before-list-L3
+  rule: R-59
+  list: 3
+  code: |
+    v = [1]
+    if __name__ == "__main__":
+        print(v)
+  expect: [R-59 FORA_DA_LISTA 2]
