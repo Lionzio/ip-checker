@@ -56,6 +56,8 @@ monitoria, com só estas colunas, sem nome nem matrícula de aluno:
 | Lista | Tipo (proibição, plágio ou uso de IA) | Quantidade | Observação (opcional, sem dados de aluno) |
 |---|---|---|---|
 
+**Planilha (S31-06):** [aguardando: a equipe cria a planilha e registra o link aqui].
+
 Como contexto, a telemetria mostra as regras mais apontadas por lista (`v_top_rules_by_list`) e o
 volume por semana (`v_weekly_volume`).
 
@@ -78,6 +80,8 @@ enviada à equipe depois da última lista do período. Perguntas:
 
 A meta é cumprida se pelo menos 70% de quem usou (pergunta 3, sem "não usei") respondeu "muito útil"
 ou "útil".
+
+**Formulário (S31-06):** [aguardando: a equipe cria o formulário anônimo e registra o link aqui].
 
 ## 5. Operação
 

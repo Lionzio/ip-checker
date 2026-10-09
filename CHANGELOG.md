@@ -8,23 +8,47 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
-## Depois da Sprint 30 (não publicado no piloto)
+## Sprint 31 — Auditoria bloqueante e período sem código
 
-Mudanças na `develop` que chegam ao piloto na próxima release.
+A Sprint 31 (S31-01 a S31-13; US-11, US-13, US-15, US-23, US-32, US-34 e US-36) fechou a engenharia em
+09/10/2026; as decisões e tarefas externas ficam "aguardando", com a entrada pendente, como o plano
+prevê. A missão é a auditoria bloqueante e o período pronto para trocar sem mudar código; a persona
+é o Tech Lead e monitor-mantenedor. Com a cota do GitHub Actions esgotada até 01/11/2026 (P-19), a
+evidência de cada PR é o `scripts/ci-local.sh --e2e`, com o resumo no PR. Decisões de implementação:
 
-- **09/10/2026, auditoria bloqueante e Semgrep (S31-03 e S31-04; P-20).** Novo job "Auditoria" no
-  `ci.yml`, em todo PR: gitleaks no histórico, Semgrep com as regras próprias de
-  `.semgrep/ip-checker.yml` (e os testes delas), `pip-audit` e `npm audit`; o `ci-local.sh` roda os
-  mesmos passos. O `audit.yml` semanal perde o `continue-on-error`. Primeira triagem: 3 falsos
-  positivos do gitleaks no `.gitleaksignore`; na imagem do piloto, a base `python:3.13-slim` vai
-  para o digest de 06/10/2026 (OpenSSL e PCRE2 corrigidos, Python 3.13.16) e o `pip`, que o runtime
-  não usa, sai das duas imagens. O Trivy ficou sem achados altos ou críticos corrigíveis.
-- **09/10/2026, período ativo num lugar só (S31-09 a S31-11).** O arquivo `rulesets/ATIVO` tem a
-  única linha com o período ativo (`2026.2`); o analisador (`IPC_RULESET_PATH=/opt/ip-checker/rulesets`
-  nas duas imagens e no supervisord), a CI, o `ci-local.sh` e o `ipc-rules validate ../rulesets`
-  leem dali, e um teste falha se a configuração repetir o período. `ipc-rules new-period 2027.1
-  --from 2026.2` cria a pasta do período novo, validada, sem questões e sem ativá-lo. O harness dos
-  gabaritos usa o ruleset do período de cada gabarito, quando `rulesets/<período>/` existe.
+- **S31-09 a S31-11 (#62):** o arquivo `rulesets/ATIVO` tem a única linha com o período ativo
+  (`2026.2`); o analisador (`IPC_RULESET_PATH=/opt/ip-checker/rulesets` nas duas imagens e no
+  supervisord), a CI, o `ci-local.sh` e o `ipc-rules validate ../rulesets` leem dali, e um teste
+  falha se a configuração repetir o período. O nome da variável não mudou, para não mexer no
+  ambiente do analisador nem no `render.yaml`. `ipc-rules new-period 2027.1 --from 2026.2` cria a
+  pasta do período novo, validada (296 de 296 casos golden), sem questões e sem ativá-lo; o
+  carregador recusa um `base.yaml` cujo `period` difere do nome da pasta. O harness dos gabaritos
+  usa o ruleset do período de cada gabarito, quando `rulesets/<período>/` existe.
+- **S31-03 e S31-04 (P-20):** novo job "Auditoria" no `ci.yml`, em todo PR: gitleaks no histórico,
+  Semgrep com as regras próprias de `.semgrep/ip-checker.yml` (9 regras, com casos de teste),
+  `pip-audit` e `npm audit`; o `ci-local.sh` roda os mesmos passos, e o `audit.yml` semanal perde o
+  `continue-on-error`. Primeira triagem: 3 falsos positivos do gitleaks no `.gitleaksignore`; na
+  imagem do piloto, a base `python:3.13-slim` vai para o digest de 06/10/2026 (OpenSSL e PCRE2
+  corrigidos, Python 3.13.16) e o `pip`, que o runtime não usa e embutia bibliotecas vulneráveis,
+  sai das duas imagens; o Trivy ficou sem achados altos ou críticos corrigíveis. Um commit com token
+  falso, uma dependência vulnerável e um `eval` sobre o corpo da requisição falham nos mesmos
+  comandos (provado nesta máquina; a primeira rodada no Actions fica para a volta da cota).
+
+Aguardando (a sprint não espera por elas, critério de aceite 1):
+
+| Task | Entrada pendente | Com quem |
+|---|---|---|
+| S31-01 | Aprovação da política dos indícios de IA (`docs/indicios-de-ia.md`), item 3 da pauta do Marco 2; os indícios seguem desligados no piloto | Coordenação |
+| S31-02 | Q-16, provedor de IA do feedback (7.13.2); o feedback segue por modelos de texto, sem enviar nada a terceiros | Autor e coordenação |
+| S31-05 | Data do Marco 2 e revisão do guia da equipe | Autor |
+| S31-06 | Os links do formulário da pesquisa e da planilha do critério 3, em `docs/eficacia.md` | Equipe |
+| S31-07 | Q-17, remetente definitivo dos e-mails e SPF, DKIM e DMARC (7.13.3); segue o remetente atual pelo Brevo | Autor e NTI |
+| S31-08 | Q-22, governança das regras (7.13.4); vale a aprovação por processo do `RULES.md` | Autor |
+| S31-12 | O Marco 2: os casos 1 a 9 do mapeamento decididos ou adiados e o caso 10 (expressão geradora) ratificado ou revertido | Autor, monitores-chefes e professores |
+| S31-13 | O ensaio do cadastro de questões reais de 2026.2 pelo `RULES.md` | Equipe e professor |
+
+Também nesta release, feito entre as Sprints 30 e 31:
+
 - **09/10/2026, ruleset `2026.2.4`: expressão geradora a partir da Lista 3.** A R-41 (*list
   comprehension*) passa a casar também `node:GeneratorExp`, por decisão provisória do autor
   (revisão da Q-02 e), a ratificar no Marco 2 (caso 10 de `docs/marco-2.md`). A *dict
