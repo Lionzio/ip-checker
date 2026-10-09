@@ -7,6 +7,8 @@ lê e valida estes arquivos: mudar uma regra nunca exige mudar código (ADR-02, 
 
 ```
 rulesets/
+├── ATIVO                 uma linha só, o período ativo (ex.: 2026.2): trocar de período é mudar
+│                         essa linha (S31-09); o analisador, a CI e o ipc-rules leem daqui
 └── <período>/            ex.: 2026.2 — a numeração das questões reinicia a cada período (P-07)
     ├── base.yaml         regras das listas, traduzidas do documento de permissões
     ├── questions/        regras de cada questão (R-01), uma por arquivo: L<lista>-Q<número>.yaml
@@ -71,9 +73,13 @@ professor. O passo a passo, com um exemplo comentado, está em [`RULES.md`](../R
 
 ```bash
 cd backend
-uv run ipc-rules validate ../rulesets/2026.2 --golden tests/golden
+uv run ipc-rules validate ../rulesets --golden tests/golden
 uv run pytest
 ```
+
+`../rulesets` valida o período ativo; a pasta de um período (`../rulesets/2027.1`) valida aquele
+período. Um período novo nasce com `uv run ipc-rules new-period 2027.1 --from 2026.2` (`RULES.md`,
+passo 6).
 
 O `ipc-rules validate` carrega o `base.yaml` e as questões exatamente como o analisador, mostra o
 caminho de cada erro e avisa das questões que liberam proibições gerais (só com professor, C-02).

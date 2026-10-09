@@ -11,8 +11,10 @@ from ipc_analyzer.runtime.limits import MIB, ResourceLimits
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.runtime.sandbox import SandboxMode
 
-#: Ruleset do repositório, usado quando ``IPC_RULESET_PATH`` não é definida (desenvolvimento).
-_REPOSITORY_RULESET = Path(__file__).resolve().parents[4] / "rulesets" / "2026.2" / "base.yaml"
+#: Raiz ``rulesets/`` do repositório, usada quando ``IPC_RULESET_PATH`` não é definida
+#: (desenvolvimento). ``IPC_RULESET_PATH`` aceita a raiz (vale o período do arquivo ``ATIVO``,
+#: S31-09), a pasta de um período ou o ``base.yaml`` dela.
+_REPOSITORY_RULESETS = Path(__file__).resolve().parents[4] / "rulesets"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +29,7 @@ class AnalyzerSettings:
         env = os.environ if environ is None else environ
         defaults = PoolConfig()
         return cls(
-            ruleset_path=Path(env.get("IPC_RULESET_PATH", str(_REPOSITORY_RULESET))),
+            ruleset_path=Path(env.get("IPC_RULESET_PATH", str(_REPOSITORY_RULESETS))),
             pool=PoolConfig(
                 workers=int(env.get("IPC_WORKERS", defaults.workers)),
                 max_tasks=int(env.get("IPC_MAX_TASKS", defaults.max_tasks)),
