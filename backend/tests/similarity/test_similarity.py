@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -137,14 +140,30 @@ def _big_program(size: int = 50_000) -> str:
     return "\n".join(lines) + "\n"
 
 
+@contextmanager
+def _without_coverage() -> Iterator[None]:
+    """Pausa a medição de cobertura: a instrumentação deixa o código mais lento (no Windows, a
+    comparação de 50 KB passava de 2 s só por ela), e o NFR-25 vale para o worker sem ela."""
+    coverage = sys.modules.get("coverage")
+    current = coverage.Coverage.current() if coverage is not None else None
+    if current is not None:
+        current.stop()
+    try:
+        yield
+    finally:
+        if current is not None:
+            current.start()
+
+
 def test_two_50_kb_codes_are_compared_within_the_budget() -> None:
     big = _big_program()
     other = big.replace("valor_", "saida_").replace("dado_", "info_")
     assert 45_000 < len(big.encode()) == len(other.encode()) <= 51_200
 
-    start = time.perf_counter()
-    result = compare(big, other)
-    elapsed = time.perf_counter() - start
+    with _without_coverage():
+        start = time.perf_counter()
+        result = compare(big, other)
+        elapsed = time.perf_counter() - start
 
     assert result.percent == 100.0
     # NFR-25: dois códigos de 50 KB em até 2 s no worker.
