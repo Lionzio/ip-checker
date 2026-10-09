@@ -75,7 +75,7 @@ chamado ou passado a uma função do aluno.
 | C-01 | `async for`, `async def`, `async with` e `await` não constam → R-04. |
 | C-02 | Override da questão (R-01) acima de tudo, inclusive das proibições gerais (exige professor). |
 | C-03 | R-68 aceita recursão direta e mútua. |
-| Q-02 | (a) `format` função e método → R-28; (b) `not in` → R-30, `is not` → R-17; (c) `sep=`, `key=`, `reverse=` → R-04; (d) `a, b = …` antes da L3 → R-04, exceto alvo de `for` com `zip`; (e) expressão geradora e dict comprehension → R-04; (f) parâmetro com valor padrão e função aninhada → R-04; (g) `else` em laço → R-04; (h) `*` e `**` em chamadas → R-10. |
+| Q-02 | (a) `format` função e método → R-28; (b) `not in` → R-30, `is not` → R-17; (c) `sep=`, `key=`, `reverse=` → R-04; (d) `a, b = …` antes da L3 → R-04, exceto alvo de `for` com `zip`; (e) dict comprehension → R-04; expressão geradora → R-41 a partir da L3 desde 09/10/2026 (antes, R-04; revisão provisória, a ratificar no Marco 2, caso 10); (f) parâmetro com valor padrão e função aninhada → R-04; (g) `else` em laço → R-04; (h) `*` e `**` em chamadas → R-10. |
 | Q-03 | R-14 = só a instrução `global`. |
 | Q-04 | Condição do `zip` (R-37) vale nas Listas 2–4; na L5 em diante é livre (R-64). |
 | Q-05 | Assunto obrigatório (R-02): L1 `if`/ternário; L2 `for`/`while`; L3 lista ou tupla; L4 `def`; L5 dicionário; L6 recursão. |
@@ -127,7 +127,7 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 | R-35 | `builtin:range` | No ruleset |
 | R-36 | `cmp:In` | No ruleset |
 | R-37 | `builtin:zip` + `target:for_unpack`, predicado `zip_in_for_header` (`zip()` built-in como o iterável do comando `for`, com ≥ 2 argumentos), Listas 2–4 | No ruleset (Sprint 20) |
-| R-38–R-43 | `node:List` (R-38 e R-39: matriz = lista de listas); `node:Tuple` (R-40, inclusive a atribuição múltipla); `node:ListComp`; `node:Subscript`; `node:Slice` | No ruleset (Sprint 22) |
+| R-38–R-43 | `node:List` (R-38 e R-39: matriz = lista de listas); `node:Tuple` (R-40, inclusive a atribuição múltipla); `node:ListComp` e, desde 09/10/2026, `node:GeneratorExp` (R-41; Q-02 e revista); `node:Subscript`; `node:Slice` | No ruleset (Sprint 22; expressão geradora no `2026.2.4`) |
 | R-44 | `cmp:In` | No ruleset (Sprint 22) |
 | R-45–R-49 | `builtin:list`; `method:append`, `insert`, `pop`, `remove`; `node:Delete`, `node:Del`; `method:sort`, `builtin:sorted`; `method:reverse`, `builtin:reversed` | No ruleset (Sprint 22) |
 | R-50–R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` | No ruleset (Sprint 22) |

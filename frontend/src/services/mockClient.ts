@@ -29,7 +29,7 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.3";
+const RULESET_VERSION = "2026.2.4";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },

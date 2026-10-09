@@ -111,6 +111,7 @@
         print(q)
   expect: [R-41 FORA_DA_LISTA 2]
 
+# Expressão geradora: na R-41 desde 09/10/2026 (Q-02 e revista, a ratificar no Marco 2, caso 10).
 - id: R-41-generator-expression-L3
   rule: R-41
   list: 3
@@ -118,7 +119,45 @@
     total = sum(x for x in range(5))
     lista = [total]
     print(lista)
-  expect: [R-04 NAO_CONSTA 1]
+  expect: []
+
+- id: R-41-generator-expression-in-join-L3
+  rule: R-41
+  list: 3
+  code: |
+    v = [1, 0, 1]
+    print(" ".join(str(n) for n in v))
+  expect: []
+
+- id: R-41-generator-expression-before-list-L2
+  rule: R-41
+  list: 2
+  code: |
+    for i in range(2):
+        g = (x for x in range(3))
+        print(i)
+  expect: [R-41 FORA_DA_LISTA 2]
+
+- id: R-41-generator-expression-L6
+  rule: R-41
+  list: 6
+  code: |
+    def soma(n):
+        if n == 0:
+            return 0
+        return n + soma(n - 1)
+    print(soma(3), sum(x * x for x in range(3)))
+  expect: []
+
+- id: R-41-dict-comprehension-stays-out-L3
+  rule: R-41
+  list: 3
+  code: |
+    v = [1, 2]
+    d = {x: x * 2 for x in v}
+    print(v, d)
+  # A revisão de 09/10/2026 vale só para a expressão geradora: a dict comprehension segue na R-04.
+  expect: [R-04 NAO_CONSTA 2]
 
 - id: R-42-list-index-L3
   rule: R-42

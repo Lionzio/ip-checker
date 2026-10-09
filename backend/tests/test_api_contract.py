@@ -201,7 +201,7 @@ def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     ]
     assert api.get("/ready").json() == {
         "status": "ready",
-        "ruleset_version": "2026.2.3",
+        "ruleset_version": "2026.2.4",
         "release": None,
     }
 

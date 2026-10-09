@@ -17,9 +17,9 @@ do lado mais restritivo, que a equipe pode relevar quando o enunciado liberar (v
 As decisões C-01 a C-03 e Q-02 a Q-05, tomadas pelo autor em 01/10/2026, já estão no motor
 (`docs/mapping-R-xx.md`, "Decisões aplicadas"). Pergunta: **ratificar como estão?**
 
-## 2. Os 9 casos em aberto do mapeamento (20 min)
+## 2. Os 10 casos em aberto do mapeamento (20 min)
 
-Os casos a observar das Sprints 22 e 23 (`docs/mapping-R-xx.md`). Para cada um, a decisão é
+Os casos a observar das Sprints 22 e 23 (`docs/mapping-R-xx.md`) e, desde 09/10/2026, o caso 10, já aplicado de forma provisória (`docs/decisoes.md`, Q-02). Para cada um, a decisão é
 "manter como hoje" ou "liberar a partir da lista X". Liberar é uma mudança no `base.yaml`, com teste
 golden, numa sprint seguinte.
 
@@ -34,6 +34,7 @@ golden, numa sprint seguinte.
 | 7 | `dict(a=1)`, `d.update(a=1)`, `enumerate(v, start=1)` na L5 | R-04 (só `end=` consta) | Esses argumentos nomeados fazem parte do que a Lista 5 ensina? | |
 | 8 | `for a, b in pares:` e `for x, y in d.values():` na L5 ou L6 | R-63 (condição não atendida) | Vários nomes no `for` valem para qualquer sequência de pares? (junto com o caso 3) | |
 | 9 | `f = lambda n: f(n - 1) if n else 0` na L6 | Não conta como recursão (R-68) | Recursão por `lambda` comprova o assunto da Lista 6? | |
+| 10 | Expressão geradora: `" ".join(str(n) for n in v)`, `sum(x for x in v)` (gabarito oficial L3-Q8 de 2026.2) | Aceito a partir da L3 (decisão provisória de 09/10/2026, R-41; antes, R-04 pela Q-02 e) | Ratificar: a expressão geradora fica permitida a partir da Lista 3, como a *list comprehension*? A *dict comprehension* continua de fora. | |
 
 Lembrete: desde a Sprint 24, uma questão cadastrada pode liberar qualquer um desses casos pela R-01,
 sem mudar a regra geral.
