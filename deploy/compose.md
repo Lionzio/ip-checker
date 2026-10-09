@@ -110,6 +110,22 @@ serve para você testar a entrega e o clique; para a equipe se registrar, o IP-C
 estar no ar no piloto ([`piloto.md`](piloto.md)), com `IPC_PUBLIC_BASE_URL` apontando para o endereço público
 da página (por exemplo `https://ip-checker.vercel.app`), que o `render.yaml` já recebe.
 
+## Gabaritos no ambiente local (Sprint 32)
+
+A comparação com o gabarito (ADR-11) lê, no compose, uma pasta montada só para leitura na API
+(`IPC_GABARITOS_DIR=/gabaritos`). O padrão são os gabaritos **sintéticos** do e2e
+(`frontend/e2e/gabaritos-sinteticos`, só a L1-Q1 de 2026.2). Para testar com os gabaritos oficiais
+na sua máquina, aponte para o clone do repositório privado no `deploy/.env`, com o caminho a partir
+de `deploy/`:
+
+```text
+IPC_GABARITOS_HOST_DIR=../../ip-checker-gabaritos
+```
+
+e recrie a API: `docker compose -f deploy/compose.yaml up -d api`. Os gabaritos ficam só na sua
+máquina e na memória do contêiner; nada vai para a imagem. No piloto, a API os baixa do GitHub com a
+credencial do runbook ("Credencial dos gabaritos").
+
 ## Feedback por IA (S18): onde ficam as chaves
 
 O botão **Gerar feedback** funciona sempre. A ordem é: a **IA principal**; se ela falhar, demorar

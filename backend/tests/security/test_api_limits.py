@@ -239,10 +239,13 @@ def test_privacy_canary_leaves_no_trace(public: Client, stack: dict[str, str]) -
     assert not re.search(r'"remote_ip"|"client_ip"', logs)
 
     # Disco: a raiz de todos os contêineres é só leitura, e as áreas em memória não guardam nada.
-    # O único item do docker diff é o init montado pelo Docker (init: true), não uma escrita.
+    # Os únicos itens do docker diff são os pontos de montagem do Docker, não escritas: o init
+    # (init: true) e, na api, a pasta dos gabaritos montada só para leitura (Sprint 32).
     init_mount = {"C /usr", "C /usr/sbin", "A /usr/sbin/docker-init"}
+    mounts = {"api": init_mount | {"A /gabaritos"}}
     for service, container in stack.items():
-        assert set(docker("diff", container).splitlines()) <= init_mount, service
+        allowed = mounts.get(service, init_mount)
+        assert set(docker("diff", container).splitlines()) <= allowed, service
     assert probe(stack["analyzer"], FS_PROBE, CANARY, "/tmp", "/dev/shm") == []
     assert probe(stack["api"], FS_PROBE, CANARY, "/tmp", "/dev/shm") == []
     # Banco (Sprint 13): nenhuma tabela guarda o código, a URL ou os cabeçalhos (DoD, item 13).

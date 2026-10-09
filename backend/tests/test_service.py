@@ -62,6 +62,7 @@ def test_valid_code(client: TestClient) -> None:
         "violations": [],
         "truncated": False,
         "indicators": None,
+        "gabarito": None,
     }
 
 
@@ -351,3 +352,56 @@ def test_similarity_against_the_class_refuses_a_too_big_target_and_too_many(
     assert big.json()["error"]["message"].startswith("Solução comparada: ")
     assert many.status_code == 422
     assert none.status_code == 422
+
+
+# --- Comparação com o gabarito (ADR-11, S32-03) -------------------------------------------------
+
+GABARITO = "canario_gab = float(input())\nif canario_gab >= 7:\n    print('MARCADOR-GAB')\n"
+
+
+def test_analysis_with_the_gabarito_returns_only_the_comparison(client: TestClient) -> None:
+    code = "nota = float(input())\nif nota >= 7:\n    print('aprovado')\n"
+
+    response = client.post(
+        "/internal/analyze", json={"code": code, "list_number": 1, "gabarito": GABARITO}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["gabarito"]["percent"] == 100.0
+    assert body["gabarito"]["student_lines"] == [{"first": 1, "last": 3}]
+    assert "if" in body["gabarito"]["common"]
+    # Nada do texto do gabarito volta (ADR-11, item 3).
+    assert "canario_gab" not in response.text
+    assert "MARCADOR-GAB" not in response.text
+
+
+def test_analysis_without_the_gabarito_has_no_comparison(client: TestClient) -> None:
+    response = client.post("/internal/analyze", json={"code": "x = 1\n", "list_number": 3})
+
+    assert response.json()["gabarito"] is None
+
+
+def test_similarity_with_the_gabarito_compares_each_side(client: TestClient) -> None:
+    code = "nota = float(input())\nif nota >= 7:\n    print('aprovado')\n"
+
+    response = client.post(
+        "/internal/similarity",
+        json={"first": code, "second": "print(1)\n", "gabarito": GABARITO},
+    )
+
+    body = response.json()
+    assert body["gabarito"][0]["percent"] == 100.0
+    assert body["gabarito"][1]["percent"] < 80.0
+    assert "canario_gab" not in response.text
+
+
+def test_an_oversized_gabarito_is_refused_without_its_content(client: TestClient) -> None:
+    big = "x = 1\n" * 9_000
+
+    response = client.post(
+        "/internal/analyze", json={"code": "x = 1\n", "list_number": 1, "gabarito": big}
+    )
+
+    assert response.status_code == 413
+    assert "gabarito" in response.json()["error"]["message"]

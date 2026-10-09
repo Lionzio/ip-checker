@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
+from ipc_api import gabarito_result
 from ipc_api.accounts.models import Account
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.adoption import Adoption
@@ -17,14 +18,22 @@ from ipc_api.deps import (
     get_admission,
     get_adoption,
     get_analyzer,
+    get_gabaritos,
     get_request_id,
     get_settings,
     get_telemetry,
 )
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
+from ipc_api.gabaritos import Gabaritos
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
-from ipc_api.schemas import Indicators, ValidateRequest, ValidateResponse
+from ipc_api.schemas import (
+    AnalyzerResult,
+    GabaritoComparison,
+    Indicators,
+    ValidateRequest,
+    ValidateResponse,
+)
 from ipc_api.settings import ApiSettings
 from ipc_api.telemetry import Outcome, Telemetry, TelemetryEvent, semester_of
 from ipc_api.validation import check_code
@@ -77,6 +86,7 @@ async def validate(
     telemetry: Annotated[Telemetry, Depends(get_telemetry)],
     adoption: Annotated[Adoption, Depends(get_adoption)],
     account: Annotated[Account, Depends(require_active_account)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
 ) -> ValidateResponse:
     # O resultado diz respeito ao código de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
@@ -96,7 +106,14 @@ async def validate(
             ErrorCode.LIST_NOT_ENABLED,
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
-    await check_question(analyzer, body.list_number, body.question_id)
+    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista.
+    registered = check is not None and check.registered
+    gabarito = (
+        gabaritos.get(check.period, body.question_id)
+        if check is not None and body.question_id is not None
+        else None
+    )
 
     try:
         # A vaga só é ocupada durante a análise, com a entrada já lida e validada.
@@ -106,8 +123,9 @@ async def validate(
                 body.code,
                 body.list_number,
                 request_id=request_id,
-                question_id=body.question_id,
+                question_id=body.question_id if registered else None,
                 indicators=settings.ai_indicators,
+                gabarito=gabarito,
             )
             analysis_ms = round((time.perf_counter() - started) * 1000)
     except Overloaded:
@@ -143,8 +161,15 @@ async def validate(
         status=result.status,
         list_number=result.list_number,
         question_id=body.question_id,
-        # Sem questão, valem só as regras da lista, e a resposta avisa (FR-11).
-        notices=[] if body.question_id is not None else ["QUESTION_RULES_NOT_APPLIED"],
+        # Sem questão, ou com uma só com gabarito, valem só as regras da lista, e a resposta
+        # avisa (FR-11; ADR-11, item 6).
+        notices=(
+            ["QUESTION_RULES_NOT_APPLIED"]
+            if body.question_id is None
+            else []
+            if registered
+            else ["QUESTION_RULES_NOT_REGISTERED"]
+        ),
         syntax_error=result.syntax_error,
         violations=result.violations,
         truncated=result.truncated,
@@ -154,6 +179,22 @@ async def validate(
             if settings.ai_indicators and result.indicators is not None
             else None
         ),
+        gabarito=_gabarito(body.question_id, gabarito, gabaritos, result),
+    )
+
+
+def _gabarito(
+    question_id: str | None,
+    text: str | None,
+    gabaritos: Gabaritos,
+    result: AnalyzerResult,
+) -> GabaritoComparison | None:
+    if question_id is None:
+        return None
+    if text is None:
+        return gabarito_result.missing(question_id, gabaritos)
+    return gabarito_result.for_validation(
+        question_id, result.gabarito, syntax_error=result.status == "syntax_error"
     )
 
 

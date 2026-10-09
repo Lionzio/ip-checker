@@ -79,8 +79,9 @@ a senha, muda de cargo ou é removido da equipe.
 ## Verificar uma solução
 
 1. Escolha a lista. A página lembra a última lista neste navegador.
-2. Escolha a questão, se ela tiver regras cadastradas (veja abaixo). Sem questão, valem só as
-   permissões da lista, e o resultado avisa isso.
+2. Escolha a questão, se ela tiver regras cadastradas ou um gabarito (veja abaixo). Sem questão,
+   valem só as permissões da lista, e o resultado avisa isso. Uma questão marcada "sem regra
+   cadastrada (comparação com o gabarito)" usa as permissões da lista e compara com o gabarito.
 3. Cole a solução (até 50 KB e 1.000 linhas), com Ctrl+V ou o botão **Colar**.
 4. Clique em **Verificar** ou aperte **Ctrl+Enter** no editor.
 
@@ -92,6 +93,22 @@ que é do código anterior.
 
 No editor, Tab insere 4 espaços; para sair do editor pelo teclado, aperte Esc e depois Tab. A
 altura do editor se ajusta pelo canto inferior direito.
+
+### Comparação com o gabarito
+
+Com uma questão que tem gabarito oficial, o resultado ganha o bloco **Comparação com o gabarito**
+(Sprint 32):
+
+- a **semelhança** com o gabarito, pela mesma medida e as mesmas faixas do painel de plágio;
+- as construções **em comum**, as que estão **só no código do aluno** e as que estão **só no
+  gabarito** (por exemplo, o aluno usou `while` e o gabarito, `for`);
+- os **trechos do aluno** que têm a estrutura de um trecho do gabarito; clicar num trecho o seleciona
+  no editor.
+
+É uma referência para a correção, não uma nota: soluções corretas podem ser bem diferentes do
+gabarito, e em questões curtas soluções independentes se parecem com ele (a página avisa). O
+gabarito nunca aparece na página: só a porcentagem, os nomes das construções e as linhas do aluno.
+Se os gabaritos estiverem fora do ar, a verificação funciona normalmente, com um aviso.
 
 ### Corrigir em lote
 
@@ -173,6 +190,12 @@ B** inverte os lados, e **Limpar os dois** esvazia tudo.
 **O resultado é um indício, não uma prova**: leia os dois códigos antes de concluir. Em questões
 simples, soluções independentes tendem a se parecer, e a página avisa quando um dos códigos é
 curto. Os dois precisam ser Python válido; se um tiver erro de sintaxe, a página diz qual e onde.
+
+**Com o gabarito:** escolha a questão em **Questão (para comparar também com o gabarito)** antes
+de verificar. O resultado mostra também A com o gabarito e B com o gabarito. Quando os dois
+códigos se parecem entre si **e** com o gabarito, acima de 95%, e não são curtos, aparece o alerta
+**Possível vazamento do gabarito**: o gabarito pode estar circulando entre os alunos. O alerta diz
+que os códigos coincidem com o gabarito, não quem o vazou; vale uma conversa, como nos indícios.
 
 ### Contra a turma
 

@@ -16,8 +16,16 @@ from ipc_api.accounts.models import StoreUnavailable
 from ipc_api.auth.deps import get_authenticator, require_active_account
 from ipc_api.auth.sessions import Authenticator
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerUnavailable
-from ipc_api.deps import get_analyzer, get_housekeeping, get_settings, get_slo, get_telemetry
+from ipc_api.deps import (
+    get_analyzer,
+    get_gabaritos,
+    get_housekeeping,
+    get_settings,
+    get_slo,
+    get_telemetry,
+)
 from ipc_api.errors import analyzer_unavailable, database_unavailable
+from ipc_api.gabaritos import Gabaritos
 from ipc_api.housekeeping import Housekeeping
 from ipc_api.ratelimit import client_ip
 from ipc_api.routes import error_docs
@@ -59,13 +67,20 @@ UNAVAILABLE = error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não responde
 async def lists(
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
 ) -> list[ListInfo]:
     try:
         manifest = await analyzer.manifest()
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
         raise analyzer_unavailable() from None
-    return [item for item in manifest.lists if item.number in settings.enabled_lists]
+    # Só os números das questões com gabarito no período ativo (ADR-11), nunca o gabarito.
+    with_gabarito = gabaritos.questions(manifest.period)
+    return [
+        item.model_copy(update={"gabaritos": with_gabarito.get(item.number, [])})
+        for item in manifest.lists
+        if item.number in settings.enabled_lists
+    ]
 
 
 # HEAD nas rotas de operação (S30-04): o plano gratuito do UptimeRobot só consulta com HEAD (o

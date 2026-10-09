@@ -147,6 +147,7 @@ Trocar um segredo (vazou, ou alguém saiu da equipe técnica):
 | Chaves das IAs | Painel de cada provedor | `IPC_LLM_API_KEY` e `IPC_LLM_FALLBACK_API_KEY` no Render |
 | Deploy hooks | Render (**Settings > Deploy Hook**, regenerar) e Vercel (apagar e criar) | `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` no GitHub |
 | Segredo da página (`IPC_EDGE_SECRET`) | Gere um novo (abaixo) | Vercel e Render, na ordem abaixo |
+| Credencial dos gabaritos (`IPC_GABARITOS_TOKEN`) | GitHub, **Settings > Developer settings > Fine-grained tokens** (regenerar ou criar outra) | `IPC_GABARITOS_TOKEN` no Render (abaixo) |
 
 Trocar uma variável no Render reinicia o serviço; as sessões abertas continuam válidas, porque
 ficam no banco.
@@ -178,6 +179,36 @@ diagnóstico mostra `"edge_verified": true`.
 
 Para desligar, apague a variável no Render primeiro e depois na Vercel. Um valor com menos de 32
 caracteres faz a API não subir (o deploy fica vermelho, e a versão anterior continua no ar).
+
+### Credencial dos gabaritos (`IPC_GABARITOS_TOKEN`, S32-01)
+
+A comparação com o gabarito (ADR-11) usa os gabaritos do repositório privado
+`Lionzio/ip-checker-gabaritos`, que a API baixa ao subir e guarda só na memória. A credencial é
+um *fine-grained token* do GitHub, só de leitura e só desse repositório. Quem cria e cola é o autor;
+o valor nunca vai para o Git, para uma conversa nem para o log.
+
+1. No GitHub: **Settings > Developer settings > Personal access tokens > Fine-grained tokens >
+   Generate new token**. Nome: `ip-checker-render-gabaritos`. Expiração: a maior que o GitHub
+   oferecer [A CONFIRMAR: a validade máxima aceita hoje]; anote a data para trocar antes. **Resource
+   owner**: Lionzio. **Repository access**: *Only select repositories*,
+   `Lionzio/ip-checker-gabaritos`. **Permissions > Repository permissions > Contents**: *Read-only*
+   (o *Metadata: Read-only* vem junto). Nada mais.
+2. Clique em **Generate token** e use **Copy** (o valor só aparece uma vez).
+3. No Render, no serviço, **Environment**: preencha `IPC_GABARITOS_TOKEN` com o valor e salve. O
+   serviço reinicia em cerca de 1 minuto. `IPC_GABARITOS_REPO` já vem do `render.yaml`.
+4. Confira, na página: escolha uma lista com gabarito e veja as questões dele no seletor (por
+   exemplo, "L1-Q1: sem regra cadastrada (comparação com o gabarito)"). Nos logs do Render, a linha
+   `gabaritos carregados: N` diz quantos entraram, sem nenhum caminho nem conteúdo.
+
+**Gabaritos indisponíveis** (a página avisa "Os gabaritos não estão disponíveis neste servidor
+agora"): nos logs do Render, a linha `gabaritos indisponíveis: ...` diz o tipo da falha. "o GitHub
+respondeu 401" é credencial vencida ou apagada: troque-a (passos acima). "respondeu 404" é o nome do
+repositório ou a branch errados, ou o token sem acesso a ele. A verificação e o plágio continuam
+funcionando sem a comparação.
+
+**Gabarito novo:** a API só lê os gabaritos ao subir. Depois de um push no repositório dos
+gabaritos, reinicie o serviço no Render (**Manual Deploy > Restart service**) para que os novos
+entrem na comparação.
 
 ## Conta de verificação do deploy
 

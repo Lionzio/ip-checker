@@ -13,22 +13,28 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
 
+from ipc_api import gabarito_result
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
-from ipc_api.deps import get_admission, get_analyzer, get_request_id
+from ipc_api.deps import get_admission, get_analyzer, get_gabaritos, get_request_id, get_settings
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
+from ipc_api.gabaritos import Gabaritos
+from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     AnalyzerClassItem,
+    AnalyzerSimilarity,
     SimilarityBand,
     SimilarityClassItem,
     SimilarityClassRequest,
     SimilarityClassResponse,
+    SimilarityGabarito,
     SimilarityRequest,
     SimilarityResponse,
     SimilaritySyntaxError,
 )
+from ipc_api.settings import ApiSettings
 from ipc_api.similarity import NOTICE, SHORT_CODE_TOKENS, classify, displayed
 from ipc_api.validation import check_code
 
@@ -71,14 +77,26 @@ async def similarity(
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
     admission: Annotated[Admission, Depends(get_admission)],
     request_id: Annotated[str, Depends(get_request_id)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> SimilarityResponse:
     # O resultado diz respeito ao código de alunos: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
     _check(body.code_a, "A")
     _check(body.code_b, "B")
+    gabarito: str | None = None
+    if body.question_id is not None:
+        # A numeração oficial diz a lista (L3-Q2 é da Lista 3, P-07).
+        check = await check_question(
+            analyzer, int(body.question_id[1]), body.question_id, gabaritos
+        )
+        if check is not None:
+            gabarito = gabaritos.get(check.period, body.question_id)
     try:
         async with admission.slot():
-            result = await analyzer.similarity(body.code_a, body.code_b, request_id=request_id)
+            result = await analyzer.similarity(
+                body.code_a, body.code_b, request_id=request_id, gabarito=gabarito
+            )
     except Overloaded:
         raise overloaded() from None
     except AnalyzerRejected as exc:
@@ -104,6 +122,7 @@ async def similarity(
                 message=problem.message,
             ),
             notice=NOTICE,
+            gabarito=_gabarito(body.question_id, result, gabaritos, gabarito, settings),
         )
     assert result.percent is not None  # noqa: S101 - conferido pelo esquema da resposta
     assert result.token_counts is not None  # noqa: S101
@@ -118,6 +137,21 @@ async def similarity(
         notice=NOTICE,
         metrics=result.metrics,
         matches=result.matches,
+        gabarito=_gabarito(body.question_id, result, gabaritos, gabarito, settings),
+    )
+
+
+def _gabarito(
+    question_id: str | None,
+    result: AnalyzerSimilarity,
+    gabaritos: Gabaritos,
+    text: str | None,
+    settings: ApiSettings,
+) -> SimilarityGabarito | None:
+    if question_id is None:
+        return None
+    return gabarito_result.for_similarity(
+        question_id, result, gabaritos, text is not None, settings.gabaritos
     )
 
 

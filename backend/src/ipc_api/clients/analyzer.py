@@ -118,18 +118,18 @@ class AnalyzerClient:
         request_id: str | None = None,
         question_id: str | None = None,
         indicators: bool = False,
+        gabarito: str | None = None,
     ) -> AnalyzerResult:
-        status, body = await self._request(
-            "POST",
-            "/internal/analyze",
-            {
-                "code": code,
-                "list_number": list_number,
-                "question_id": question_id,
-                "indicators": indicators,
-            },
-            request_id,
-        )
+        payload: dict[str, Any] = {
+            "code": code,
+            "list_number": list_number,
+            "question_id": question_id,
+            "indicators": indicators,
+        }
+        if gabarito is not None:
+            # O gabarito vai só ao analyzer, pela rede interna (ADR-11), e nunca volta.
+            payload["gabarito"] = gabarito
+        status, body = await self._request("POST", "/internal/analyze", payload, request_id)
         if status == 200:
             result = _parse(AnalyzerResult, body)
             if result.list_number != list_number:
@@ -161,13 +161,25 @@ class AnalyzerClient:
         raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
 
     async def similarity(
-        self, first: str, second: str, request_id: str | None = None
+        self,
+        first: str,
+        second: str,
+        request_id: str | None = None,
+        gabarito: str | None = None,
     ) -> AnalyzerSimilarity:
-        status, body = await self._request(
-            "POST", "/internal/similarity", {"first": first, "second": second}, request_id
-        )
+        payload: dict[str, Any] = {"first": first, "second": second}
+        if gabarito is not None:
+            payload["gabarito"] = gabarito
+        status, body = await self._request("POST", "/internal/similarity", payload, request_id)
         if status == 200:
-            return _parse(AnalyzerSimilarity, body)
+            result = _parse(AnalyzerSimilarity, body)
+            if (
+                gabarito is not None
+                and result.status == "compared"
+                and (result.gabarito is None or len(result.gabarito) != 2)
+            ):
+                raise AnalyzerUnavailable("o analyzer não comparou os dois códigos com o gabarito")
+            return result
         if status in (413, 422):
             error = _parse(AnalyzerErrorResponse, body).error
             raise AnalyzerRejected(status, error.code, error.message)

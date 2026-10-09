@@ -36,13 +36,14 @@ from enum import IntEnum
 from typing import Literal
 
 from ipc_analyzer.engine.display import describe
+from ipc_analyzer.engine.gabarito import GabaritoComparison
 from ipc_analyzer.engine.guards import DEFAULT_LIMITS, InputError, Limits
 from ipc_analyzer.engine.models import Violation
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem
 from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, Reference
 from ipc_analyzer.engine.similarity import Prepared, compare_prepared, prepare
 
-Signal = Literal["multiplas_violacoes", "referencia_ia", "estilo"]
+Signal = Literal["multiplas_violacoes", "referencia_ia", "gabarito", "estilo"]
 LevelName = Literal["baixo", "medio", "alto"]
 
 
@@ -125,11 +126,13 @@ def compute_indicators(
     ruleset: CompiledRuleset,
     question_id: str | None = None,
     limits: Limits = DEFAULT_LIMITS,
+    gabarito: GabaritoComparison | None = None,
 ) -> Indicators | None:
     """Os indícios de uma submissão já analisada; ``None`` quando não há nenhum."""
     items = [
         *_violation_signals(violations, list_number),
         *_reference_signal(parsed.source, ruleset, question_id, limits),
+        *_gabarito_signal(gabarito, question_id),
         *_style_signals(parsed),
     ]
     if not items:
@@ -306,6 +309,32 @@ def _reference_signal(
             reason=(
                 f"{_percent(percent)}% de semelhança com uma solução gerada por IA para a questão "
                 f"{question_id} (referência '{reference.label}'), pelo motor do painel de plágio."
+            ),
+            lines=lines,
+        )
+    ]
+
+
+def _gabarito_signal(
+    comparison: GabaritoComparison | None, question_id: str | None
+) -> list[Indicator]:
+    """A semelhança com o gabarito oficial (ADR-11, item 4; S32-08), nas faixas da referência."""
+    if comparison is None:
+        return []
+    level = next((lvl for minimum, lvl in REFERENCE_LEVELS if comparison.percent >= minimum), None)
+    if level is None:
+        return []
+    lines = tuple(n for first, last in comparison.student_lines for n in range(first, last + 1))
+    return [
+        Indicator(
+            signal="gabarito",
+            kind="gabarito",
+            level=level,
+            reason=(
+                f"{_percent(comparison.percent)}% de semelhança com o gabarito oficial "
+                f"{f'da questão {question_id}' if question_id else 'da questão escolhida'}: a "
+                "solução pode ter vindo de um gabarito que circula entre os alunos, ou de uma IA "
+                "que chegou à mesma solução."
             ),
             lines=lines,
         )

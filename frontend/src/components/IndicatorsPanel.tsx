@@ -27,6 +27,7 @@ const LEVEL_STYLES: Record<NonNullable<Indicators["level"]>, string> = {
 const SIGNAL_LABELS: Record<Indicator["signal"], string> = {
   multiplas_violacoes: "Múltiplas violações",
   referencia_ia: "Semelhança com solução de IA",
+  gabarito: "Semelhança com o gabarito",
   estilo: "Estilo",
 };
 

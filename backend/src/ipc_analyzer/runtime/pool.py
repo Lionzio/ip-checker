@@ -27,6 +27,7 @@ from pebble import ProcessExpired, ProcessPool
 
 from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.feedback import FeedbackInput, feedback_input
+from ipc_analyzer.engine.gabarito import GabaritoComparison, compare_with_gabarito
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem
@@ -98,7 +99,11 @@ def _before_deadline[T](deadline: float, function: Callable[..., T], *args: Any)
 
 
 def _analyze_in_worker(
-    source: str, list_number: int, question_id: str | None, with_indicators: bool = False
+    source: str,
+    list_number: int,
+    question_id: str | None,
+    with_indicators: bool = False,
+    gabarito: str | None = None,
 ) -> AnalysisResult:
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
@@ -108,6 +113,7 @@ def _analyze_in_worker(
         ruleset=_RULESET,
         question_id=question_id,
         with_indicators=with_indicators,
+        gabarito=gabarito,
     )
 
 
@@ -119,10 +125,24 @@ def _feedback_in_worker(source: str, list_number: int, question_id: str | None) 
     )
 
 
-def _compare_in_worker(first: str, second: str) -> Similarity | InvalidSide:
+def _compare_in_worker(
+    first: str, second: str, gabarito: str | None = None
+) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
+    """Os dois códigos entre si e, com o gabarito, cada um com ele (ADR-11, item 5)."""
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
-    return compare_sources(first, second, target=_RULESET.target_version)
+    result = compare_sources(first, second, target=_RULESET.target_version)
+    if gabarito is None or isinstance(result, InvalidSide):
+        return result, ()
+    return result, tuple(
+        compare_with_gabarito(
+            code,
+            gabarito,
+            target=_RULESET.target_version,
+            structural=_RULESET.structural_facts,
+        )
+        for code in (first, second)
+    )
 
 
 def _compare_class_in_worker(
@@ -208,9 +228,16 @@ class AnalyzerPool:
         *,
         deadline: float | None = None,
         indicators: bool = False,
+        gabarito: str | None = None,
     ) -> AnalysisResult:
         return await self.run(
-            _analyze_in_worker, source, list_number, question_id, indicators, deadline=deadline
+            _analyze_in_worker,
+            source,
+            list_number,
+            question_id,
+            indicators,
+            gabarito,
+            deadline=deadline,
         )
 
     async def feedback_input(
@@ -227,10 +254,16 @@ class AnalyzerPool:
         )
 
     async def compare(
-        self, first: str, second: str, *, deadline: float | None = None
-    ) -> Similarity | InvalidSide:
-        """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento."""
-        return await self.run(_compare_in_worker, first, second, deadline=deadline)
+        self,
+        first: str,
+        second: str,
+        *,
+        deadline: float | None = None,
+        gabarito: str | None = None,
+    ) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
+        """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento; com o
+        gabarito (ADR-11), cada um também é comparado com ele."""
+        return await self.run(_compare_in_worker, first, second, gabarito, deadline=deadline)
 
     async def compare_class(
         self, code: str, others: list[str], *, deadline: float | None = None

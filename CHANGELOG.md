@@ -12,6 +12,17 @@ mudaram.
 
 Mudanças na `develop` que chegam ao piloto na próxima release.
 
+- **09/10/2026, comparação com o gabarito (S32-02 a S32-09; ADR-11, FR-32, US-37, US-38).** A API
+  baixa os gabaritos do repositório privado ao subir (`IPC_GABARITOS_REPO` e
+  `IPC_GABARITOS_TOKEN`, só leitura) e os guarda só na memória; no compose, lê uma pasta
+  (`IPC_GABARITOS_DIR`), com gabaritos sintéticos por padrão. Na verificação, uma questão com
+  gabarito, mesmo sem regra cadastrada, traz a semelhança com a faixa do FR-29, as construções em
+  comum, só no aluno e só no gabarito e os trechos do aluno que coincidem; no plágio, A e B também
+  com o gabarito e o alerta de possível vazamento (os três acima de 95% e os códigos com 60 tokens
+  ou mais, [PREMISSA] até a S33-02). Nos indícios, o sinal "Semelhança com o gabarito". O
+  analisador recebe o gabarito na chamada interna, prepara-o com cache por hash e devolve só
+  porcentagem, nomes de construções e linhas do aluno; testes canário garantem que nenhum texto do
+  gabarito chega a uma resposta ou a um log.
 - **09/10/2026, ensaio do cadastro (S31-13):** a questão L3-Q9 ("Ensaio: média da turma sem
   sum()"), criada para o ensaio a pedido do autor, libera `map()` e proíbe `sum()`, `sort()` e
   `sorted()`; enunciado e resultado em `docs/ensaio-cadastro.md`, com testes no backend e no e2e.

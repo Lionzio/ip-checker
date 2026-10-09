@@ -134,10 +134,10 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     feedback(request, signal) {
       return call<FeedbackResponse>("/api/v1/feedback", json("POST", request), signal);
     },
-    compare(codeA, codeB, signal) {
+    compare(codeA, codeB, signal, questionId) {
       return call<SimilarityResponse>(
         "/api/v1/similarity",
-        json("POST", { code_a: codeA, code_b: codeB }),
+        json("POST", { code_a: codeA, code_b: codeB, ...(questionId ? { question_id: questionId } : {}) }),
         signal,
       );
     },

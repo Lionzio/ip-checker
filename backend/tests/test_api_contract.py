@@ -193,16 +193,22 @@ def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
 def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [
         # Só a questão do ensaio do cadastro está cadastrada (R-01).
-        {"number": 1, "title": "Comandos condicionais", "questions": []},
-        {"number": 2, "title": "Laços de repetição", "questions": []},
+        {"number": 1, "title": "Comandos condicionais", "questions": [], "gabaritos": []},
+        {"number": 2, "title": "Laços de repetição", "questions": [], "gabaritos": []},
         {
             "number": 3,
             "title": "Listas e tuplas",
             # A questão do ensaio do cadastro (S31-13, docs/ensaio-cadastro.md).
             "questions": [{"id": "L3-Q9", "title": "Ensaio: média da turma sem sum()"}],
+            "gabaritos": [],
         },
-        {"number": 4, "title": "Funções e escopo de variável", "questions": []},
-        {"number": 5, "title": "Dicionários", "questions": []},
+        {
+            "number": 4,
+            "title": "Funções e escopo de variável",
+            "questions": [],
+            "gabaritos": [],
+        },
+        {"number": 5, "title": "Dicionários", "questions": [], "gabaritos": []},
     ]
     assert api.get("/ready").json() == {
         "status": "ready",
