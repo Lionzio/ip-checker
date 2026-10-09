@@ -1,0 +1,112 @@
+# Regras do Semgrep do IP-Checker (S31-04, NFR-09). Conjunto próprio, versionado e sem rede: a CI
+# não baixa regras do registro do Semgrep, então o resultado de um commit não muda com o tempo
+# (decisão P-20 em docs/decisoes.md). Cada regra cobre um risco do modelo de ameaças da seção 6 do
+# blueprint; o arquivo ip-checker.py e o ip-checker.tsx, ao lado, são os casos de teste
+# (semgrep --test). Um achado novo bloqueia o PR; um falso positivo se justifica com
+# "nosemgrep: <id>" e um comentário na mesma linha, revisados no PR.
+
+rules:
+  # --- Python ----------------------------------------------------------------------------------
+  - id: python-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: >-
+      eval, exec e compile executam código. O motor só analisa a AST do código do aluno, nunca o
+      executa (ADR-01); dado de requisição nunca vira código.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+      - pattern: compile(...)
+      - pattern: builtins.eval(...)
+      - pattern: builtins.exec(...)
+
+  - id: python-shell-command
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Comando por shell permite injeção. Use subprocess com uma lista de argumentos e shell=False.
+    pattern-either:
+      - pattern: subprocess.$FUNC(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+      - pattern: asyncio.create_subprocess_shell(...)
+
+  - id: python-unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Desserialização que pode construir objetos arbitrários. Use yaml.safe_load e JSON.
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+      - pattern: marshal.load(...)
+      - pattern: marshal.loads(...)
+      - pattern: shelve.open(...)
+      - pattern: yaml.unsafe_load(...)
+      - pattern: yaml.full_load(...)
+      - pattern: yaml.load(...)
+
+  - id: python-sql-built-from-strings
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL montado com texto permite injeção. Passe os valores como parâmetros da consulta.
+    pattern-either:
+      - pattern: $CUR.execute(f"...", ...)
+      - pattern: $CUR.execute("..." % $ARGS, ...)
+      - pattern: $CUR.execute("...".format(...), ...)
+      - pattern: $CUR.execute("..." + $X, ...)
+
+  - id: python-tls-verification-disabled
+    languages: [python]
+    severity: ERROR
+    message: Não desligue a verificação do certificado TLS.
+    pattern-either:
+      - pattern: $HTTP.$METHOD(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+
+  - id: python-insecure-temp-file
+    languages: [python]
+    severity: ERROR
+    message: tempfile.mktemp tem condição de corrida; use mkstemp ou TemporaryDirectory.
+    pattern: tempfile.mktemp(...)
+
+  # --- TypeScript e React -----------------------------------------------------------------------
+  - id: ts-eval
+    languages: [typescript]
+    severity: ERROR
+    message: eval e Function executam texto como código no navegador.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+
+  - id: ts-raw-html
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      HTML cru abre XSS: o código do aluno e as mensagens da API são mostrados como texto, pelo
+      React (NFR-12).
+    pattern-either:
+      - pattern: <$EL dangerouslySetInnerHTML={...} />
+      - pattern: $X.innerHTML = $Y
+      - pattern: $X.outerHTML = $Y
+      - pattern: $X.insertAdjacentHTML(...)
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+
+  - id: ts-open-without-noopener
+    languages: [typescript]
+    severity: ERROR
+    message: window.open sem noopener deixa a página aberta controlar esta.
+    patterns:
+      - pattern-either:
+          - pattern: window.open($URL, $TARGET)
+          - patterns:
+              - pattern: window.open($URL, $TARGET, $FEATURES)
+              - metavariable-regex:
+                  metavariable: $FEATURES
+                  regex: ^(?![\s\S]*noopener)
+      - pattern-not: window.open($URL, "_self", ...)

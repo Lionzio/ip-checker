@@ -1,0 +1,10 @@
+# Achados do gitleaks triados como falso positivo (S31-03), pela impressão digital
+# <commit>:<arquivo>:<regra>:<linha>. Nenhum é segredo: entra aqui só com a justificativa ao lado,
+# revisada no PR. Um segredo de verdade nunca se ignora: troca-se a credencial (SECURITY.md).
+
+# Valor-canário do teste de isolamento do piloto: um texto inventado que o teste procura no
+# ambiente do analisador para provar que a credencial não chega lá.
+f0d888077971595b68deaffba9792de5d29d7a7d:backend/tests/security/test_pilot_isolation.py:generic-api-key:37
+3ba4135dce4cc6909b1708948eac7d6b88a6a8a8:backend/tests/security/test_pilot_isolation.py:generic-api-key:51
+# Exemplo de senha do deploy/.env.example ("Troque-esta-senha-1"), que a pessoa troca ao copiar.
+3ba4135dce4cc6909b1708948eac7d6b88a6a8a8:deploy/.env.example:generic-api-key:15

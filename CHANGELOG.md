@@ -12,6 +12,13 @@ mudaram.
 
 Mudanças na `develop` que chegam ao piloto na próxima release.
 
+- **09/10/2026, auditoria bloqueante e Semgrep (S31-03 e S31-04; P-20).** Novo job "Auditoria" no
+  `ci.yml`, em todo PR: gitleaks no histórico, Semgrep com as regras próprias de
+  `.semgrep/ip-checker.yml` (e os testes delas), `pip-audit` e `npm audit`; o `ci-local.sh` roda os
+  mesmos passos. O `audit.yml` semanal perde o `continue-on-error`. Primeira triagem: 3 falsos
+  positivos do gitleaks no `.gitleaksignore`; na imagem do piloto, a base `python:3.13-slim` vai
+  para o digest de 06/10/2026 (OpenSSL e PCRE2 corrigidos, Python 3.13.16) e o `pip`, que o runtime
+  não usa, sai das duas imagens. O Trivy ficou sem achados altos ou críticos corrigíveis.
 - **09/10/2026, período ativo num lugar só (S31-09 a S31-11).** O arquivo `rulesets/ATIVO` tem a
   única linha com o período ativo (`2026.2`); o analisador (`IPC_RULESET_PATH=/opt/ip-checker/rulesets`
   nas duas imagens e no supervisord), a CI, o `ci-local.sh` e o `ipc-rules validate ../rulesets`

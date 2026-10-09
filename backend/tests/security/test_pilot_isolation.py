@@ -373,6 +373,18 @@ def test_analyzer_user_cannot_read_other_environments_or_escape(
     }
 
 
+def test_the_image_has_no_package_installer(pilot: str) -> None:
+    # S31-03: sem o pip da imagem base (e as bibliotecas que ele embute, que o Trivy apontava).
+    found = probe_as(
+        "root",
+        "import importlib.util, json, shutil; print(json.dumps([importlib.util.find_spec('pip') "
+        "is not None, importlib.util.find_spec('ensurepip._bundled') is not None, "
+        "shutil.which('pip'), shutil.which('pip3')]))",
+    )
+
+    assert found == [False, False, None, None]
+
+
 def test_only_the_api_listens_outside_loopback(pilot: str) -> None:
     # Numa rede própria do Docker (a do banco de teste), o resolvedor DNS do Docker escuta em
     # 127.0.0.11 dentro do contêiner; ele é do Docker, não do piloto, e não existe no Render.

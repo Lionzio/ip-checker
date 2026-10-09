@@ -33,11 +33,25 @@ equipe.
 | Limite de taxa por conta e por IP, admissão e prazos ponta a ponta | ADR-03; S10 e S25-04 | Testes da API e da borda |
 | CSP, HSTS e `nosniff` na página; mesma origem para a API | NFR-10; S16-02 | Verificações do pipeline de deploy (`backend/tests/pilot/`) |
 | Dependências travadas com hash e actions fixadas por SHA; Dependabot | S25-01 | CI |
-| Varredura semanal de segredos (gitleaks) e de vulnerabilidades (pip-audit, npm audit e Trivy), ainda não bloqueante | `.github/workflows/audit.yml` | — |
+| Segredos (gitleaks), vulnerabilidades nas dependências (pip-audit e npm audit) e padrões inseguros no código (Semgrep, regras próprias) bloqueiam o PR; a imagem do piloto (Trivy) é varrida toda semana | `.github/workflows/ci.yml` (job "Auditoria") e `audit.yml`; S31-03 e S31-04 | Os casos de teste das regras do Semgrep (`.semgrep/`), na CI |
 | Backup semanal do banco, criptografado | `.github/workflows/backup.yml`; S28-03 | Ensaio de restauração no runbook |
 
 O que ainda não existe está marcado como [PLANEJADO] no [blueprint](docs/blueprint.md) (seções 3.3,
 5 e 8). O modelo de ameaças, com o risco que sobra em cada caso, está na seção 5.4 do blueprint.
+
+## Achados da auditoria
+
+Um achado da auditoria para o PR ou o workflow semanal. O que fazer (S31-03):
+
+- **Segredo (gitleaks):** se é uma credencial de verdade, ela já vazou: troque-a (runbook,
+  "Segredos") antes de qualquer outra coisa, e só depois tire do histórico. Se é um falso positivo
+  (um valor de exemplo ou de teste), acrescente a impressão digital ao `.gitleaksignore`, com a
+  justificativa numa linha de comentário, no mesmo PR.
+- **Dependência (pip-audit ou npm audit) ou imagem (Trivy):** atualize a dependência ou a imagem
+  base. Se não houver correção, ou se a falha não alcançar o IP-Checker, registre em
+  `docs/decisoes.md` o motivo e o prazo para rever, e ignore só aquele identificador.
+- **Semgrep:** corrija o código. Um falso positivo se marca com `nosemgrep: <id>` na linha, com o
+  motivo ao lado, revisado no PR. Uma regra nova vem com os casos de teste em `.semgrep/`.
 
 ## Segredos
 
