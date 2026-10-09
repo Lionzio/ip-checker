@@ -35,6 +35,12 @@ from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
 
+NO_AI = "O Aprimorar com IA não está configurado neste servidor: fica o texto sem IA."
+NO_ANSWER = (
+    "Nenhuma IA respondeu agora (fora do ar, sem cota ou com um texto que não passou na "
+    "conferência): fica o texto sem IA. Tente de novo em alguns minutos."
+)
+
 router = APIRouter(
     prefix="/api/v1", tags=["feedback"], dependencies=[Depends(require_active_account)]
 )
@@ -121,21 +127,33 @@ async def feedback(
             f"O código tem um erro de sintaxe{where}: as permissões não foram verificadas, "
             "então não há feedback. Corrija o código e verifique de novo.",
         )
-    # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
-    try:
-        await service.take_quota(account.id)
-    except StoreUnavailable:
-        raise database_unavailable() from None
     role = account.role
     assert role is not None  # noqa: S101 - conta ativa sempre tem cargo (CHECK no banco)
     evaluator = Evaluator(name=account.name, role=role.value, treatment=account.treatment.value)
-    result = await service.write(
-        student=student,
-        annotation=annotation,
-        evaluator=evaluator,
-        items=[Item(kind=item.kind, label=item.label) for item in data.items],
-        code=data.code,
-    )
+    items = [Item(kind=item.kind, label=item.label) for item in data.items]
+    # Q-16 (opção A): o texto sem IA é o padrão e não gasta cota.
+    result = service.write(student=student, annotation=annotation, evaluator=evaluator, items=items)
+    notice: str | None = None
+    if body.enhance:
+        if not service.ai_enabled:
+            notice = NO_AI
+        else:
+            # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
+            try:
+                await service.take_quota(account.id)
+            except StoreUnavailable:
+                raise database_unavailable() from None
+            enhanced = await service.enhance(
+                student=student,
+                annotation=annotation,
+                evaluator=evaluator,
+                items=items,
+                code=data.code,
+            )
+            if enhanced is None:
+                notice = NO_ANSWER
+            else:
+                result = enhanced
     request.state.outcome = result.source
     return FeedbackResponse(
         request_id=request_id,
@@ -143,4 +161,6 @@ async def feedback(
         text=result.text,
         source=result.source,
         provider=result.provider,
+        can_enhance=service.ai_enabled,
+        notice=notice,
     )

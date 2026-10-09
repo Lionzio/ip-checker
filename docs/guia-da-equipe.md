@@ -140,8 +140,11 @@ avisa.
 Depois de verificar, o painel **Feedback para o aluno** aparece ao lado do resultado.
 
 1. Digite o **nome do aluno** e, se quiser, uma **anotação importante** (observações e dicas).
-2. Clique em **Gerar feedback**.
-3. **Revise o texto**: ele é editável. Depois, use **Copiar**.
+2. Clique em **Gerar feedback**: o texto é montado sem IA, na hora.
+3. Se quiser um texto mais detalhado, com explicação e exemplo, clique em **Aprimorar com IA**. Uma
+   IA reescreve a continuação a partir do texto sem IA; **Desfazer** volta ao texto sem IA. Se
+   nenhuma IA responder, o texto sem IA fica, com um aviso.
+4. **Revise o texto**: ele é editável. Depois, use **Copiar**.
 
 O texto sempre começa com a saudação, a sua apresentação (pelo seu cargo e tratamento) e a frase
 obrigatória do resultado:
@@ -150,14 +153,16 @@ obrigatória do resultado:
 - com violações: "Sua questão apresenta problemas, como o uso de ..., portanto ela foi anulada.",
   com o que o IP-Checker encontrou.
 
-O restante é escrito por uma IA, quando há uma configurada, ou montado por modelos de texto, sem
-IA; a página diz qual dos dois. Quem decide se houve violação é sempre o IP-Checker, nunca a IA, e
+O restante é montado por modelos de texto, sem IA, ou, depois do **Aprimorar com IA**, escrito por
+uma IA; a página diz qual dos dois e qual IA. Quem decide se houve violação é sempre o IP-Checker, nunca a IA, e
 o feedback é sobre o código que foi verificado, mesmo que você mude o editor depois.
 
 - Com **erro de sintaxe**, não há feedback: corrija o código e verifique de novo.
 - O **nome do aluno nunca vai para a IA**: no envio, ele vira `[ALUNO]` e volta no texto pronto. Os
   comentários e as docstrings do código também não vão, e e-mails, CPFs e matrículas viram marcas.
-- Cada conta gera até **60 feedbacks por dia**. Um código com erro de sintaxe não gasta a cota.
+- O **Aprimorar com IA** usa provedores de planos gratuitos, que podem usar o que recebem para
+  treinar modelos: por isso o nome do aluno e os dados pessoais nunca vão.
+- Cada conta tem até **60 aprimoramentos por dia**; o texto sem IA não gasta nada.
 
 ## Painel de plágio
 

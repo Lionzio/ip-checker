@@ -1,20 +1,22 @@
-"""Camada de provedores de LLM (S18-01, ADR-06): uma interface e um adaptador por API.
+"""Camada de provedores de LLM (S18-01, ADR-06; S32-12): uma interface e um adaptador por API.
 
 - ``openai_compat``: a API de *chat completions* da OpenAI, que a Groq, a DeepSeek e outros
   também oferecem; muda só a URL base.
 - ``gemini``: a API ``generateContent`` do Google.
 - ``fake``: respostas fixas, sem rede, para os testes e o e2e.
 
-Há duas vagas, cada uma com provedor, modelo, URL e chave próprios, lidos de variáveis de ambiente
-que só a ``api`` recebe: a IA principal (``IPC_LLM_*``) e a de reserva (``IPC_LLM_FALLBACK_*``),
-usada quando a principal falha ou responde algo que não passa na validação. Sem nenhuma, ou com as
-duas fora do ar, o feedback é montado por modelos de texto, sem IA (``compose.template_text``).
+Desde a Sprint 32 (Q-16), o feedback é montado sem IA por padrão, e as IAs só entram no
+"Aprimorar com IA", numa cadeia em ordem, com fallback: ``IPC_LLM_CHAIN=gemini,groq`` lista os
+nomes, e cada um tem provedor, modelo, URL e chave próprios (``IPC_LLM_GEMINI_PROVIDER``,
+``IPC_LLM_GEMINI_MODEL``...), lidos de variáveis de ambiente que só a ``api`` recebe. Sem a cadeia,
+valem as duas vagas antigas: a principal (``IPC_LLM_*``) e a de reserva (``IPC_LLM_FALLBACK_*``).
 A chave nunca vai para o log, para uma resposta nem para uma mensagem de erro, e o corpo das
 respostas do provedor também não.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -33,7 +35,9 @@ MAX_RESPONSE_BYTES = 64 * 1024
 MAX_OUTPUT_TOKENS = 400
 
 
-Slot = Literal["primary", "fallback"]
+#: O nome de uma IA da cadeia (``gemini``, ``groq``...) ou, nas vagas antigas, primary e fallback.
+Slot = str
+_NAME = re.compile(r"[a-z][a-z0-9_]{0,19}")
 
 #: Prefixo das variáveis de cada vaga.
 PREFIXES: dict[Slot, str] = {"primary": "IPC_LLM_", "fallback": "IPC_LLM_FALLBACK_"}
@@ -82,16 +86,22 @@ class LlmConfig:
 
 @dataclass(frozen=True, slots=True)
 class LlmSettings:
-    """As duas vagas de IA e o prazo total do feedback."""
+    """As IAs do "Aprimorar com IA", em ordem, e o prazo total de um aprimoramento."""
 
     primary: LlmConfig = field(default_factory=LlmConfig)
     fallback: LlmConfig = field(default_factory=LlmConfig)
+    #: A cadeia (S32-12): nomes e configurações, na ordem; vazia, valem as duas vagas antigas.
+    chain: tuple[tuple[Slot, LlmConfig], ...] = ()
     #: Tempo total, com todas as tentativas: cabe no tempo-limite do rewrite da Vercel (P-15 a).
     deadline_s: float = 28.0
+    #: Depois de um 429 (cota do plano gratuito), a IA fica fora da cadeia por este tempo.
+    cooldown_s: float = 60.0
 
     @property
     def configured(self) -> tuple[tuple[Slot, LlmConfig], ...]:
-        """As vagas preenchidas, na ordem em que são tentadas."""
+        """As IAs configuradas, na ordem em que são tentadas."""
+        if self.chain:
+            return tuple((name, config) for name, config in self.chain if config.enabled)
         slots: tuple[tuple[Slot, LlmConfig], ...] = (
             ("primary", self.primary),
             ("fallback", self.fallback),
@@ -107,10 +117,25 @@ class LlmSettings:
                 "IPC_LLM_FALLBACK_PROVIDER é a IA de reserva: defina antes a principal, "
                 "IPC_LLM_PROVIDER."
             )
+        names = [name.strip().lower() for name in env.get("IPC_LLM_CHAIN", "").split(",")]
+        names = [name for name in names if name]
+        if len(names) != len(set(names)) or not all(_NAME.fullmatch(name) for name in names):
+            raise ValueError(
+                "IPC_LLM_CHAIN inválida: use nomes curtos e distintos, como gemini,groq."
+            )
+        chain: list[tuple[Slot, LlmConfig]] = []
+        for name in names:
+            prefix = f"IPC_LLM_{name.upper()}_"
+            config = LlmConfig.from_env(env, prefix)
+            if not config.enabled:
+                raise ValueError(f"IPC_LLM_CHAIN cita {name}, mas {prefix}PROVIDER está vazia.")
+            chain.append((name, config))
         return cls(
             primary=primary,
             fallback=fallback,
+            chain=tuple(chain),
             deadline_s=float(env.get("IPC_LLM_DEADLINE_S", cls().deadline_s)),
+            cooldown_s=float(env.get("IPC_LLM_COOLDOWN_S", cls().cooldown_s)),
         )
 
 
@@ -120,10 +145,17 @@ class Prompt:
     system: str
     #: O resultado do motor e os dados (código e anotação), em blocos delimitados.
     user: str
+    #: Teto da resposta: o aprimoramento (S32-12) escreve mais que o trecho curto do S18.
+    max_output_tokens: int = MAX_OUTPUT_TOKENS
 
 
 class ProviderError(Exception):
     """O provedor não respondeu, respondeu com erro ou com algo que não é texto."""
+
+    def __init__(self, message: str, *, status: int | None = None) -> None:
+        super().__init__(message)
+        #: O status HTTP do provedor, quando houve um (429 = cota do plano esgotada).
+        self.status = status
 
 
 class Provider(Protocol):
@@ -155,7 +187,7 @@ class _HttpProvider:
         except httpx2.HTTPError as exc:
             raise ProviderError(type(exc).__name__) from None
         if response.status_code != 200:
-            raise ProviderError(f"HTTP {response.status_code}")
+            raise ProviderError(f"HTTP {response.status_code}", status=response.status_code)
         if len(response.content) > MAX_RESPONSE_BYTES:
             raise ProviderError("resposta grande demais")
         try:
@@ -177,7 +209,7 @@ class OpenAICompatProvider(_HttpProvider):
                     {"role": "user", "content": prompt.user},
                 ],
                 "temperature": self.config.temperature,
-                "max_tokens": MAX_OUTPUT_TOKENS,
+                "max_tokens": prompt.max_output_tokens,
             },
             {"Authorization": f"Bearer {self.config.api_key}"},
             timeout_s,
@@ -202,7 +234,7 @@ class GeminiProvider(_HttpProvider):
                 "contents": [{"role": "user", "parts": [{"text": prompt.user}]}],
                 "generationConfig": {
                     "temperature": self.config.temperature,
-                    "maxOutputTokens": MAX_OUTPUT_TOKENS,
+                    "maxOutputTokens": prompt.max_output_tokens,
                 },
             },
             {"x-goog-api-key": self.config.api_key or ""},

@@ -4,8 +4,9 @@ import { pageFetch } from "./pageFetch";
 
 /**
  * Feedback para o aluno (S19-01; FR-30, US-32) com o analisador de verdade e a IA falsa do compose
- * (IPC_LLM_PROVIDER=fake). Roda no projeto "feedback", com a conta só dele (S28-04): troca o
- * tratamento para conferir a apresentação nos três e o devolve no fim.
+ * (IPC_LLM_PROVIDER=fake). Desde a Sprint 32 (Q-16), o texto sai sem IA, e o "Aprimorar com IA"
+ * usa a IA falsa. Roda no projeto "feedback", com a conta só dele (S28-04): troca o tratamento para
+ * conferir a apresentação nos três e o devolve no fim.
  */
 const VALID = "x = int(input())\nif x > 0:\n    print(x)\n";
 const INVALID = "x = int(input())\nfor i in range(x):\n    print(i)\n";
@@ -50,11 +51,18 @@ test("o feedback usa a apresentação do tratamento e a frase obrigatória do re
 
       const { panel, text } = await generate(page, VALID, "Isabella Schultz");
 
-      expect(text).toBe(
+      const fixed =
         `Olá, Isabella Schultz, ${presentation(treatment)} seu código estava muito bom. ` +
-          `Sua questão está ótima, não houve nenhuma violação de regras. ${FAKE_TEXT}`,
-      );
-      await expect(panel).toContainText("Escrito com IA a partir do resultado do IP-Checker.");
+        "Sua questão está ótima, não houve nenhuma violação de regras.";
+      expect(text.startsWith(fixed)).toBe(true);
+      await expect(panel).toContainText("Montado sem IA, a partir do resultado do IP-Checker.");
+
+      // Aprimorar com IA (S32-13): a IA falsa escreve a continuação; Desfazer volta ao texto sem IA.
+      await panel.getByRole("button", { name: "Aprimorar com IA" }).click();
+      await expect(panel.getByLabel("Texto do feedback")).toHaveValue(`${fixed} ${FAKE_TEXT}`);
+      await expect(panel).toContainText("Aprimorado por IA");
+      await panel.getByRole("button", { name: "Desfazer" }).click();
+      await expect(panel.getByLabel("Texto do feedback")).toHaveValue(text);
     }
   } finally {
     await pageFetch(page, "/api/v1/profile", { method: "PATCH", body: { treatment: original } });
@@ -88,5 +96,6 @@ test("o texto é editável e o botão Copiar o copia", async ({ page, context })
 
   await expect(panel.getByRole("status")).toHaveText("Copiado.");
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copied.endsWith(`${FAKE_TEXT} Até a próxima!`)).toBe(true);
+  expect(copied.endsWith(" Até a próxima!")).toBe(true);
+  expect(copied.startsWith("Olá, Duda")).toBe(true);
 });

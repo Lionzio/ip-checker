@@ -83,6 +83,25 @@ services:
         sync: false
       - key: IPC_GOOGLE_CLIENT_SECRET
         sync: false
+      # Aprimorar com IA (Q-16, S32-12): a cadeia de IAs, na ordem, com as variáveis de cada nome
+      # (docs/runbook.md, "IAs do Aprimorar com IA"). Vazia, valem a principal e a de reserva abaixo;
+      # sem nenhuma, o botão nem aparece. O texto sem IA é sempre o padrão.
+      - key: IPC_LLM_CHAIN
+        sync: false
+      - key: IPC_LLM_GEMINI_PROVIDER
+        sync: false
+      - key: IPC_LLM_GEMINI_MODEL
+        sync: false
+      - key: IPC_LLM_GEMINI_API_KEY
+        sync: false
+      - key: IPC_LLM_GROQ_PROVIDER
+        sync: false
+      - key: IPC_LLM_GROQ_BASE_URL
+        sync: false
+      - key: IPC_LLM_GROQ_MODEL
+        sync: false
+      - key: IPC_LLM_GROQ_API_KEY
+        sync: false
       # Feedback por IA (S18): a principal e a de reserva. Vazias, o feedback é montado sem IA.
       - key: IPC_LLM_PROVIDER
         sync: false

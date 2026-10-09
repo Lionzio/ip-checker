@@ -2,7 +2,7 @@
 
 **Título:** O backend monta a apresentação, a abertura e a frase obrigatória; a LLM escreve só o trecho livre, que é validado antes de ser exibido.
 
-**Status:** Proposto em 02/10/2026 e implementado na Sprint 18, com a IA de reserva e o modelo sem IA do item 6 (pedido do autor em 02/10/2026); o provedor depende da Q-16.
+**Status:** Proposto em 02/10/2026 e implementado na Sprint 18, com a IA de reserva e o modelo sem IA do item 6 (pedido do autor em 02/10/2026). **Revisto em 09/10/2026 (Q-16, Sprint 32):** o texto sem IA (item 6) passa a ser o padrão do **Gerar feedback**, que não chama nenhuma IA; o **Aprimorar com IA** manda essa versão a uma cadeia de provedores gratuitos (`IPC_LLM_CHAIN`, por exemplo Gemini e Groq), em ordem, com fallback por erro, prazo, cota esgotada (429, com a IA pausada por `IPC_LLM_COOLDOWN_S`) ou texto reprovado na validação, e a resposta pode ter até 10 frases (1.500 caracteres). As partes fixas e a validação são as mesmas; sem resposta válida, fica o texto sem IA, com um aviso. Risco aceito pelo autor: os planos gratuitos podem usar os dados para treino (o aviso de privacidade diz isso).
 
 **Contexto:** O FR-30 exige que o texto nunca contradiga o motor, que a apresentação seja usada exatamente como foi montada e que as autorreferências concordem com o tratamento. Uma LLM não garante nada disso sozinha, e o código do aluno pode conter instruções dirigidas a ela.
 

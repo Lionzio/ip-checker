@@ -1,21 +1,23 @@
-"""O feedback de ponta a ponta (S18-02; FR-30, ADR-06, NFR-26).
+"""O feedback de ponta a ponta (S18-02; FR-30, ADR-06, NFR-26; Q-16 e S32-12).
 
-Cada pedido gasta uma unidade da cota diária da conta e do teto diário do servidor, que limitam
-o custo das IAs. Desde a S25-05 a cota fica no banco (não zera num deploy) e só é cobrada depois
-de a análise dar certo: um código com erro de sintaxe ou um analisador fora do ar não gastam
-nada. A ordem é:
+Desde a Sprint 32, o **Gerar feedback** monta o texto sem IA (Q-16, opção A): não chama nenhum
+provedor e não gasta cota. O **Aprimorar com IA** (opção C) manda essa versão às IAs da cadeia, em
+ordem, para detalhar e exemplificar; só ele gasta uma unidade da cota diária da conta e do teto
+diário do servidor. Desde a S25-05 a cota fica no banco (não zera num deploy) e só é cobrada depois
+de a análise dar certo. A ordem do aprimoramento:
 
-1. a IA principal;
-2. a IA de reserva, se houver; sem ela, uma nova tentativa da principal;
-3. sem resposta válida dentro do prazo total, o feedback montado por modelos de texto, sem IA.
+1. cada IA da cadeia, menos as pausadas por um 429 recente (cota do plano gratuito);
+2. com uma IA só, uma nova tentativa dela;
+3. sem resposta válida dentro do prazo total, a página fica com o texto sem IA e um aviso.
 
 Uma resposta que não chega, que dá erro ou que não passa na validação conta como uma tentativa.
-As partes fixas (abertura e frase obrigatória) são as mesmas nos três casos.
+As partes fixas (abertura e frase obrigatória) são sempre as do texto sem IA.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -28,13 +30,15 @@ from ipc_api.errors import ApiError, ErrorCode
 from ipc_api.feedback.compose import (
     Evaluator,
     Item,
-    build_prompt,
+    build_enhance_prompt,
+    enhanced_text_problem,
     fixed_text,
-    free_text_problem,
     template_text,
     unmask,
 )
 from ipc_api.feedback.providers import LlmConfig, LlmSettings, Provider, ProviderError, Slot
+
+logger = logging.getLogger(__name__)
 
 #: Uma tentativa com menos tempo que isto não vale a pena.
 MIN_ATTEMPT_S = 2.0
@@ -61,7 +65,7 @@ class FeedbackText:
     text: str
     #: "llm": com o trecho escrito por uma IA e validado; "template": montado sem IA.
     source: Literal["llm", "template"]
-    #: Qual IA escreveu o trecho livre, quando foi uma.
+    #: Qual IA da cadeia escreveu o trecho livre, quando foi uma.
     provider: Slot | None = None
 
 
@@ -90,6 +94,8 @@ class FeedbackService:
         self.store: AccountStore = store if store is not None else MemoryAccountStore()
         self._now = now
         self._monotonic = monotonic
+        #: Até quando cada IA fica fora da cadeia depois de um 429 (cota do plano gratuito).
+        self._paused: dict[Slot, float] = {}
 
     @property
     def ai_enabled(self) -> bool:
@@ -116,10 +122,27 @@ class FeedbackService:
         raise ApiError(429, ErrorCode.RATE_LIMITED, message, retry_after_s=wait)
 
     def _plan(self) -> tuple[Ai, ...]:
-        # Com uma IA só, ela tem uma nova tentativa (NFR-26); com a reserva, cada uma tem uma.
-        return self.ais * 2 if len(self.ais) == 1 else self.ais
+        """A cadeia na ordem, sem as IAs pausadas por cota; com uma IA só, ela tem uma nova
+        tentativa (NFR-26)."""
+        now = self._monotonic()
+        active = tuple(ai for ai in self.ais if self._paused.get(ai.slot, 0.0) <= now)
+        return active * 2 if len(active) == 1 else active
 
-    async def write(
+    def write(
+        self,
+        *,
+        student: str,
+        annotation: str | None,
+        evaluator: Evaluator,
+        items: list[Item],
+    ) -> FeedbackText:
+        """O feedback sem IA (Q-16, opção A): a abertura, a frase obrigatória e o trecho montado
+        por modelos de texto. Não chama nenhuma IA nem gasta cota."""
+        fixed = fixed_text(student, evaluator, items)
+        free = template_text(student=student, items=items, annotation=annotation)
+        return FeedbackText(f"{fixed} {free}", "template")
+
+    async def enhance(
         self,
         *,
         student: str,
@@ -127,30 +150,40 @@ class FeedbackService:
         evaluator: Evaluator,
         items: list[Item],
         code: str,
-    ) -> FeedbackText:
+    ) -> FeedbackText | None:
+        """O "Aprimorar com IA" (Q-16, opção C; S32-12): a versão sem IA vai à cadeia, que a
+        detalha e exemplifica. Cada IA que falha, demora, está sem cota (429) ou responde algo
+        que não passa na validação (NFR-26) dá a vez à seguinte; ``None`` quando nenhuma serviu."""
         fixed = fixed_text(student, evaluator, items)
-        if self.ais:
-            prompt = build_prompt(
-                items=items,
-                code=code,
-                annotation=annotation,
-                student=student,
-                treatment=evaluator.treatment,
-            )
-            deadline = self._monotonic() + self.settings.deadline_s
-            for ai in self._plan():
-                remaining = deadline - self._monotonic()
-                if remaining < MIN_ATTEMPT_S:
-                    break
-                timeout = min(ai.config.timeout_s, remaining)
-                try:
-                    raw = await asyncio.wait_for(
-                        ai.provider.generate(prompt, timeout_s=timeout), timeout=timeout
-                    )
-                except (ProviderError, TimeoutError):
-                    continue
-                free = raw.strip()
-                if free_text_problem(free, valid=not items, treatment=evaluator.treatment) is None:
-                    return FeedbackText(f"{fixed} {unmask(free, student)}", "llm", ai.slot)
-        free = template_text(student=student, items=items, annotation=annotation)
-        return FeedbackText(f"{fixed} {free}", "template")
+        draft = template_text(student=student, items=items, annotation=annotation)
+        prompt = build_enhance_prompt(
+            items=items,
+            code=code,
+            annotation=annotation,
+            draft=draft,
+            student=student,
+            treatment=evaluator.treatment,
+        )
+        deadline = self._monotonic() + self.settings.deadline_s
+        for ai in self._plan():
+            remaining = deadline - self._monotonic()
+            if remaining < MIN_ATTEMPT_S:
+                break
+            timeout = min(ai.config.timeout_s, remaining)
+            try:
+                raw = await asyncio.wait_for(
+                    ai.provider.generate(prompt, timeout_s=timeout), timeout=timeout
+                )
+            except ProviderError as exc:
+                if exc.status == 429:
+                    self._paused[ai.slot] = self._monotonic() + self.settings.cooldown_s
+                    logger.warning("IA %s sem cota; fora da cadeia por um tempo", ai.slot)
+                continue
+            except TimeoutError:
+                continue
+            free = raw.strip()
+            problem = enhanced_text_problem(free, valid=not items, treatment=evaluator.treatment)
+            if problem is None:
+                return FeedbackText(f"{fixed} {unmask(free, student)}", "llm", ai.slot)
+            logger.info("texto da IA %s recusado: %s", ai.slot, problem)
+        return None

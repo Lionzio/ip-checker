@@ -817,15 +817,17 @@ export function createMockClient({
       const sentence = valid
         ? "Sua questão está ótima, não houve nenhuma violação de regras."
         : `Sua questão apresenta problemas, como o uso de ${used.join(", ")}, portanto ela foi anulada.`;
-      const ai = /#\s*simular:\s*ia\b/.test(request.code);
+      // Q-16 (S32-12): sem IA por padrão; o "Aprimorar com IA" simulado responde como a cadeia.
+      const ai = request.enhance === true;
       return {
         request_id: `simulado-${(requests += 1)}`,
         status: valid ? "valid" : "invalid",
         text: ai
-          ? `${opening} ${sentence} Gostei de como você organizou a leitura dos dados; vale revisar os nomes das variáveis.`
-          : `${opening} ${sentence} Texto simulado: no servidor, uma IA ou os modelos de texto escrevem esta parte.`,
+          ? `${opening} ${sentence} Gostei de como você organizou a leitura dos dados; vale revisar os nomes das variáveis, para que cada um diga o que guarda, e testar o programa com o zero e com um número negativo.`
+          : `${opening} ${sentence} Texto simulado: no servidor, os modelos de texto escrevem esta parte, sem IA.`,
         source: ai ? "llm" : "template",
-        provider: ai ? "primary" : null,
+        provider: ai ? "gemini" : null,
+        can_enhance: true,
       };
     },
   };

@@ -1,5 +1,6 @@
-"""O feedback de ponta a ponta no serviço (S18-02, NFR-26): IA principal, IA de reserva, prazo,
-feedback montado sem IA e as cotas diárias."""
+"""O feedback de ponta a ponta no serviço (S18-02, NFR-26; Q-16 e S32-12): o texto sem IA como
+padrão, o "Aprimorar com IA" pela cadeia de IAs (fallback, pausa depois de 429, prazo) e as cotas
+diárias."""
 
 from __future__ import annotations
 
@@ -57,13 +58,99 @@ def service(
 async def write(
     svc: FeedbackService, items: list[Item] | None = None, annotation: str | None = None
 ) -> tuple[str, str, str | None]:
-    result = await svc.write(
+    """O "Aprimorar com IA" e, sem nenhuma resposta válida, o texto sem IA, como faz a rota."""
+    result = await svc.enhance(
         student=STUDENT, annotation=annotation, evaluator=MONITOR, items=items or [], code="x = 1\n"
     )
+    if result is None:
+        result = svc.write(
+            student=STUDENT, annotation=annotation, evaluator=MONITOR, items=items or []
+        )
     return result.text, result.source, result.provider
 
 
-# --- IA principal e de reserva -------------------------------------------------------------------
+# --- Sem IA por padrão (Q-16, opção A) ------------------------------------------------------------
+
+
+def test_generating_never_calls_an_ai() -> None:
+    primary = Scripted()
+
+    result = service(primary).write(
+        student=STUDENT, annotation=None, evaluator=MONITOR, items=[Item("uso", "for")]
+    )
+
+    assert (result.source, result.provider) == ("template", None)
+    assert primary.prompts == []
+    assert "Sua questão apresenta problemas, como o uso de for" in result.text
+
+
+async def test_the_enhance_prompt_carries_the_draft_but_never_the_name() -> None:
+    primary = Scripted("Gostei bastante do código.")
+
+    await write(service(primary), annotation="Isabella testou bem o zero")
+
+    prompt = primary.prompts[0]
+    assert "<rascunho>" in prompt.user
+    assert "[ALUNO]" in prompt.user
+    assert "Isabella" not in prompt.user
+    assert "Schultz" not in prompt.user
+    # O aprimoramento pode escrever mais que o trecho curto do S18.
+    assert prompt.max_output_tokens > 400
+
+
+async def test_the_enhanced_text_may_be_longer_than_the_short_one() -> None:
+    long = " ".join(
+        f"Na linha {n}, vale explicar com calma o que o laço faz com cada valor." for n in range(6)
+    )
+
+    text, source, _ = await write(service(Scripted(long)))
+
+    assert source == "llm"
+    assert text.endswith(long)
+
+
+# --- Cadeia de IAs (S32-12) ----------------------------------------------------------------------
+
+
+async def test_the_chain_is_tried_in_order() -> None:
+    first = Scripted(ProviderError("HTTP 500", status=500))
+    second = Scripted("Veja https://exemplo.invalid")  # recusada pela validação
+    third = Scripted("Gostei bastante da organização.")
+    svc = FeedbackService(
+        [Ai("gemini", first, FAKE), Ai("groq", second, FAKE), Ai("openrouter", third, FAKE)],
+        LlmSettings(),
+        FeedbackLimits(),
+    )
+
+    text, source, provider = await write(svc)
+
+    assert (source, provider) == ("llm", "openrouter")
+    assert [len(ai.prompts) for ai in (first, second, third)] == [1, 1, 1]
+    assert text.endswith("Gostei bastante da organização.")
+
+
+async def test_an_ai_without_quota_leaves_the_chain_for_a_while() -> None:
+    clock = [0.0]
+    first = Scripted(ProviderError("HTTP 429", status=429), "Gostei bastante do código.")
+    second = Scripted("Gostei do código.", "Gostei de novo.")
+    svc = FeedbackService(
+        [Ai("gemini", first, FAKE), Ai("groq", second, FAKE)],
+        LlmSettings(cooldown_s=60),
+        FeedbackLimits(),
+        monotonic=lambda: clock[0],
+    )
+
+    assert (await write(svc))[2] == "groq"
+    # Dentro da pausa, a primeira nem é chamada.
+    clock[0] += 30
+    assert (await write(svc))[2] == "groq"
+    assert len(first.prompts) == 1
+    # Passada a pausa, ela volta à frente da cadeia.
+    clock[0] += 31
+    assert (await write(svc))[2] == "gemini"
+
+
+# --- IA principal e de reserva (as duas vagas antigas, sem IPC_LLM_CHAIN) -------------------------
 
 
 async def test_a_good_answer_from_the_primary_ai_follows_the_fixed_parts() -> None:
@@ -75,6 +162,8 @@ async def test_a_good_answer_from_the_primary_ai_follows_the_fixed_parts() -> No
     assert text == (
         f"{OPENING} {VALID_SENTENCE} Gostei de como você organizou o código, Isabella Schultz."
     )
+    # O aprimoramento vem da versão sem IA: o mesmo começo, sem chamar a IA de novo.
+    assert len(primary.prompts) == 1
 
 
 async def test_with_one_ai_a_refused_answer_gets_one_more_try() -> None:

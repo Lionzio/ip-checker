@@ -672,6 +672,12 @@ export interface components {
              * @description Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).
              */
             question_id?: string | null;
+            /**
+             * Enhance
+             * @description Aprimorar com IA (Q-16, S32-12): a versão sem IA vai às IAs configuradas, em ordem, para detalhar e exemplificar. Só este pedido gasta a cota diária de feedbacks.
+             * @default false
+             */
+            enhance: boolean;
         };
         /** FeedbackResponse */
         FeedbackResponse: {
@@ -689,15 +695,26 @@ export interface components {
             text: string;
             /**
              * Source
-             * @description llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo).
+             * @description llm: o trecho livre veio de uma IA e foi validado (Aprimorar com IA); template: montado por modelos de texto, sem IA (o padrão desde a Sprint 32, Q-16).
              * @enum {string}
              */
             source: "llm" | "template";
             /**
              * Provider
-             * @description Qual IA escreveu o trecho livre: a principal ou a de reserva.
+             * @description Qual IA da cadeia escreveu o trecho livre, quando foi uma.
              */
-            provider: ("primary" | "fallback") | null;
+            provider: string | null;
+            /**
+             * Can Enhance
+             * @description Há IA configurada neste servidor: a página mostra o Aprimorar com IA.
+             * @default false
+             */
+            can_enhance: boolean;
+            /**
+             * Notice
+             * @description Por que o texto ficou sem IA num pedido de aprimoramento.
+             */
+            notice?: string | null;
         };
         /** ForgotPasswordRequest */
         ForgotPasswordRequest: {

@@ -65,11 +65,13 @@ export function Privacy() {
 
       <h3 className="text-lg font-semibold">Feedback</h3>
       <p>
-        Quando há uma IA configurada, vão ao provedor dela só o código sem os comentários e sem as
-        docstrings, a anotação e o resultado da verificação. Antes do envio, o nome do aluno é trocado
-        por [ALUNO], e e-mails, CPFs e números com 8 ou mais dígitos (como matrículas) são trocados
-        por marcas; o seu nome e o seu cargo não vão. Sem IA, o texto é montado por modelos no próprio
-        servidor, e nada sai dele.
+        O texto do feedback é montado por modelos no próprio servidor, sem IA, e nada sai dele. Só
+        quando você clica em Aprimorar com IA vão a um provedor de IA o código sem os comentários e sem
+        as docstrings, a anotação, o resultado da verificação e o texto sem IA. Antes do envio, o nome
+        do aluno é trocado por [ALUNO], e e-mails, CPFs e números com 8 ou mais dígitos (como
+        matrículas) são trocados por marcas; o seu nome e o seu cargo não vão. Os provedores usados
+        são de planos gratuitos, que podem usar o que recebem para treinar modelos (decisão do
+        autor, Q-16).
       </p>
 
       <h3 className="text-lg font-semibold">Sessão, e-mail e registros técnicos</h3>

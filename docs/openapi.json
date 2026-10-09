@@ -2366,6 +2366,12 @@
             ],
             "title": "Question Id",
             "description": "Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01)."
+          },
+          "enhance": {
+            "type": "boolean",
+            "title": "Enhance",
+            "description": "Aprimorar com IA (Q-16, S32-12): a versão sem IA vai às IAs configuradas, em ordem, para detalhar e exemplificar. Só este pedido gasta a cota diária de feedbacks.",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -2403,23 +2409,40 @@
               "template"
             ],
             "title": "Source",
-            "description": "llm: o trecho livre veio de uma IA e foi validado; template: montado por modelos de texto, sem IA (nenhuma configurada ou nenhuma respondeu a tempo)."
+            "description": "llm: o trecho livre veio de uma IA e foi validado (Aprimorar com IA); template: montado por modelos de texto, sem IA (o padrão desde a Sprint 32, Q-16)."
           },
           "provider": {
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "primary",
-                  "fallback"
-                ]
+                "pattern": "^[a-z][a-z0-9_]{0,19}$"
               },
               {
                 "type": "null"
               }
             ],
             "title": "Provider",
-            "description": "Qual IA escreveu o trecho livre: a principal ou a de reserva."
+            "description": "Qual IA da cadeia escreveu o trecho livre, quando foi uma."
+          },
+          "can_enhance": {
+            "type": "boolean",
+            "title": "Can Enhance",
+            "description": "Há IA configurada neste servidor: a página mostra o Aprimorar com IA.",
+            "default": false
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice",
+            "description": "Por que o texto ficou sem IA num pedido de aprimoramento."
           }
         },
         "additionalProperties": false,

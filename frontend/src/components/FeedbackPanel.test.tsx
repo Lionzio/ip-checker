@@ -9,8 +9,15 @@ import type { FeedbackRequest, FeedbackResponse } from "../types/api";
 
 const VALID = "x = int(input())\nif x > 0:\n    print(x)\n";
 
-function answer(text: string, source: FeedbackResponse["source"] = "llm"): FeedbackResponse {
-  return { request_id: "f1", status: "valid", text, source, provider: source === "llm" ? "primary" : null };
+function answer(text: string, source: FeedbackResponse["source"] = "template"): FeedbackResponse {
+  return {
+    request_id: "f1",
+    status: "valid",
+    text,
+    source,
+    provider: source === "llm" ? "gemini" : null,
+    can_enhance: true,
+  };
 }
 
 async function verified(client: ApiClient, code = VALID) {
@@ -56,7 +63,7 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
 
     const text = await within(panel()).findByLabelText("Texto do feedback");
     expect(text).toHaveValue("Olá, Isabella, sou a monitora Ana e seu código estava muito bom.");
-    expect(panel()).toHaveTextContent("Escrito com IA a partir do resultado do IP-Checker.");
+    expect(panel()).toHaveTextContent("Montado sem IA, a partir do resultado do IP-Checker.");
     expect(sent).toEqual([
       {
         code: VALID,
@@ -64,6 +71,7 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
         question_id: null,
         student_name: "Isabella Schultz",
         annotation: "Testar o zero.",
+        enhance: false,
       },
     ]);
   });
@@ -189,5 +197,64 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
     expect((text as HTMLTextAreaElement).value).toMatch(
       /^Olá, Isabella Schultz, sou a monitora Monitora de Demonstração e seu código estava muito bom\. Sua questão está ótima/,
     );
+  });
+
+  it("Aprimorar com IA troca o texto, avisa o que vai à IA, e Desfazer volta (S32-13)", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    const sent: FeedbackRequest[] = [];
+    client.feedback = (request) => {
+      sent.push(request);
+      return Promise.resolve(
+        request.enhance
+          ? answer("Texto aprimorado e mais detalhado.", "llm")
+          : answer("Texto sem IA."),
+      );
+    };
+    const user = await verified(client);
+    await user.type(within(panel()).getByLabelText("Nome do aluno"), "Ana");
+    await user.click(within(panel()).getByRole("button", { name: "Gerar feedback" }));
+    const text = await within(panel()).findByLabelText("Texto do feedback");
+    expect(text).toHaveValue("Texto sem IA.");
+    // O aviso de privacidade aparece antes do primeiro aprimoramento (S32-14).
+    expect(panel()).toHaveTextContent("vão a um provedor de IA gratuito");
+
+    await user.click(within(panel()).getByRole("button", { name: "Aprimorar com IA" }));
+
+    await waitFor(() => expect(text).toHaveValue("Texto aprimorado e mais detalhado."));
+    expect(panel()).toHaveTextContent("Aprimorado por IA (gemini)");
+    expect(sent.map((request) => request.enhance)).toEqual([false, true]);
+    expect(within(panel()).queryByRole("button", { name: "Aprimorar com IA" })).not.toBeInTheDocument();
+
+    await user.click(within(panel()).getByRole("button", { name: "Desfazer" }));
+    expect(text).toHaveValue("Texto sem IA.");
+  });
+
+  it("quando nenhuma IA responde, fica o texto sem IA com o aviso", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.feedback = (request) =>
+      Promise.resolve({
+        ...answer("Texto sem IA."),
+        notice: request.enhance ? "Nenhuma IA respondeu agora: fica o texto sem IA." : null,
+      });
+    const user = await verified(client);
+    await user.type(within(panel()).getByLabelText("Nome do aluno"), "Ana");
+    await user.click(within(panel()).getByRole("button", { name: "Gerar feedback" }));
+    await within(panel()).findByLabelText("Texto do feedback");
+
+    await user.click(within(panel()).getByRole("button", { name: "Aprimorar com IA" }));
+
+    expect(await within(panel()).findByRole("note")).toHaveTextContent("Nenhuma IA respondeu agora");
+    expect(within(panel()).getByLabelText("Texto do feedback")).toHaveValue("Texto sem IA.");
+  });
+
+  it("sem IA no servidor, o botão não aparece", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.feedback = () => Promise.resolve({ ...answer("Texto sem IA."), can_enhance: false });
+    const user = await verified(client);
+    await user.type(within(panel()).getByLabelText("Nome do aluno"), "Ana");
+    await user.click(within(panel()).getByRole("button", { name: "Gerar feedback" }));
+    await within(panel()).findByLabelText("Texto do feedback");
+
+    expect(within(panel()).queryByRole("button", { name: "Aprimorar com IA" })).not.toBeInTheDocument();
   });
 });

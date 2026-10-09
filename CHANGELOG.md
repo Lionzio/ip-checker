@@ -12,6 +12,14 @@ mudaram.
 
 Mudanças na `develop` que chegam ao piloto na próxima release.
 
+- **09/10/2026, Aprimorar com IA (S32-12 a S32-14; Q-16, ADR-06 revisto).** O **Gerar
+  feedback** monta o texto sem IA e não gasta cota. O **Aprimorar com IA** manda essa versão, com o
+  mesmo contexto de antes (código sem comentários, anotação, resultado, nome trocado por `[ALUNO]`),
+  a uma cadeia de IAs (`IPC_LLM_CHAIN`, por exemplo `gemini,groq`), em ordem, com fallback por erro,
+  prazo, cota esgotada (a IA que responde 429 fica fora por 60 s) ou texto reprovado na validação;
+  sem resposta válida, fica o texto sem IA com um aviso. Na página, o botão aparece só com IA
+  configurada (`can_enhance`), com o aviso de que os planos gratuitos podem usar os dados para
+  treino, e **Desfazer** volta ao texto sem IA. Sem a cadeia, valem a principal e a de reserva.
 - **09/10/2026, comparação com o gabarito (S32-02 a S32-09; ADR-11, FR-32, US-37, US-38).** A API
   baixa os gabaritos do repositório privado ao subir (`IPC_GABARITOS_REPO` e
   `IPC_GABARITOS_TOKEN`, só leitura) e os guarda só na memória; no compose, lê uma pasta
