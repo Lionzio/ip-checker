@@ -29,12 +29,29 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   await expect(page.getByRole("option", { name: "Lista 6: Recursão" })).toBeAttached();
   await expect(page.getByRole("note")).toHaveCount(0);
 
-  // R-01 (Sprint 24): a questão é escolhida depois da lista. O ruleset ainda não tem questões
-  // reais cadastradas, então o seletor diz isso.
+  // R-01 (Sprint 24): a questão é escolhida depois da lista. Só a Lista 3 tem uma questão
+  // cadastrada, a do ensaio do cadastro (S31-13); nas outras, o seletor diz que não há.
   const question = page.getByLabel("Questão");
   await expect(question).toBeDisabled();
-  await page.getByLabel("Lista").selectOption("3");
+  await page.getByLabel("Lista").selectOption("2");
   await expect(question).toHaveText("Nenhuma questão com regra específica cadastrada");
+  await page.getByLabel("Lista").selectOption("3");
+  await expect(question).toBeEnabled();
+  await expect(page.getByRole("option", { name: "L3-Q9: Ensaio: média da turma sem sum()" })).toBeAttached();
+});
+
+test("a questão do ensaio (L3-Q9) libera o map() e proíbe o sum() que a Lista 3 permite", async ({ page }) => {
+  const code = "notas = list(map(float, input().split()))\nprint(sum(notas) / len(notas))\n";
+  await page.goto("/");
+  await page.getByLabel("Lista").selectOption("3");
+  await page.getByLabel("Questão").selectOption("L3-Q9");
+  await page.getByLabel("Código Python").fill(code);
+  await page.getByRole("button", { name: "Verificar" }).click();
+
+  // O map() passa pela questão; o sum() é proibido por ela (R-01), na linha 2.
+  await expect(result(page)).toContainText("R-01");
+  await expect(result(page)).toContainText("Proibido nesta questão");
+  await expect(result(page)).not.toContainText("R-04");
 });
 
 test("Lista 5: dicionário com items no for passa, e o dicionário na Lista 4 é da Lista 5", async ({ page }) => {

@@ -192,10 +192,15 @@ def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
 
 def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [
-        # O ruleset do repositório ainda não tem questões cadastradas (R-01).
+        # Só a questão do ensaio do cadastro está cadastrada (R-01).
         {"number": 1, "title": "Comandos condicionais", "questions": []},
         {"number": 2, "title": "Laços de repetição", "questions": []},
-        {"number": 3, "title": "Listas e tuplas", "questions": []},
+        {
+            "number": 3,
+            "title": "Listas e tuplas",
+            # A questão do ensaio do cadastro (S31-13, docs/ensaio-cadastro.md).
+            "questions": [{"id": "L3-Q9", "title": "Ensaio: média da turma sem sum()"}],
+        },
         {"number": 4, "title": "Funções e escopo de variável", "questions": []},
         {"number": 5, "title": "Dicionários", "questions": []},
     ]
