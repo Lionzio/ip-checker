@@ -10,7 +10,7 @@
 # A R-01 (regras por questão) fica em questions/, um arquivo por questão (RULES.md).
 
 schema_version: 2
-ruleset_version: "2026.2.3"
+ruleset_version: "2026.2.4"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -384,9 +384,11 @@ rules:
     name: "List comprehension"
     effect: allow
     since_list: 3
-    # Expressão geradora e dict comprehension não constam (decisão Q-02, item e).
-    match: ["node:ListComp"]
-    message: "List comprehension só é permitida a partir da Lista {allowed_from_list}."
+    # A expressão geradora (x for x in v) entra aqui desde 09/10/2026: a Q-02 (e) foi revista pelo
+    # autor, provisoriamente, até a ratificação no Marco 2 (caso 10 de docs/marco-2.md). A dict
+    # comprehension continua fora (R-04).
+    match: ["node:ListComp", "node:GeneratorExp"]
+    message: "List comprehension e expressão geradora só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 3: List comprehension"
   - id: "R-42"
     name: "Indexação de listas e strings"

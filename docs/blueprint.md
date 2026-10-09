@@ -100,7 +100,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | R-38 | 3 → 6 | Listas | permitido | Listas. | Perm. p.2 §Lista 3 |
 | R-39 | 3 → 6 | Matrizes | permitido | Matrizes. | Perm. p.2 §Lista 3 |
 | R-40 | 3 → 6 | Tuplas | permitido | Tuplas. | Perm. p.2 §Lista 3 |
-| R-41 | 3 → 6 | List comprehension | permitido | List comprehension. | Perm. p.2 §Lista 3 |
+| R-41 | 3 → 6 | List comprehension | permitido | List comprehension e, desde 09/10/2026, a expressão geradora (Q-02 e revista, provisória até o Marco 2). | Perm. p.2 §Lista 3; Q-02 (e) |
 | R-42 | 3 → 6 | Indexação de listas e strings | permitido | Indexação de listas e strings. | Perm. p.2 §Lista 3 |
 | R-43 | 3 → 6 | Slicing | permitido | Slicing. | Perm. p.2 §Lista 3 |
 | R-44 | 3 → 6 | `in` para listas | permitido | "in" para listas. | Perm. p.2 §Lista 3 |
@@ -1083,7 +1083,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 4. Os links do formulário e da planilha estão em `docs/eficacia.md`.
 5. Trocar o período ativo muda uma linha de um arquivo, e `ipc-rules new-period 2027.1 --from 2026.2` gera um período válido (S31-09, S31-10).
 6. Um gabarito de um período anterior é conferido com as questões do próprio período (S31-11).
-7. A pauta do Marco 2 sai com cada um dos 9 casos do mapeamento decidido ou adiado com o motivo (S31-12).
+7. A pauta do Marco 2 sai com cada um dos 9 casos do mapeamento decidido ou adiado com o motivo, e o caso 10 (expressão geradora, aplicado de forma provisória em 09/10/2026) ratificado ou revertido (S31-12).
 
 **Testes (além da base de 7.12.1):**
 

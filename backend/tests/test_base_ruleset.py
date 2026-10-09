@@ -78,6 +78,8 @@ def test_permissions_start_at_their_list(
         ("node:Dict", {"R-61"}),
         ("node:Lambda", {"R-67"}),
         ("method:items", {"R-65"}),
+        # Q-02 (e) revista em 09/10/2026, provisória até o Marco 2 (caso 10).
+        ("node:GeneratorExp", {"R-41"}),
     ],
 )
 def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: set[str]) -> None:
@@ -89,8 +91,7 @@ def test_mapping_decisions(base_ruleset: CompiledRuleset, fact: str, rule_ids: s
     [
         "kwarg:print.sep",  # Q-02 (c): só end= consta
         "node:AsyncFor",  # C-01
-        "node:GeneratorExp",  # Q-02 (e)
-        "node:DictComp",  # Q-02 (e)
+        "node:DictComp",  # Q-02 (e); a expressão geradora saiu daqui em 09/10/2026 (R-41)
         "builtin:eval",
         "builtin:getattr",
         "builtin:__import__",

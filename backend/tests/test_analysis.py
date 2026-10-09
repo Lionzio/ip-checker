@@ -19,7 +19,7 @@ def test_valid_code(base_ruleset: CompiledRuleset) -> None:
 
     assert result.status == "valid"
     assert result.violations == ()
-    assert result.ruleset_version == "2026.2.3"
+    assert result.ruleset_version == "2026.2.4"
     assert result.list_number == 1
     assert not result.truncated
 

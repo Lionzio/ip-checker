@@ -8,6 +8,19 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Depois da Sprint 30 (não publicado no piloto)
+
+Mudanças na `develop` que chegam ao piloto na próxima release.
+
+- **09/10/2026, ruleset `2026.2.4`: expressão geradora a partir da Lista 3.** A R-41 (*list
+  comprehension*) passa a casar também `node:GeneratorExp`, por decisão provisória do autor
+  (revisão da Q-02 e), a ratificar no Marco 2 (caso 10 de `docs/marco-2.md`). A *dict
+  comprehension* continua na R-04. Origem: o gabarito oficial L3-Q8 de 2026.2, que usa
+  `" ".join(str(num) for num in ...)` e agora tem zero violação, como os outros 22 de 2026.2. Quatro
+  casos golden novos (Listas 2, 3 e 6 e a *dict comprehension*) e o caso da Lista 3 atualizado.
+- **08/10/2026:** CI e backup locais sem a cota do GitHub Actions (P-19), o repositório dos gabaritos
+  (ADR-10) e a pauta do Marco 2.
+
 ## Sprint 30 — Piloto verificado ponta a ponta
 
 A Sprint 30 (S30-01 a S30-12; US-17, US-19, US-20, US-22, US-26, US-32 e US-35) foi concluída em

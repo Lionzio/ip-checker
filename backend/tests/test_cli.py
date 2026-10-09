@@ -24,7 +24,7 @@ def test_a_valid_ruleset_exits_zero(period: Path, capsys: pytest.CaptureFixture[
     assert main(["validate", str(period)]) == 0
 
     out = capsys.readouterr().out
-    assert "ruleset 2026.2.3 válido" in out
+    assert "ruleset 2026.2.4 válido" in out
     assert "0 questões" in out
 
 
