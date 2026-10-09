@@ -17,7 +17,7 @@ from ipc_api.accounts.models import Account, StoreUnavailable
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.auth.deps import require_active_account
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
-from ipc_api.deps import get_admission, get_analyzer, get_request_id, get_settings
+from ipc_api.deps import get_admission, get_analyzer, get_gabaritos, get_request_id, get_settings
 from ipc_api.errors import (
     ApiError,
     ErrorCode,
@@ -27,6 +27,7 @@ from ipc_api.errors import (
 )
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
+from ipc_api.gabaritos import Gabaritos
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import FeedbackRequest, FeedbackResponse
@@ -88,6 +89,7 @@ async def feedback(
     admission: Annotated[Admission, Depends(get_admission)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
     request_id: Annotated[str, Depends(get_request_id)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
 ) -> FeedbackResponse:
     # O texto fala de um aluno: nenhum proxy ou navegador deve guardá-lo.
     response.headers["Cache-Control"] = "no-store"
@@ -103,11 +105,13 @@ async def feedback(
             ErrorCode.LIST_NOT_ENABLED,
             f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
         )
-    await check_question(analyzer, body.list_number, body.question_id)
+    # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista, como na verificação.
+    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    question_id = body.question_id if check is not None and check.registered else None
     try:
         async with admission.slot():
             data = await analyzer.feedback_input(
-                body.code, body.list_number, request_id=request_id, question_id=body.question_id
+                body.code, body.list_number, request_id=request_id, question_id=question_id
             )
     except Overloaded:
         raise overloaded() from None
