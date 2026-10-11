@@ -1293,7 +1293,7 @@ S33-04) e S34-06 (datas de 2027.1, P-10); os "7 dias seguidos" do sintético con
 | S35-01 | US-15 | Engenharia | `pytest-benchmark` no CI (NFR-02: P95 ≤ 50 ms por entrada de até 50 KB): corpus fixo de entradas, linha de base versionada, e o CI falha se o P95 regredir mais de 20% | `backend/pyproject.toml` (dependência de dev), `backend/tests/benchmark/` (novo), `.github/workflows/ci.yml` | Autor | 2 | — | Um PR que deixa o motor 30% mais lento falha; o item do benchmark da seção 8 sem [PLANEJADO] |
 | S35-02 | US-21 | Engenharia | Lighthouse CI nos PRs do `frontend/` (NFR-03): perfil móvel ("Slow 4G") sobre o build de produção | `.github/workflows/ci.yml`, `frontend/lighthouserc.json` (novo) | Autor | 1 | — | FCP < 1,5 s e JS inicial ≤ 350 KB gzip (NFR-03); um PR que estoura a meta falha |
 | S35-03 | US-15 | Engenharia | Cobertura com limite por pasta (NFR-16): ≥ 90% em `ipc_analyzer/engine` e ≥ 80% no restante, além do total | `backend/pyproject.toml`, `.github/workflows/ci.yml` | Autor | 0,5 | — | O CI falha se a pasta do motor cair abaixo de 90% |
-| S35-04 | US-17 | Engenharia | Busca mensal do canário em produção (NFR-11): um workflow agendado verifica, com a conta de verificação, um código com um marcador e procura o marcador no banco (com a credencial de administrador) e nos logs do Render [A CONFIRMAR: os logs pedem uma chave de API do Render, um secret novo `RENDER_API_KEY`] | `.github/workflows/canary.yml` (novo) | Autor | 2 | S30-01 | 0 ocorrências no banco e nos logs; o workflow falha com uma ocorrência plantada num teste |
+| S35-04 | US-17 | Engenharia | Busca mensal do canário em produção (NFR-11): um workflow agendado verifica, com a conta de verificação, um código com um marcador e procura o marcador no banco (com a credencial de administrador) e nos logs do Render **Decidido pelo autor em 11/10/2026:** sem chave de API do Render (ela não tem escopo e daria acesso total ao serviço); o workflow procura no banco, e os logs são conferidos pelo painel com a marca que ele mostra (runbook, "Canário mensal") | `.github/workflows/canary.yml` (novo) | Autor | 2 | S30-01 | 0 ocorrências no banco e nos logs; o workflow falha com uma ocorrência plantada num teste |
 | S35-05 | US-14 | Engenharia | JSON Schema do ruleset e `ipc-rules compile` (C6): esquema gerado do modelo do carregador, para editores e para o CI, e um compilado com o SHA-256 | `rulesets/schema/ruleset.schema.json` (novo), `backend/src/ipc_analyzer/cli.py` | Autor | 2 | — | O esquema valida os rulesets de 2026.2 e 2027.1; o compilado tem o mesmo `ruleset_sha256` do manifesto; o item da C6 sem [PLANEJADO] |
 | S35-06 | US-17 | Decisão | Métricas `/metrics`, Grafana e Prometheus (opcionais, C8): manter o `/health/slo` com o UptimeRobot ou acrescentar o Grafana Cloud gratuito (opções em 7.13.7) | `docs/blueprint.md` (C8) | Autor | — | — | Desbloqueio: decisão registrada na C8; se aprovada, uma task de implementação entra na sprint seguinte |
 
@@ -1311,6 +1311,12 @@ testes manuais:**
 
 **Decisão da S35-06 (11/10/2026, autor):** manter só o `/health/slo` com o UptimeRobot, sem Grafana
 nem `/metrics` (C8 atualizada).
+
+**Situação (11/10/2026):** engenharia concluída. S35-01, S35-02 e S35-03 na CI (#84), com as metas
+do NFR-02 e do NFR-03 medidas pela primeira vez e abertas na Q-25 (a CI usa as proteções descritas
+lá até a decisão); S35-04 (canário só no banco, logs pelo painel); S35-05 (#83); S35-07 (#82);
+S35-08 (#81); S35-09 (#80); S35-06 decidida. Aguardando: Q-25 (autor), S35-10 (equipe) e o primeiro
+canário mensal no piloto.
 
 **Critérios de aceite:**
 1. O CI falha num PR que regride o motor mais de 20%, ou que estoura a meta do Lighthouse, ou que baixa a cobertura do motor abaixo de 90%.

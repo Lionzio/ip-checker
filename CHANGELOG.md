@@ -10,6 +10,26 @@ mudaram.
 
 ## Sprint 35 — Qualidade medida e os achados corrigidos
 
+A Sprint 35 (S35-01 a S35-10; US-08, US-12, US-14, US-15, US-17, US-21 e US-22) fechou a engenharia
+em 11/10/2026. A missão é chegar a 2027.1 com os achados recentes corrigidos (o plágio dentro de
+blocos, achado ao montar o roteiro de testes manuais, e a mensagem errada sob sobrecarga, achada na
+S34-03), o período 2027.1 pronto e os controles de qualidade do blueprint medindo de verdade. A
+persona é o monitor-mantenedor que cuida da qualidade e opera o piloto. Com a cota do Actions
+esgotada até 01/11/2026 (P-19), a evidência de cada PR é o `scripts/ci-local.sh --e2e`, que ganhou
+os passos novos (27 etapas).
+
+Aguardando:
+
+| Task | Entrada pendente |
+|---|---|
+| Q-25 | A decisão do autor sobre as metas medidas pela primeira vez: NFR-02 (a entrada de 50 KB leva cerca de 260 ms) e NFR-03 (FCP de 1,51 s no perfil móvel) |
+| S35-10 | A campanha de testes manuais da equipe com o `docs/testes-manuais.md` |
+| S35-04 | O primeiro canário mensal no piloto (dia 1; até a cota voltar, `scripts/canario-local.sh`) |
+
+- **11/10/2026, S35-09 (#80):** o período 2027.1 existe como cópia do 2026.2 (P-22), ainda inativo;
+  todo período do repositório carrega nos testes. No mesmo PR, o teste da sessão vencida
+  (`App.test.tsx`) passou a esperar a ida para Entrar, que é uma transição do roteador: falhava
+  conforme a ordem dos testes.
 - **11/10/2026, S35-08 (sobrecarga):** sob sobrecarga, o pool do banco esgotado respondia
   `DATABASE_UNAVAILABLE` ("o banco de contas não respondeu"). Com mais de 20 operações esperando o
   banco, a API recusa na hora com `OVERLOADED` e o `Retry-After` da admissão, e o prazo estourado com
@@ -21,6 +41,21 @@ mudaram.
   entrar no multiconjunto pelo cabeçalho e por cada comando de dentro, junto com o anterior do mesmo
   bloco; as duas cópias vão a 100% (contenção), e as soluções independentes não mudam (ADR-07,
   "Revisão da S35-07"; 5 pares novos no corpus).
+- **11/10/2026, S35-05 (#83):** `ipc-rules schema` gera os esquemas JSON do ruleset e das questões
+  dos modelos do carregador (`rulesets/schema/`), e a CI confere que nenhum diverge; `ipc-rules
+  compile` grava o ruleset em JSON com o mesmo `ruleset_sha256` do manifesto do analisador.
+- **11/10/2026, S35-01, S35-02 e S35-03 (#84):** na CI, o benchmark do motor (P95 ≤ 50 ms nas
+  entradas de até 5 KB e regressão ≤ 20% sobre uma linha de base que não depende da máquina), o
+  orçamento do JS inicial (104,5 KB com gzip; teto de 350 KB), o Lighthouse no perfil móvel (FCP de
+  1,51 s; a CI falha acima de 1,65 s até a Q-25) e a cobertura por pasta (o motor com 90% ou mais e
+  cada outra pasta com 80% ou mais). O gate achou `ipc_analyzer/runtime` com 74%: os limites do
+  worker ganharam testes com um `resource` falso (83,5%).
+- **11/10/2026, S35-04:** canário mensal (`canary.yml`, dia 1, e `scripts/canario-local.sh`): uma
+  marca única num código verificado, comparado e usado no feedback pela página, procurada em todas
+  as colunas de `app` e `telemetry`. Os logs do Render são conferidos pelo painel, com a marca
+  (decisão do autor: sem chave de API do Render, que daria acesso total ao serviço).
+- **11/10/2026, S35-06:** decisão do autor: só o `/health/slo` com o UptimeRobot, sem Grafana nem
+  `/metrics` (C8).
 
 ## Sprint 34.1 — Lista 4 de 2026.2 com a numeração certa
 

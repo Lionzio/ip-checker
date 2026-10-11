@@ -1,0 +1,64 @@
+name: Canário mensal
+
+# Canário em produção (S35-04, NFR-11): no dia 1 de cada mês, planta uma marca única num código
+# verificado, comparado e usado no feedback pela página, com a conta de verificação, e procura a
+# marca em todas as tabelas dos esquemas app e telemetry do banco do piloto
+# (backend/scripts/canary.py). Qualquer ocorrência falha o workflow. Os logs do Render são
+# conferidos pelo painel, com a marca do resumo (decisão do autor de 11/10/2026: sem chave de API
+# do Render). Sem a cota do Actions (P-19), o mesmo roda com scripts/canario-local.sh.
+
+on:
+  schedule:
+    - cron: "0 12 1 * *" # dia 1, 09:00 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Nunca ao mesmo tempo que um deploy.
+concurrency:
+  group: deploy-piloto
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: Marca no banco do piloto
+    if: vars.PILOT_WEB_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - name: Instalar o backend
+        working-directory: backend
+        run: |
+          uv python install 3.13
+          uv sync --locked
+
+      - name: Plantar e procurar a marca
+        working-directory: backend
+        env:
+          PILOT_WEB_URL: ${{ vars.PILOT_WEB_URL }}
+          PILOT_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
+          PILOT_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
+          PILOT_DATABASE_ADMIN_URL: ${{ secrets.PILOT_DATABASE_ADMIN_URL }}
+        run: |
+          uv run --no-sync python scripts/canary.py | tee canary.txt
+
+      - name: Resumo
+        if: always()
+        working-directory: backend
+        run: |
+          {
+            echo "## Canário mensal"
+            echo
+            echo '```'
+            cat canary.txt 2>/dev/null || echo "(o canário não rodou)"
+            echo '```'
+            echo
+            echo "Falta conferir os logs pelo painel do Render com a marca acima (runbook, \"Canário mensal\")."
+          } >> "$GITHUB_STEP_SUMMARY"
