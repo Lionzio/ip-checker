@@ -30,7 +30,7 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   await expect(page.getByRole("note")).toHaveCount(0);
 
   // R-01 (Sprint 24): a questão é escolhida depois da lista. A Lista 3 tem a questão do ensaio
-  // do cadastro (S31-13) e a Lista 4, a L4-Q3; nas outras, o seletor diz que não há.
+  // do cadastro (S31-13) e a Lista 4, a L4-Q4 e a L4-Q5; nas outras, o seletor diz que não há.
   const question = page.getByLabel("Questão");
   await expect(question).toBeDisabled();
   await page.getByLabel("Lista").selectOption("2");

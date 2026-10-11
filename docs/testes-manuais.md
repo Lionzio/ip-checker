@@ -1255,8 +1255,9 @@ print(i)
 
 ## 5. Verificador: questões cadastradas
 
-Hoje há duas questões com regras cadastradas: a **L3-Q9** (questão do ensaio: libera `map()` e
-proíbe `sum()`, `sort()` e `sorted()`) e a **L4-Q3** (libera `eval()` para ler listas). As
+Hoje há três questões com regras cadastradas: a **L3-Q9** (questão do ensaio: libera `map()` e
+proíbe `sum()`, `sort()` e `sorted()`), a **L4-Q4** (libera `eval()` para ler listas e o
+`reverse=` no `sort()`) e a **L4-Q5** (libera o valor padrão de parâmetro). As
 questões que só têm gabarito aparecem no seletor como "sem regra cadastrada (comparação com o
 gabarito)".
 
@@ -1321,11 +1322,11 @@ print(sorted(notas))
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
-### Q-04. L4-Q3: eval liberado pelo enunciado
+### Q-04. L4-Q4: eval liberado pelo enunciado
 
-- **Objetivo:** Na L4-Q3, `eval()` é permitido; nas outras questões da Lista 4, não.
+- **Objetivo:** Na L4-Q4, `eval()` é permitido; nas outras questões da Lista 4, não.
 - **Passos:**
-  1. Escolha a **Lista 4** e, em **Questão**, a **L4-Q3**. Cole o código e verifique.
+  1. Escolha a **Lista 4** e, em **Questão**, a **L4-Q4**. Cole o código e verifique.
 - **Código:**
 
 ```python
@@ -1342,7 +1343,7 @@ print(total(eval(input())))
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
-### Q-05. Lista 4 sem a questão L4-Q3
+### Q-05. Lista 4 sem a questão L4-Q4
 
 - **Objetivo:** Sem a questão, o mesmo código tem `eval()` com a R-04.
 - **Passos:**
@@ -1371,7 +1372,7 @@ print(total(eval(input())))
   1. Escolha a **Lista 4** e abra o seletor **Questão**.
   2. Escolha a **Lista 5** e abra o seletor de novo.
 - **Esperado:**
-  - Na Lista 4 aparecem a L4-Q3 e as questões com gabarito (L4-Q1 a L4-Q5); as sem regra trazem "sem regra cadastrada (comparação com o gabarito)".
+  - Na Lista 4 aparecem a L4-Q4 e a L4-Q5, com regras, e as questões com gabarito (L4-Q1 a L4-Q5); as sem regra trazem "sem regra cadastrada (comparação com o gabarito)".
   - Na Lista 5, que ainda não tem questão nem gabarito, o seletor diz que não há questão cadastrada.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
@@ -1535,11 +1536,11 @@ mãos. **Não copie o gabarito para o relato**; descreva o que fez.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
-### GB-07. Questão cadastrada com gabarito (L4-Q3)
+### GB-07. Questão cadastrada com gabarito (L4-Q4)
 
-- **Objetivo:** Na L4-Q3, valem as regras da questão e a comparação com o gabarito.
+- **Objetivo:** Na L4-Q4, valem as regras da questão e a comparação com o gabarito.
 - **Passos:**
-  1. Escolha a **Lista 4** e a **L4-Q3**. Cole o gabarito oficial da L4-Q3 e verifique.
+  1. Escolha a **Lista 4** e a **L4-Q4**. Cole o gabarito oficial da L4-Q4 e verifique.
 - **Esperado:**
   - Nenhuma violação: o `eval()` do gabarito é liberado pela questão.
   - A comparação dá 100%.

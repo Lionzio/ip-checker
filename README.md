@@ -225,8 +225,9 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Gabaritos das Listas 1 e 2 de 2026.2 (15 questões) no repositório privado e o job
       "Gabaritos" ligado (`GABARITOS_REPO`), com zero violação (08/10/2026)
 - [x] Gabaritos da Lista 3 de 2026.2 (8 questões; 23 no total), com zero violação (09/10/2026)
-- [x] Gabaritos da Lista 4 de 2026.2 (5 questões; 28 no total), com zero violação, e a L4-Q3
-      cadastrada com o `eval()` liberado pelo enunciado (11/10/2026)
+- [x] Gabaritos da Lista 4 de 2026.2 (5 questões; 28 no total), com zero violação, e as
+      questões L4-Q4 (`eval()` e `reverse=`) e L4-Q5 (valor padrão de parâmetro) cadastradas
+      pelo enunciado (11/10/2026)
 - [ ] Os gabaritos das Listas 5 e 6 de 2026.2 e dos períodos anteriores (S33-01; o
       `ipc-rules import-gabaritos` lê a exportação do Notion) e as soluções anteriores a 2023 para
       calibrar os indícios (S33-02)
