@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "O que o enunciado de uma questão permite ou proíbe explicitamente (R-01, US-13).\n\n``allow`` libera regras inteiras do catálogo (com as condições delas), mesmo antes da lista\nem que entram e mesmo as proibições gerais (C-02, só com aprovação de professor).\n``allow_facts`` libera fatos que o documento de permissões não cita. ``deny`` proíbe regras\nou fatos que a lista permitiria. ``source`` é o trecho do enunciado que justifica o cadastro.",
+  "properties": {
+    "allow": {
+      "default": [],
+      "items": {
+        "pattern": "^R-\\d{2}$",
+        "type": "string"
+      },
+      "title": "Allow",
+      "type": "array"
+    },
+    "allow_facts": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Allow Facts",
+      "type": "array"
+    },
+    "deny": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Deny",
+      "type": "array"
+    },
+    "list": {
+      "maximum": 6,
+      "minimum": 1,
+      "title": "List",
+      "type": "integer"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Message"
+    },
+    "question_id": {
+      "pattern": "^L([1-6])-Q([1-9]\\d?)$",
+      "title": "Question Id",
+      "type": "string"
+    },
+    "source": {
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "question_id",
+    "list",
+    "title",
+    "source"
+  ],
+  "title": "Regras de uma questão do IP-Checker (R-01)",
+  "type": "object"
+}
