@@ -1,0 +1,344 @@
+{
+  "$defs": {
+    "Category": {
+      "description": "Categorias de violação devolvidas ao aluno (FR-12).",
+      "enum": [
+        "ANULACAO",
+        "PROIBIDO_NA_QUESTAO",
+        "FORA_DA_LISTA",
+        "NAO_CONSTA",
+        "EXIGENCIA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "description": "Predicado contextual de um fato (ex.: ``type()`` com 3 argumentos cria classe, R-09).",
+      "properties": {
+        "message": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "params": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "predicate": {
+          "title": "Predicate",
+          "type": "string"
+        }
+      },
+      "required": [
+        "predicate"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "ConditionalFact": {
+      "additionalProperties": false,
+      "description": "Fato que só casa com a regra quando a condição é verdadeira.",
+      "properties": {
+        "fact": {
+          "title": "Fact",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/Condition"
+        }
+      },
+      "required": [
+        "fact",
+        "when"
+      ],
+      "title": "ConditionalFact",
+      "type": "object"
+    },
+    "Effect": {
+      "enum": [
+        "allow",
+        "deny"
+      ],
+      "title": "Effect",
+      "type": "string"
+    },
+    "MetaKind": {
+      "description": "Regras do catálogo que são semântica do motor, e não casamento de fatos.",
+      "enum": [
+        "question_precedence",
+        "topic_requirement",
+        "cumulative",
+        "default_deny"
+      ],
+      "title": "MetaKind",
+      "type": "string"
+    },
+    "MetaRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^R-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/MetaKind"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "source"
+      ],
+      "title": "MetaRule",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "description": "Exigência de construção numa lista (R-02 e R-68).",
+      "properties": {
+        "id": {
+          "pattern": "^R-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "list": {
+          "maximum": 6,
+          "minimum": 1,
+          "title": "List",
+          "type": "integer"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "require_any": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Require Any",
+          "type": "array"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "list",
+        "require_any",
+        "message",
+        "source"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "description": "Regra do catálogo que casa fatos: proibição geral (deny) ou permissão cumulativa (allow).",
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Category"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effect": {
+          "$ref": "#/$defs/Effect"
+        },
+        "id": {
+          "pattern": "^R-\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "match": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ConditionalFact"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Match",
+          "type": "array"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "since_list": {
+          "anyOf": [
+            {
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since List"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "until_list": {
+          "anyOf": [
+            {
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Until List"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "effect",
+        "match",
+        "message",
+        "source"
+      ],
+      "title": "Rule",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "lists": {
+      "additionalProperties": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Lists",
+      "type": "object"
+    },
+    "meta_rules": {
+      "items": {
+        "$ref": "#/$defs/MetaRule"
+      },
+      "title": "Meta Rules",
+      "type": "array"
+    },
+    "period": {
+      "pattern": "^\\d{4}\\.[12]$",
+      "title": "Period",
+      "type": "string"
+    },
+    "requirements": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "title": "Requirements",
+      "type": "array"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/Rule"
+      },
+      "minItems": 1,
+      "title": "Rules",
+      "type": "array"
+    },
+    "ruleset_version": {
+      "pattern": "^\\d{4}\\.[12]\\.\\d+$",
+      "title": "Ruleset Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 2,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source_document": {
+      "minLength": 1,
+      "title": "Source Document",
+      "type": "string"
+    },
+    "structural_facts": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Structural Facts",
+      "type": "array"
+    },
+    "target_python": {
+      "pattern": "^3\\.\\d{1,2}$",
+      "title": "Target Python",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "ruleset_version",
+    "period",
+    "source_document",
+    "target_python",
+    "lists",
+    "structural_facts",
+    "meta_rules",
+    "rules"
+  ],
+  "title": "Ruleset de um período do IP-Checker",
+  "type": "object"
+}

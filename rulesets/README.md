@@ -94,6 +94,26 @@ O teste falha, com o caminho do campo, se o arquivo tiver ID repetido, fato inex
 `node:Fro`), marcador desconhecido na mensagem, fato permitido e proibido ao mesmo tempo, entre
 outros.
 
+### Esquema JSON e ruleset compilado (S35-05)
+
+`schema/ruleset.schema.json` e `schema/question.schema.json` saem dos próprios modelos do
+carregador (`uv run ipc-rules schema`, de `backend/`); a CI falha se o modelo mudar sem os
+esquemas gerados de novo, e confere que todo `base.yaml` e toda questão seguem o esquema. No VS
+Code, com a extensão YAML da Red Hat, o editor passa a completar e sublinhar os campos com esta
+configuração do usuário (o esquema não substitui o `ipc-rules validate`, que confere também os
+fatos, as mensagens e as referências entre regras):
+
+```json
+"yaml.schemas": {
+  "./rulesets/schema/ruleset.schema.json": "rulesets/*/base.yaml",
+  "./rulesets/schema/question.schema.json": "rulesets/*/questions/*.yaml"
+}
+```
+
+`uv run ipc-rules compile ../rulesets --saida ruleset.json` grava o ruleset do período ativo em
+JSON, com o `ruleset_sha256` que o analisador publica no manifesto: o mesmo valor nos dois
+confere que o deploy carregou exatamente os arquivos do repositório.
+
 ## Gabaritos de períodos anteriores (Q-14, Sprint 20)
 
 Os gabaritos oficiais confirmam que o motor não aponta nada numa solução correta: cada um precisa

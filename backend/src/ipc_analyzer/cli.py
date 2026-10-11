@@ -37,11 +37,19 @@ repositório privado, no formato ``<período>/lista-<n>/L<n>-Q<m>.py``; nunca pa
     uv run ipc-rules new-period 2027.1 --from 2026.2
 
 A pasta nova sai validada; ativar o período é trocar a linha de ``rulesets/ATIVO``, num PR.
+
+``schema`` (S35-05) gera os esquemas JSON do ruleset e das questões a partir dos modelos do
+carregador (``rulesets/schema/``), e ``compile`` grava o ruleset de um período em JSON, com o
+mesmo ``ruleset_sha256`` do manifesto do analisador::
+
+    uv run ipc-rules schema
+    uv run ipc-rules compile ../rulesets --saida ruleset.json
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -73,6 +81,7 @@ from ipc_analyzer.gabarito_calibration import (
     calibrate_gabarito,
 )
 from ipc_analyzer.gabarito_import import import_gabaritos
+from ipc_analyzer.ruleset_schema import SCHEMA_DIR, compiled, write_schemas
 
 #: Onde ficam os rulesets quando o comando roda de ``backend/``, como na CI e no ``RULES.md``.
 DEFAULT_ROOT = Path("../rulesets")
@@ -161,7 +170,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_ROOT,
         help=f"a raiz dos rulesets (padrão: {DEFAULT_ROOT.as_posix()})",
     )
+    schema = commands.add_parser(
+        "schema", help="gera os esquemas JSON do ruleset e das questões (S35-05)"
+    )
+    schema.add_argument(
+        "destino",
+        type=Path,
+        nargs="?",
+        default=SCHEMA_DIR,
+        help=f"pasta dos esquemas (padrão: {SCHEMA_DIR.as_posix()})",
+    )
+    compiling = commands.add_parser(
+        "compile",
+        help="grava o ruleset de um período em JSON, com o SHA-256 do manifesto (S35-05)",
+    )
+    compiling.add_argument("path", type=Path, help=_PATH_HELP)
+    compiling.add_argument("--saida", type=Path, help="arquivo de saída (padrão: a tela)")
     args = parser.parse_args(argv)
+    if args.command == "schema":
+        for written in write_schemas(args.destino):
+            print(f"esquema gravado: {written}")
+        return 0
+    if args.command == "compile":
+        return _compile(args.path, args.saida)
     if args.command == "calibrate":
         return _calibrate(args.path, args.solutions, args.max_alto)
     if args.command == "calibrate-gabarito":
@@ -180,6 +211,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "new-period":
         return _new_period(args.rulesets, args.period, args.source)
     return _validate(args.path, args.golden)
+
+
+def _compile(path: Path, output: Path | None) -> int:
+    try:
+        ruleset = load_ruleset(path)
+    except RulesetError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    text = json.dumps(compiled(ruleset), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if output is None:
+        sys.stdout.write(text)
+    else:
+        output.write_text(text, encoding="utf-8", newline="\n")
+        print(f"ruleset {ruleset.version} compilado em {output} (ruleset_sha256 {ruleset.sha256})")
+    return 0
 
 
 def _validate(path: Path, golden: Path | None) -> int:
