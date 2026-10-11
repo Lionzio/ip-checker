@@ -23,6 +23,12 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
 - **11/10/2026, L4-Q3 de 2026.2 cadastrada:** a primeira questão real (`rulesets/2026.2/questions/L4-Q3.yaml`).
   O enunciado libera `eval()` para ler as listas da entrada (`allow_facts: builtin:eval`), como
   o gabarito oficial faz; sem a questão, o `eval()` continua na R-04. O ruleset continua `2026.2.5`.
+- **11/10/2026, Sprint 34 (em andamento):** a `/api/v1/validate` responde com
+  `Server-Timing: app;dur=<ms>`, o tempo dentro da API, só nessa rota (no login, o tempo exato só
+  ajudaria quem ataca); o workflow "Sintético diário" (S34-02) usa esse tempo, nos dias úteis às
+  07:00, e o `scripts/sintetico-local.sh` faz o mesmo desta máquina. O exercício de alerta passa a
+  ser a cada release (S34-04), com o `scripts/carga-piloto.sh` no lugar da "Carga no piloto"
+  enquanto a cota do Actions não volta.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 

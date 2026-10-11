@@ -13,7 +13,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from ipc_api.errors import ErrorCode, error_response
 from ipc_api.ids import new_request_id
 from ipc_api.logging import get_logger
-from ipc_api.slo import SloMonitor
+from ipc_api.slo import LATENCY_PATH, SloMonitor
 
 log = get_logger("ipc_api.access")
 errors = get_logger("ipc_api.errors")
@@ -55,7 +55,14 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 started_response = True
                 status = message["status"]
-                MutableHeaders(scope=message).append("X-Request-Id", request_id)
+                headers = MutableHeaders(scope=message)
+                headers.append("X-Request-Id", request_id)
+                if getattr(scope.get("route"), "path", None) == LATENCY_PATH:
+                    # O tempo da verificação dentro da API, o mesmo do NFR-01 e do /health/slo,
+                    # para o teste sintético medir no servidor (S34-02). Só nesta rota: nas
+                    # outras, como o login, o tempo exato não ajuda ninguém além de quem ataca.
+                    elapsed_ms = (time.perf_counter() - started) * 1000
+                    headers.append("Server-Timing", f"app;dur={elapsed_ms:.1f}")
             await send(message)
 
         async def limited_receive() -> Message:
