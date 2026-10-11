@@ -330,8 +330,17 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
   (**Manual Deploy > Deploy latest commit**) e, com o `/ready` no commit novo, a Vercel (o deploy
   hook do projeto, em **Settings > Git > Deploy Hooks**, chamado com `curl -X POST`). Confira com
   `curl -s <endereço do Render>/ready` e `<endereço da Vercel>/version.json`.
-- **Quando a cota voltar,** rode o "Deploy do piloto" à mão uma vez (**Actions > Deploy do piloto >
-  Run workflow**, `main`) para conferir tudo, e o "Backup do banco do piloto".
+- **Quando a cota voltar (01/11/2026, S33-10),** nesta ordem:
+  1. **Actions > CI > Run workflow** na `develop`: o job "Gabaritos" precisa rodar (não *skipped*)
+     e passar, e o job "Auditoria" também.
+  2. **Actions > Deploy do piloto > Run workflow** na `main`: as verificações do piloto, com a conta
+     de verificação, o smoke e2e e o limite por IP, conferem tudo o que foi publicado à mão desde
+     08/10/2026.
+  3. **Actions > Backup do banco do piloto > Run workflow**: confira o artefato cifrado.
+  4. **Actions > Auditoria de segurança > Run workflow**: a primeira rodada bloqueante no Actions
+     (S31-03), com o Trivy.
+  5. Volte a usar a CI do Actions nos PRs e o `scripts/release.sh NN` sem `--ci-local`. O
+     `ci-local.sh` continua para conferir antes do PR.
 
 Para gastar menos minutos (08/10/2026): a CI da `main` e a da `develop` depois do merge só
 conferem que o mesmo conteúdo já passou no PR; um PR que só muda `.md` não roda os testes; e

@@ -8,6 +8,19 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Depois da Sprint 32 (não publicado no piloto)
+
+Mudanças na `develop` que chegam ao piloto na próxima release.
+
+- **10/10/2026, S32-01 e S32-11 concluídas pelo autor:** a credencial dos gabaritos no Render (23
+  gabaritos carregados) e as chaves do Gemini e da Groq, com a cadeia `gemini,groq`
+  (`gemini-3.5-flash-lite`, que raciocina pouco, e `openai/gpt-oss-120b`, dos planos gratuitos); o
+  Aprimorar com IA respondeu pelo Gemini no piloto.
+- **11/10/2026, Sprint 33 (em andamento):** `ipc-rules calibrate-gabarito` (S33-07) mede o alerta de
+  vazamento em soluções humanas; `ipc-rules import-gabaritos` (S33-08) importa os gabaritos de uma
+  exportação do Notion para o repositório privado. Medição preliminar dos indícios nos 23
+  gabaritos de 2026.2: 0% na faixa alta (ADR-08), só um primeiro ponto.
+
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 
 A Sprint 32 (S32-01 a S32-14; US-32, US-34, US-37 e US-38; ADR-11 e ADR-06 revisto) fechou a

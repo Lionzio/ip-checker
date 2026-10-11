@@ -20,6 +20,17 @@ períodos anteriores a 2023, organizadas como os gabaritos (``<período>/lista-<
 Mostra quantas soluções caem em cada faixa e, para as de faixa alta, só o caminho e os tipos de
 indício, nunca o código. Sai com 1 se a faixa alta passar do limite (meta da ADR-08: 5%).
 
+``calibrate-gabarito`` (S33-07) mede o alerta de possível vazamento do gabarito (ADR-11) em soluções
+humanas independentes: a distribuição nas faixas do FR-29 e os alarmes falsos::
+
+    uv run ipc-rules calibrate-gabarito ../rulesets /caminho/das/solucoes ../../ip-checker-gabaritos
+
+``import-gabaritos`` (S33-08) leva os gabaritos de uma exportação do Notion (Markdown) para o
+repositório privado, no formato ``<período>/lista-<n>/L<n>-Q<m>.py``; nunca para este::
+
+    uv run ipc-rules import-gabaritos /caminho/da/exportacao ../../ip-checker-gabaritos \\
+        --periodo 2025.2
+
 ``new-period`` (S31-10) cria a pasta de um período novo a partir de um anterior, com o mesmo
 ``base.yaml`` (só o período e a versão mudam) e sem questões, que reiniciam a cada período (P-07)::
 
@@ -56,6 +67,12 @@ from ipc_analyzer.engine.ruleset import (
     load_ruleset,
     resolve_ruleset_path,
 )
+from ipc_analyzer.gabarito_calibration import (
+    DEFAULT_MIN_TOKENS,
+    DEFAULT_THRESHOLD,
+    calibrate_gabarito,
+)
+from ipc_analyzer.gabarito_import import import_gabaritos
 
 #: Onde ficam os rulesets quando o comando roda de ``backend/``, como na CI e no ``RULES.md``.
 DEFAULT_ROOT = Path("../rulesets")
@@ -89,6 +106,46 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=5.0,
         help="porcentagem máxima de soluções com faixa alta (padrão: 5, a meta da ADR-08)",
     )
+    leak = commands.add_parser(
+        "calibrate-gabarito",
+        help="mede o alerta de possível vazamento do gabarito em soluções humanas (S33-07)",
+    )
+    leak.add_argument("path", type=Path, help=_PATH_HELP)
+    leak.add_argument(
+        "solutions", type=Path, help="pasta com <período>/lista-<n>/L<n>-Q<m>/<arquivo>.py"
+    )
+    leak.add_argument("gabaritos", type=Path, help="pasta dos gabaritos (o repositório privado)")
+    leak.add_argument(
+        "--limiar",
+        type=float,
+        default=DEFAULT_THRESHOLD,
+        help=f"porcentagem do alerta (padrão: {DEFAULT_THRESHOLD:g}, a premissa da ADR-11)",
+    )
+    leak.add_argument(
+        "--min-tokens",
+        type=int,
+        default=DEFAULT_MIN_TOKENS,
+        help=f"tamanho mínimo dos códigos (padrão: {DEFAULT_MIN_TOKENS})",
+    )
+    leak.add_argument(
+        "--max-alertas",
+        type=int,
+        default=0,
+        help="alarmes falsos aceitos antes de falhar (padrão: 0, a meta da ADR-11)",
+    )
+    importing = commands.add_parser(
+        "import-gabaritos",
+        help="leva os gabaritos de uma exportação do Notion para o repositório privado (S33-08)",
+    )
+    importing.add_argument("export", type=Path, help="pasta da exportação do Notion (Markdown)")
+    importing.add_argument("destino", type=Path, help="pasta do repositório privado dos gabaritos")
+    importing.add_argument("--periodo", required=True, help="o período dos gabaritos, como 2025.2")
+    importing.add_argument(
+        "--sobrescrever", action="store_true", help="troca um gabarito que já existe no destino"
+    )
+    importing.add_argument(
+        "--simular", action="store_true", help="só mostra o que faria, sem gravar nada"
+    )
     new_period = commands.add_parser(
         "new-period", help="cria a pasta de um período novo a partir de um anterior (S31-10)"
     )
@@ -107,6 +164,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "calibrate":
         return _calibrate(args.path, args.solutions, args.max_alto)
+    if args.command == "calibrate-gabarito":
+        return _calibrate_gabarito(
+            args.path,
+            args.solutions,
+            args.gabaritos,
+            args.limiar,
+            args.min_tokens,
+            args.max_alertas,
+        )
+    if args.command == "import-gabaritos":
+        return _import_gabaritos(
+            args.export, args.destino, args.periodo, args.sobrescrever, args.simular
+        )
     if args.command == "new-period":
         return _new_period(args.rulesets, args.period, args.source)
     return _validate(args.path, args.golden)
@@ -292,6 +362,61 @@ def _new_period(root: Path, period: str, source: str | None) -> int:
         f"de {(root / ACTIVE_FILE).as_posix()} para {period}"
     )
     return 0
+
+
+def _calibrate_gabarito(
+    path: Path, solutions: Path, gabaritos: Path, threshold: float, min_tokens: int, max_alerts: int
+) -> int:
+    base = path
+    try:
+        base = resolve_ruleset_path(path)
+        ruleset = load_ruleset(base)
+    except RulesetError as exc:
+        _error(str(exc), base)
+        return 1
+    if not gabaritos.is_dir():
+        _error(f"{gabaritos} não é uma pasta de gabaritos", gabaritos)
+        return 2
+    return calibrate_gabarito(
+        ruleset,
+        solutions,
+        gabaritos,
+        threshold=threshold,
+        min_tokens=min_tokens,
+        max_alerts=max_alerts,
+    )
+
+
+def _import_gabaritos(
+    export: Path, destination: Path, period: str, overwrite: bool, dry_run: bool
+) -> int:
+    if not export.is_dir():
+        _error(f"{export} não é uma pasta", export)
+        return 2
+    try:
+        result = import_gabaritos(export, destination, period, overwrite=overwrite, dry_run=dry_run)
+    except ValueError as exc:
+        _error(str(exc), destination)
+        return 2
+    verb = "seriam gravados" if dry_run else "gravados"
+    print(f"gabaritos {verb}: {len(result.written)}")
+    for path in result.written:
+        print(f"  {path}")
+    if result.skipped_existing:
+        print(f"já existiam (use --sobrescrever): {len(result.skipped_existing)}")
+        for path in result.skipped_existing:
+            print(f"  {path}")
+    for conflict in result.conflicts:
+        _warning(f"mais de uma solução para a mesma questão, decida à mão: {conflict}", export)
+    for where in result.unknown:
+        _warning(f"bloco de Python sem questão reconhecida: {where}", export)
+    if result.written and not dry_run:
+        print(
+            "próximo passo: confira cada gabarito com o harness, de backend/: "
+            f"IPC_GABARITOS_DIR={destination.as_posix()} uv run pytest tests/official_answers "
+            "--no-cov"
+        )
+    return 1 if result.conflicts or result.unknown else 0
 
 
 def _github() -> bool:
