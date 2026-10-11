@@ -63,5 +63,6 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$scripts:/scripts:ro" \
 unset LOGIN PASSWORD PILOT_PASSWORD
 
 echo "Fim às $(date -u +%H:%M:%S) UTC. Medido no servidor (/health/slo, últimos 5 minutos; NFR-01: P95 <= 200 ms):"
-curl -fsS --max-time 20 "$api/health/slo" || echo "(o /health/slo não respondeu)"
+# Sem -f: no exercício de alerta, o /health/slo responde 503 com o motivo no corpo.
+curl -sS --max-time 20 -w '\n(HTTP %{http_code})' "$api/health/slo" || echo "(o /health/slo não respondeu)"
 echo

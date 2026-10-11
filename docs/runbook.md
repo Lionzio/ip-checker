@@ -114,6 +114,7 @@ Render publica sozinho (P-18), sem migração. Acrescente uma linha à tabela.
 | Data | Quem | Como | Linha do tempo (UTC) | Do 503 ao e-mail |
 |---|---|---|---|---|
 | 08/10/2026 | Claude (agente), pelo autor | `IPC_SLO_P95_MS=50` em `2a55908` e `715cd16`; carga de 20 por minuto por 10 min | carga às 09:55:57; 503 entre 09:57:30 e 09:58:01; UptimeRobot detectou (HEAD) às 09:58:18, confirmou de 3 regiões às 09:59:01 e enviou o e-mail às 09:59:02 | 61 a 92 s |
+| 11/10/2026 (release `sprint-34`) | Claude (agente), pelo autor | `IPC_SLO_P95_MS=50` pelo #76 (`bf74834`) e de volta a 200 no PR seguinte; carga de 20 por minuto por 10 min pelo `scripts/carga-piloto.sh` | carga das 13:26:46 às 13:36:49 (200 verificações, todas 200); 503 desde 13:26:53, primeiro pelo motivo `erros` (1 erro 5xx em 41 requisições, da troca de instância do deploy) e só por `latencia` desde 13:28:17 (P95 de 140 a 192 ms); e-mail recebido às 13:31 | cerca de 4 min do primeiro 503 e 3 min do 503 por latência |
 
 ## Sintético diário (S34-02)
 
