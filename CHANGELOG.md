@@ -10,6 +10,8 @@ mudaram.
 
 ## Depois da Sprint 35
 
+- **11/10/2026, plano de polimento:** até o fim do piloto, as Sprints 36 a 40 melhoram o que existe (defeitos e documentos da equipe, a tela de verificação, a explicação de cada regra e a exportação, a qualidade interna e a correção da turma inteira), a partir de uma análise com revisão dos documentos e do código e um tour da interface com 41 capturas. A Fase 2 passa a ser a Sprint 41 (S41-01 a S41-04). Plano em 7.15 do blueprint.
+- **11/10/2026, branches:** as 23 branches remotas já mergeadas (todas com PR fechado) foram apagadas; ficam a `develop`, a `main` e as tags das releases.
 - **11/10/2026, Q-25 decidida pelo autor:** o NFR-02 passa a ser ≤ 50 ms para entradas de até 5 KB e
   linear até 50 KB (teto de 2 s por análise), e o NFR-03, FCP ≤ 1,65 s no perfil móvel do
   Lighthouse. As proteções da CI da Sprint 35 já seguem essas metas; só a documentação mudou.

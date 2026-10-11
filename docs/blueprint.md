@@ -742,8 +742,9 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1b — Acesso restrito e apoio à correção (Sprints 13–19):** login com aprovação, cargos e gerenciamento, Google, painel de plágio e feedback por LLM (P-13). Nada vai ao ar na internet antes do login completo (Sprint 16), e a apresentação a monitores-chefes e professores (Marco 2) passa para a Sprint 19.
 - **Fase 1c — Listas e governança (Sprints 20–24), com o piloto em 2027.1:** cada lista é habilitada (`ENABLED_LISTS`) antes da data em que é liberada aos alunos; telemetria e regras por questão.
 - **Fase 1d — Endurecimento, experiência e passagem de bastão (Sprints 25–29), criada em 06/10/2026 a partir da revisão de fim da Sprint 23:** primeiro deploy seguro, correção em lote, plágio por árvore, carga e eficácia, documentação para o próximo mantenedor e, se a Q-21 aprovar, os indícios de uso de IA. Como o ritmo real tem sido muito maior que 6 SP por sprint e não há calendário fixo (P-10), as datas da tabela são só a ordem prevista.
-- **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (36). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
-- **Fase 2 — Servidor do CIn:** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
+- **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (renumerada para 41 em 11/10/2026). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
+- **Fase 1f — Polimento (Sprints 36–40), criada em 11/10/2026:** até o fim do piloto, melhorar o que existe: os defeitos e os documentos da equipe (36), a tela de verificação (37), a explicação de cada regra e a exportação (38), a qualidade interna, a operação e a documentação (39) e a correção da turma inteira (40). As tasks estão em 7.15.
+- **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
 
@@ -784,8 +785,13 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 33 (12/07–25/07) | Gabaritos, questões de 2027.1 e calibração | US-13, US-14, US-34 | Job dos gabaritos rodando; calibração com ≤ 5% de faixa alta; ruleset de 2027.1 com questões e referências | Dados externos (Q-14, soluções anteriores a 2023, documento de permissões de 2027.1) |
 | 34 (26/07–08/08) | Prontidão para 2027.1 | US-12, US-19, US-22 | Plano do Render aplicado e medido; teste sintético diário; cenários do NFR-04 e do NFR-05; listas validadas habilitadas | Custo do Starter (decisão do autor); calendário da UFPE (P-10) |
 | 35 (09/08–22/08) | Controles de qualidade e observabilidade | US-14, US-15, US-17, US-21 | pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal e esquema do ruleset sem [PLANEJADO] | Variação de tempo dos runners; chave de API do Render para os logs |
-| 36 (23/08–05/09) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
-| Backlog (após o piloto) | Melhorias de experiência | US-02, US-10 | Upload de `.py`, tela de permissões, CodeMirror, alternância de tema, análise do fluxo de controle no plágio (ADR-07, alternativa D) | Dependem da avaliação do piloto |
+| 36 (sob comando do autor) | Defeitos e documentos certos para a campanha de testes | US-11, US-20, US-22, US-31, US-33, US-37 | Turma com nomes repetidos e `###` no código corrigida; Tab e Shift+Tab no editor; construções em português; tempo de 50 KB medido no piloto; guia e documentação fiéis ao motor | O separador novo muda um hábito da equipe |
+| 37 (sob comando do autor) | Verificação mais clara | US-09, US-11, US-21, US-33 | Resumo por categoria e cartões; editor fixo e abas no celular; componentes comuns; identidade visual; tema, rascunho e atalhos | Mudança visual grande |
+| 38 (sob comando do autor) | Explicar cada regra e exportar | US-02, US-08, US-10, US-12, US-22, US-32, US-33 | Porquê e alternativa em cada violação; feedback sem IA mais completo; exportar e carregar `.py`; feedback sem nova análise | Revisão dos textos por quem conhece o documento |
+| 39 (sob comando do autor) | Qualidade interna, operação e documentação | US-14, US-15, US-20, US-35 | Arquivos menores; testes das páginas; CI mais rápida; backup agendado e restauração ensaiada; documentação reorganizada | Refatorar sem mudar comportamento |
+| 40 (sob comando do autor) | A correção da turma inteira | US-16, US-31, US-33 | Correção em lote por upload com CSV; plágio todos contra todos com grupos; painel por lista | Carga concentrada no plano gratuito |
+| 41 (após 2027.1) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
+| Backlog (após o piloto) | Melhorias de experiência | US-10 | Tela de permissões da lista, editor com realce (CodeMirror) e análise do fluxo de controle no plágio (ADR-07, alternativa D); o upload de `.py` e a alternância de tema entraram nas Sprints 38 e 37 | Dependem da avaliação do piloto |
 
 ### 7.2 Tasks do MVP (Sprints 1 a 9)
 
@@ -940,7 +946,9 @@ Situação: a Sprint 28 foi concluída em 07/10/2026. O que foi entregue e as de
 
 Situação: a Sprint 29 foi concluída em 07/10/2026. O que foi entregue e as decisões de implementação estão no [CHANGELOG](../CHANGELOG.md); os indícios ficam desligados no piloto até a coordenação aprovar a política e a calibração com soluções anteriores a 2023 ficar na meta (S29-04, `docs/indicios-de-ia.md`).
 
-### 7.12 Tasks das Sprints 30 a 36 (plano de 07/10/2026)
+### 7.12 Tasks das Sprints 30 a 35 (plano de 07/10/2026)
+
+A Sprint 36 deste plano (Fase 2) passou a ser a Sprint 41, em 7.15 (11/10/2026).
 
 Origem: a lista de pendências de 07/10/2026, depois da release da Sprint 29 (tag `sprint-29`, commit `03e3256`, no ar no piloto), que reúne as pendências do piloto adiadas pelo autor, as decisões em aberto, as premissas a confirmar, os critérios de sprints que ficaram abertos e os controles marcados como [PLANEJADO]. A ordem segue a prioridade definida pelo autor: (1) o piloto verificado ponta a ponta; (2) as decisões com a coordenação e o NTI; (3) os dados (gabaritos, questões de 2027.1 e calibração); (4) a prontidão para 2027.1; depois, os controles [PLANEJADO] e a Fase 2. O backlog posterior ao piloto (seção 7.1, "Backlog") não vira task.
 
@@ -1338,36 +1346,6 @@ canário mensal no piloto.
 
 **Riscos e bloqueios:** a variação de tempo dos runners do GitHub pode gerar falsos alarmes no benchmark (mitigação: comparar mediana de 5 rodadas). O canário nos logs depende de uma chave de API do Render, que é um secret novo, gravado pelo autor.
 
-#### Sprint 36 — Fase 2: imagens no GHCR, deploy pelo servidor do CIn e staging (bloqueada)
-
-**Objetivo:** preparar a Fase 2 da ADR-03, só se a P-09 for atingida e a Q-12 for respondida pelo suporte de TI do CIn: imagens publicadas no GHCR por digest, deploy *pull-based* no servidor do CIn e um ambiente de staging.
-
-**Missão, persona e execução:** a missão é preparar a Fase 2 no servidor do CIn, só se a P-09 for atingida e a Q-12 respondida. As personas são o monitor-mantenedor e o suporte de TI do CIn (US-20, US-23). Execução: as decisões S36-01 e S36-02 primeiro; só então o GHCR e o deploy (S36-03, S36-04).
-
-**Premissas:** P-09 (critérios de eficácia), Q-12 (requisitos do CIn), ADR-03 (Fase 2).
-
-**Histórias:** US-20 e US-23 (seção 4).
-
-| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
-|---|---|---|---|---|---|---|---|---|
-| S36-01 | US-23 | Decisão | Migrar ou não para o servidor do CIn, com o relatório de eficácia de 2027.1 (P-09, `docs/eficacia.md`) | `docs/eficacia.md`, ADR-03 | Coordenação | — | Fim de 2027.1 | Desbloqueio: decisão registrada na P-09 |
-| S36-02 | US-20 | Externa | Q-12: o suporte de TI do CIn responde Docker, porta 443, subdomínio e TLS, saída para o PostgreSQL gerenciado e quem administra o sistema | `docs/decisoes.md` (Q-12) | TI do CIn | — | S36-01 | Desbloqueio: Q-12 respondida por escrito |
-| S36-03 | US-20 | Engenharia | Publicar as imagens no GHCR com a tag igual ao SHA e referenciá-las por digest no compose | `.github/workflows/ci.yml`, `deploy/compose.yaml` | Autor | 2 | S36-01 | `docker compose pull` com digests; o item do GHCR da seção 8 sem [PLANEJADO] |
-| S36-04 | US-20 | Engenharia | Deploy *pull-based* no servidor do CIn e ambiente de staging, com o mesmo `/ready` e as verificações de `tests/pilot` apontadas para lá | `deploy/` (novo roteiro), `.github/workflows/deploy.yml` | Autor | 3 | S36-02, S36-03 | Staging e produção verdes nas verificações; rollback ≤ 5 min ensaiado no servidor |
-
-**ADRs:** atualiza o ADR-03 (Fase 2).
-
-**Critérios de aceite:**
-1. As imagens são publicadas por digest.
-2. Staging e produção passam nas mesmas verificações do piloto.
-3. O rollback no servidor leva ≤ 5 min.
-
-**Testes:** a base de 7.12.1; as verificações de `tests/pilot` apontadas para o staging e a produção; o ensaio de rollback e a restauração do backup no servidor; a suíte de isolamento do NFR-07 no compose do servidor.
-
-**Definition of Done:** a da seção 8, com os itens de implantação da Fase 2 sem [PLANEJADO].
-
-**Riscos e bloqueios:** a sprint inteira está bloqueada pela P-09 e pela Q-12 e só é detalhada depois do piloto.
-
 ### 7.13 Decisões em aberto: opções para quem decide
 
 Estas decisões não pertencem ao desenvolvedor sozinho; nada aqui as toma. Cada opção traz prós, contras e impacto no plano.
@@ -1416,7 +1394,7 @@ implementação entra na Sprint 32 (S32-11 a S32-14).
 
 #### 7.13.5 Servidor do CIn (Q-12) — Suporte de TI do CIn
 
-Adiada até a P-09. As perguntas estão na Q-12; a resposta desbloqueia a Sprint 36.
+Adiada até a P-09. As perguntas estão na Q-12; a resposta desbloqueia a Sprint 41.
 
 #### 7.13.6 Plano do Render (ADR-03) — Autor
 
@@ -1469,7 +1447,7 @@ O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quand
 | Q-16: provedor de IA | 3 | S31-02 | Decisão |
 | Q-17: remetente dos e-mails | 3 | S31-07 | Decisão |
 | Q-22: governança das regras | 3 | S31-08 | Decisão |
-| Q-12: servidor do CIn | 3 | S36-02 | Externa |
+| Q-12: servidor do CIn | 3 | S41-02 | Externa |
 | Auditoria bloqueante (S25-01; NFR-13) | 5 e 6 | S31-03 | Engenharia |
 | Semgrep (NFR-09) | 6 | S31-04 | Engenharia |
 | Marco 2: guia e apresentação | 5 | S31-05 | Externa |
@@ -1491,7 +1469,7 @@ O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quand
 | Canário mensal em produção (NFR-11) | 6 | S35-04 | Engenharia |
 | JSON Schema e `ipc-rules compile` (C6) | 6 | S35-05 | Engenharia |
 | `/metrics`, Grafana e Prometheus (C8, opcionais) | 6 | S35-06 | Decisão |
-| GHCR por digest, deploy por SSH e staging (Fase 2) | 6 | S36-03, S36-04 | Engenharia (bloqueada) |
+| GHCR por digest, deploy por SSH e staging (Fase 2) | 6 | S41-03, S41-04 | Engenharia (bloqueada) |
 | Backlog de experiência e REC fora do escopo | 7 | Seção 7.1, "Backlog"; sem task | — |
 | Comparação com o gabarito na verificação, no plágio e nos indícios (pedido do autor, 09/10/2026) | Q-24 | S32-01 a S32-10 | Externa e Engenharia |
 | Aviso da Sprint 20: repositório privado dos gabaritos | Revisão de 08/10/2026 | H-02, S33-01 | Engenharia e Externa |
@@ -1499,6 +1477,361 @@ O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quand
 | Aviso da Sprint 24: nenhuma questão real cadastrada | Revisão de 08/10/2026 | S31-09, S31-10, S31-11, S31-13, S33-04 | Engenharia e Externa |
 | Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06 | Decisão, Externa e Engenharia |
 | Avisos das Sprints 11, 19, 21, 25 e 28 | Revisão de 08/10/2026 | Resolvidos (S30); README corrigido (H-01) | — |
+
+### 7.15 Tasks das Sprints 36 a 41 (plano de polimento de 11/10/2026)
+
+Plano criado em 11/10/2026, depois da Sprint 35. A Fase 2 depende do fim do piloto: a decisão da
+coordenação vem do relatório de eficácia de 2027.1 (P-09), e o servidor depende da Q-12. Por isso o
+autor decidiu usar as sprints até lá para **melhorar o que existe**: rever e melhorar
+funcionalidades, acrescentar o que falta e corrigir defeitos. A antiga Sprint 36 (Fase 2) passa a ser a
+**Sprint 41**, com as tasks S41-01 a S41-04, como na renumeração da Q-24.
+
+As tasks vêm da análise de 11/10/2026: revisão dos documentos, revisão do código, um tour da
+interface com 41 capturas de tela (fora do repositório, em `prints-2026-10-11/`) e os achados das
+Sprints 34 e 35. A ordem segue o valor e o risco:
+
+1. **Sprint 36:** os defeitos que levam a uma conclusão errada e os documentos que a equipe usa,
+   antes da campanha de testes manuais.
+2. **Sprint 37:** a tela de verificação, a mais usada.
+3. **Sprint 38:** explicar cada regra e exportar o resultado.
+4. **Sprint 39:** qualidade interna, operação e documentação.
+5. **Sprint 40:** a correção da turma inteira.
+
+A campanha de testes manuais (S35-10) corre em paralelo. Cada falha confirmada vira uma task da
+sprint seguinte, com um teste automático.
+
+**Base comum (como em 7.12.1):**
+- **Evidência de cada PR:** `scripts/ci-local.sh --e2e` até a cota do Actions voltar (P-19), e o Actions depois.
+- **Release:** `scripts/release.sh NN`, com `--ci-local` enquanto durar a P-19.
+- **Depois do deploy:**
+  - o sintético (`scripts/sintetico-local.sh` ou o workflow);
+  - o exercício de alerta (runbook);
+  - uma linha nova na tabela de exercícios.
+- **Vercel:** deploy só quando a página muda.
+- **Render:** Manual Deploy quando o servidor muda; publica sozinho quando muda o `render.yaml`.
+- **Migração:** nunca junto com uma mudança do `render.yaml` (P-18).
+- **Início:** cada sprint só começa com o comando do autor.
+
+#### Sprint 36 — Defeitos e documentos certos para a campanha de testes
+
+**Objetivo:** corrigir os defeitos que podem levar a uma conclusão errada e deixar o guia da equipe e
+a documentação fiéis ao que a ferramenta faz.
+
+**Missão:** que a equipe comece a campanha de testes manuais sem nenhum defeito conhecido e com um
+guia que diz o mesmo que o motor.
+
+**Personas:** o monitor que corrige e compara soluções (US-11, US-31, US-37) e o monitor-mantenedor
+que cuida da documentação (US-20).
+
+**Execução:**
+1. Os defeitos do plágio da turma (S36-01 e S36-02), num PR com os testes.
+2. O editor (S36-03).
+3. A tela de verificação (S36-04 e S36-05).
+4. A medição no piloto (S36-06), que depende do deploy da release anterior.
+5. Por último, a documentação (S36-07), num PR só de `.md`.
+
+**Histórias:** US-11, US-20, US-22, US-31, US-33 e US-37.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S36-01 | US-31 | Engenharia | No "Contra a turma", identificar cada solução pela posição, e não pelo nome: com dois alunos de mesmo nome, o segundo apagava o primeiro, e "Comparar lado a lado" abria o código errado. Nomes repetidos ganham um aviso e um sufixo ("Ana (2)") | `frontend/src/pages/Plagiarism.tsx`, `frontend/src/plagiarismClass.ts` | Autor | 0,5 | — | Teste com duas "Ana": cada uma abre o próprio código lado a lado |
+| S36-02 | US-31 | Engenharia | Um separador de soluções que não colide com comentários. Hoje `### calcula a média` ou `#####` dentro do código parte a solução. O separador novo é `=== nome`, que não é Python válido e nunca aparece num código. O `### nome` continua aceito numa turma sem nenhum `===`, com um aviso | `frontend/src/plagiarismClass.ts`, texto de ajuda, `docs/guia-da-equipe.md` | Autor | 1 | — | Testes com `###` e `#####` dentro do código; a ajuda e o guia mostram o formato novo |
+| S36-03 | US-33 | Engenharia | No editor, Tab e Shift+Tab indentam e desindentam as linhas selecionadas. Hoje o Tab troca a seleção por 4 espaços. O componente ganha testes unitários | `frontend/src/components/CodeEditor.tsx` (+ teste) | Autor | 1 | — | Testes: Tab com 3 linhas selecionadas indenta as 3; Shift+Tab desfaz; Esc e Tab continuam saindo do editor |
+| S36-04 | US-37 | Engenharia | Na comparação com o gabarito, os nomes das construções em português ("atribuição", "comparação", "conta aritmética", "laço"), com o termo técnico na dica. Hoje aparecem "Assign", "Compare" e "BinOp" | `backend/src/ipc_analyzer/engine/gabarito.py` ou um mapa no frontend, `frontend/src/components/` | Autor | 0,5 | — | Nenhum nome de nó do `ast` na tela; teste com o mapa completo |
+| S36-05 | US-11 | Engenharia | O Verificar mostra "Verificando…" e um Cancelar, como o Plágio e o Feedback. O seletor de Questão deixa de cortar o texto: rótulo curto no seletor e a descrição abaixo dele | `frontend/src/pages/Checker.tsx` | Autor | 0,5 | — | Teste do estado de espera e do cancelamento; o seletor cabe na largura do computador e do celular |
+| S36-06 | US-22 | Engenharia | Medir no piloto (0,1 CPU) a análise da entrada de 50 KB do benchmark, pela conta de verificação e pelo `Server-Timing`. Se passar de 1 s, subir o `IPC_TIMEOUT_S` do analisador no `render.yaml`, com folga até o prazo da API, ou limitar o tamanho no piloto | ADR-03, `render.yaml` se preciso | Autor | 0,5 | Deploy da release anterior | Tempo registrado no ADR-03; nenhum 422 por prazo para entradas legítimas de até 50 KB |
+| S36-07 | US-20 | Engenharia | Documentação fiel ao que existe. Ver a lista logo abaixo da tabela | `docs/`, `deploy/piloto.md`, `README.md` | Autor | 1,5 | — | Os achados da revisão de 11/10/2026 resolvidos; o guia diz o mesmo que o motor nos cenários do roteiro |
+| S36-08 | US-11 | Externa | Campanha de testes manuais pela equipe, com `docs/testes-manuais.md` (continua a S35-10). Cada falha confirmada vira task, com teste | Fichas de falha | Equipe | — | S36-07 | Fichas respondidas; falhas viram tasks na Sprint 37 |
+
+**O que a S36-07 corrige:**
+- **Guia da equipe:**
+  - o `split()` comprova a Lista 3;
+  - vários nomes no `for` valem com qualquer sequência a partir da Lista 3;
+  - entram os casos do Marco 2 (expressão geradora, `if __name__`, argumentos nomeados, `start=` e `dict(a=1)`), a política dos indícios aprovada e o "montado sem IA" como padrão.
+- **`deploy/piloto.md`:**
+  - o proxy com 4 saltos e o cabeçalho `Forwarded`;
+  - o plano gratuito e o backup diário;
+  - as variáveis novas: `IPC_LLM_CHAIN`, `IPC_EDGE_SECRET` e `IPC_GABARITOS_TOKEN`.
+- **Roteiro de testes:** a release `sprint-35`.
+- **Blueprint:**
+  - o status dos ADRs 04, 08 e 11;
+  - os restos da Q-25 e das listas "só a 1";
+  - os caminhos que não existem mais;
+  - os marcadores [PLANEJADO] e [A CONFIRMAR] já resolvidos.
+- **`RULES.md`:** a Q-22 decidida.
+- **Benchmark:** o docstring com a meta nova do NFR-02.
+
+**ADRs:** atualiza o ADR-03 (S36-06); corrige o status dos ADRs 04, 08 e 11 (S36-07).
+
+**Critérios de aceite:**
+1. "Contra a turma" abre sempre a solução certa e não parte código com `###`.
+2. O editor indenta e desindenta blocos.
+3. Nenhum termo técnico em inglês na comparação com o gabarito.
+4. O tempo de 50 KB no piloto está medido.
+5. O guia e a documentação passam na conferência da revisão.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Turma com nomes repetidos e com `###` no código | Vitest (`plagiarismClass`, `Plagiarism`) e e2e `plagiarism-tree.spec.ts` | PR | Cada nome abre a própria solução; nenhuma solução partida |
+| Tab e Shift+Tab | Vitest (`CodeEditor`) | PR | Indenta e desindenta as linhas selecionadas |
+| Nomes das construções | pytest ou Vitest | PR | Mapa completo, sem termo do `ast` na tela |
+| Verificando e Cancelar | Vitest (`Checker`) | PR | Estado de espera e cancelamento |
+| Tempo de 50 KB no piloto | `Server-Timing` pela conta de verificação | Depois do deploy | Registrado no ADR-03 |
+| Regressão | base de 7.12.1 (27 etapas) | PR e `develop` | Verde |
+
+**Deploy:** release `sprint-36`.
+- **Vercel:** sim, porque a página muda (S36-01 a S36-05), com **Create Deployment > main**.
+- **Render:** Manual Deploy se a S36-04 mudar o analisador; publica sozinho se a S36-06 mudar o `render.yaml`. Sem migração.
+- **Depois:** sintético e exercício de alerta.
+
+**Riscos:** o separador novo muda um hábito da equipe; por isso o `### nome` continua aceito, com aviso.
+
+#### Sprint 37 — Verificação mais clara
+
+**Objetivo:** tornar a tela de verificação mais rápida de ler e de usar, no computador e no celular, e
+dar à ferramenta uma identidade visual simples.
+
+**Missão:** que o monitor, corrigindo dezenas de soluções seguidas, entenda o resultado num olhar,
+sem rolar a página e sem perder o código de vista.
+
+**Personas:** o monitor em correção em lote (US-33), no computador e no celular (US-21).
+
+**Execução:**
+1. O resumo e os cartões (S37-01) e os componentes comuns (S37-03), que o resto usa.
+2. O editor fixo e as abas do celular (S37-02).
+3. A tela inicial e o cabeçalho (S37-04).
+4. As preferências (S37-05).
+5. As capturas de antes e depois vão no PR (o roteiro de capturas entra em `scripts/`).
+
+**Histórias:** US-09, US-11, US-21 e US-33.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S37-01 | US-09 | Engenharia | Resumo do resultado por categoria, com contadores clicáveis que filtram os cartões. Cada regra num cartão que abre e fecha, aberto por padrão até 5 regras. O trecho de código com a linha destacada | `frontend/src/components/ResultPanel.tsx` | Autor | 1,5 | — | Sete violações cabem numa tela de 900 px com os cartões fechados; teste dos filtros |
+| S37-02 | US-33, US-21 | Engenharia | No computador, o editor fica fixo na tela (`position: sticky`) enquanto o resultado rola, e clicar numa linha continua selecionando o trecho. No celular, abas "Resultado", "Indícios" e "Feedback" e um botão "Voltar ao código" | `frontend/src/pages/Checker.tsx` | Autor | 1,5 | S37-01 | No celular, o resultado das 7 violações cabe em até 2 telas; e2e de layout verde com o axe |
+| S37-03 | US-21 | Engenharia | Componentes comuns (`Button`, `Card`, `LineChip`, `SyntaxErrorBox`) no lugar das cópias de `ResultPanel`, `Plagiarism`, `IndicatorsPanel` e `FeedbackPanel`. No Gerenciar, os botões com foco visível e alvo de 44 px, e as tabelas que rolam no celular | `frontend/src/components/`, `frontend/src/pages/Admin.tsx` | Autor | 1 | — | Nenhuma classe de botão repetida; axe sem violações no Gerenciar |
+| S37-04 | US-11 | Engenharia | Identidade visual simples: um logotipo em SVG e a cor da marca. A tela inicial explica Verificar, Plágio e Feedback em três blocos. O cabeçalho mostra o primeiro nome, com um menu da conta (Perfil e Sair). A área "Soluções da turma" ganha numeração de linhas | `frontend/src/pages/Landing.tsx`, `frontend/src/components/AppHeader.tsx`, `frontend/public/` | Autor | 1 | — | Capturas aprovadas pelo autor; nada novo no JS inicial além do SVG |
+| S37-05 | US-33 | Engenharia | Preferências e atalhos. Tema claro, escuro ou do sistema, salvo neste navegador. O rascunho do editor sobrevive ao F5 (`sessionStorage`; o Sair continua apagando). Alt+N para "Próximo aluno" e Ctrl+Shift+C para copiar o feedback, com uma ajuda dos atalhos | `frontend/src/`, `docs/guia-da-equipe.md` | Autor | 1 | — | Testes do tema, do rascunho e dos atalhos; o guia atualizado |
+
+**ADRs:** nenhum.
+
+**Critérios de aceite:**
+1. O resultado de 7 violações cabe numa tela no computador e em 2 no celular.
+2. O código fica à vista enquanto o resultado rola.
+3. Nenhuma violação do axe.
+4. Lighthouse dentro da meta (FCP ≤ 1,65 s; Q-25), e o JS inicial ≤ 350 KB com gzip.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Resumo, filtros e cartões | Vitest | PR | Contadores e filtros corretos |
+| Layout no celular e no computador | Playwright `layout.spec.ts` com o axe | PR | Sem rolagem lateral e sem violação |
+| Tema, rascunho e atalhos | Vitest | PR | Preferência salva; rascunho volta depois do F5 e some no Sair |
+| Desempenho da página | Lighthouse e `js-budget.mjs` | PR | FCP ≤ 1,65 s; JS ≤ 350 KB |
+| Capturas de antes e depois | Roteiro de capturas | PR | Anexadas ao PR |
+
+**Deploy:** release `sprint-37`.
+- **Vercel:** sim, só a página muda.
+- **Render:** não precisa.
+- **Depois:** sintético e exercício de alerta.
+
+**Riscos:** mudança visual grande; mitigada pelas capturas de antes e depois e pela aprovação do autor.
+
+#### Sprint 38 — Explicar cada regra e exportar o resultado
+
+**Objetivo:** cada violação passa a dizer por que a construção é proibida e o que usar no lugar, o
+feedback sem IA aproveita isso, e o resultado pode ser exportado e o código carregado de um arquivo.
+
+**Missão:** que o monitor explique a violação ao aluno sem reler o documento de permissões, e que o
+feedback sem IA seja bom o bastante para dispensar o "Aprimorar com IA" na maioria dos casos.
+
+**Personas:** o monitor que dá o feedback (US-32) e o professor que mantém as regras (US-12).
+
+**Execução:**
+1. Os campos novos do ruleset (S38-01), com os textos revisados por um monitor-chefe ou professor.
+2. O feedback (S38-02).
+3. Exportar e carregar arquivo (S38-03).
+4. O feedback sem nova análise (S38-04) e o desempenho da extração de fatos (S38-05).
+
+**Histórias:** US-02, US-08, US-10, US-12, US-22, US-32 e US-33.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S38-01 | US-10, US-08 | Engenharia | Explicação de cada regra: campos `explicacao` (por que é proibida) e `alternativa` (o que usar nesta lista) no `base.yaml`, mostrados no cartão da violação. Os textos saem do documento de permissões, sem inventar regra; quem revisa é um monitor-chefe ou professor [A CONFIRMAR: quem]. Rulesets `2026.2.6` e `2027.1.1` | `rulesets/*/base.yaml`, `engine/ruleset.py`, esquema JSON (S35-05), `ResultPanel.tsx` | Autor e revisor | 2 | — | Todas as regras com os dois campos; esquema e golden verdes; revisão registrada no PR |
+| S38-02 | US-32 | Engenharia | O feedback sem IA usa a explicação e a alternativa de cada regra violada | `engine/feedback.py` | Autor | 1 | S38-01 | Testes do texto montado; a frase obrigatória e o `[ALUNO]` inalterados |
+| S38-03 | US-02, US-33 | Engenharia | Carregar um `.py` no editor (botão e arrastar; UTF-8 de até 50 KB). Exportar o relatório: copiar como texto e baixar um `.txt` com a lista, a questão, as regras e as linhas. Nada é guardado | `frontend/src/pages/Checker.tsx`, `ResultPanel.tsx` | Autor | 1 | — | Testes de arquivo grande demais, de encoding errado e do texto exportado |
+| S38-04 | US-32, US-22 | Engenharia | O feedback deixa de reanalisar o código: a API guarda em memória, por 10 min, só o resultado (nunca o código), pela chave do hash do código, da lista e da questão. "Gerar" e "Aprimorar" reaproveitam o resultado; sem ele, a API analisa como hoje | `ipc_api/routes/feedback.py`, um cache com limite de itens | Autor | 1,5 | — | Teste: o segundo "Gerar" não chama o analisador; nenhum código no cache |
+| S38-05 | US-22 | Engenharia | Desempenho da extração de fatos: o `SourceMap.column` deixa de converter a linha a cada fato (atalho para linha ASCII e tabela por linha). A linha de base do benchmark é regravada | `engine/facts/model.py`, `tests/benchmark` | Autor | 0,5 | — | O benchmark mostra o ganho; nenhuma coluna diferente no golden |
+
+**ADRs:** nenhum; o FR-30 (feedback) ganha a explicação da regra.
+
+**Critérios de aceite:**
+1. Toda violação mostra o porquê e a alternativa.
+2. O feedback sem IA usa esses textos.
+3. Dá para exportar o relatório e carregar um `.py`.
+4. "Gerar" e "Aprimorar" não reanalisam o código.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Campos novos do ruleset | `ipc-rules validate`, esquema JSON e golden | PR | Todas as regras com os dois campos |
+| Texto do feedback | pytest (`test_feedback_engine.py`) | PR | Usa a explicação; frase obrigatória e `[ALUNO]` mantidos |
+| Exportar e carregar | Vitest e e2e | PR | Texto exportado correto; limites do arquivo |
+| Cache do feedback | pytest | PR | O segundo pedido não chama o analisador; o cache não guarda código |
+| Desempenho | benchmark (S35-01) | PR | Ganho registrado; linha de base nova |
+
+**Deploy:** release `sprint-38`, com o ruleset novo.
+- **Render:** Manual Deploy (o analisador e a API mudam).
+- **Vercel:** Create Deployment (a página muda). Sem migração.
+- **Depois:** sintético e exercício de alerta.
+
+**Riscos:** os textos de explicação precisam de revisão de quem conhece o documento de permissões; sem
+ela, a task fica aguardando, e o resto da sprint segue.
+
+#### Sprint 39 — Qualidade interna, operação e documentação
+
+**Objetivo:** reduzir o custo de manter o projeto: arquivos menores, testes mais rápidos e completos,
+backup automático e restauração ensaiada, e a documentação reorganizada para quem chega.
+
+**Missão:** que o próximo monitor-mantenedor assuma o projeto sem depender do autor.
+
+**Persona:** o monitor-mantenedor (US-20, US-35).
+
+**Execução:**
+1. Os testes que faltam (S39-03), antes das refatorações.
+2. As refatorações do frontend e do backend (S39-01 e S39-02), cada uma num PR, sem mudar comportamento.
+3. A operação (S39-04).
+4. A documentação (S39-05), num PR só de `.md`.
+
+**Histórias:** US-14, US-15, US-20 e US-35.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S39-01 | US-20 | Engenharia | Frontend em arquivos menores. `Plagiarism.tsx` (511 linhas) vira os modos "Dois códigos" e "Contra a turma" e os resultados em arquivos próprios. `Admin.tsx` (420) ganha as tabelas em componentes. O `parseClass` da turma deixa de rodar a cada tecla (`useMemo`) | `frontend/src/pages/` | Autor | 1,5 | S39-03 | Nenhum arquivo de página com mais de 300 linhas; os mesmos testes verdes |
+| S39-02 | US-14, US-20 | Engenharia | Backend em módulos menores. As listas de palavras dos indícios (cerca de 180 linhas de `indicators.py`) vão para um arquivo de dados. O `ruleset.py` se divide em esquema, compilação e carga. Os DTOs saem do `service/app.py` para `service/schemas.py` | `backend/src/ipc_analyzer/` | Autor | 1,5 | S39-03 | Import-linter e testes verdes; nenhum módulo com mais de 500 linhas |
+| S39-03 | US-15, US-20 | Engenharia | Os testes que faltam: `Login`, `Register`, `Profile`, `Verify`, `ForgotPassword` e `Landing` no Vitest. Os testes lentos ganham o marcador `slow`, e as esperas reais viram eventos ou relógio injetado. `pytest-xdist` nos testes sem banco | `frontend/src/pages/*.test.tsx`, `backend/tests/`, `backend/pyproject.toml` | Autor | 1,5 | — | Cobertura das páginas ≥ 80%; a etapa de pytest da CI local ≥ 30% mais rápida |
+| S39-04 | US-35 | Engenharia | Operação. O `scripts/backup-local.sh` agendado no Agendador de Tarefas do Windows (o backup do Actions volta com a cota). Um ensaio de restauração completo num PostgreSQL descartável, comparando as contagens. A troca do token dos gabaritos agendada antes de vencer | `scripts/`, `docs/runbook.md` | Autor | 0,5 | — | Restauração ensaiada com o tempo no runbook; tarefa agendada documentada |
+| S39-05 | US-20 | Engenharia | Documentação reorganizada. Ver a lista logo abaixo da tabela | `docs/` | Autor | 1 | S36-07 | O blueprint com menos de 1.000 linhas; os documentos novos no mapa (`docs/README.md`) |
+
+**O que a S39-05 reorganiza:**
+- O histórico das tasks das Sprints 1 a 35 sai do blueprint para `docs/historico/`.
+- O `decisoes.md` ganha uma tabela-resumo (ID, situação, data e uma frase) e uma seção por ID.
+- Documentos novos:
+  - um glossário (R-xx, P/C/Q/REC, Snn-mm, FR/NFR/US, fato, faixa, contenção);
+  - uma página única de estado e pendências;
+  - um FAQ do mantenedor (habilitar lista, trocar de período, gabarito novo e reinício do Render);
+  - a agenda das rotinas (backup, sintético, canário, auditoria, rollback, restauração, vencimento do token);
+  - quem cuida de cada conta (Render, Vercel, Supabase, Brevo, UptimeRobot, gabaritos, chaves das IAs).
+- O índice de sintomas do runbook ganha os gabaritos indisponíveis, o "Aprimorar com IA" sem cota e a falha do sintético ou do canário.
+
+**ADRs:** nenhum.
+
+**Critérios de aceite:**
+1. Nenhum arquivo de página com mais de 300 linhas e nenhum módulo do backend com mais de 500.
+2. As páginas sem teste agora têm teste.
+3. A CI local mais rápida.
+4. Backup agendado e restauração ensaiada.
+5. Documentação reorganizada e no mapa.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Testes novos das páginas | Vitest | PR | Verdes; cobertura das páginas ≥ 80% |
+| Refatorações | toda a base de 7.12.1 | PR | Nada muda de comportamento |
+| Restauração | `pg_restore` num PostgreSQL descartável e `contagens.sql` | Uma vez | Contagens iguais; tempo no runbook |
+| Tempo da CI | `ci-local.sh` | PR | Etapa de pytest ≥ 30% mais rápida |
+
+**Deploy:** release `sprint-39`.
+- **Render:** Manual Deploy (o backend é refatorado, sem mudar comportamento).
+- **Vercel:** Create Deployment (a página é refatorada). Sem migração.
+- **Depois:** sintético, exercício de alerta e o roteiro de testes manuais na parte do plágio e do gerenciamento.
+
+**Riscos:** refatorar sem mudar comportamento exige os testes primeiro (S39-03), por isso eles vêm antes.
+
+#### Sprint 40 — A correção da turma inteira
+
+**Objetivo:** corrigir e comparar uma turma inteira de uma vez, sem colar solução por solução.
+
+**Missão:** que o monitor receba as soluções de uma lista (do Dikastis ou de uma pasta) e veja, numa
+tabela, o status de cada aluno e os grupos de soluções parecidas.
+
+**Personas:** o monitor em correção em lote (US-33) e o professor que acompanha a lista (US-16).
+
+**Execução:**
+1. Correção em lote por upload (S40-01), com os limites de tamanho e de quantidade primeiro.
+2. Plágio todos contra todos (S40-02), reaproveitando o `compare_class`.
+3. O painel por lista para os professores (S40-03), a partir da telemetria anônima.
+
+**Histórias:** US-16, US-31 e US-33.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S40-01 | US-33 | Engenharia | Correção em lote por upload: vários `.py` ou um `.zip` (até 100 arquivos, 50 KB cada e 2 MB no total, com proteção contra zip bomb). Uma tabela com aluno (nome do arquivo), status, violações por categoria e semelhança com o gabarito, e exportação em CSV. Nada é guardado, e cada análise passa pelos mesmos limites e pela admissão | Rota nova `POST /api/v1/validate/batch`, `frontend/src/pages/` (tela nova), OpenAPI | Autor | 3 | S38-03 | Testes de limites e de zip malicioso; e2e com 10 arquivos; contrato OpenAPI atualizado |
+| S40-02 | US-31 | Engenharia | Plágio todos contra todos: os pares ordenados pela semelhança e grupos de soluções parecidas (componentes acima da faixa "Requer atenção"), com o peso pela raridade (IDF) da turma | `engine/similarity.py`, rota `POST /api/v1/similarity/class-matrix`, `Plagiarism.tsx` | Autor | 2 | — | Testes com uma turma sintética de 30 soluções (dois grupos de cópias e o resto independente); o tempo dentro do orçamento |
+| S40-03 | US-16 | Engenharia | Painel por lista para professores e monitores-chefes: as regras mais violadas por lista e período, a partir das views anônimas da telemetria (`v_top_rules_by_list`), sem dado de aluno | Rota de leitura, tela no Gerenciar | Autor | 1 | — | Só professores, monitores-chefes e o desenvolvedor veem; nenhum dado pessoal |
+
+**ADRs:** atualiza o ADR-07 (todos contra todos) e o ADR-04 (rota nova de lote, com os limites).
+
+**Critérios de aceite:**
+1. Uma turma de 100 soluções é corrigida e exportada em CSV.
+2. O todos contra todos acha os dois grupos de cópias da turma sintética.
+3. O painel por lista mostra só dados anônimos.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Limites do lote | pytest e suíte de segurança | PR | Zip bomb, arquivo grande, encoding errado e quantidade acima do limite recusados |
+| Tabela e CSV | Vitest e e2e | PR | CSV correto, sem código dentro |
+| Todos contra todos | pytest com a turma sintética | PR | Dois grupos achados; tempo no orçamento |
+| Painel por lista | pytest e e2e | PR | Só os cargos certos; sem dado pessoal |
+| Carga | `run_load.py` com o lote | Uma vez | Admissão funciona, sem 500 |
+
+**Deploy:** release `sprint-40`.
+- **Render:** Manual Deploy (rotas novas e analisador).
+- **Vercel:** Create Deployment (tela nova). Sem migração, se as views existentes bastarem.
+- **Depois:** sintético e exercício de alerta.
+
+**Riscos:**
+- O lote concentra muita análise de uma vez no plano gratuito (0,1 CPU); a admissão e os limites protegem o serviço, e a tela mostra o progresso.
+- Uma lista grande pode levar minutos; a tela permite cancelar.
+
+#### Sprint 41 — Fase 2: imagens no GHCR, deploy pelo servidor do CIn e staging (bloqueada)
+
+Era a Sprint 36 do plano de 07/10/2026, renumerada em 11/10/2026 (as tasks S36-01 a S36-04 passaram a S41-01 a S41-04).
+
+**Objetivo:** preparar a Fase 2 da ADR-03, só se a P-09 for atingida e a Q-12 for respondida pelo suporte de TI do CIn: imagens publicadas no GHCR por digest, deploy *pull-based* no servidor do CIn e um ambiente de staging.
+
+**Missão, persona e execução:** a missão é preparar a Fase 2 no servidor do CIn, só se a P-09 for atingida e a Q-12 respondida. As personas são o monitor-mantenedor e o suporte de TI do CIn (US-20, US-23). Execução: as decisões S41-01 e S41-02 primeiro; só então o GHCR e o deploy (S41-03, S41-04).
+
+**Premissas:** P-09 (critérios de eficácia), Q-12 (requisitos do CIn), ADR-03 (Fase 2).
+
+**Histórias:** US-20 e US-23 (seção 4).
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S41-01 | US-23 | Decisão | Migrar ou não para o servidor do CIn, com o relatório de eficácia de 2027.1 (P-09, `docs/eficacia.md`) | `docs/eficacia.md`, ADR-03 | Coordenação | — | Fim de 2027.1 | Desbloqueio: decisão registrada na P-09 |
+| S41-02 | US-20 | Externa | Q-12: o suporte de TI do CIn responde Docker, porta 443, subdomínio e TLS, saída para o PostgreSQL gerenciado e quem administra o sistema | `docs/decisoes.md` (Q-12) | TI do CIn | — | S41-01 | Desbloqueio: Q-12 respondida por escrito |
+| S41-03 | US-20 | Engenharia | Publicar as imagens no GHCR com a tag igual ao SHA e referenciá-las por digest no compose | `.github/workflows/ci.yml`, `deploy/compose.yaml` | Autor | 2 | S41-01 | `docker compose pull` com digests; o item do GHCR da seção 8 sem [PLANEJADO] |
+| S41-04 | US-20 | Engenharia | Deploy *pull-based* no servidor do CIn e ambiente de staging, com o mesmo `/ready` e as verificações de `tests/pilot` apontadas para lá | `deploy/` (novo roteiro), `.github/workflows/deploy.yml` | Autor | 3 | S41-02, S41-03 | Staging e produção verdes nas verificações; rollback ≤ 5 min ensaiado no servidor |
+
+**ADRs:** atualiza o ADR-03 (Fase 2).
+
+**Critérios de aceite:**
+1. As imagens são publicadas por digest.
+2. Staging e produção passam nas mesmas verificações do piloto.
+3. O rollback no servidor leva ≤ 5 min.
+
+**Testes:** a base de 7.12.1; as verificações de `tests/pilot` apontadas para o staging e a produção; o ensaio de rollback e a restauração do backup no servidor; a suíte de isolamento do NFR-07 no compose do servidor.
+
+**Definition of Done:** a da seção 8, com os itens de implantação da Fase 2 sem [PLANEJADO].
+
+**Riscos e bloqueios:** a sprint inteira está bloqueada pela P-09 e pela Q-12 e só é detalhada depois do piloto.
 
 ## 8. Definition of Done (DoD)
 

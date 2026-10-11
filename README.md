@@ -14,10 +14,13 @@ gerenciamento da equipe com registro das ações, a telemetria anônima, o relat
 indícios de uso de IA (desligados no piloto até a calibração com soluções de alunos). O piloto está
 no ar (Render, Vercel e Supabase) desde 07/10/2026, na release `sprint-35` desde 11/10/2026, com
 um teste sintético diário da primeira verificação, o comportamento no pico medido (ADR-03) e
-benchmark, Lighthouse e cobertura por pasta na CI. O uso
-pela equipe é em 2027.1. A Sprint 36 (Fase 2) está bloqueada (seção 7.12
-do blueprint), e a integração com outros 2 projetos da monitoria é só uma possibilidade, ainda não
-confirmada (seção 9 do blueprint e ADR-09).
+benchmark, Lighthouse e cobertura por pasta na CI. O uso pela equipe é em 2027.1.
+
+Até o fim do piloto, as Sprints 36 a 40 melhoram o que existe: os defeitos e os documentos da
+equipe, a tela de verificação, a explicação de cada regra, a qualidade interna e a correção da turma
+inteira (seção 7.15 do blueprint). A Fase 2 (Sprint 41) está bloqueada até o piloto, e a integração
+com outros 2 projetos da monitoria é só uma possibilidade, ainda não confirmada (seção 9 do
+blueprint e ADR-09).
 
 | Para | Leia |
 |---|---|
@@ -27,7 +30,7 @@ confirmada (seção 9 do blueprint e ADR-09).
 | Relatar uma falha de segurança | [`SECURITY.md`](SECURITY.md) |
 | Achar qualquer outro documento | [`docs/README.md`](docs/README.md) |
 | O que cada sprint entregou | [`CHANGELOG.md`](CHANGELOG.md) |
-| O que vem a seguir (Sprint 36) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.12 a 7.14 |
+| O que vem a seguir (Sprints 36 a 41) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.13 a 7.15 |
 | A pauta do Marco 2 (casos do mapeamento e decisões da coordenação) | [`docs/marco-2.md`](docs/marco-2.md) |
 | A comparação com o gabarito (Sprint 32) | [`docs/adr/ADR-11-comparacao-com-o-gabarito.md`](docs/adr/ADR-11-comparacao-com-o-gabarito.md) |
 | Questões e gabaritos por período | [`docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md`](docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md), [`RULES.md`](RULES.md) e [`rulesets/README.md`](rulesets/README.md) |
@@ -182,16 +185,26 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Engenharia concluída em 11/10/2026, no piloto com a release `sprint-34`: `ipc-rules calibrate-gabarito` (alerta de vazamento) e `ipc-rules import-gabaritos` (exportação do Notion) e a medição preliminar dos indícios. Aguardando dados externos (P-21): gabaritos das Listas 5 e 6 de 2026.2 e de períodos anteriores, soluções anteriores a 2023 e o documento de 2027.1 |
 | 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Concluída em 11/10/2026 (release `sprint-34`): teste sintético diário com `Server-Timing`, exercício de alerta a cada release e cenários de carga do NFR-04 e do NFR-05; no gratuito, até 100 verificações por minuto sem recusa (ADR-03). Aguardando: listas e monitores de 2027.1 (P-10) |
 | 35 | Controles de qualidade: benchmark do motor, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset; achados corrigidos (plágio dentro de blocos e sobrecarga) e o período 2027.1 | Concluída em 11/10/2026 (release `sprint-35`); aguardando a decisão da Q-25 (metas do NFR-02 e do NFR-03) e a campanha de testes manuais (S35-10) |
-| 36 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging | Bloqueada (P-09 e Q-12) |
+| 36 | Defeitos e documentos certos para a campanha de testes: turma com nomes repetidos e `###` no código, Tab no editor, construções em português, tempo de 50 KB no piloto, guia e documentação fiéis ao motor | Planejada |
+| 37 | Verificação mais clara: resumo por categoria, editor fixo, abas no celular, componentes comuns, identidade visual, tema, rascunho e atalhos | Planejada |
+| 38 | Explicar cada regra e exportar: porquê e alternativa em cada violação, feedback sem IA mais completo, exportar e carregar `.py`, feedback sem nova análise | Planejada |
+| 39 | Qualidade interna, operação e documentação: arquivos menores, testes das páginas, CI mais rápida, backup agendado, restauração ensaiada, documentação reorganizada | Planejada |
+| 40 | A correção da turma inteira: correção em lote por upload com CSV, plágio todos contra todos, painel por lista | Planejada |
+| 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12) |
 
 O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
 documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com a autorização do autor.
 
-## Decisões recentes (06/10/2026)
+## Decisões recentes
 
 | ID | Decisão |
 |---|---|
+| Plano de 11/10/2026 | Até o fim do piloto, melhorar o que existe (Sprints 36 a 40); a Fase 2 vira a Sprint 41 |
+| Q-25 | NFR-02: ≤ 50 ms até 5 KB e linear até 50 KB; NFR-03: FCP ≤ 1,65 s no perfil móvel (11/10/2026) |
+| P-22 | As permissões de 2027.1 são as de 2026.2; o período 2027.1 já existe, inativo (11/10/2026) |
+| S35-04 e S35-06 | Canário só no banco, com os logs pelo painel; só o `/health/slo` com o UptimeRobot, sem Grafana (11/10/2026) |
+| Q-16, Q-17, Q-22 | Feedback sem IA por padrão e o "Aprimorar com IA"; Brevo com o remetente atual; o processo atual de aprovação das regras (09/10/2026) |
 | P-10 | Sem calendário fixo: as datas dependem da UFPE; cada lista é habilitada antes de ser liberada aos alunos |
 | Q-15 | Novos critérios de eficácia: uso por pelo menos 70% dos membros ativos em cada lista; apoio à correção só informativo; satisfação de pelo menos 70% da equipe |
 | Q-18 | Toda violação anula a questão, inclusive "fora da lista", "não consta" e a falta do assunto |
@@ -199,7 +212,6 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 | REC-06 | Registro das ações de gerenciamento, visto pelo desenvolvedor e pelos professores, por 12 meses (feito na Sprint 23) |
 | Q-20 | Supabase em us-east-1, na mesma região da API no Render |
 | Q-21 | Indícios de uso de IA, nunca veredito (ADR-08, Sprint 29), com as múltiplas violações como indício (por exemplo `break`, `pass` e `continue` juntos ou recursos da Lista 6 na Lista 3) |
-| Q-22 | Governança das regras por fork e check de aprovação: adiada para depois da release |
 | ADR-07 | Plágio por árvore canonizada, insensível à ordem dos blocos e às formas equivalentes (Sprint 27) |
 
 ## Pendências do autor
