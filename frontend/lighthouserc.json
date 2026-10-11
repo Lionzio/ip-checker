@@ -1,0 +1,19 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "node scripts/serve-dist.mjs 4173",
+      "startServerReadyPattern": "dist pronto",
+      "url": ["http://127.0.0.1:4173/"],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "first-contentful-paint": ["error", { "maxNumericValue": 1650, "aggregationMethod": "median" }]
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}

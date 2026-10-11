@@ -84,6 +84,11 @@ step "Ruleset e golden" backend run ipc-rules validate ../rulesets --golden test
 step "Backend: pytest (cobertura >= 90%)" env \
   IPC_TEST_DATABASE_URL="postgresql://postgres:$pg_password@127.0.0.1:$pg_port/ipc_test" \
   bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider"
+step "Backend: cobertura por pasta (motor >= 90%, resto >= 80%)" bash -c \
+  "cd backend && '$uv' run coverage json -q -o coverage.json \
+   && '$uv' run python scripts/coverage_by_folder.py coverage.json"
+step "Backend: benchmark do motor (NFR-02)" env IPC_BENCHMARK=1 \
+  bash -c "cd backend && '$uv' run pytest tests/benchmark --no-cov -q -s -p no:cacheprovider"
 
 if [ -d ../ip-checker-gabaritos ]; then
   step "Gabaritos (zero violação)" env IPC_GABARITOS_DIR=../../ip-checker-gabaritos \
@@ -144,6 +149,9 @@ step "Frontend: ESLint" frontend npm run -s lint
 step "Frontend: TypeScript" frontend npm run -s typecheck
 step "Frontend: Vitest" frontend npm test --silent
 step "Frontend: build" frontend npm run -s build
+step "Frontend: JS inicial com gzip (NFR-03)" frontend node scripts/js-budget.mjs
+step "Frontend: Lighthouse, perfil móvel (NFR-03)" frontend \
+  npx --yes @lhci/cli@0.15.1 autorun --config=lighthouserc.json
 step "Frontend: build do piloto" env IPC_API_ORIGIN=https://ip-checker-api.onrender.com \
   bash -c "cd frontend && npm run -s build:vercel && rm -rf .vercel"
 
