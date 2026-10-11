@@ -203,8 +203,8 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-01 | Desempenho | Latência do `POST /api/v1/validate` medida no servidor (borda → resposta) | P95 e P99 em janelas de 5 min | P95 ≤ 200 ms e P99 ≤ 500 ms, com 500 req/min e payload ≤ 5 KB | P95 do `/health/slo` em produção (memória da API, 5 min); k6 à mão: capacidade por plano com o `deploy/load/run_load.py` e o piloto de verdade com o workflow "Carga no piloto" (S28-01). k6 em staging e histograma Prometheus [PLANEJADO] |
 | NFR-02 | Desempenho | Tempo de análise no worker (parse, fatos e política) | P95 por entrada do corpus | ≤ 50 ms para entradas ≤ 50 KB | [PLANEJADO] `pytest-benchmark` na CI, falhando se regredir mais de 20%; hoje, só os tempos das suítes de segurança e do plágio (S17, S27) |
 | NFR-03 | Desempenho | Carregamento da SPA | FCP e tamanho do JS inicial (gzip) | FCP < 1,5 s (perfil mobile "Slow 4G"); JS inicial ≤ 350 KB gzip [PREMISSA] | [PLANEJADO] Lighthouse CI em todo PR do `frontend/` |
-| NFR-04 | Capacidade | Vazão sustentada no pico de entrega (P-01) | req/min, taxa de 5xx, taxa de timeout | 500 req/min por 15 min com 0% de 5xx e < 0,1% de timeouts | Cenário k6 "véspera de prazo" (`deploy/load/`, à mão, uma conta e um IP, com os limites aumentados só no teste); a mistura de 80% do tráfego vindo de 4 IPs (NAT do campus, P-04) e o k6 por release são [PLANEJADO] |
-| NFR-05 | Concorrência | Degradação controlada sob sobrecarga | Respostas 500/502/504, tempo de emissão do 503, tempo de recuperação | A 1.500 req/min: 0 respostas 500/502/504; 503 com `Retry-After` em ≤ 100 ms quando a fila de admissão está cheia (quem já esperava uma vaga recebe o 503 em até 1 s, P-11); recuperação ≤ 60 s após a carga | [PLANEJADO] Teste de stress k6 por release; hoje, a recusa rápida com `Retry-After` é testada no pytest (S10) e observada no `run_load.py` saturado |
+| NFR-04 | Capacidade | Vazão sustentada no pico de entrega (P-01) | req/min, taxa de 5xx, taxa de timeout | 500 req/min por 15 min com 0% de 5xx e < 0,1% de timeouts | Cenário k6 `nfr04` do `deploy/load/run_load.py` (S34-03): 80% do tráfego de 4 IPs do campus (NAT, P-04) e o resto de IPs externos, com os limites por IP do piloto e o limite por conta aumentado só no teste; por release, à mão. No gratuito, não atingível (ADR-03, 11/10/2026) |
+| NFR-05 | Concorrência | Degradação controlada sob sobrecarga | Respostas 500/502/504, tempo de emissão do 503, tempo de recuperação | A 1.500 req/min: 0 respostas 500/502/504; 503 com `Retry-After` em ≤ 100 ms quando a fila de admissão está cheia (quem já esperava uma vaga recebe o 503 em até 1 s, P-11); recuperação ≤ 60 s após a carga | Cenário k6 `nfr05` do `run_load.py` (S34-03), com a recuperação medida em 90 s a 20 por minuto; por release, à mão. A recusa rápida com `Retry-After` também é testada no pytest (S10). No gratuito, sem 500/502/504 e com recuperação em 5,7 s, mas o 503 leva segundos (ADR-03, 11/10/2026) |
 | NFR-06 | Disponibilidade | Disponibilidade externa no período letivo, sem cold start | % mensal de checks OK; latência da 1ª verificação de usuário do dia | ≥ 99,5% (P-05); 1ª verificação do dia ≤ 300 ms | UptimeRobot a cada 5 min em `/ready`, que também mantém o plano gratuito do Render acordado (ADR-03), configurado pelo autor (`deploy/piloto.md`); teste sintético diário da 1ª verificação [PLANEJADO] |
 | NFR-07 | Segurança | Isolamento do `analyzer` | % dos controles conferidos | Fases 0 e 2 (contêiner próprio): 100% de nenhum segredo no ambiente, nenhuma rota de egress, rootfs read-only, UID ≠ 0, `cap_drop: ALL`, `no-new-privileges`, `pids_limit` ≤ 64 e memória ≤ 512 MB. Fase 1 (processo no Render): 100% de UID próprio (10002), ambiente sem segredos, seccomp bloqueando sockets de rede e `execve`, `RLIMIT_FSIZE` = 0 | Fases 0 e 2: teste de configuração (`docker inspect`) e teste de egress na CI. Fase 1: teste automatizado na imagem do Render (abrir socket, executar programa, gravar em disco e ler o ambiente da `api` falham) |
 | NFR-08 | Segurança | Limites por análise (P-04) | Limites aplicados; % do corpus malicioso tratado sem 5xx | Timeout de 2 s (kill), `RLIMIT_AS` de 256 MB, ≤ 60.000 nós, profundidade ≤ 200, ≤ 50 KB, ≤ 1.000 linhas; 100% do corpus | Suíte de segurança da DoD (seção 8) na CI |
@@ -1244,6 +1244,18 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | S34-06 | US-19 | Externa | Conferir os monitores no início do período: UptimeRobot verde nos 7 dias anteriores à primeira lista, e os contatos de alerta atualizados | Painel do UptimeRobot | Autor | — | S30-04 | Disponibilidade ≥ 99,5% nos 7 dias (P-05, NFR-06) |
 
 **ADRs:** atualiza o ADR-03 com a medição da S34-01.
+
+**Situação (11/10/2026):** S34-02 e S34-04 entregues (#71): o `Server-Timing` da verificação, o
+workflow "Sintético diário", que começa a rodar com a volta da cota em 01/11/2026, os scripts
+`sintetico-local.sh` e `carga-piloto.sh` e o exercício de alerta a cada release. S34-01 e S34-03
+medidos na emulação do gratuito (ADR-03, "Pico no plano gratuito"): no máximo 100 verificações por
+minuto sem recusa; sob sobrecarga, nenhum 500, 502 ou 504, todo 503 com `Retry-After` e
+recuperação em 5,7 s, mas o NFR-04 e o tempo do 503 no NFR-05 não são atingíveis com 0,1 CPU (a
+consequência aceita na S30-11). Achado para a Sprint 35: sob sobrecarga, o pool do banco esgotado
+vira `DATABASE_UNAVAILABLE` em vez de `OVERLOADED`. O [A CONFIRMAR] da S34-02 foi resolvido pelo
+`Server-Timing`, em vez do log ou do `/health/slo`. Aguardando: S34-05 (documento de 2027.1,
+S33-04) e S34-06 (datas de 2027.1, P-10); os "7 dias seguidos" do sintético contam a partir de
+01/11/2026.
 
 **Critérios de aceite:**
 1. O plano do Render está aplicado e medido.
