@@ -2,7 +2,7 @@
 
 A L3-Q9 é a questão do ensaio do cadastro (S31-13, ``docs/ensaio-cadastro.md``): libera ``map()``,
 que o documento de permissões não cita, e proíbe ``sum()``, ``sort()`` e ``sorted()``, que a Lista 3
-permite.
+permite. A L4-Q3 é a primeira questão real: o enunciado libera ``eval()`` para ler listas da entrada.
 """
 
 from __future__ import annotations
@@ -27,8 +27,20 @@ print(f"Aprovados: {aprovados}")
 """
 
 
-def _violations(code: str, ruleset: CompiledRuleset, question: str | None) -> list[str]:
-    result = analyze_source(code, list_number=3, ruleset=ruleset, question_id=question)
+EVAL_SOLUTION = """def soma(cartas):
+    total = 0
+    for carta in cartas:
+        total += carta
+    return total
+
+print(soma(eval(input())))
+"""
+
+
+def _violations(
+    code: str, ruleset: CompiledRuleset, question: str | None, list_number: int = 3
+) -> list[str]:
+    result = analyze_source(code, list_number=list_number, ruleset=ruleset, question_id=question)
     return sorted(f"{v.rule_id} {v.category} {v.line}" for v in result.violations)
 
 
@@ -58,3 +70,10 @@ def test_what_the_statement_forbids_annuls_the_question(
     assert _violations(code, base_ruleset, "L3-Q9") == [f"R-01 PROIBIDO_NA_QUESTAO {line}"]
     # Sem a questão, a Lista 3 permite sum() e sorted() (só o map() aparece).
     assert _violations(code, base_ruleset, None) == ["R-04 NAO_CONSTA 1"]
+
+
+def test_l4_q3_allows_eval_only_with_the_question(base_ruleset: CompiledRuleset) -> None:
+    assert base_ruleset.questions["L4-Q3"].question.list_number == 4
+    assert _violations(EVAL_SOLUTION, base_ruleset, "L4-Q3", list_number=4) == []
+    # Sem a questão, vale a Lista 4: eval() não consta no documento.
+    assert _violations(EVAL_SOLUTION, base_ruleset, None, list_number=4) == ["R-04 NAO_CONSTA 7"]

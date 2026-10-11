@@ -192,7 +192,7 @@ def test_analyzer_only_checks_reach_the_student(api: TestClient) -> None:
 
 def test_lists_and_ready_end_to_end(api: TestClient) -> None:
     assert api.get("/api/v1/lists").json() == [
-        # Só a questão do ensaio do cadastro está cadastrada (R-01).
+        # As questões cadastradas (R-01): a do ensaio e a L4-Q3.
         {"number": 1, "title": "Comandos condicionais", "questions": [], "gabaritos": []},
         {"number": 2, "title": "Laços de repetição", "questions": [], "gabaritos": []},
         {
@@ -205,7 +205,8 @@ def test_lists_and_ready_end_to_end(api: TestClient) -> None:
         {
             "number": 4,
             "title": "Funções e escopo de variável",
-            "questions": [],
+            # A primeira questão real (o enunciado libera eval()).
+            "questions": [{"id": "L4-Q3", "title": "Balatro: a aposta de Jimbo"}],
             "gabaritos": [],
         },
         {"number": 5, "title": "Dicionários", "questions": [], "gabaritos": []},

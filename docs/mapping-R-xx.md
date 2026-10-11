@@ -97,7 +97,7 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 
 | Regra | Fatos | Situação |
 |---|---|---|
-| R-01 | Regras por questão em `questions/L<n>-Q<m>.yaml`: `allow` (regras, com as condições delas), `allow_facts` e `deny` (regras ou fatos); a proibição sai como `PROIBIDO_NA_QUESTAO` com o ID R-01 | No motor (Sprint 24); a questão do ensaio do cadastro (L3-Q9, S31-13) é a única cadastrada |
+| R-01 | Regras por questão em `questions/L<n>-Q<m>.yaml`: `allow` (regras, com as condições delas), `allow_facts` e `deny` (regras ou fatos); a proibição sai como `PROIBIDO_NA_QUESTAO` com o ID R-01 | No motor (Sprint 24); cadastradas: a questão do ensaio (L3-Q9, S31-13) e a L4-Q3 de 2026.2, que libera `eval()` (`allow_facts`) |
 | R-02 | Bloco `requirements` por lista (Q-05); na L3, também `method:split` (caso 6) | L1 na Sprint 12; L2 na 20; L3 e L4 na 22; L5 na 23 (na L6, a exigência é a R-68); `split()` no `2026.2.5` |
 | R-03 | Semântica do motor: `since_list ≤ lista ≤ until_list` | Meta-regra no `base.yaml` |
 | R-04 | Semântica do motor: fato sem regra → violação `NAO_CONSTA` | Meta-regra no `base.yaml` |
