@@ -131,6 +131,24 @@ cabeçalho `Server-Timing` da `/api/v1/validate` (o tempo dentro da API, como o 
   um caso isolado logo depois de um deploy é o analisador aquecendo.
 - **504 da Vercel:** o Render dormiu ou reiniciou; confira o monitor do `/ready` no UptimeRobot.
 
+## Canário mensal (S35-04)
+
+Confere que o código verificado não fica guardado (NFR-11). No dia 1 de cada mês, o workflow
+"Canário mensal" (`canary.yml`) planta uma marca única (`canario_<data>_<aleatório>`) num código
+verificado, comparado e usado no feedback pela página, com a conta de verificação, e procura a
+marca em todas as tabelas dos esquemas `app` e `telemetry` do banco do piloto. Sem a cota do
+Actions, rode `scripts/canario-local.sh`, que pede a senha da conta de verificação e a connection
+string do Supabase sem mostrá-las.
+
+1. **Banco:** o script diz quantas colunas conferiu e falha se achar a marca em alguma. O esperado
+   é "nenhuma ocorrência". A conta de verificação não gera telemetria (S28-02); o canário confere
+   as tabelas que ela toca (sessão, cota de feedback e registro) e o esquema inteiro.
+2. **Logs, pelo painel (decisão do autor, 11/10/2026: sem chave de API do Render):** em **Render >
+   ip-checker-api > Logs**, busque a marca que o script mostrou, na última hora. O esperado é
+   nenhuma linha. A mesma busca vale para o analisador, que escreve no mesmo log.
+3. **Achou a marca?** É vazamento do código dos alunos: siga "Incidentes de segurança" abaixo, com
+   a coluna (ou a linha do log) que o script ou o painel mostraram.
+
 ## Banco fora do ar (DATABASE_UNAVAILABLE)
 
 O `/ready` responde 503, a página não entra nem verifica, e o `/health/service` continua 200 (a
@@ -335,6 +353,7 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
 - **Antes de cada merge,** rode a CI nesta máquina e cole o resumo no PR:
   `scripts/ci-local.sh` (com `--e2e` para o smoke também; `--rapido` só para iterar). O merge
   segue a regra de sempre, com o resumo local no lugar da CI verde.
+- **Canário:** `scripts/canario-local.sh` faz o "Canário mensal" desta máquina (S35-04).
 - **Sintético e carga:** `scripts/sintetico-local.sh` faz o "Sintético diário" e
   `scripts/carga-piloto.sh` faz a "Carga no piloto" (exercício de alerta), desta máquina.
 - **Backup:** rode `scripts/backup-local.sh` pelo menos uma vez por semana (o RPO do dia a dia fica
