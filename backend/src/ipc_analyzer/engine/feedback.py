@@ -10,7 +10,6 @@ dele por ``[ALUNO]`` e mascarar matrículas, e-mails e CPFs.
 from __future__ import annotations
 
 import ast
-import io
 import tokenize
 from dataclasses import dataclass
 from typing import Literal
@@ -22,6 +21,7 @@ from ipc_analyzer.engine.guards import (
     AnalysisLimitError,
     Limits,
     check_source,
+    source_tokens,
     split_lines,
 )
 from ipc_analyzer.engine.parse import SyntaxProblem
@@ -105,7 +105,7 @@ def strip_comments(text: str) -> str:
     """Tira os comentários e os espaços que sobram no fim das linhas; o resto fica igual."""
     lines = split_lines(text)
     try:
-        for token in tokenize.generate_tokens(io.StringIO(text).readline):
+        for token in source_tokens(text):
             if token.type == tokenize.COMMENT:
                 row, col = token.start
                 lines[row - 1] = lines[row - 1][:col]

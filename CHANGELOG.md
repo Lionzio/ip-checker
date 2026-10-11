@@ -23,6 +23,13 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
 - **11/10/2026, L4-Q3 de 2026.2 cadastrada:** a primeira questão real (`rulesets/2026.2/questions/L4-Q3.yaml`).
   O enunciado libera `eval()` para ler as listas da entrada (`allow_facts: builtin:eval`), como
   o gabarito oficial faz; sem a questão, o `eval()` continua na R-04. O ruleset continua `2026.2.5`.
+- **11/10/2026, `` sozinho no código:** um código com caractere não ASCII e linhas terminadas só
+  em `` (`"ÝØ"`) passava pelo `ast.parse` e derrubava o `tokenize` do CPython
+  (`UnicodeDecodeError`): erro 500 no plágio da turma, achado pelo schemathesis, e também nos
+  indícios e no feedback. Os três passam a ler os tokens por `source_tokens` (`engine/guards.py`),
+  que traduz `
+` e `` para `
+`, com a mesma numeração de linhas da AST.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 

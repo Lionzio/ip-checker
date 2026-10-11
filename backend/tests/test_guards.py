@@ -13,6 +13,8 @@ from ipc_analyzer.engine.guards import (
     check_source,
     count_lines,
     line_at,
+    source_tokens,
+    split_lines,
     thousands,
 )
 
@@ -97,3 +99,12 @@ def test_count_lines_follows_python_line_breaks(text: str, expected: int) -> Non
 def test_line_at_and_thousands() -> None:
     assert line_at("a\nb\r\nc", 5) == 3
     assert thousands(51_200) == "51.200"
+
+
+@pytest.mark.parametrize("text", ["Ý = 1\rØ = Ý\r", "Ý = 1\r\nØ = Ý\r\n", "Ý = 1\nØ = Ý\n"])
+def test_source_tokens_read_every_python_line_break(text: str) -> None:
+    # Um \r sozinho depois de um caractere não ASCII derrubava o tokenizador (UnicodeDecodeError).
+    names = [(t.string, t.start) for t in source_tokens(text) if t.string in {"Ý", "Ø"}]
+
+    assert names == [("Ý", (1, 0)), ("Ø", (2, 0)), ("Ý", (2, 4))]
+    assert split_lines(text)[1] == "Ø = Ý"

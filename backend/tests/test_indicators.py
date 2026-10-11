@@ -361,3 +361,9 @@ def test_invalid_references_stop_the_ruleset(
 ) -> None:
     with pytest.raises(RulesetError, match=message):
         ruleset_with_references(tmp_path, files)
+
+
+def test_comments_after_a_lone_carriage_return_are_read(ruleset: CompiledRuleset) -> None:
+    code = "# média\r" + ENGLISH_STYLE.replace("\n", "\r")
+
+    assert kinds(indicators(code, ruleset, 4))["comentarios_em_ingles"] == (None, (4,))

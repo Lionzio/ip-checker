@@ -98,3 +98,7 @@ def test_feedback_input_has_no_docstrings(base_ruleset: CompiledRuleset) -> None
 
     assert "Ana" not in data.code
     assert data.code.startswith("...\n")
+
+
+def test_a_lone_carriage_return_is_a_line_break() -> None:
+    assert strip_comments("Ý = 1  # comentário\rØ = Ý\r") == "Ý = 1\nØ = Ý\n"

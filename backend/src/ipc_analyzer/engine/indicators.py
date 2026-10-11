@@ -26,7 +26,6 @@ As faixas são valores iniciais [PREMISSA, ADR-08 item 1], a calibrar com soluç
 from __future__ import annotations
 
 import ast
-import io
 import re
 import tokenize
 from collections import Counter
@@ -37,7 +36,7 @@ from typing import Literal
 
 from ipc_analyzer.engine.display import describe
 from ipc_analyzer.engine.gabarito import GabaritoComparison
-from ipc_analyzer.engine.guards import DEFAULT_LIMITS, InputError, Limits
+from ipc_analyzer.engine.guards import DEFAULT_LIMITS, InputError, Limits, source_tokens
 from ipc_analyzer.engine.models import Violation
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem
 from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, Reference
@@ -647,7 +646,7 @@ def _is_english(name: str) -> bool:
 def _english_comments(source: str) -> tuple[int, ...]:
     lines: list[int] = []
     try:
-        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+        tokens = list(source_tokens(source))
     except (tokenize.TokenError, SyntaxError):
         return ()
     for token in tokens:
