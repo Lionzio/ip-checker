@@ -286,7 +286,9 @@ describe("App com sessão", () => {
     await user.click(screen.getByRole("button", { name: "Verificar" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("A sua sessão terminou.");
-    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    // A sessão acaba na hora; a ida para Entrar é uma transição do roteador e pode chegar um
+    // instante depois do aviso (o teste falhava conforme a ordem e a carga da máquina).
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Código Python")).not.toBeInTheDocument();
   });
 

@@ -79,7 +79,8 @@ uv run pytest
 
 `../rulesets` valida o período ativo; a pasta de um período (`../rulesets/2027.1`) valida aquele
 período. Um período novo nasce com `uv run ipc-rules new-period 2027.1 --from 2026.2` (`RULES.md`,
-passo 6).
+passo 6). O 2027.1 já existe (S35-09, 11/10/2026), como cópia do 2026.2 (P-22), ainda inativo: ele
+passa a valer quando o `ATIVO` mudar, antes da primeira correção de 2027.1.
 
 O `ipc-rules validate` carrega o `base.yaml` e as questões exatamente como o analisador, mostra o
 caminho de cada erro e avisa das questões que liberam proibições gerais (só com professor, C-02).
