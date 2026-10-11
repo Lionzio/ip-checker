@@ -1312,6 +1312,12 @@ testes manuais:**
 **Decisão da S35-06 (11/10/2026, autor):** manter só o `/health/slo` com o UptimeRobot, sem Grafana
 nem `/metrics` (C8 atualizada).
 
+**Situação (11/10/2026):** engenharia concluída. S35-01, S35-02 e S35-03 na CI (#84), com as metas
+do NFR-02 e do NFR-03 medidas pela primeira vez e abertas na Q-25 (a CI usa as proteções descritas
+lá até a decisão); S35-04 (canário só no banco, logs pelo painel); S35-05 (#83); S35-07 (#82);
+S35-08 (#81); S35-09 (#80); S35-06 decidida. Aguardando: Q-25 (autor), S35-10 (equipe) e o primeiro
+canário mensal no piloto.
+
 **Critérios de aceite:**
 1. O CI falha num PR que regride o motor mais de 20%, ou que estoura a meta do Lighthouse, ou que baixa a cobertura do motor abaixo de 90%.
 2. O canário mensal roda e acha 0 ocorrências.
