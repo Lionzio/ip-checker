@@ -42,3 +42,40 @@ Todas as cópias reescritas ficavam abaixo de 80%, a faixa "sem indício" do FR-
 **Consequências positivas:** cópias disfarçadas por reordenação e por formas equivalentes passam a cair em "Plágio"; o enchimento com código morto aparece na contenção; os trechos realçados explicam o número.
 
 **Consequências negativas:** soluções independentes de exercícios muito curtos ficam mais parecidas (a canonização junta formas diferentes), o que torna o IDF da turma e o aviso de código curto obrigatórios; mais código no motor para manter.
+
+## Revisão da S35-07 (11/10/2026): linhas inseridas dentro de um bloco copiado
+
+**Achado:** ao montar o roteiro de testes manuais (`docs/testes-manuais.md`), uma cópia com **uma
+linha acrescentada dentro do laço** deu 83,2% ("Ligeiramente suspeito", cenário P-11), e com um
+`else` e um contador acrescentados, 76,1% ("Sem suspeitas", P-12). O motivo: o multiconjunto pesava
+cada subárvore pelo tamanho, e uma linha a mais dentro de um laço muda o hash do laço inteiro e de
+todos os blocos acima dele, justamente os de maior peso. Linhas acrescentadas antes ou depois do
+trecho copiado não enganavam (contenção de 100%, P-08).
+
+**Decisão:** um comando com blocos (`if`, laço, `def`, `with`, `try`) deixa de entrar inteiro no
+multiconjunto. Entram:
+
+1. o **cabeçalho** dele (o comando sem os blocos: a condição, o que o laço percorre, a assinatura),
+   com o peso do cabeçalho;
+2. cada **comando de dentro**, junto com o cabeçalho, o nome do bloco (`body`, `orelse`, `except`...)
+   e o **comando anterior** do mesmo bloco, com o peso do comando. Um bloco dentro de outro entra
+   pelo cabeçalho dele.
+
+Os hashes exatos (e, com eles, os trechos em comum, a reordenação por dependência e as reescritas)
+não mudam. Com o comando anterior no par, a ordem que a reordenação por dependência mantém
+continua contando (ler as entradas em outra ordem ainda é diferença), e uma linha inserida só
+desfaz um par.
+
+**Medido em 11/10/2026**, no corpus de pares e nos cenários do roteiro:
+
+| Par | Antes | Depois |
+|---|---|---|
+| Linha acrescentada dentro do laço (P-11) | 83,2% | 100,0% (contenção; Dice 94,9%) |
+| `else` e contador acrescentados no laço (P-12) | 76,1% | 100,0% (contenção; Dice 88,4%) |
+| As 14 cópias do corpus | 100,0% | 100,0% |
+| Soluções independentes do corpus (6 pares) | de 0,0% a 22,1% | iguais (uma subiu de 6,6% para 11,0%) |
+| Três independentes novas, uma com o mesmo laço e outra conta | 0,0%, 32,2% e 58,3% | iguais |
+
+Os cinco pares novos entram no corpus (`tests/similarity/pares.yaml`), com mínimo de 95% para as
+duas cópias e máximo de 79,9% para as três independentes.
+

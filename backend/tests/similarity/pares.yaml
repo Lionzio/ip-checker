@@ -695,3 +695,128 @@ pares:
       imc = peso / altura ** 2
       categoria = "normal" if 18.5 <= imc < 25 else "fora da faixa"
       print(round(imc, 2), categoria)
+  - nome: linha_inserida_no_laco
+    descricao: "Cópia com uma linha acrescentada dentro do laço (S35-07; roteiro P-11; antes, 83,2%)."
+    minimo: 95.0
+    a: |
+      n = int(input())
+      total = 0
+      maior = 0
+      for i in range(n):
+          x = int(input())
+          if x % 2 == 0:
+              total += x
+          if x > maior:
+              maior = x
+      print('Soma dos pares:', total)
+      print('Maior:', maior)
+    b: |
+      n = int(input())
+      total = 0
+      maior = 0
+      for i in range(n):
+          x = int(input())
+          print('Lido:', x)
+          if x % 2 == 0:
+              total += x
+          if x > maior:
+              maior = x
+      print('Soma dos pares:', total)
+      print('Maior:', maior)
+  - nome: else_acrescentado_no_laco
+    descricao: "Cópia com um else e um contador acrescentados dentro do laço (S35-07; roteiro P-12; antes, 76,1%)."
+    minimo: 95.0
+    a: |
+      n = int(input())
+      total = 0
+      maior = 0
+      for i in range(n):
+          x = int(input())
+          if x % 2 == 0:
+              total += x
+          if x > maior:
+              maior = x
+      print('Soma dos pares:', total)
+      print('Maior:', maior)
+    b: |
+      n = int(input())
+      total = 0
+      maior = 0
+      impares = 0
+      for i in range(n):
+          x = int(input())
+          if x % 2 == 0:
+              total += x
+          else:
+              impares += 1
+          if x > maior:
+              maior = x
+      print('Soma dos pares:', total)
+      print('Maior:', maior)
+      print('Ímpares:', impares)
+  - nome: independentes_media_da_turma
+    descricao: "Média e aprovados: for com acumulador contra while com lista e compreensão (S35-07)."
+    maximo: 79.9
+    a: |
+      n = int(input())
+      soma = 0
+      aprovados = 0
+      for i in range(n):
+          nota = float(input())
+          soma += nota
+          if nota >= 7:
+              aprovados += 1
+      print('Média:', soma / n)
+      print('Aprovados:', aprovados)
+    b: |
+      quantidade = int(input())
+      notas = []
+      contador = 0
+      while contador < quantidade:
+          notas.append(float(input()))
+          contador = contador + 1
+      media = sum(notas) / len(notas)
+      acima = [x for x in notas if x >= 7]
+      print('Média:', media)
+      print('Aprovados:', len(acima))
+  - nome: independentes_maior_e_menor
+    descricao: "Maior e menor: comparações no laço contra max() e min() da lista (S35-07)."
+    maximo: 79.9
+    a: |
+      n = int(input())
+      maior = int(input())
+      menor = maior
+      for i in range(n - 1):
+          x = int(input())
+          if x > maior:
+              maior = x
+          elif x < menor:
+              menor = x
+      print(maior, menor)
+    b: |
+      valores = input().split()
+      numeros = []
+      for v in valores:
+          numeros.append(int(v))
+      print(max(numeros), min(numeros))
+  - nome: mesmo_laco_outra_conta
+    descricao: "O mesmo laço de leitura com outra conta dentro do if: a estrutura comum não pode virar plágio (S35-07)."
+    maximo: 79.9
+    a: |
+      n = int(input())
+      pares = 0
+      for i in range(n):
+          x = int(input())
+          if x % 2 == 0:
+              pares += 1
+      print(pares)
+    b: |
+      n = int(input())
+      total = 0
+      for i in range(n):
+          x = int(input())
+          if x > 0:
+              total += x
+          else:
+              total -= x
+      print(total)
