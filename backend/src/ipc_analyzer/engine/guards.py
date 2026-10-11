@@ -6,7 +6,10 @@ trechos do código enviado.
 
 from __future__ import annotations
 
+import io
 import re
+import tokenize
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -60,6 +63,16 @@ _FORBIDDEN_CONTROL = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f]")
 def split_lines(text: str) -> list[str]:
     """Linhas físicas do texto, sem as quebras, na mesma numeração usada pela AST."""
     return _LINE_BREAK.split(text)
+
+
+def source_tokens(text: str) -> Iterator[tokenize.TokenInfo]:
+    """Os tokens do texto, com ``\r\n`` e ``\r`` lidos como ``\n``: a numeração de ``split_lines``.
+
+    O tokenizador do CPython falha com ``UnicodeDecodeError`` num ``\r`` sozinho depois de um
+    caractere não ASCII (``"Ý\rØ"``), código que o ``ast.parse`` aceita; com as quebras traduzidas,
+    ele lê as mesmas linhas que a AST. Colunas e numeração não mudam.
+    """
+    return tokenize.generate_tokens(io.StringIO(text, newline=None).readline)
 
 
 def count_lines(text: str) -> int:

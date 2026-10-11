@@ -29,6 +29,11 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
   07:00, e o `scripts/sintetico-local.sh` faz o mesmo desta máquina. O exercício de alerta passa a
   ser a cada release (S34-04), com o `scripts/carga-piloto.sh` no lugar da "Carga no piloto"
   enquanto a cota do Actions não volta.
+- **11/10/2026, `\r` sozinho no código:** um código com caractere não ASCII e linhas terminadas só
+  em `\r` (`"Ý\rØ"`) passava pelo `ast.parse` e derrubava o `tokenize` do CPython
+  (`UnicodeDecodeError`): erro 500 no plágio da turma, achado pelo schemathesis, e também nos
+  indícios e no feedback. Os três passam a ler os tokens por `source_tokens` (`engine/guards.py`),
+  que traduz `\r\n` e `\r` para `\n`, com a mesma numeração de linhas da AST.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 

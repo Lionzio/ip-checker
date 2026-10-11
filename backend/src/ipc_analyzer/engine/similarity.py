@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import ast
 import hashlib
-import io
 import keyword
 import tokenize
 from bisect import bisect_right
@@ -42,7 +41,13 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
-from ipc_analyzer.engine.guards import DEFAULT_LIMITS, AnalysisLimitError, InputError, Limits
+from ipc_analyzer.engine.guards import (
+    DEFAULT_LIMITS,
+    AnalysisLimitError,
+    InputError,
+    Limits,
+    source_tokens,
+)
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem, parse_source
 from ipc_analyzer.engine.similarity_tree import (
     Match,
@@ -296,9 +301,8 @@ def _tokens(parsed: ParsedSource) -> Iterator[tuple[int, str]]:
     block = -1
     markers: dict[str, str] = {}
     previous = ""
-    readline = io.StringIO(parsed.source).readline
     try:
-        for token in tokenize.generate_tokens(readline):
+        for token in source_tokens(parsed.source):
             if token.type in _SKIPPED:
                 continue
             # O DEDENT que fecha um bloco vem na linha do comando seguinte; fica com o que fecha.

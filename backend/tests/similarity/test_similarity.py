@@ -168,3 +168,12 @@ def test_two_50_kb_codes_are_compared_within_the_budget() -> None:
     assert result.percent == 100.0
     # NFR-25: dois códigos de 50 KB em até 2 s no worker.
     assert elapsed < 2.0, f"{elapsed:.2f} s"
+
+
+def test_a_lone_carriage_return_after_an_accent_is_a_line_break() -> None:
+    # Achado pelo schemathesis: "Ý\rØ" passava pelo ast.parse e derrubava o tokenize (500).
+    code = "número = int(input())\nmédia = número / 2\nprint(média)\n"
+    other = "valor = int(input())\nprint(valor * 3)\n"
+
+    assert compare(code.replace("\n", "\r"), other) == compare(code, other)
+    assert compare(code.replace("\n", "\r"), code).percent == 100.0

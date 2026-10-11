@@ -448,3 +448,14 @@ def test_a_real_class_ignores_what_everybody_writes(real_api: TestClient) -> Non
     assert body["results"][0]["label"] == "Cópia"
     assert body["results"][0]["band"]["label"] == "Plágio"
     assert all(item["similarity"] < 80.0 for item in body["results"][1:])
+
+
+def test_a_lone_carriage_return_in_the_class_is_not_a_server_error(real_api: TestClient) -> None:
+    # O caso do schemathesis: o tokenize falhava com "\r" depois de "Ý" e a rota dava 500.
+    response = real_api.post(
+        "/api/v1/similarity/batch",
+        json={"code": "Ý\rØ", "solutions": [{"code": "Ý\rØ\r", "label": "Aluno"}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["similarity"] == 100.0
