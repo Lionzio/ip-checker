@@ -127,6 +127,14 @@ jobs:
         env:
           IPC_TEST_DATABASE_URL: postgresql://postgres:ci-descartavel@127.0.0.1:5432/ipc_test
         run: uv run pytest
+      - name: Cobertura por pasta (motor >= 90%, cada outra pasta >= 80%; S35-03, NFR-16)
+        run: |
+          uv run coverage json -q -o coverage.json
+          uv run python scripts/coverage_by_folder.py coverage.json
+      - name: Benchmark do motor (P95 <= 50 ms e regressão <= 20%; S35-01, NFR-02)
+        env:
+          IPC_BENCHMARK: "1"
+        run: uv run pytest tests/benchmark --no-cov -q -s
 
   audit:
     # S31-03 e S31-04 (NFR-09, NFR-13): segredos, dependências vulneráveis e padrões inseguros no
@@ -281,6 +289,10 @@ jobs:
         run: npm test
       - name: Build de produção
         run: npm run build
+      - name: JS inicial com gzip <= 350 KB (S35-02, NFR-03)
+        run: node scripts/js-budget.mjs
+      - name: Lighthouse, perfil móvel (FCP < 1,5 s; S35-02, NFR-03)
+        run: npx --yes @lhci/cli@0.15.1 autorun --config=lighthouserc.json
       - name: Build do piloto (Vercel, com o rewrite de /api/* e os cabeçalhos de segurança)
         env:
           IPC_API_ORIGIN: https://ip-checker-api.onrender.com
