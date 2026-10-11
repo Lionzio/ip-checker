@@ -1,0 +1,10 @@
+# Cadastrada a pedido do autor em 11/10/2026: o gabarito oficial (ip-checker-gabaritos,
+# 2026.2/lista-4/L4-Q5.py) usa parâmetros com valor padrão, como def templo(vidaH=200, ...).
+question_id: L4-Q5
+list: 4
+title: "Hades: a fuga de Zagreu"
+source: >-
+  Enunciado da L4-Q5 (2026.2): o enunciado libera parâmetros com valor padrão nas funções
+  (confirmado pelo autor em 11/10/2026).
+allow_facts:
+  - param:default

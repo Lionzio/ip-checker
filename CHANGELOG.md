@@ -8,6 +8,19 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 34.1 — Lista 4 de 2026.2 com a numeração certa
+
+Release extra depois da Sprint 34, pedida pelo autor em 11/10/2026, com a CI local como evidência
+e o deploy à mão (P-19).
+
+- **11/10/2026, Lista 4 de 2026.2 renumerada:** o autor reenviou os gabaritos da Lista 4 com a
+  numeração oficial. A questão do `eval()` é a L4-Q4, e não a L4-Q3: o cadastro passa para
+  `rulesets/2026.2/questions/L4-Q4.yaml`, que também libera o `reverse=` no `sort()`
+  (`kwarg:sort.reverse`), usado pelo gabarito novo. A L4-Q5 é cadastrada com o valor padrão de
+  parâmetro (`param:default`), também pelo enunciado. Fora dessas questões, valem as decisões
+  da Q-02 (c e f): `reverse=` e valor padrão continuam na R-04. Os 28 gabaritos de 2026.2 têm zero
+  violação. O ruleset continua `2026.2.5`.
+
 ## Sprint 34 — Prontidão para 2027.1
 
 A Sprint 34 (S34-01 a S34-06; US-12, US-19 e US-22) fechou a engenharia em 11/10/2026. A missão é

@@ -2,8 +2,8 @@
 
 A L3-Q9 é a questão do ensaio do cadastro (S31-13, ``docs/ensaio-cadastro.md``): libera ``map()``,
 que o documento de permissões não cita, e proíbe ``sum()``, ``sort()`` e ``sorted()``, que a Lista 3
-permite. A L4-Q3 é a primeira questão real: o enunciado libera ``eval()`` para ler listas da
-entrada.
+permite. As primeiras questões reais são de 2026.2: a L4-Q4 libera ``eval()`` e o ``reverse=``
+no ``sort()``; a L4-Q5, o valor padrão de parâmetro.
 """
 
 from __future__ import annotations
@@ -35,6 +35,21 @@ EVAL_SOLUTION = """def soma(cartas):
     return total
 
 print(soma(eval(input())))
+"""
+
+SORT_SOLUTION = """\
+def maior_primeiro(cartas):
+    cartas.sort(reverse=True)
+    return cartas
+
+print(maior_primeiro([3, 1, 2]))
+"""
+
+DEFAULT_SOLUTION = """\
+def dano(vida=100, golpe=20):
+    return vida - golpe
+
+print(dano())
 """
 
 
@@ -73,8 +88,28 @@ def test_what_the_statement_forbids_annuls_the_question(
     assert _violations(code, base_ruleset, None) == ["R-04 NAO_CONSTA 1"]
 
 
-def test_l4_q3_allows_eval_only_with_the_question(base_ruleset: CompiledRuleset) -> None:
-    assert base_ruleset.questions["L4-Q3"].question.list_number == 4
-    assert _violations(EVAL_SOLUTION, base_ruleset, "L4-Q3", list_number=4) == []
+def test_l4_q4_allows_eval_only_with_the_question(base_ruleset: CompiledRuleset) -> None:
+    assert base_ruleset.questions["L4-Q4"].question.list_number == 4
+    assert _violations(EVAL_SOLUTION, base_ruleset, "L4-Q4", list_number=4) == []
     # Sem a questão, vale a Lista 4: eval() não consta no documento.
     assert _violations(EVAL_SOLUTION, base_ruleset, None, list_number=4) == ["R-04 NAO_CONSTA 7"]
+
+
+def test_l4_q4_allows_reverse_in_sort_only_with_the_question(base_ruleset: CompiledRuleset) -> None:
+    assert _violations(SORT_SOLUTION, base_ruleset, "L4-Q4", list_number=4) == []
+    # Sem a questão, o reverse= continua fora (Q-02 c).
+    assert _violations(SORT_SOLUTION, base_ruleset, None, list_number=4) == ["R-04 NAO_CONSTA 2"]
+
+
+def test_l4_q5_allows_default_parameters_only_with_the_question(
+    base_ruleset: CompiledRuleset,
+) -> None:
+    assert base_ruleset.questions["L4-Q5"].question.list_number == 4
+    assert _violations(DEFAULT_SOLUTION, base_ruleset, "L4-Q5", list_number=4) == []
+    # Sem a questão, o valor padrão continua fora (Q-02 f): um por parâmetro.
+    assert _violations(DEFAULT_SOLUTION, base_ruleset, None, list_number=4) == [
+        "R-04 NAO_CONSTA 1",
+        "R-04 NAO_CONSTA 1",
+    ]
+    # Cada questão libera só o que o enunciado dela libera: o eval() é da L4-Q4.
+    assert _violations(EVAL_SOLUTION, base_ruleset, "L4-Q5", list_number=4) == ["R-04 NAO_CONSTA 7"]
