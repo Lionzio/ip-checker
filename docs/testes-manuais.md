@@ -1947,7 +1947,7 @@ print(y * 3)
 
 ### P-11. Uma linha inserida dentro do laço copiado
 
-- **Objetivo:** Limitação conhecida: inserir linhas dentro de um bloco copiado baixa a similaridade.
+- **Objetivo:** Inserir uma linha dentro de um bloco copiado não esconde a cópia (corrigido na Sprint 35, S35-07; antes, 83,2%).
 - **Passos:** cole os dois códigos e clique em **Verificar**.
 - **Código A:**
 
@@ -1983,14 +1983,14 @@ print('Maior:', maior)
 ```
 
 - **Esperado:**
-  - Similaridade **83,2%**, faixa **Ligeiramente suspeito**.
-  - **Limitação conhecida (11/10/2026):** o motor compara blocos inteiros; mudar o miolo de um bloco copiado baixa a semelhança. Registre o valor que aparecer; a melhoria está planejada (Sprint 35).
+  - Similaridade **100,0%**, faixa **Plágio** (a partir da release da Sprint 35).
+  - A **Contenção** fica em 100%: o código A está inteiro dentro do B.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
 ### P-12. Um else com contador acrescentado dentro do laço
 
-- **Objetivo:** Limitação conhecida: mudar o miolo do bloco copiado pode levar a cópia para "Sem suspeitas".
+- **Objetivo:** Acrescentar um `else` com um contador dentro do laço copiado não esconde a cópia (corrigido na Sprint 35, S35-07; antes, 76,1%).
 - **Passos:** cole os dois códigos e clique em **Verificar**.
 - **Código A:**
 
@@ -2029,8 +2029,8 @@ print('Ímpares:', impares)
 ```
 
 - **Esperado:**
-  - Similaridade **76,1%**, faixa **Sem suspeitas**.
-  - **Limitação conhecida (11/10/2026):** o motor compara blocos inteiros; mudar o miolo de um bloco copiado baixa a semelhança. Registre o valor que aparecer; a melhoria está planejada (Sprint 35).
+  - Similaridade **100,0%**, faixa **Plágio** (a partir da release da Sprint 35).
+  - A **Contenção** fica em 100%: o código A está inteiro dentro do B.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

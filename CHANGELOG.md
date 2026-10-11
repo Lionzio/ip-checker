@@ -16,6 +16,11 @@ mudaram.
   o pool cheio também conta como sobrecarga; o banco fora do ar continua `DATABASE_UNAVAILABLE`. No
   NFR-05 do gratuito, as 4.111 recusas saíram como `OVERLOADED`, e a mediana do 503 caiu de 5,8 s
   para 1,0 s (ADR-03).
+- **11/10/2026, S35-07 (plágio):** uma linha acrescentada dentro de um laço copiado baixava a cópia
+  para 83,2%, e um `else` com contador, para 76,1% ("Sem suspeitas"). Um comando com blocos passa a
+  entrar no multiconjunto pelo cabeçalho e por cada comando de dentro, junto com o anterior do mesmo
+  bloco; as duas cópias vão a 100% (contenção), e as soluções independentes não mudam (ADR-07,
+  "Revisão da S35-07"; 5 pares novos no corpus).
 
 ## Sprint 34.1 — Lista 4 de 2026.2 com a numeração certa
 

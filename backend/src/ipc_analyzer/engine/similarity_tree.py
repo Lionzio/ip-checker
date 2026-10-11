@@ -20,7 +20,11 @@ camadas, todas determinísticas e lineares no tamanho do código:
    pesada pelo tamanho (como no Deckard). Dele saem o **Dice** (a similaridade) e a **contenção**
    (quanto do menor código está no maior), que denuncia o enchimento com código morto. Com uma
    turma inteira, cada subárvore pesa também pelo inverso da frequência na turma (IDF): o que todos
-   escrevem quase não conta (ameaça 20).
+   escrevem quase não conta (ameaça 20). Um comando com blocos (``if``, laço, ``def``, ``with``,
+   ``try``) não entra inteiro: entram o **cabeçalho** dele (sem os blocos) e cada **comando de
+   dentro**, junto com o cabeçalho e o bloco em que está; um bloco dentro de outro entra pelo
+   cabeçalho. Assim, uma linha acrescentada dentro de um laço copiado só acrescenta, e não apaga o
+   laço inteiro do multiconjunto (S35-07; antes, uma linha a mais no laço baixava a cópia a 83%).
 
 Os trechos em comum (pares de intervalos de linhas) saem dos comandos com o mesmo hash nos dois
 códigos, dos maiores para os menores, sem sobreposição.
@@ -95,7 +99,8 @@ class Span:
 
 @dataclass(frozen=True, slots=True)
 class TreeFingerprint:
-    #: Peso de cada subárvore canônica: o tamanho dela vezes quantas vezes aparece.
+    #: Peso de cada subárvore canônica (o tamanho dela vezes quantas vezes aparece) e, nos comandos
+    #: com blocos, do cabeçalho e de cada comando de dentro (S35-07).
     weights: Mapping[bytes, int]
     #: Onde aparece cada comando, pelo hash, na ordem do código.
     spans: Mapping[bytes, tuple[Span, ...]]
@@ -522,6 +527,35 @@ class _Hasher:
         self.digests[id(node)] = _digest(_label(node), *parts)
         self.sizes[id(node)] = 1 + sum(self.sizes[id(child)] for child in children)
 
+    def inner(self, node: ast.AST) -> list[tuple[str, ast.stmt]]:
+        """Os comandos dos blocos de um comando composto, com o nome do bloco (S35-07)."""
+        found: list[tuple[str, ast.stmt]] = []
+        for field in _BLOCK_FIELDS:
+            block = _block(node, field)
+            if block:
+                found.extend((field, statement) for statement in block)
+        if isinstance(node, ast.Try | ast.TryStar):
+            for handler in node.handlers:
+                found.extend(("except", statement) for statement in handler.body)
+        return found
+
+    def header(self, node: ast.AST, inner: list[tuple[str, ast.stmt]]) -> tuple[bytes, int]:
+        """O hash e o tamanho do comando sem os blocos: a condição, o que o laço percorre, a
+        assinatura da função."""
+        inside = {id(statement) for _, statement in inner}
+        parts = [
+            child
+            for child in self.children(node)
+            if id(child) not in inside and not isinstance(child, ast.excepthandler)
+        ]
+        digest = _digest(b"cabecalho", _label(node), *(self.digests[id(child)] for child in parts))
+        return digest, 1 + sum(self.sizes[id(child)] for child in parts)
+
+    def shape(self, statement: ast.stmt) -> bytes:
+        """Um comando dentro de um bloco: os simples pelo hash; os compostos, pelo cabeçalho."""
+        inner = self.inner(statement)
+        return self.header(statement, inner)[0] if inner else self.digests[id(statement)]
+
     def reorder(self, block: list[ast.stmt]) -> list[ast.stmt]:
         """Ordenação topológica: entre os comandos prontos, o de menor hash vem primeiro."""
         effects = [self.effects(statement) for statement in block]
@@ -604,7 +638,20 @@ def _hash(tree: ast.Module) -> TreeFingerprint:
         if size < MIN_SUBTREE:
             continue
         digest = hasher.digests[id(node)]
-        weights[digest] += size
+        inner = hasher.inner(node) if isinstance(node, ast.stmt) else []
+        if inner:
+            head, head_size = hasher.header(node, inner)
+            weights[head] += head_size
+            # Cada comando entra com o anterior do mesmo bloco: a ordem continua contando (o que
+            # a reordenação por dependência não trocou), e uma linha inserida só desfaz um par.
+            previous: dict[str, bytes] = {}
+            for field, statement in inner:
+                shape = hasher.shape(statement)
+                pair = _digest(b"dentro", head, field.encode(), previous.get(field, b""), shape)
+                weights[pair] += hasher.sizes[id(statement)]
+                previous[field] = shape
+        else:
+            weights[digest] += size
         if isinstance(node, ast.stmt):
             sizes[digest] = size
             spans.setdefault(digest, []).append(Span(node.lineno, node.end_lineno or node.lineno))
