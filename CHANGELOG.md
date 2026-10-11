@@ -8,38 +8,61 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
-## Depois da Sprint 32 (não publicado no piloto)
+## Sprint 34 — Prontidão para 2027.1
 
-Mudanças na `develop` que chegam ao piloto na próxima release.
+A Sprint 34 (S34-01 a S34-06; US-12, US-19 e US-22) fechou a engenharia em 11/10/2026. A missão é
+chegar à primeira lista de 2027.1 sabendo como o piloto se comporta no pico, no plano gratuito
+(S30-11), e com um aviso automático se a primeira verificação do dia ficar lenta ou falhar. A
+persona é o monitor-mantenedor que opera o piloto. Com a cota do Actions esgotada até 01/11/2026
+(P-19), a evidência de cada PR é o `scripts/ci-local.sh --e2e`. Esta release também leva ao piloto
+a Sprint 33 (seção abaixo), que entrou na `main` sem tag, e a correção do `\r` sozinho.
 
-- **10/10/2026, S32-01 e S32-11 concluídas pelo autor:** a credencial dos gabaritos no Render (23
-  gabaritos carregados) e as chaves do Gemini e da Groq, com a cadeia `gemini,groq`
-  (`gemini-3.5-flash-lite`, que raciocina pouco, e `openai/gpt-oss-120b`, dos planos gratuitos); o
-  Aprimorar com IA respondeu pelo Gemini no piloto.
-- **11/10/2026, Sprint 33 (em andamento):** `ipc-rules calibrate-gabarito` (S33-07) mede o alerta de
-  vazamento em soluções humanas; `ipc-rules import-gabaritos` (S33-08) importa os gabaritos de uma
-  exportação do Notion para o repositório privado. Medição preliminar dos indícios nos 23
-  gabaritos de 2026.2: 0% na faixa alta (ADR-08), só um primeiro ponto.
-- **11/10/2026, L4-Q3 de 2026.2 cadastrada:** a primeira questão real (`rulesets/2026.2/questions/L4-Q3.yaml`).
-  O enunciado libera `eval()` para ler as listas da entrada (`allow_facts: builtin:eval`), como
-  o gabarito oficial faz; sem a questão, o `eval()` continua na R-04. O ruleset continua `2026.2.5`.
-- **11/10/2026, Sprint 34 (em andamento):** a `/api/v1/validate` responde com
+Aguardando:
+
+| Task | Entrada pendente |
+|---|---|
+| S34-05 | O ruleset de 2027.1 validado pelo professor (S33-04), para habilitar as listas (`IPC_ENABLED_LISTS`) |
+| S34-06 | As datas de 2027.1 (P-10), para conferir os 7 dias de monitores verdes antes da primeira lista |
+| S34-02 | Os "7 dias seguidos sem falha" do sintético contam a partir de 01/11/2026, com a cota de volta; até lá, o `scripts/sintetico-local.sh` |
+
+- **11/10/2026, S34-02 e S34-04 (#71):** a `/api/v1/validate` responde com
   `Server-Timing: app;dur=<ms>`, o tempo dentro da API, só nessa rota (no login, o tempo exato só
   ajudaria quem ataca); o workflow "Sintético diário" (S34-02) usa esse tempo, nos dias úteis às
   07:00, e o `scripts/sintetico-local.sh` faz o mesmo desta máquina. O exercício de alerta passa a
   ser a cada release (S34-04), com o `scripts/carga-piloto.sh` no lugar da "Carga no piloto"
   enquanto a cota do Actions não volta.
-- **11/10/2026, `\r` sozinho no código:** um código com caractere não ASCII e linhas terminadas só
-  em `\r` (`"Ý\rØ"`) passava pelo `ast.parse` e derrubava o `tokenize` do CPython
-  (`UnicodeDecodeError`): erro 500 no plágio da turma, achado pelo schemathesis, e também nos
-  indícios e no feedback. Os três passam a ler os tokens por `source_tokens` (`engine/guards.py`),
-  que traduz `\r\n` e `\r` para `\n`, com a mesma numeração de linhas da AST.
-- **11/10/2026, S34-01 e S34-03:** o `run_load.py` ganhou os cenários `degraus`, `nfr04` (500 por
+- **11/10/2026, S34-01 e S34-03 (#74):** o `run_load.py` ganhou os cenários `degraus`, `nfr04` (500 por
   minuto por 15 min, 80% de 4 IPs do campus, com os limites por IP do piloto) e `nfr05` (1.500 por
   minuto e a recuperação), cada um com veredito. No gratuito emulado: no máximo 100 verificações
   por minuto sem recusa; sob sobrecarga, nenhum 500, 502 ou 504, todo 503 com `Retry-After`,
   nenhum 429 para o NAT do campus e recuperação em 5,7 s, mas os 503 levam segundos e a maioria
   diz `DATABASE_UNAVAILABLE` (achado para a Sprint 35). Números no ADR-03.
+- **11/10/2026, `\r` sozinho no código:** um código com caractere não ASCII e linhas terminadas só
+  em `\r` (`"Ý\rØ"`) passava pelo `ast.parse` e derrubava o `tokenize` do CPython
+  (`UnicodeDecodeError`): erro 500 no plágio da turma, achado pelo schemathesis, e também nos
+  indícios e no feedback. Os três passam a ler os tokens por `source_tokens` (`engine/guards.py`),
+  que traduz `\r\n` e `\r` para `\n`, com a mesma numeração de linhas da AST.
+
+## Sprint 33 — Calibração do alerta e importação dos gabaritos
+
+A Sprint 33 (S33-01 a S33-10; US-13, US-14, US-34, US-36 e US-38) fechou a engenharia em
+11/10/2026, sem release própria: entrou na `main` em 11/10/2026 e no piloto com a release da Sprint
+34. O resto depende de dados externos (P-21): os gabaritos das Listas 5 e 6 de 2026.2 e dos
+períodos anteriores (S33-01), as soluções anteriores a 2023 (S33-02), o documento de 2027.1 (S33-04
+e S33-05) e a decisão do gerador de referências por IA (S33-09).
+
+- **11/10/2026, S33-07 e S33-08:** `ipc-rules calibrate-gabarito` mede o alerta de vazamento em
+  soluções humanas (faixas do FR-29 e alarmes falsos, só contagens e caminhos); `ipc-rules
+  import-gabaritos` importa os gabaritos de uma exportação do Notion em Markdown para o repositório
+  privado, nunca para este (NFR-27). Medição preliminar dos indícios nos 23 gabaritos de 2026.2
+  (S33-03): 0% na faixa alta (ADR-08), só um primeiro ponto.
+- **11/10/2026, L4-Q3 de 2026.2 cadastrada:** a primeira questão real (`rulesets/2026.2/questions/L4-Q3.yaml`).
+  O enunciado libera `eval()` para ler as listas da entrada (`allow_facts: builtin:eval`), como
+  o gabarito oficial faz; sem a questão, o `eval()` continua na R-04. O ruleset continua `2026.2.5`.
+- **10/10/2026, S32-01 e S32-11 concluídas pelo autor:** a credencial dos gabaritos no Render (23
+  gabaritos carregados) e as chaves do Gemini e da Groq, com a cadeia `gemini,groq`
+  (`gemini-3.5-flash-lite`, que raciocina pouco, e `openai/gpt-oss-120b`, dos planos gratuitos); o
+  Aprimorar com IA respondeu pelo Gemini no piloto.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 

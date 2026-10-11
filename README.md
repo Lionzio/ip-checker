@@ -6,16 +6,16 @@ soluções em busca de plágio e redige o feedback para o aluno. O código é an
 sintática (AST), num serviço isolado. O acesso é restrito à equipe da disciplina, com login,
 aprovação manual e cargos (P-13 do blueprint).
 
-Hoje (11/10/2026), as Sprints 1 a 33 estão concluídas e a Sprint 34 está em andamento. As seis
+Hoje (11/10/2026), as Sprints 1 a 34 estão concluídas, com entradas externas pendentes. As seis
 listas estão habilitadas, com as regras por questão, o painel de plágio (dois códigos ou contra a
 turma, por árvore canonizada), a comparação com o gabarito oficial (sem o gabarito sair do
 servidor), o feedback por modelos de texto com o "Aprimorar com IA" a pedido, a correção em lote, o
 gerenciamento da equipe com registro das ações, a telemetria anônima, o relatório de eficácia e os
 indícios de uso de IA (desligados no piloto até a calibração com soluções de alunos). O piloto está
-no ar (Render, Vercel e Supabase) desde 07/10/2026, na release `sprint-32` desde 09/10/2026; a
-`main` já tem a Sprint 33 e o começo da 34, que vão ao piloto na release da Sprint 34. O uso pela
-equipe é em 2027.1. As pendências restantes estão planejadas nas Sprints 34 a 36 (seção 7.12 do
-blueprint), e a integração com outros 2 projetos da monitoria é só uma possibilidade, ainda não
+no ar (Render, Vercel e Supabase) desde 07/10/2026, na release `sprint-34` desde 11/10/2026, com
+um teste sintético diário da primeira verificação e o comportamento no pico medido (ADR-03). O uso
+pela equipe é em 2027.1. As pendências restantes estão planejadas nas Sprints 35 e 36 (seção 7.12
+do blueprint), e a integração com outros 2 projetos da monitoria é só uma possibilidade, ainda não
 confirmada (seção 9 do blueprint e ADR-09).
 
 | Para | Leia |
@@ -26,7 +26,7 @@ confirmada (seção 9 do blueprint e ADR-09).
 | Relatar uma falha de segurança | [`SECURITY.md`](SECURITY.md) |
 | Achar qualquer outro documento | [`docs/README.md`](docs/README.md) |
 | O que cada sprint entregou | [`CHANGELOG.md`](CHANGELOG.md) |
-| O que vem a seguir (Sprints 34 a 36) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.12 a 7.14 |
+| O que vem a seguir (Sprints 35 e 36) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.12 a 7.14 |
 | A pauta do Marco 2 (casos do mapeamento e decisões da coordenação) | [`docs/marco-2.md`](docs/marco-2.md) |
 | A comparação com o gabarito (Sprint 32) | [`docs/adr/ADR-11-comparacao-com-o-gabarito.md`](docs/adr/ADR-11-comparacao-com-o-gabarito.md) |
 | Questões e gabaritos por período | [`docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md`](docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md), [`RULES.md`](RULES.md) e [`rulesets/README.md`](rulesets/README.md) |
@@ -178,8 +178,8 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 30 | Piloto verificado ponta a ponta: conta de verificação, deploy com login e e2e no piloto, UptimeRobot com alerta ensaiado, backup cifrado restaurado, rollback cronometrado, carga no piloto, P-12 (a) e P-15, correção do supervisord | Concluída em 08/10/2026 |
 | 31 | Decisões com a coordenação e o NTI (política dos indícios, Q-16, Q-17, Q-22), Marco 2 com os 9 casos do mapeamento, auditoria de segurança bloqueante com Semgrep, troca de período sem código (`ipc-rules new-period`) e gabaritos com as questões do próprio período (ADR-10) | Concluída em 09/10/2026 (releases `sprint-31` e `sprint-31.1`, ruleset `2026.2.5`): decisões tomadas pelo autor, casos do mapeamento decididos e ensaio do cadastro feito (L3-Q9); a apresentação do Marco 2 é em 19/10/2026 |
 | 32 | Comparação com o gabarito: na verificação (semelhança, construções e linhas do aluno), no plágio (A×gabarito, B×gabarito e o alerta de possível vazamento) e nos indícios, sem o gabarito sair do servidor (ADR-11); feedback sem IA por padrão, com o "Aprimorar com IA" por uma cadeia de provedores gratuitos (Q-16) | Concluída em 09/10/2026 (release `sprint-32`); credencial dos gabaritos e chaves do Gemini e da Groq no Render em 10/10/2026 |
-| 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Engenharia concluída em 11/10/2026: `ipc-rules calibrate-gabarito` (alerta de vazamento) e `ipc-rules import-gabaritos` (exportação do Notion) e a medição preliminar dos indícios. Aguardando dados externos (P-21): gabaritos das Listas 5 e 6 de 2026.2 e de períodos anteriores, soluções anteriores a 2023 e o documento de 2027.1 |
-| 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Em andamento: teste sintético diário com `Server-Timing` e exercício de alerta a cada release concluídos em 11/10/2026 (#71); cenários de carga em medição; listas e monitores de 2027.1 dependem do calendário (P-10) |
+| 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Engenharia concluída em 11/10/2026, no piloto com a release `sprint-34`: `ipc-rules calibrate-gabarito` (alerta de vazamento) e `ipc-rules import-gabaritos` (exportação do Notion) e a medição preliminar dos indícios. Aguardando dados externos (P-21): gabaritos das Listas 5 e 6 de 2026.2 e de períodos anteriores, soluções anteriores a 2023 e o documento de 2027.1 |
+| 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Concluída em 11/10/2026 (release `sprint-34`): teste sintético diário com `Server-Timing`, exercício de alerta a cada release e cenários de carga do NFR-04 e do NFR-05; no gratuito, até 100 verificações por minuto sem recusa (ADR-03). Aguardando: listas e monitores de 2027.1 (P-10) |
 | 35 | Controles de qualidade: pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset | Planejada |
 | 36 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging | Bloqueada (P-09 e Q-12) |
 
