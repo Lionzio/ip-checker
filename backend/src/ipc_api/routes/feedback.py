@@ -145,8 +145,8 @@ async def feedback(
             # S25-05: a cota só é cobrada depois da análise; um erro antes dela não gasta nada.
             try:
                 await service.take_quota(account.id)
-            except StoreUnavailable:
-                raise database_unavailable() from None
+            except StoreUnavailable as exc:
+                raise database_unavailable(exc) from None
             enhanced = await service.enhance(
                 student=student,
                 annotation=annotation,

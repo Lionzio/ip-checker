@@ -37,8 +37,9 @@ def get_accounts(request: Request) -> AccountService:
 def require_active_account(
     request: Request, _cookie: Annotated[str | None, Security(session_cookie)] = None
 ) -> Account:
-    if getattr(request.state, "session_error", False):
-        raise database_unavailable()
+    error = getattr(request.state, "session_error", None)
+    if error is not None:
+        raise database_unavailable(error)
     account: Account | None = getattr(request.state, "account", None)
     if account is None:
         raise unauthenticated()

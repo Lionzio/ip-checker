@@ -138,8 +138,8 @@ async def _act(
 ) -> Response:
     try:
         await service.act(actor, action, account_id, role)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
@@ -152,8 +152,8 @@ async def list_requests(actor: Manager, service: Service, response: Response) ->
     response.headers["Cache-Control"] = "no-store"
     try:
         items = await service.requests(actor)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return RequestsResponse(items=[managed(actor, account) for account in items])
 
 
@@ -188,8 +188,8 @@ async def list_members(actor: Manager, service: Service, response: Response) -> 
     response.headers["Cache-Control"] = "no-store"
     try:
         active, removed = await service.members(actor)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return MembersResponse(
         active=[managed(actor, account) for account in active],
         removed=[managed(actor, account) for account in removed],
@@ -248,6 +248,6 @@ async def management_log(
     response.headers["Cache-Control"] = "no-store"
     try:
         records = await service.log(actor)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return ManagementLogResponse(items=[log_entry(record) for record in records])

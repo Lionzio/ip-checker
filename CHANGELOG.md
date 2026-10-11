@@ -8,6 +8,15 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 35 — Qualidade medida e os achados corrigidos
+
+- **11/10/2026, S35-08 (sobrecarga):** sob sobrecarga, o pool do banco esgotado respondia
+  `DATABASE_UNAVAILABLE` ("o banco de contas não respondeu"). Com mais de 20 operações esperando o
+  banco, a API recusa na hora com `OVERLOADED` e o `Retry-After` da admissão, e o prazo estourado com
+  o pool cheio também conta como sobrecarga; o banco fora do ar continua `DATABASE_UNAVAILABLE`. No
+  NFR-05 do gratuito, as 4.111 recusas saíram como `OVERLOADED`, e a mediana do 503 caiu de 5,8 s
+  para 1,0 s (ADR-03).
+
 ## Sprint 34.1 — Lista 4 de 2026.2 com a numeração certa
 
 Release extra depois da Sprint 34, pedida pelo autor em 11/10/2026, com a CI local como evidência

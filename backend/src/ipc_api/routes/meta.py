@@ -123,9 +123,9 @@ async def ready(
         raise analyzer_unavailable() from None
     try:
         await authenticator.store.ping()
-    except StoreUnavailable:
+    except StoreUnavailable as exc:
         logger.warning("banco de contas indisponível")
-        raise database_unavailable() from None
+        raise database_unavailable(exc) from None
     return ReadyResponse(
         status="ready", ruleset_version=status.ruleset_version, release=settings.release
     )

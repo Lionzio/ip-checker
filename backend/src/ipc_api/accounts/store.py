@@ -32,6 +32,7 @@ from ipc_api.accounts.models import (
     SessionRecord,
     SignupMethod,
     Status,
+    StoreBusy,
     StoreUnavailable,
     Treatment,
     months_before,
@@ -212,11 +213,15 @@ class MemoryAccountStore:
         #: Quem já usou a ferramenta em cada período e lista (``app.list_adoption``).
         self.adoption: set[tuple[UUID, str, int]] = set()
         self.available = True
+        #: Simula o pool cheio por sobrecarga (S35-08).
+        self.busy = False
         self._lock = asyncio.Lock()
 
     def _check(self) -> None:
         if not self.available:
             raise StoreUnavailable("banco simulado fora do ar")
+        if self.busy:
+            raise StoreBusy("pool simulado cheio")
 
     async def ping(self) -> None:
         self._check()

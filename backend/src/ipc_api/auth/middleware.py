@@ -45,8 +45,8 @@ class SessionMiddleware:
             authenticator = scope["app"].state.authenticator
             try:
                 account = await authenticator.resolve(token)
-            except StoreUnavailable:
-                state["session_error"] = True
+            except StoreUnavailable as exc:
+                state["session_error"] = exc
             else:
                 if account is not None:
                     state["account"] = account

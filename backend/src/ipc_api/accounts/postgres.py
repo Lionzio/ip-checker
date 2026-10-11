@@ -1,7 +1,8 @@
 """``AccountStore`` no PostgreSQL (esquema ``app``, 5.2.5), pelo usuário da API em ``ipc_app``.
 
 O ``asyncpg`` não publica tipos; o uso dele fica restrito a este módulo e ao ``db/migrate.py``.
-Toda falha de conexão ou do servidor vira ``StoreUnavailable``, que a API transforma em 503.
+Toda falha de conexão ou do servidor vira ``StoreUnavailable``, que a API transforma em 503; o pool
+cheio por sobrecarga vira ``StoreBusy``, que a API responde como ``OVERLOADED`` (S35-08).
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ipc_api.accounts.models import (
     SessionRecord,
     SignupMethod,
     Status,
+    StoreBusy,
     StoreUnavailable,
     Treatment,
     normalize_email,
@@ -159,26 +161,56 @@ async def _guard(deadline_s: float = DB_DEADLINE_S) -> AsyncIterator[None]:
         raise StoreUnavailable(type(exc).__name__) from exc
 
 
+#: Conexões do pool (``create_pool(max_size=...)``).
+POOL_SIZE = 5
+#: Operações no banco ao mesmo tempo, contando as que esperam uma conexão do pool (S35-08). Acima
+#: disso, a API recusa na hora com ``OVERLOADED``, como a admissão do analisador, em vez de esperar
+#: o prazo de 5 s e responder ``DATABASE_UNAVAILABLE`` (ADR-03, "Pico no plano gratuito").
+MAX_PENDING = 20
+
+
 class PostgresAccountStore:
     def __init__(self, pool: Any) -> None:
         self._pool = pool
+        self._pending = 0
+
+    @asynccontextmanager
+    async def _op(self, deadline_s: float = DB_DEADLINE_S) -> AsyncIterator[None]:
+        """Uma operação no banco, com o prazo do ``_guard`` e a recusa rápida do pool cheio.
+
+        O prazo estourado com mais operações que conexões é a espera pelo pool: sobrecarga
+        (``StoreBusy``), não banco fora do ar.
+        """
+        if self._pending >= MAX_PENDING:
+            raise StoreBusy("pool de conexões cheio")
+        self._pending += 1
+        crowded = self._pending > POOL_SIZE
+        try:
+            async with _guard(deadline_s):
+                yield
+        except StoreUnavailable as exc:
+            if crowded and exc.args == ("TimeoutError",):
+                raise StoreBusy("prazo estourado esperando uma conexão do pool") from exc
+            raise
+        finally:
+            self._pending -= 1
 
     @classmethod
     async def connect(cls, dsn: str) -> PostgresAccountStore:
         # Poucas conexões: uma instância da API (ADR-03) e consultas curtas.
         async with _guard():
             pool = await asyncpg.create_pool(
-                dsn, min_size=1, max_size=5, command_timeout=5, timeout=5
+                dsn, min_size=1, max_size=POOL_SIZE, command_timeout=5, timeout=5
             )
         return cls(pool)
 
     async def ping(self) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.fetchval("SELECT 1")
 
     async def find_by_login(self, login: str) -> Account | None:
         text = login.strip()
-        async with _guard():
+        async with self._op():
             if "@" in text:
                 row = await self._pool.fetchrow(_BY_EMAIL, normalize_email(text))
             else:
@@ -186,12 +218,12 @@ class PostgresAccountStore:
         return _account(row) if row is not None else None
 
     async def get_account(self, account_id: UUID) -> Account | None:
-        async with _guard():
+        async with self._op():
             row = await self._pool.fetchrow(_BY_ID, account_id)
         return _account(row) if row is not None else None
 
     async def ensure_developer(self, seed: DeveloperSeed, now: datetime) -> Account:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             owners = await connection.fetch(
                 "SELECT DISTINCT account_id FROM app.account_email WHERE email = ANY($1::text[])",
                 list(seed.emails),
@@ -235,7 +267,7 @@ class PostgresAccountStore:
         return _account(row)
 
     async def register(self, new: NewAccount, now: datetime) -> Account:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             existing = await connection.fetchrow(
                 "SELECT a.id, a.status::text AS status FROM app.account_email e "
                 "JOIN app.account a ON a.id = e.account_id WHERE e.email = $1 FOR UPDATE OF a",
@@ -291,13 +323,13 @@ class PostgresAccountStore:
         return _account(row)
 
     async def find_by_google_sub(self, sub: str) -> Account | None:
-        async with _guard():
+        async with self._op():
             row = await self._pool.fetchrow(_BY_GOOGLE_SUB, sub)
         return _account(row) if row is not None else None
 
     async def link_google(self, account_id: UUID, sub: str) -> Account:
         try:
-            async with _guard(), self._pool.acquire() as connection, connection.transaction():
+            async with self._op(), self._pool.acquire() as connection, connection.transaction():
                 linked = await connection.fetchval(
                     "UPDATE app.account SET google_sub = $2 WHERE id = $1 "
                     "AND (google_sub IS NULL OR google_sub = $2) RETURNING id",
@@ -314,7 +346,7 @@ class PostgresAccountStore:
         return _account(row)
 
     async def register_google(self, new: NewGoogleAccount, now: datetime) -> Account:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             existing = await connection.fetchrow(
                 "SELECT a.id, a.status::text AS status FROM app.account_email e "
                 "JOIN app.account a ON a.id = e.account_id WHERE e.email = $1 FOR UPDATE OF a",
@@ -382,7 +414,7 @@ class PostgresAccountStore:
     async def add_email_token(
         self, token_hash: bytes, account_id: UUID, purpose: str, now: datetime, expires_at: datetime
     ) -> None:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             await connection.execute(
                 "UPDATE app.email_token SET used_at = $3 "
                 "WHERE account_id = $1 AND purpose = $2 AND used_at IS NULL",
@@ -400,7 +432,7 @@ class PostgresAccountStore:
             )
 
     async def verify_email(self, token_hash: bytes, now: datetime) -> Account | None:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             # O token é gasto mesmo que a conta já não espere a verificação: uso único.
             account_id = await connection.fetchval(
                 "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
@@ -425,7 +457,7 @@ class PostgresAccountStore:
     async def reset_password(
         self, token_hash: bytes, password_hash: str, now: datetime
     ) -> Account | None:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             # Uso único: o token é gasto na mesma transação que troca a senha.
             account_id = await connection.fetchval(
                 "WITH t AS (UPDATE app.email_token SET used_at = $2 WHERE token_hash = $1 "
@@ -447,7 +479,7 @@ class PostgresAccountStore:
         self, account_id: UUID, name: str, course: str, treatment: Treatment
     ) -> Account:
         try:
-            async with _guard():
+            async with self._op():
                 await self._pool.execute(
                     "UPDATE app.account SET name = $2, course = $3, treatment = $4 WHERE id = $1",
                     account_id,
@@ -463,13 +495,13 @@ class PostgresAccountStore:
         return _account(row)
 
     async def set_password(self, account_id: UUID, password_hash: str) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute(
                 "UPDATE app.account SET password_hash = $2 WHERE id = $1", account_id, password_hash
             )
 
     async def list_accounts(self, statuses: Collection[Status]) -> list[Account]:
-        async with _guard():
+        async with self._op():
             rows = await self._pool.fetch(_BY_STATUS, [s.value for s in statuses])
         return [_account(row) for row in rows]
 
@@ -486,7 +518,7 @@ class PostgresAccountStore:
         record: ManagementRecord | None = None,
     ) -> Account | None:
         old_status, old_role = expected
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             changed = await connection.fetchval(
                 _TRANSITION,
                 account_id,
@@ -523,7 +555,7 @@ class PostgresAccountStore:
         return _account(row)
 
     async def housekeeping(self, now: datetime) -> HousekeepingCounts:
-        async with _guard(HOUSEKEEPING_DEADLINE_S):
+        async with self._op(HOUSEKEEPING_DEADLINE_S):
             row = await self._pool.fetchrow(
                 "SELECT * FROM app.housekeeping($1)", now, timeout=HOUSEKEEPING_DEADLINE_S
             )
@@ -536,7 +568,7 @@ class PostgresAccountStore:
         )
 
     async def record_adoption(self, account_id: UUID, semester: str, list_number: int) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute(
                 "INSERT INTO app.list_adoption (account_id, semester, list_number) "
                 "VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
@@ -548,7 +580,7 @@ class PostgresAccountStore:
     async def take_feedback_quota(
         self, account_id: UUID, day: date, per_account: int, daily_cap: int
     ) -> QuotaExceeded | None:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             # Uma trava da transação: a soma do dia e o gasto não se cruzam entre pedidos.
             await connection.execute("SELECT pg_advisory_xact_lock($1)", _QUOTA_LOCK)
             used = await connection.fetchval(
@@ -572,13 +604,13 @@ class PostgresAccountStore:
         return None
 
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
-        async with _guard(), self._pool.acquire() as connection, connection.transaction():
+        async with self._op(), self._pool.acquire() as connection, connection.transaction():
             await connection.fetchval("SELECT app.purge_management_log($1)", now)
             rows = await connection.fetch(_LOG_SELECT, limit)
         return [_record(row) for row in rows]
 
     async def delete_sessions(self, account_id: UUID, keep: bytes | None = None) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute(
                 "DELETE FROM app.session WHERE account_id = $1 "
                 "AND ($2::bytea IS NULL OR token_hash <> $2)",
@@ -589,7 +621,7 @@ class PostgresAccountStore:
     async def create_session(
         self, token_hash: bytes, account_id: UUID, now: datetime, expires_at: datetime
     ) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute(
                 "WITH s AS (INSERT INTO app.session (token_hash, account_id, created_at, "
                 "last_seen_at, expires_at) VALUES ($1, $2, $3, $3, $4)) "
@@ -601,7 +633,7 @@ class PostgresAccountStore:
             )
 
     async def get_session(self, token_hash: bytes) -> SessionRecord | None:
-        async with _guard():
+        async with self._op():
             row = await self._pool.fetchrow(_SESSION, token_hash)
         if row is None:
             return None
@@ -613,13 +645,13 @@ class PostgresAccountStore:
         )
 
     async def touch_session(self, token_hash: bytes, now: datetime) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute(
                 "UPDATE app.session SET last_seen_at = $2 WHERE token_hash = $1", token_hash, now
             )
 
     async def delete_session(self, token_hash: bytes) -> None:
-        async with _guard():
+        async with self._op():
             await self._pool.execute("DELETE FROM app.session WHERE token_hash = $1", token_hash)
 
     async def close(self) -> None:
