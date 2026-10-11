@@ -20,6 +20,9 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
   vazamento em soluções humanas; `ipc-rules import-gabaritos` (S33-08) importa os gabaritos de uma
   exportação do Notion para o repositório privado. Medição preliminar dos indícios nos 23
   gabaritos de 2026.2: 0% na faixa alta (ADR-08), só um primeiro ponto.
+- **11/10/2026, L4-Q3 de 2026.2 cadastrada:** a primeira questão real (`rulesets/2026.2/questions/L4-Q3.yaml`).
+  O enunciado libera `eval()` para ler as listas da entrada (`allow_facts: builtin:eval`), como
+  o gabarito oficial faz; sem a questão, o `eval()` continua na R-04. O ruleset continua `2026.2.5`.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 
