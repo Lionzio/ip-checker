@@ -92,3 +92,6 @@ if $ci_local; then
 else
   echo "Pronto: $tag publicada. O deploy do piloto começa quando a CI da main terminar."
 fi
+# S34-04 (NFR-15): o alerta é exercitado a cada release, depois do deploy.
+echo "Depois do deploy: o exercício de alerta desta release e uma linha na tabela do runbook"
+echo "(\"Registro dos exercícios de alerta\"), e o scripts/sintetico-local.sh (ou o workflow \"Sintético diário\")."

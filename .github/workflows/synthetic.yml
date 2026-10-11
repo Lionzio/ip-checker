@@ -1,0 +1,67 @@
+name: Sintético diário
+
+# Teste sintético da primeira verificação do dia (S34-02; NFR-01, NFR-06): nos dias úteis às 07:00
+# (horário de Brasília), entra pela página da Vercel com a conta de verificação, verifica uma
+# solução da Lista 1 e sai (backend/tests/pilot/test_synthetic.py). Falha com qualquer erro ou com
+# a verificação acima de 300 ms no servidor, medida pelo Server-Timing da API, sem a rede do
+# GitHub no meio. Uma falha manda o e-mail de sempre do GitHub Actions a quem acompanha o
+# repositório. Custa cerca de 1 minuto da cota por dia útil (P-19). Sem a cota, o mesmo teste roda
+# nesta máquina com scripts/sintetico-local.sh.
+
+on:
+  schedule:
+    - cron: "0 10 * * 1-5" # 07:00 em Brasília (UTC-3, sem horário de verão)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Nunca ao mesmo tempo que um deploy: espera ele terminar.
+concurrency:
+  group: deploy-piloto
+  cancel-in-progress: false
+
+jobs:
+  synthetic:
+    name: Primeira verificação do dia
+    if: vars.PILOT_WEB_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - name: Instalar o backend (só para os testes do piloto)
+        working-directory: backend
+        run: |
+          uv python install 3.13
+          uv sync --locked
+
+      - name: Verificar pela página
+        working-directory: backend
+        env:
+          PILOT_SYNTHETIC: "1"
+          PILOT_WEB_URL: ${{ vars.PILOT_WEB_URL }}
+          PILOT_LOGIN: ${{ secrets.PILOT_CHECK_LOGIN }}
+          PILOT_PASSWORD: ${{ secrets.PILOT_CHECK_PASSWORD }}
+        run: |
+          if [ -z "$PILOT_LOGIN" ] || [ -z "$PILOT_PASSWORD" ]; then
+            echo "::error::Faltam os secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD (deploy/piloto.md)."
+            exit 1
+          fi
+          uv run --no-sync pytest tests/pilot/test_synthetic.py --no-cov -v -s \
+            -k test_the_first_validation_of_the_day | tee synthetic.txt
+
+      - name: Resumo
+        if: always()
+        working-directory: backend
+        run: |
+          {
+            echo "## Sintético diário"
+            echo
+            grep -E "verificação no servidor|PASSED|FAILED|AssertionError|assert " synthetic.txt \
+              || echo "(o teste não rodou)"
+          } >> "$GITHUB_STEP_SUMMARY"
