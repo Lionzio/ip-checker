@@ -8,6 +8,12 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Depois da Sprint 35
+
+- **11/10/2026, Q-25 decidida pelo autor:** o NFR-02 passa a ser ≤ 50 ms para entradas de até 5 KB e
+  linear até 50 KB (teto de 2 s por análise), e o NFR-03, FCP ≤ 1,65 s no perfil móvel do
+  Lighthouse. As proteções da CI da Sprint 35 já seguem essas metas; só a documentação mudou.
+
 ## Sprint 35 — Qualidade medida e os achados corrigidos
 
 A Sprint 35 (S35-01 a S35-10; US-08, US-12, US-14, US-15, US-17, US-21 e US-22) fechou a engenharia
