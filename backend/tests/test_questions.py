@@ -2,7 +2,8 @@
 
 A L3-Q9 é a questão do ensaio do cadastro (S31-13, ``docs/ensaio-cadastro.md``): libera ``map()``,
 que o documento de permissões não cita, e proíbe ``sum()``, ``sort()`` e ``sorted()``, que a Lista 3
-permite. A L4-Q3 é a primeira questão real: o enunciado libera ``eval()`` para ler listas da entrada.
+permite. A L4-Q3 é a primeira questão real: o enunciado libera ``eval()`` para ler listas da
+entrada.
 """
 
 from __future__ import annotations
