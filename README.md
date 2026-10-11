@@ -237,7 +237,7 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Ruleset e questões de 2027.1, com as referências por IA (S33-04 e S33-05)
 - [ ] Decidir se quer o gerador de referências por IA (S33-09)
 - [ ] Datas de 2027.1, para trocar o período ativo e conferir os monitores (S34-06; P-22)
-- [ ] Metas de desempenho medidas na Sprint 35: NFR-02 e NFR-03 (Q-25)
+- [x] Metas de desempenho medidas na Sprint 35: NFR-02 e NFR-03 revistas (Q-25, 11/10/2026)
 - [ ] Campanha de testes manuais com a equipe (`docs/testes-manuais.md`, S35-10)
 - [x] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; 23
       gabaritos carregados no piloto em 10/10/2026)
