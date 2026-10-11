@@ -168,6 +168,18 @@ def test_each_request_has_its_own_id(client: TestClient) -> None:
     assert first.headers["X-Request-Id"] != second.headers["X-Request-Id"]
 
 
+def test_only_the_validation_reports_its_server_time(client: TestClient) -> None:
+    """O teste sintético (S34-02) mede a verificação no servidor; as outras rotas não dizem o
+    tempo, para não ajudar a medir o login por fora."""
+    timing = validate(client).headers["Server-Timing"]
+
+    match = re.fullmatch(r"app;dur=(\d+\.\d)", timing)
+    assert match is not None
+    assert 0 < float(match.group(1)) < 15_000
+    assert "Server-Timing" not in client.get("/api/v1/lists").headers
+    assert "Server-Timing" not in client.get("/health/service").headers
+
+
 # --- Validação da API, antes do analyzer -------------------------------------------------------
 
 

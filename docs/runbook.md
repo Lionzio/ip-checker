@@ -102,15 +102,33 @@ motivo (`reasons`: `latencia` ou `erros`).
 
 ### Registro dos exercícios de alerta
 
-Um exercício por período confere que o alerta chega (NFR-15: até 5 min). Como fazer sem tráfego
-real: baixe `IPC_SLO_P95_MS` no `render.yaml` por um PR (por exemplo, para 50), rode o workflow
-"Carga no piloto" por 10 minutos, acompanhe **Incidents** no UptimeRobot e o e-mail, e volte o valor
-para 200 no PR seguinte. Pelo `render.yaml`, e não pelo painel, para o arquivo e o serviço não
-divergirem.
+Desde a Sprint 34 (S34-04), um exercício **a cada release**, depois do deploy, confere que o
+alerta chega (NFR-15: até 5 min); o `scripts/release.sh` lembra no fim. Como fazer sem tráfego
+real: baixe `IPC_SLO_P95_MS` no `render.yaml` por um PR (por exemplo, para 50), rode a carga por
+10 minutos (o workflow "Carga no piloto" ou, sem a cota do Actions, `scripts/carga-piloto.sh 20
+10m`, que pede a senha da conta de verificação sem mostrá-la), acompanhe **Incidents** no
+UptimeRobot e o e-mail, e volte o valor para 200 no PR seguinte. Pelo `render.yaml`, e não pelo
+painel, para o arquivo e o serviço não divergirem. Os dois PRs só mudam o `render.yaml`, então o
+Render publica sozinho (P-18), sem migração. Acrescente uma linha à tabela.
 
 | Data | Quem | Como | Linha do tempo (UTC) | Do 503 ao e-mail |
 |---|---|---|---|---|
 | 08/10/2026 | Claude (agente), pelo autor | `IPC_SLO_P95_MS=50` em `2a55908` e `715cd16`; carga de 20 por minuto por 10 min | carga às 09:55:57; 503 entre 09:57:30 e 09:58:01; UptimeRobot detectou (HEAD) às 09:58:18, confirmou de 3 regiões às 09:59:01 e enviou o e-mail às 09:59:02 | 61 a 92 s |
+
+## Sintético diário (S34-02)
+
+O workflow "Sintético diário" (`synthetic.yml`) roda nos dias úteis às 07:00 (horário de
+Brasília): entra pela página com a conta de verificação, verifica uma solução da Lista 1 e sai.
+Ele falha com qualquer erro ou com a verificação acima de 300 ms **no servidor**, medida pelo
+cabeçalho `Server-Timing` da `/api/v1/validate` (o tempo dentro da API, como o NFR-01 e o
+`/health/slo`). A falha chega pelo e-mail do GitHub Actions. Sem a cota, rode
+`scripts/sintetico-local.sh` (pede a senha sem mostrá-la).
+
+- **Erro no login ou 5xx:** siga as seções de banco e de analisador abaixo; o `request_id` está na
+  mensagem da falha, para achar a linha nos logs do Render.
+- **Acima de 300 ms:** rode de novo. Se repetir, veja o `/health/slo` e a seção de latência acima;
+  um caso isolado logo depois de um deploy é o analisador aquecendo.
+- **504 da Vercel:** o Render dormiu ou reiniciou; confira o monitor do `/ready` no UptimeRobot.
 
 ## Banco fora do ar (DATABASE_UNAVAILABLE)
 
@@ -316,6 +334,8 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
 - **Antes de cada merge,** rode a CI nesta máquina e cole o resumo no PR:
   `scripts/ci-local.sh` (com `--e2e` para o smoke também; `--rapido` só para iterar). O merge
   segue a regra de sempre, com o resumo local no lugar da CI verde.
+- **Sintético e carga:** `scripts/sintetico-local.sh` faz o "Sintético diário" e
+  `scripts/carga-piloto.sh` faz a "Carga no piloto" (exercício de alerta), desta máquina.
 - **Backup:** rode `scripts/backup-local.sh` pelo menos uma vez por semana (o RPO do dia a dia fica
   em até 7 dias enquanto a cota não volta). Ele pede a connection string do Supabase sem mostrá-la
   e salva só o arquivo criptografado em `~/Desktop/IP-Checker/backups/piloto`. Guarde uma cópia
@@ -339,7 +359,8 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
   3. **Actions > Backup do banco do piloto > Run workflow**: confira o artefato cifrado.
   4. **Actions > Auditoria de segurança > Run workflow**: a primeira rodada bloqueante no Actions
      (S31-03), com o Trivy.
-  5. Volte a usar a CI do Actions nos PRs e o `scripts/release.sh NN` sem `--ci-local`. O
+  5. **Actions > Sintético diário > Run workflow**: depois, ele roda sozinho nos dias úteis (S34-02).
+  6. Volte a usar a CI do Actions nos PRs e o `scripts/release.sh NN` sem `--ci-local`. O
      `ci-local.sh` continua para conferir antes do PR.
 
 Para gastar menos minutos (08/10/2026): a CI da `main` e a da `develop` depois do merge só
