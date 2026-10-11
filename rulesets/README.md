@@ -125,10 +125,24 @@ as pastas de 2026.2, e a chave de implantação só de leitura já está nele (*
 keys**), com a parte privada no segredo `GABARITOS_SSH_KEY` deste repositório. Falta:
 
 1. Copiar os gabaritos do Notion para lá, na organização acima (S33-01; o README de lá mostra como
-   fazer pelo navegador).
-2. Depois do primeiro gabarito, ligar o job, uma vez:
-   `gh variable set GABARITOS_REPO --repo Lionzio/ip-checker --body Lionzio/ip-checker-gabaritos`.
-   Antes disso, o job falharia de propósito ("nenhum gabarito").
+   fazer pelo navegador). Desde a Sprint 33, o `ipc-rules import-gabaritos` faz isso a partir de
+   uma exportação do Notion em Markdown (veja abaixo).
+2. ~~Depois do primeiro gabarito, ligar o job~~: feito em 08/10/2026 (`GABARITOS_REPO`).
+
+**Importar do Notion (S33-08):** no Notion, abra a página dos gabaritos do período e use **... >
+Export > Markdown & CSV**, com as subpáginas. Descompacte numa pasta fora deste repositório e, de
+`backend/`, rode primeiro só para ver o que seria feito:
+
+```bash
+uv run ipc-rules import-gabaritos /caminho/da/exportacao ../../ip-checker-gabaritos --periodo 2025.2 --simular
+```
+
+Cada bloco de código Python vira `<período>/lista-<n>/L<n>-Q<m>.py`. A questão vem do título acima
+do bloco, do nome da página ou das pastas (`L3-Q2`, `L3 Q2`, ou "Lista 3" e "Questão 2"). Duas
+soluções para a mesma questão, ou um bloco sem questão reconhecida, ficam de fora e aparecem na
+saída para você decidir. O comando nunca grava neste repositório, não sobrescreve um gabarito
+existente sem `--sobrescrever` e não mostra código. Sem `--simular`, ele grava; depois, rode o
+harness (abaixo) e, se tudo passar, faça o commit no repositório dos gabaritos.
 
 Para trocar a chave (alguém saiu da equipe técnica): apague a chave em **Deploy keys** e, no Git
 Bash, gere outra, cadastre a parte pública e grave a privada sem mostrá-la:

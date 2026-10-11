@@ -1209,6 +1209,17 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | Caso de uso dos indícios | Playwright | `frontend/e2e/indicators.spec.ts` | CI (compose) | Faixa alta com `break`, `continue` e `pass`; nada numa solução limpa |
 | Regressão | base de 7.12.1 | `ci.yml` | PR e `develop` | Verde |
 
+**Tasks acrescentadas em 11/10/2026 (início da sprint):**
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S33-07 | US-38 | Engenharia | `ipc-rules calibrate-gabarito`: em soluções humanas independentes, a distribuição de semelhança com o gabarito nas faixas do FR-29 e os alarmes falsos do alerta de vazamento (ADR-11), com limiar e tamanho mínimo ajustáveis; saída só com contagens e caminhos | `backend/src/ipc_analyzer/gabarito_calibration.py`, `cli.py` | Autor | 1 | — | Testes com soluções sintéticas: cópias do gabarito geram o alarme, soluções diferentes não; nenhum código na saída |
+| S33-08 | US-14 | Engenharia | `ipc-rules import-gabaritos`: lê uma exportação do Notion em Markdown e grava `<período>/lista-<n>/L<n>-Q<m>.py` no repositório privado, nunca neste; questão pelo título, pela página ou pelas pastas; conflitos e blocos sem questão ficam para decisão manual | `backend/src/ipc_analyzer/gabarito_import.py`, `cli.py`, `rulesets/README.md` | Autor | 1 | — | Testes com uma exportação sintética; o destino neste repositório é recusado (NFR-27) |
+| S33-09 | US-34 | Engenharia | (Opcional, a decidir pelo autor) gerar as referências por IA a partir do enunciado, pela cadeia do Aprimorar com IA, para quem cadastra revisar | a definir | Autor | 1 | S33-04 | Aguardando a decisão |
+| S33-10 | US-15 | Externa | Volta da cota do Actions (01/11/2026): CI com o job "Gabaritos", "Deploy do piloto", backup e auditoria rodando no Actions (runbook, "Sem GitHub Actions") | `.github/workflows/` | Autor | — | 01/11/2026 | Os quatro workflows verdes |
+
+**Situação (11/10/2026):** S33-07 e S33-08 entregues. S33-03 em parte: a medição preliminar nos 23 gabaritos de 2026.2 deu 0% na faixa alta (ADR-08), sem valor de calibração. Aguardando, com as premissas da P-21: S33-01 (períodos anteriores e Listas 4 a 6 de 2026.2), S33-02, S33-04, S33-05, S33-06 (depois da S33-02), S33-09 (decisão do autor) e S33-10 (01/11/2026).
+
 **Definition of Done:** a da seção 8; nenhum gabarito ou solução de aluno no repositório (Q-14, NFR-11).
 
 **Riscos e bloqueios:** a sprint inteira depende de dados externos (S33-01, S33-02 e S33-04). Sem as soluções anteriores a 2023, a calibração não sai, e os indícios continuam desligados no piloto. O documento de permissões de 2027.1 tem data incerta (P-10).

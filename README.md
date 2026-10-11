@@ -227,10 +227,10 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Formulário da pesquisa e planilha do critério 3, com os links em `docs/eficacia.md` (S31-06)
 - [ ] Ensaio do cadastro de questões reais de 2026.2 pela equipe (S31-13)
 - [ ] Ruleset e questões de 2027.1, com as referências por IA (S33-04 e S33-05)
-- [ ] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; runbook,
-      "Credencial dos gabaritos")
-- [ ] Contas e chaves das IAs gratuitas do Aprimorar com IA e a cadeia no Render (S32-11; runbook,
-      "IAs do Aprimorar com IA")
+- [x] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; 23
+      gabaritos carregados no piloto em 10/10/2026)
+- [x] Chaves gratuitas do Gemini e da Groq e a cadeia `gemini,groq` no Render (S32-11; o
+      Aprimorar com IA respondeu pelo Gemini no piloto em 10/10/2026)
 - [ ] Cliente OAuth do Google (opcional)
 - [ ] Possível integração com outros 2 projetos da monitoria: as perguntas da seção 9.4 do
       blueprint aos monitores responsáveis (Q-23, ADR-09)
