@@ -4,7 +4,7 @@
 
 **Título:** Implantação em três fases: Docker Compose local, Vercel + Render no piloto de 2027.1 e Docker Compose no servidor do CIn.
 
-**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim. Medido no Render de verdade na S30-09 (08/10/2026) e decidido pelo autor na S30-11: fica no **plano gratuito** (ver "Medição da S30-09 e decisão do plano" no fim).
+**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim. Medido no Render de verdade na S30-09 (08/10/2026) e decidido pelo autor na S30-11: fica no **plano gratuito** (ver "Medição da S30-09 e decisão do plano" no fim). O comportamento no pico com o gratuito foi medido na S34-01 e na S34-03 (11/10/2026; ver "Pico no plano gratuito" no fim).
 
 **Contexto:** O projeto tem um único desenvolvedor com 4 a 8 h por semana (P-02, Q-13) e pouco orçamento. O servidor do CIn só será usado depois de comprovada a eficácia (P-03). O pico de referência é de 500 req/min (P-01), com P95 ≤ 200 ms. O `analyzer` precisa ficar separado de dados e credenciais (ADR-01). O rate limit em memória só é consistente com uma única instância da `api`, o que vale em todas as fases.
 
@@ -79,4 +79,75 @@ de referência (500 por minuto), o piloto recusa parte das verificações com `O
 mensagem de tentar de novo, em vez de cair (NFR-05). A S34-03 mede os cenários do NFR-04 e do NFR-05
 no piloto, e o `/health/slo` com o UptimeRobot avisa quando a latência passar da meta. A S34-01 deixa
 de aplicar o Starter e passa a registrar o comportamento no pico com o plano gratuito.
+
+## Pico no plano gratuito: S34-01 e S34-03 (11/10/2026)
+
+Emulação local do plano gratuito (0,1 CPU e 512 MB) com o `deploy/load/run_load.py`, a imagem do
+piloto da `develop` de 11/10/2026, login e soluções reais da Lista 1. O banco fica na mesma máquina,
+então a distância até o Supabase (cerca de 10 ms, S30-09) não entra. No piloto de verdade, o
+limite de 30 verificações por minuto por conta impede chegar ao pico com a conta de verificação, e
+aumentar o limite em produção para testar não compensa o risco; por isso o pico é medido aqui.
+
+**Degraus (S34-01)**, 3 min cada, no mesmo contêiner, com 30 s entre eles; os 503 somam
+`OVERLOADED` (464), `ANALYZER_UNAVAILABLE` (13) e `DATABASE_UNAVAILABLE` (1):
+
+| Taxa (/min) | Verificações | P95 (aceitas) | P99 (aceitas) | 503 (recusas) | 500/502/504 | Sem resposta |
+|---|---|---|---|---|---|---|
+| 100 | 301 | 387 ms | 788 ms | 0 (0%) | 0 | 0 |
+| 150 | 439 | 757 ms | 8.503 ms | 59 (13,4%) | 0 | 0 |
+| 200 | 600 | 656 ms | 1.256 ms | 5 (0,8%) | 0 | 0 |
+| 300 | 857 | 1.186 ms | 6.673 ms | 69 (8,1%) | 0 | 25 |
+| 500 | 1.488 | 2.069 ms | 2.742 ms | 345 (23,2%) | 0 | 0 |
+
+A maior taxa sem nenhuma recusa foi **100 verificações por minuto**. Entre 150 e 300, as recusas
+variam sem seguir a taxa (13,4% a 150 e 0,8% a 200): com 0,1 CPU, o que decide é se uma rajada
+coincide com a cota de CPU esgotada, não a média. A 500 por minuto, 23,2% das verificações são
+recusadas (14,8% na S28-01, com a mesma imagem de antes da comparação com o gabarito).
+
+**NFR-04 (S34-03)**: 500 por minuto por 15 min, 80% das verificações de 4 IPs do campus
+(150.161.0.0/16, o NAT do CIn, P-04) e o resto de IPs externos, com os limites por IP do piloto:
+
+| Critério | Meta | Gratuito |
+|---|---|---|
+| 5xx | 0% | 52,2% (3.895 respostas 503, todas `OVERLOADED` ou `ANALYZER_UNAVAILABLE`; nenhum 500, 502 ou 504) |
+| Sem resposta em 15 s | < 0,1% | 2,5% (184) |
+| 429 do NAT do campus | 0 | 0 |
+| P95 das aceitas | ≤ 200 ms (NFR-01) | 4.039 ms |
+
+**NFR-05 (S34-03)**: 1.500 por minuto por 3 min, a mesma mistura de IPs, e depois 90 s a 20 por
+minuto para medir a recuperação:
+
+| Critério | Meta | Gratuito | Starter (0,5 CPU), só como referência |
+|---|---|---|---|
+| 500, 502 ou 504 | 0 | 0 | 0 |
+| 503 com `Retry-After` | todos | todos (3.978) | nenhum 503: o Starter atendeu as 4.501 verificações, com P95 de 70 ms |
+| Tempo do 503 | ≤ 100 ms com a fila cheia; ≤ 1 s para quem esperou | P50 5,8 s; máx. 12,8 s | — |
+| Recuperação | ≤ 60 s | 5,7 s | sem erro |
+
+**Leitura:**
+
+1. **A degradação é a certa, mas lenta.** No gratuito, a sobrecarga nunca vira 500, 502 ou 504,
+   todo 503 traz o `Retry-After`, o NAT do campus não esbarra no limite por IP e o serviço se
+   recupera em segundos. O que não se cumpre é o tempo: com 0,1 CPU, a API leva segundos até para
+   recusar, e o NFR-04 e o tempo do 503 no NFR-05 não são atingíveis neste plano. É a consequência
+   já aceita na S30-11 (sem orçamento); os números ficam aqui para a decisão ser revista com dados,
+   se o uso pela equipe passar de cerca de 100 verificações por minuto.
+2. **Sob sobrecarga, a maioria dos 503 do NFR-05 diz o motivo errado.** No gratuito, 2.996 das
+   3.978 recusas foram `DATABASE_UNAVAILABLE`, e não `OVERLOADED`: a consulta da sessão espera uma
+   conexão do pool (5 conexões) e estoura o prazo de 5 s do banco (`DB_DEADLINE_S`) antes de a
+   verificação chegar à admissão. A pessoa leria "o banco de contas não respondeu" quando o problema
+   é a fila. Proposta para a Sprint 35: tratar o pool esgotado como `OVERLOADED`, com a mesma
+   mensagem e o mesmo `Retry-After` da admissão, e um prazo menor para conseguir a conexão.
+3. **O pico real da equipe fica abaixo do limite.** Desde a P-13, só a equipe usa a ferramenta; o
+   pico esperado é de dezenas de verificações por minuto, abaixo das 100 que o gratuito atende sem
+   recusa. O teste sintético diário (S34-02) e o `/health/slo` com o UptimeRobot avisam se a
+   latência subir.
+
+**Como repetir** (antes de cada release que mexer na verificação, na sessão ou na admissão):
+
+```bash
+python deploy/load/run_load.py --plan free --scenario degraus
+python deploy/load/run_load.py --plan free --scenario nfr04 --no-build
+python deploy/load/run_load.py --plan free --scenario nfr05 --no-build
+```
 

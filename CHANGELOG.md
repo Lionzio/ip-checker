@@ -34,6 +34,12 @@ Mudanças na `develop` que chegam ao piloto na próxima release.
   (`UnicodeDecodeError`): erro 500 no plágio da turma, achado pelo schemathesis, e também nos
   indícios e no feedback. Os três passam a ler os tokens por `source_tokens` (`engine/guards.py`),
   que traduz `\r\n` e `\r` para `\n`, com a mesma numeração de linhas da AST.
+- **11/10/2026, S34-01 e S34-03:** o `run_load.py` ganhou os cenários `degraus`, `nfr04` (500 por
+  minuto por 15 min, 80% de 4 IPs do campus, com os limites por IP do piloto) e `nfr05` (1.500 por
+  minuto e a recuperação), cada um com veredito. No gratuito emulado: no máximo 100 verificações
+  por minuto sem recusa; sob sobrecarga, nenhum 500, 502 ou 504, todo 503 com `Retry-After`,
+  nenhum 429 para o NAT do campus e recuperação em 5,7 s, mas os 503 levam segundos e a maioria
+  diz `DATABASE_UNAVAILABLE` (achado para a Sprint 35). Números no ADR-03.
 
 ## Sprint 32 — Comparação com o gabarito e Aprimorar com IA
 
