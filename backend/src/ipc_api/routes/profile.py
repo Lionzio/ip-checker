@@ -50,8 +50,8 @@ async def update_profile(
             course=body.course,
             treatment=Treatment(body.treatment) if body.treatment is not None else None,
         )
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return account_response(updated)
 
 
@@ -83,6 +83,6 @@ async def change_password(
         await accounts.change_password(
             account, current=body.current_password, new=body.new_password, keep_session=keep
         )
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return Response(status_code=204, headers={"Cache-Control": "no-store"})

@@ -215,8 +215,8 @@ async def complete(
         account = await google.accounts.complete(
             identity, name=body.name, course=body.course, treatment=Treatment(body.treatment)
         )
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     cookie = _cookie("ipc_google", auth)
     google.signups.pop(request.cookies.get(cookie))
     response.headers["Cache-Control"] = "no-store"

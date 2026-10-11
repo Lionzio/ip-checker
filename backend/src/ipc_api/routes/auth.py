@@ -94,8 +94,8 @@ async def login(
         account, token = await authenticator.login(body.login, body.password, request.scope)
         # Um identificador apresentado antes do login nunca é reaproveitado (fixação de sessão).
         await authenticator.logout(session_token(request.scope, authenticator.config.cookie_name))
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     set_session_cookie(response, authenticator.config, token)
     return account_response(account)
 
@@ -122,8 +122,8 @@ async def logout(
     config = authenticator.config
     try:
         await authenticator.logout(session_token(request.scope, config.cookie_name))
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     response = Response(status_code=204)
     response.headers["Cache-Control"] = "no-store"
     response.delete_cookie(
@@ -177,8 +177,8 @@ async def register(
             course=body.course,
             treatment=Treatment(body.treatment),
         )
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return RegisterResponse(status="aguardando_verificacao", email=account.primary_email)
 
 
@@ -202,8 +202,8 @@ async def verify(
     _no_store(response)
     try:
         await accounts.verify(body.token)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return VerifyResponse(status="aguardando_aprovacao")
 
 
@@ -226,8 +226,8 @@ async def resend(
 ) -> Response:
     try:
         await accounts.resend(body.email)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return Response(status_code=202, headers={"Cache-Control": "no-store"})
 
 
@@ -250,8 +250,8 @@ async def forgot_password(
 ) -> Response:
     try:
         await accounts.forgot_password(body.email)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return Response(status_code=202, headers={"Cache-Control": "no-store"})
 
 
@@ -274,6 +274,6 @@ async def reset_password(
 ) -> Response:
     try:
         await accounts.reset_password(body.token, body.new_password)
-    except StoreUnavailable:
-        raise database_unavailable() from None
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
     return Response(status_code=204, headers={"Cache-Control": "no-store"})

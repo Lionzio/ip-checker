@@ -224,3 +224,16 @@ class AccountConflict(Exception):  # noqa: N818 - é um estado, não um erro de 
 
 class StoreUnavailable(Exception):  # noqa: N818 - é um estado, não um erro de programação
     """O banco não respondeu; a API responde 503 ``DATABASE_UNAVAILABLE``."""
+
+    #: Verdadeiro quando o banco está bem, mas as conexões estão todas ocupadas (``StoreBusy``).
+    busy = False
+
+
+class StoreBusy(StoreUnavailable):
+    """Muitas operações esperando uma conexão do pool: é sobrecarga, não banco fora do ar.
+
+    A API responde 503 ``OVERLOADED``, com o mesmo ``Retry-After`` da admissão (S35-08; ADR-03,
+    "Pico no plano gratuito").
+    """
+
+    busy = True

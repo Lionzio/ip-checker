@@ -80,7 +80,10 @@ def analyzer_unavailable() -> ApiError:
     )
 
 
-def database_unavailable() -> ApiError:
+def database_unavailable(cause: BaseException | None = None) -> ApiError:
+    """O banco não respondeu; com o pool cheio por sobrecarga (``StoreBusy``), ``OVERLOADED``."""
+    if getattr(cause, "busy", False):
+        return overloaded()
     return ApiError(
         503,
         ErrorCode.DATABASE_UNAVAILABLE,

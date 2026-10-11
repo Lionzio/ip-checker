@@ -136,8 +136,13 @@ minuto para medir a recuperação:
    3.978 recusas foram `DATABASE_UNAVAILABLE`, e não `OVERLOADED`: a consulta da sessão espera uma
    conexão do pool (5 conexões) e estoura o prazo de 5 s do banco (`DB_DEADLINE_S`) antes de a
    verificação chegar à admissão. A pessoa leria "o banco de contas não respondeu" quando o problema
-   é a fila. Proposta para a Sprint 35: tratar o pool esgotado como `OVERLOADED`, com a mesma
-   mensagem e o mesmo `Retry-After` da admissão, e um prazo menor para conseguir a conexão.
+   é a fila. **Corrigido na S35-08 (11/10/2026):** com mais de 20 operações esperando o banco, a
+   API recusa na hora com `OVERLOADED` e o `Retry-After` da admissão; e o prazo estourado com o
+   pool cheio também conta como sobrecarga. O banco fora do ar de verdade continua
+   `DATABASE_UNAVAILABLE`. Medido de novo no NFR-05 do gratuito: das 4.111 recusas, todas foram
+   `OVERLOADED` (nenhuma `DATABASE_UNAVAILABLE`), a mediana do tempo do 503 caiu de 5,8 s para
+   1,0 s, e a recuperação foi em 4,2 s. O teto de 100 ms continua fora de alcance com 0,1 CPU (o
+   P95 do 503 ficou em 8,5 s): é a leitura 1 acima.
 3. **O pico real da equipe fica abaixo do limite.** Desde a P-13, só a equipe usa a ferramenta; o
    pico esperado é de dezenas de verificações por minuto, abaixo das 100 que o gratuito atende sem
    recusa. O teste sintético diário (S34-02) e o `/health/slo` com o UptimeRobot avisam se a
