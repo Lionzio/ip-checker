@@ -1,0 +1,15 @@
+# Regras por questão do período 2027.1 (R-01)
+
+Cada arquivo `L<lista>-Q<número>.yaml` desta pasta guarda o que o enunciado de uma questão permite
+ou proíbe explicitamente. As regras da questão prevalecem sobre as da lista (C-02), e a questão
+aparece no seletor da página assim que o ruleset é publicado.
+
+Estão cadastradas a questão do ensaio do cadastro (L3-Q9, `docs/ensaio-cadastro.md`) e as primeiras
+questões reais: a L4-Q4 (libera `eval()` e o `reverse=` no `sort()`) e a L4-Q5 (libera o valor
+padrão de parâmetro). O passo a passo do cadastro, com um exemplo comentado,
+está em [`RULES.md`](../../../RULES.md), na raiz do repositório. Antes de abrir o PR, rode:
+
+```bash
+cd backend
+uv run ipc-rules validate ../rulesets/2027.1
+```

@@ -62,6 +62,33 @@ def test_the_repository_names_one_valid_active_period() -> None:
     assert load_ruleset(RULESETS).ruleset.period == period
 
 
+PERIODS = sorted(p.name for p in RULESETS.iterdir() if p.is_dir() and PERIOD.fullmatch(p.name))
+
+
+@pytest.mark.parametrize("period", PERIODS)
+def test_every_period_in_the_repository_loads(period: str) -> None:
+    """Um período preparado antes de ser ativado (S35-09) já precisa carregar como o analisador."""
+    ruleset = load_ruleset(RULESETS / period)
+
+    assert ruleset.ruleset.period == period
+    assert ruleset.version.startswith(f"{period}.")
+
+
+def test_2027_1_keeps_the_2026_2_permissions() -> None:
+    """P-22: as permissões de 2027.1 são as de 2026.2 até o documento novo dizer outra coisa.
+
+    Quando uma permissão de 2027.1 mudar (por PR, com a fonte), este teste sai junto.
+    """
+    if "2027.1" not in PERIODS:
+        pytest.skip("o período 2027.1 ainda não foi criado")
+
+    def rules(period: str) -> str:
+        text = (RULESETS / period / "base.yaml").read_text(encoding="utf-8")
+        return text.replace(period, "<período>").split("ruleset_version:", 1)[1].split("\n", 1)[1]
+
+    assert rules("2027.1") == rules("2026.2")
+
+
 @pytest.mark.parametrize("relative", CONFIGURATION)
 def test_configuration_does_not_repeat_the_active_period(relative: str) -> None:
     file = REPO_ROOT / relative
