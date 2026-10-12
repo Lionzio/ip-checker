@@ -189,7 +189,7 @@ um ajuste pontual.
 |---|---|---|
 | Limpeza diária do banco (sessões e links vencidos, cadastros não confirmados em 48 h, contas fora do status ativo com 365 dias sem atividade, registro com mais de 12 meses, cota de feedbacks antiga) | ligada, ao subir e a cada 24 h | `IPC_HOUSEKEEPING=0` desliga; `IPC_HOUSEKEEPING_INTERVAL_S` |
 | Limite geral por IP em todo `/api/*`, antes da sessão | 600 por minuto; 6.000 nas faixas do campus | `IPC_RATE_LIMIT_API_IP_PER_MIN`, `IPC_RATE_LIMIT_API_CAMPUS_PER_MIN` |
-| Prazo de uma análise no worker | 2 s | `IPC_TIMEOUT_S` (no analisador) |
+| Prazo de uma análise no worker | 2 s (7 s no piloto, S36-06) | `IPC_TIMEOUT_S` (no analisador) |
 | Prazo da API para o analisador | o da análise + 1 s | `IPC_ANALYZER_TIMEOUT_S` |
 | Workers do analisador e análises simultâneas | 2 e 4 no compose; 1 e 1 no Render | `IPC_WORKERS` (no analisador) e `IPC_ADMISSION_CAPACITY` (na API) |
 

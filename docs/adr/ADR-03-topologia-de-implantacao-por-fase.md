@@ -4,7 +4,7 @@
 
 **Título:** Implantação em três fases: Docker Compose local, Vercel + Render no piloto de 2027.1 e Docker Compose no servidor do CIn.
 
-**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim. Medido no Render de verdade na S30-09 (08/10/2026) e decidido pelo autor na S30-11: fica no **plano gratuito** (ver "Medição da S30-09 e decisão do plano" no fim). O comportamento no pico com o gratuito foi medido na S34-01 e na S34-03 (11/10/2026; ver "Pico no plano gratuito" no fim).
+**Status:** Aceito em 01/10/2026 (Q-10). A Fase 2 depende dos critérios de eficácia (P-09) e dos requisitos em Q-12, adiada para depois do piloto. O plano do Render foi revisto na S28-01 (07/10/2026), com login: ver "Medição da S28-01" no fim. Medido no Render de verdade na S30-09 (08/10/2026) e decidido pelo autor na S30-11: fica no **plano gratuito** (ver "Medição da S30-09 e decisão do plano" no fim). O comportamento no pico com o gratuito foi medido na S34-01 e na S34-03 (11/10/2026; ver "Pico no plano gratuito" no fim). A maior entrada foi medida na S36-06 (12/10/2026), e o prazo da análise no piloto subiu para 7 s (ver "Entradas grandes no piloto" no fim).
 
 **Contexto:** O projeto tem um único desenvolvedor com 4 a 8 h por semana (P-02, Q-13) e pouco orçamento. O servidor do CIn só será usado depois de comprovada a eficácia (P-03). O pico de referência é de 500 req/min (P-01), com P95 ≤ 200 ms. O `analyzer` precisa ficar separado de dados e credenciais (ADR-01). O rate limit em memória só é consistente com uma única instância da `api`, o que vale em todas as fases.
 
@@ -156,3 +156,34 @@ python deploy/load/run_load.py --plan free --scenario nfr04 --no-build
 python deploy/load/run_load.py --plan free --scenario nfr05 --no-build
 ```
 
+## Entradas grandes no piloto: S36-06 (12/10/2026)
+
+A entrada de cerca de 50 KB do benchmark do motor (`grande_50kb`) e frações dela foram verificadas
+no piloto pela página, com a conta de verificação, lendo o tempo da API no `Server-Timing`
+(`backend/tests/pilot/test_large_input.py`, pelo ajudante da sprint). Duas medidas por tamanho:
+
+| Tamanho | Resposta | Tempo no servidor |
+|---|---|---|
+| 9,8 KB | 200 | 527 e 560 ms |
+| 19,8 KB | 200 | 1.216 e 1.235 ms |
+| 29,8 KB | 200 | 1.830 e 1.851 ms |
+| 39,8 KB | 422 `ANALYSIS_LIMIT` | parou no prazo (2.109 e 2.202 ms) |
+| 49,8 KB | 422 `ANALYSIS_LIMIT` | parou no prazo (2.157 e 2.206 ms) |
+
+**Leitura:** com 0,1 CPU, a análise leva cerca de 60 ms por KB, de forma linear (na máquina do
+desenvolvedor, a mesma entrada de 50 KB leva cerca de 250 ms). A entrada de 50 KB levaria cerca
+de 3,1 s, acima do prazo padrão de 2 s do analisador: uma entrada legítima de 40 KB ou mais recebia
+422 `ANALYSIS_LIMIT` no piloto. As soluções reais dos alunos ficam bem abaixo de 5 KB (menos de
+300 ms), então nenhum uso normal foi afetado.
+
+**Decisão (S36-06):** no piloto, o prazo do analisador sobe para **7 s** (`IPC_TIMEOUT_S=7` no
+programa `analyzer` do `deploy/render/supervisord.conf`), o dobro da maior entrada, e a API espera
+**8 s** (`IPC_ANALYZER_TIMEOUT_S=8`, 1 s de margem). A página espera 10 s, então continua acima dos
+dois. O limite de 50 KB e de 1.000 linhas não muda, e o compose e a CI continuam com 2 s, onde a
+suíte de segurança mede os ataques. O `backend/tests/test_pilot_timeouts.py` garante a folga.
+
+**Custo aceito:** o piloto tem um worker de análise e a admissão com capacidade 1. Uma entrada de 50
+KB ocupa o worker por cerca de 3 s, e quem verificar ao mesmo tempo espera até 1 s na fila e
+recebe 503 `OVERLOADED` com `Retry-After`. Como só a equipe usa a ferramenta (P-13) e entradas
+desse tamanho são raras, o risco é baixo. Depois do deploy da `sprint-36`, a medição é repetida com
+`PILOT_ANALYSIS_TIMEOUT_S=7`.
