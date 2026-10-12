@@ -99,5 +99,12 @@ export function useValidateCode(client: ValidationClient, timeoutMs = DEFAULT_TI
     setState({ kind: "idle" });
   }, []);
 
-  return { state, validate, retry, reset };
+  /** Cancelar (S36-05): interrompe a verificação em andamento e volta ao estado inicial. */
+  const cancel = useCallback(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    setState({ kind: "idle" });
+  }, []);
+
+  return { state, validate, retry, reset, cancel };
 }

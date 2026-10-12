@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
-import { questionOptions, GABARITO_ONLY_TITLE } from "../questions";
+import { questionLabel, questionOptions, GABARITO_ONLY_TITLE } from "../questions";
 import { createMockClient } from "../services/mockClient";
 import type { GabaritoComparison, ListInfo, SimilarityResponse, ValidateResponse } from "../types/api";
 import { GabaritoPanel } from "./GabaritoPanel";
@@ -39,6 +39,20 @@ describe("Comparação com o gabarito na verificação (S32-06, ADR-11)", () => 
 
     await user.click(screen.getByRole("button", { name: "linhas 3–8: selecionar no editor" }));
     expect(select).toHaveBeenCalledWith(3, 8);
+  });
+
+  it("mostra as construções em português, com o termo técnico na dica (S36-04)", () => {
+    render(
+      <GabaritoPanel
+        comparison={{ ...COMPARED, common: ["atribuição", "comparação", "conta aritmética", "for"], only_student: [] }}
+      />,
+    );
+    const items = within(screen.getByRole("list", { name: "Em comum" })).getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual(["atribuição", "comparação", "conta aritmética", "for"]);
+    expect(items[0]).toHaveAttribute("title", "Termo técnico: Assign");
+    expect(items[2]).toHaveAttribute("title", "Termo técnico: BinOp");
+    expect(items[3]).not.toHaveAttribute("title");
+    expect(screen.queryByText(/^(Assign|Compare|BinOp)$/)).not.toBeInTheDocument();
   });
 
   it("sem gabarito ou com os gabaritos fora do ar, mostra só o aviso", () => {
@@ -77,11 +91,14 @@ describe("Seletor de questões com gabarito (ADR-11, item 6)", () => {
       gabaritos: ["L3-Q1", "L3-Q2"],
     };
 
-    expect(questionOptions(list)).toEqual([
-      { id: "L3-Q1", title: GABARITO_ONLY_TITLE },
-      { id: "L3-Q2", title: "Soma · com gabarito" },
-      { id: "L3-Q9", title: "Ensaio" },
+    const options = questionOptions(list);
+    expect(options).toEqual([
+      { id: "L3-Q1", title: GABARITO_ONLY_TITLE, rules: false, gabarito: true },
+      { id: "L3-Q2", title: "Soma", rules: true, gabarito: true },
+      { id: "L3-Q9", title: "Ensaio", rules: true, gabarito: false },
     ]);
+    // S36-05: a opção é curta; o título vai para a descrição abaixo do seletor.
+    expect(options.map(questionLabel)).toEqual(["L3-Q1 · só gabarito", "L3-Q2 · gabarito", "L3-Q9"]);
     expect(questionOptions(undefined)).toEqual([]);
   });
 });
