@@ -205,7 +205,10 @@ que os códigos coincidem com o gabarito, não quem o vazou; vale uma conversa, 
 ### Contra a turma
 
 Em **Contra a turma**, cole a solução que você quer conferir e, no outro campo, as soluções da
-turma, cada uma começando por uma linha `### nome` (até 100 soluções, somando até 120 KB). A
+turma, cada uma começando por uma linha `=== nome` (até 100 soluções, somando até 120 KB). O
+formato antigo, `### nome`, ainda é aceito numa turma sem nenhum `===`, mas a página avisa: um
+comentário que começa com `###` dentro do código partiria a solução em duas. Se dois alunos têm
+o mesmo nome, o segundo aparece como "Ana (2)", e cada um abre o próprio código. A
 página lista as soluções da mais parecida para a menos. Aqui, cada trecho pesa pela raridade na
 turma: o que todo mundo escreve (ler a entrada, o laço óbvio) quase não conta, então só sobe o que
 for incomum e igual. **Comparar lado a lado** abre a dupla em **Dois códigos**, com os trechos.

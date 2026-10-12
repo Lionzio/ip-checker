@@ -72,8 +72,8 @@ test("a cópia reordenada e reescrita mostra os trechos correspondentes nos dois
 test("contra a turma, o que todos escrevem não conta, e a cópia vem primeiro", async ({ page }) => {
   const common = "valor = int(input())\nprint(valor * 2 + 1)\n";
   const target = `${common}if valor > 10:\n    print('grande')\n`;
-  const others = Array.from({ length: 6 }, (_, index) => `### Aluno ${index + 2}\n${common}for i in range(${index + 2}):\n    print(i * ${index + 2})\n`);
-  others.push(`### Cópia\n${target.replaceAll("valor", "numero").replace("grande", "enorme")}`);
+  const others = Array.from({ length: 6 }, (_, index) => `=== Aluno ${index + 2}\n${common}for i in range(${index + 2}):\n    print(i * ${index + 2})\n`);
+  others.push(`=== Cópia\n${target.replaceAll("valor", "numero").replace("grande", "enorme")}`);
 
   await open(page);
   await page.getByRole("button", { name: "Contra a turma" }).click();
