@@ -109,7 +109,9 @@ def test_the_engine_stays_within_the_budget_and_the_baseline() -> None:
         if len(code.encode()) <= MAX_CHECKED_BYTES
     }
     problems = too_slow(p95s) + regressions(
-        baseline, {name: value.ratio for name, value in measures.items()}
+        baseline,
+        {name: value.ratio for name, value in measures.items()},
+        reference_ms={name: value.reference_ms for name, value in measures.items()},
     )
 
     assert problems == [], "\n".join(problems)
