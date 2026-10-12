@@ -72,6 +72,7 @@ ANALYZER_ENV = frozenset(
         "IPC_SANDBOX",
         "IPC_MEMORY_MB",
         "IPC_WORKERS",
+        "IPC_TIMEOUT_S",
         "LC_CTYPE",
     }
 )

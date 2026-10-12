@@ -31,8 +31,9 @@ services:
       # de uma variável que só some do render.yaml. Para um novo exercício, veja o runbook.
       - key: IPC_SLO_P95_MS
         value: "200"
-      # Indícios de uso de IA (ADR-08, S29): desligados no piloto até a coordenação aprovar a
-      # política (S29-04, docs/indicios-de-ia.md). Ligar é trocar para "1" aqui, por PR.
+      # Indícios de uso de IA (ADR-08, S29): a política foi aprovada (Q-21); desligados no piloto até
+      # a calibração com os critérios da Q-35 (Sprint 42, docs/indicios-de-ia.md). Ligar é trocar
+      # o valor aqui, por PR.
       - key: IPC_AI_INDICATORS
         value: "0"
       - key: IPC_ENABLED_LISTS

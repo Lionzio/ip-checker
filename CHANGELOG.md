@@ -8,6 +8,53 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 36 — Defeitos e documentos certos para a campanha de testes
+
+A Sprint 36 (S36-01 a S36-10; US-06, US-08, US-11, US-20, US-22, US-31, US-33 e US-37) fechou a
+engenharia em 12/10/2026. A missão é que a equipe faça a campanha de testes manuais sem defeito
+conhecido e com um guia que diz o mesmo que o motor. As personas são o monitor que corrige e
+compara soluções e o monitor-mantenedor que cuida da documentação. Com a cota do Actions esgotada
+até 01/11/2026 (P-19), a evidência de cada PR é o `scripts/ci-local.sh --e2e` (27 etapas). As
+medições no piloto saíram de um ajudante no terminal: o autor digitou a senha da conta de
+verificação uma vez, e as ações (sintético, medição e carga) rodaram a pedido, sem a senha sair
+daquele terminal.
+
+Aguardando:
+
+| Task | Entrada pendente |
+|---|---|
+| S36-08 | A campanha de testes manuais da equipe com o `docs/testes-manuais.md` (em andamento) |
+| Exercício de alerta | Os horários dos e-mails do UptimeRobot, registrados no runbook depois do deploy |
+
+- **12/10/2026, S36-01 e S36-02 (#95):** no "Contra a turma", cada solução ganha um rótulo
+  único: com duas "Ana", a segunda vira "Ana (2)", com um aviso, e o "Comparar lado a lado" abre o
+  código certo (antes, a segunda apagava a primeira). O separador passa a ser `=== nome`, que não é
+  Python e nunca aparece num código; um comentário `### ...` dentro da solução não a parte mais. O
+  formato antigo `### nome` continua aceito numa turma sem nenhum `===`, com um aviso.
+- **12/10/2026, S36-03 (#98):** no editor, Tab com várias linhas selecionadas indenta
+  todas, e Shift+Tab desindenta a linha ou a seleção (até 4 espaços ou um tab), mantendo o Ctrl+Z.
+  O teste novo do componente achou um defeito: apertar só Shift desfazia o Esc, e Esc e depois
+  Shift+Tab não saía do editor. Corrigido.
+- **12/10/2026, S36-04 e S36-05 (#97):** todo nó que o motor pode emitir tem nome em
+  português ("atribuição", "comparação", "conta aritmética"...), com um teste que percorre o `ast`
+  do Python 3.13; na comparação com o gabarito, o termo técnico fica na dica. O Verificar mostra
+  "Verificando…" e um Cancelar. As opções do seletor de Questão ficam curtas ("L4-Q4 · gabarito"),
+  e o título e o que vale vão para a frase abaixo dos seletores.
+- **12/10/2026, S36-06 (#100):** medido no piloto (0,1 CPU) pela página, com o
+  `Server-Timing`: a análise leva cerca de 60 ms por KB, e entradas legítimas de 40 e 50 KB
+  recebiam 422 `ANALYSIS_LIMIT` no prazo de 2 s. No piloto, o analisador passa a ter 7 s e a API
+  espera 8 s (ADR-03); o compose e a CI continuam com 2 s. A medição é repetida depois do deploy e registrada no ADR-03.
+- **12/10/2026, S36-10 (#101):** o benchmark do motor só aponta regressão quando a
+  diferença também passa de 0,5 ms: nas entradas pequenas, o ruído da máquina carregada passava
+  dos 20% de tolerância sem nenhuma mudança no motor.
+- **12/10/2026, S36-07 (#96 e #100):** o guia da equipe (a lista do `split()` na Lista 3, os casos do Marco 2, a condição do `zip()` nas Listas 2 a 4, os indícios e o feedback sem IA como padrão), o `deploy/piloto.md` (a ordem real do IP do cliente, as variáveis novas e o backup diário), o `RULES.md` (Q-22 decidida), o blueprint (o status dos ADRs, os restos da Q-25, as listas habilitadas, caminhos e marcadores resolvidos), o ADR-04, o ADR-03 (1 worker), o `edge.py` (mesma origem desde a Sprint 16) e o comentário dos indícios no `render.yaml`.
+- **12/10/2026, S36-09 (#99), com o de acordo do professor:** a recursão (uma função que chama a
+  si mesma, direta ou mutuamente) só é permitida a partir da Lista 6 (Q-33): nas Listas 1 a 5, ela
+  aparece como "Fora da lista" no `def`, pela R-68, que no catálogo já é "permitida e obrigatória na
+  Lista 6". Uma função que só chama outras continua permitida desde a Lista 4 (R-59). O carregador
+  aceita o mesmo id numa regra e numa exigência só quando a regra começa na lista da exigência.
+  Rulesets `2026.2.6` e `2027.1.1`; nenhum dos 40 gabaritos mudou de resultado.
+
 ## Depois da Sprint 35
 
 - **12/10/2026, token dos gabaritos sem vencimento (P-23):** o autor criou o `IPC_GABARITOS_TOKEN` sem data de vencimento. O runbook e a S39-04 passam a tratar a troca por evento (suspeita de vazamento, mudança de quem administra a conta ou 401 nos logs), e não por data.

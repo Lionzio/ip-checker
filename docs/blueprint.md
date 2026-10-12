@@ -1584,6 +1584,7 @@ que cuida da documentação (US-20).
 | S36-07 | US-20 | Engenharia | Documentação fiel ao que existe. Ver a lista logo abaixo da tabela | `docs/`, `deploy/piloto.md`, `README.md` | Autor | 1,5 | — | Os achados da revisão de 11/10/2026 resolvidos; o guia diz o mesmo que o motor nos cenários do roteiro |
 | S36-08 | US-11 | Externa | Campanha de testes manuais pela equipe, com `docs/testes-manuais.md` (continua a S35-10). Cada falha confirmada vira task, com teste | Fichas de falha | Equipe | — | S36-07 | Fichas respondidas; falhas viram tasks na Sprint 37 |
 | S36-09 | US-06, US-08 | Engenharia | Recursão só na Lista 6 (Q-33, decisão do autor de 12/10/2026): uma função que chama a si mesma, direta ou mutuamente (C-03), passa a ser "Fora da lista" nas Listas 4 e 5, liberada a partir da 6; as outras formas de função continuam permitidas desde a 4. O `derived:recursion` sai dos fatos estruturais e passa a ser permitido a partir da Lista 6 pela regra da recursão (de preferência com o ID da R-68, sem criar ID fora do catálogo); o comentário da R-59, a seção 5.2.3 e a matriz de mapeamento acompanham. Rulesets de 2026.2 e de 2027.1 numa versão nova, com o de acordo do professor (DoD) | `rulesets/*/base.yaml`, `engine/policy.py` (se preciso), `backend/tests/golden/`, `docs/mapping-R-xx.md` | Autor | 1 | — | Pelo menos 3 casos golden (recursão na Lista 6 permitida, recursão direta na Lista 4 e mútua na Lista 5 "Fora da lista"), com 0 FP e 0 FN; os gabaritos das Listas 4 e 5 de 2026.2 seguem sem violação, ou o caso vai ao autor |
+| S36-10 | US-14 | Engenharia | Tolerância do benchmark (incluída a pedido do autor em 12/10/2026): uma razão acima de 120% da linha de base só conta como regressão se a diferença também passar de 0,5 ms, medida pela calibração da mesma rodada; nas entradas pequenas, o ruído da máquina carregada reprovava a CI sem mudança no motor | `backend/tests/benchmark/` | Autor | 0,5 | — | Teste da lógica com o caso real; o benchmark passa com a máquina carregada |
 
 **O que a S36-07 corrige:**
 - **Guia da equipe:**
@@ -1631,6 +1632,8 @@ que cuida da documentação (US-20).
 - **Depois:** sintético e exercício de alerta.
 
 **Riscos:** o separador novo muda um hábito da equipe; por isso o `### nome` continua aceito, com aviso.
+
+**Situação (12/10/2026):** engenharia concluída na release `sprint-36` (#95 a #101): S36-01 a S36-07, S36-09 (com o de acordo do professor) e S36-10, incluída a pedido do autor. A S36-06 achou que, no piloto, entradas legítimas de 40 e 50 KB recebiam 422 por prazo; o analisador do piloto passou a ter 7 s (ADR-03). Aguardando: a campanha de testes manuais da equipe (S36-08).
 
 #### Sprint 37 — Verificação mais clara
 
