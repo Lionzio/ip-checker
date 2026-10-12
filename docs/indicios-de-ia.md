@@ -67,6 +67,10 @@ O painel também sugere 2 ou 3 perguntas para a conversa, a partir do que encont
 
 ## Calibração (antes de ligar e a cada período)
 
+**12/10/2026:** o autor descartou as soluções anteriores a 2023, que não existem e não serão
+buscadas. A nova base de calibração e os critérios esperam a validação do autor (Q-35, Sprint 42);
+o texto abaixo descreve o procedimento original.
+
 A meta da ADR-08 é **no máximo 5%** das soluções humanas (de períodos anteriores a 2023, antes dos
 assistentes de código) com faixa alta. Com as soluções organizadas como os gabaritos
 (`<período>/lista-<n>/<arquivo>.py`), fora deste repositório:

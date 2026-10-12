@@ -4,6 +4,8 @@
 
 Tudo o que é afirmado aqui vem dos arquivos citados no formato `caminho:linha`. O que é inferência está marcado como **hipótese**. A análise foi só de leitura; nenhum código de gabarito foi lido ou reproduzido. Os nomes de alunos do exemplo são fictícios.
 
+**Decisões do autor depois desta revisão (12/10/2026):** Q-26, Q-28 a Q-32 e Q-34 seguiram as recomendações, com duas mudanças: a Q-27 guarda só o resultado resumido de cada verificação, sem nada do código, o que rejeita a ADR-14 e tira do plano a antiga Sprint 48; e a Q-31 inclui o desenvolvedor entre os revisores. A Sprint 48 passou a ser a entrada com o Google no piloto. As soluções anteriores a 2023 e o formulário da pesquisa foram descartados. Q-33, Q-35 e Q-36 aguardam o autor. O estado atual está em [`decisoes.md`](decisoes.md) e na seção 7.16 do blueprint.
+
 ---
 
 ## 1. Resumo executivo

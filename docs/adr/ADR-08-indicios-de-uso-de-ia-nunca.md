@@ -4,6 +4,8 @@
 
 **Status:** Aceito em 06/10/2026 (Q-21), com o sinal de múltiplas violações pedido pelo autor; implementado na Sprint 29 (07/10/2026), desligado no piloto até a calibração ficar na meta (S33-03); a política (`docs/indicios-de-ia.md`) foi aprovada em 09/10/2026. **Medição preliminar (11/10/2026, S33-03):** nos 23 gabaritos oficiais de 2026.2 (Listas 1 a 3), `ipc-rules calibrate` deu 100% na faixa "nenhum" e 0% na alta. É só um primeiro ponto: as soluções oficiais seguem as regras por construção, e a calibração que liga os indícios no piloto continua dependendo das soluções humanas da S33-02.
 
+**Revisão (12/10/2026):** o autor descartou as soluções anteriores a 2023 que a calibração usaria (S33-02) e pediu os indícios ligados no piloto (Sprint 42). Os critérios e a nova base de calibração esperam a validação do autor (Q-35); até lá, o painel continua desligado no piloto.
+
 **Contexto:** O uso frequente de proibições já é o principal indício que a equipe usa (P-13). Detectores genéricos de texto gerado por IA não servem para código de alunos de introdução: o código é curto, convergente (muitas soluções corretas são quase iguais) e parecido com o que um modelo escreve; esses detectores têm muitos falsos positivos, penalizam quem escreve bem ou estudou fora, e a própria OpenAI retirou o seu classificador em 2023 por baixa precisão. Não há marca d'água nas respostas dos assistentes que a equipe possa conferir.
 
 **Decisão (proposta):**

@@ -194,7 +194,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 
 - **FR-31** — Questões e gabaritos por período (ADR-10, US-36): as regras das questões ficam em `rulesets/<período>/questions/`, uma pasta por período, e o período ativo é escolhido num só lugar, sem mudar código (S31-09). `ipc-rules new-period <novo> --from <anterior>` cria a pasta de um período novo a partir do anterior (S31-10). Os gabaritos oficiais ficam no repositório privado `Lionzio/ip-checker-gabaritos`, em `<período>/lista-<n>/L<n>-Q<m>.py`, e cada um é conferido com zero violação usando as questões do próprio período (S31-11).
 
-- **FR-32** — Comparação com o gabarito (ADR-11, US-37, US-38): (1) na verificação, com a questão escolhida no seletor de período, lista e questão (as questões do período ativo que têm gabarito; o seletor de período entra na Sprint 43, FR-33, e até lá vale o período ativo), o resultado traz a semelhança com o gabarito pela métrica da ADR-07, a faixa do FR-29, as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem; (2) no plágio, com a questão escolhida, A×gabarito e B×gabarito, e o alerta de possível vazamento quando A×B, A×gabarito e B×gabarito passam do limiar e os códigos têm o tamanho mínimo [PREMISSA: 95% e o mínimo, configuráveis, calibrados na S33-02]; (3) nos indícios de IA, a semelhança com o gabarito como mais um sinal, só com `IPC_AI_INDICATORS`. A análise é determinística (sem IA); nenhum texto do gabarito vai ao navegador; sem gabarito ou com o download falho, a comparação fica de fora com um aviso, e o resto funciona.
+- **FR-32** — Comparação com o gabarito (ADR-11, US-37, US-38): (1) na verificação, com a questão escolhida no seletor de período, lista e questão (as questões do período ativo que têm gabarito; o seletor de período entra na Sprint 43, FR-33, e até lá vale o período ativo), o resultado traz a semelhança com o gabarito pela métrica da ADR-07, a faixa do FR-29, as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem; (2) no plágio, com a questão escolhida, A×gabarito e B×gabarito, e o alerta de possível vazamento quando A×B, A×gabarito e B×gabarito passam do limiar e os códigos têm o tamanho mínimo (95% e o mínimo de 60 tokens, configuráveis; premissa validada pelo autor em 12/10/2026); (3) nos indícios de IA, a semelhança com o gabarito como mais um sinal, só com `IPC_AI_INDICATORS`. A análise é determinística (sem IA); nenhum texto do gabarito vai ao navegador; sem gabarito ou com o download falho, a comparação fica de fora com um aviso, e o resto funciona.
 
 - **FR-33** — Vários períodos na página (ADR-12, US-39, US-40) [PLANEJADO, Sprint 43]: o analisador carrega o período do `ATIVO` e os 5 anteriores; a página mostra Período antes de Lista e Questão, com o ativo já escolhido; a API aceita `period` opcional na verificação, no plágio e no feedback. Um período sai da janela por `ipc-rules retire-period`, que o move para `rulesets/encerrados/`, sem apagar nada do Git.
 
@@ -202,7 +202,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 
 - **FR-35** — Padrão do monitor (US-42, US-43) [PLANEJADO, Sprints 44 e 45]: o tom, as dicas e os exemplos do feedback ficam em `backend/src/ipc_api/feedback/estilo.yaml`, validado por esquema na CI e revisado por PR; o "Aprimorar com IA" usa esses exemplos, recusa qualquer construção que o motor não apontou, código de 3 ou mais linhas e trechos iguais ao gabarito, faz no máximo uma rodada de crítica e, se nada passar, devolve o texto sem IA.
 
-- **FR-36** — Grupos de acompanhamento (ADR-13, US-45 a US-47) [PLANEJADO, Sprint 47, bloqueado pelas Q-26 a Q-29]: cada monitor cadastra os alunos pelos quais é responsável, sozinho ou num grupo com outros monitores (convite e aceite), por período; o grupo compartilha o histórico de verificações, indícios, alertas de plágio e, se a Q-28 permitir, feedbacks, com quem executou cada um; nenhum código é guardado.
+- **FR-36** — Grupos de acompanhamento (ADR-13, US-45 a US-47) [PLANEJADO, Sprint 47; Q-26 a Q-29 decididas em 12/10/2026]: cada monitor cadastra os alunos pelos quais é responsável, sozinho ou num grupo com outros monitores (convite e aceite), por período; o grupo compartilha o histórico das verificações como resultados resumidos (por exemplo, "L3-Q1 anulada por Laços de repetição" ou "L4-Q2 validada"), com a faixa dos indícios de IA e do alerta de plágio quando houver e quem executou cada uma; nem o código nem o feedback são guardados (Q-27, Q-28).
 
 - **FR-37** — Plágio medido (US-44) [PLANEJADO, Sprint 46]: precisão e revocação por faixa, num conjunto rotulado com plágio sintético (variáveis renomeadas, blocos reordenados, `for` trocado por `while`), a cada mudança no plágio; o par mostra quanto da semelhança o gabarito explica.
 
@@ -212,7 +212,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 |---|---|---|---|---|---|
 | NFR-01 | Desempenho | Latência do `POST /api/v1/validate` medida no servidor (borda → resposta) | P95 e P99 em janelas de 5 min | P95 ≤ 200 ms e P99 ≤ 500 ms, com 500 req/min e payload ≤ 5 KB | P95 do `/health/slo` em produção (memória da API, 5 min); k6 à mão: capacidade por plano com o `deploy/load/run_load.py` e o piloto de verdade com o workflow "Carga no piloto" (S28-01). k6 em staging e histograma Prometheus [PLANEJADO] |
 | NFR-02 | Desempenho | Tempo de análise no worker (parse, fatos e política) | P95 por entrada do corpus | ≤ 50 ms para entradas ≤ 5 KB (as do NFR-01) e linear até 50 KB, com o limite de 2 s por análise como teto (Q-25, 11/10/2026; antes, ≤ 50 ms até 50 KB) | Benchmark do motor na CI desde a S35-01 (`tests/benchmark`, `IPC_BENCHMARK=1`): P95 ≤ 50 ms nas entradas de até 5 KB e regressão ≤ 20% sobre a linha de base em todas; a entrada de 50 KB leva cerca de 260 ms (Q-25) |
-| NFR-03 | Desempenho | Carregamento da SPA | FCP e tamanho do JS inicial (gzip) | FCP ≤ 1,65 s no perfil móvel do Lighthouse ("Slow 4G"; Q-25, 11/10/2026; antes, < 1,5 s); JS inicial ≤ 350 KB gzip [PREMISSA] | Lighthouse CI e orçamento do JS na CI desde a S35-02 (`frontend/lighthouserc.json`, `scripts/js-budget.mjs`): JS inicial de 104,5 KB com gzip; FCP de 1,51 s no perfil móvel, com a CI falhando acima de 1,65 s, a meta desde a Q-25 |
+| NFR-03 | Desempenho | Carregamento da SPA | FCP e tamanho do JS inicial (gzip) | FCP ≤ 1,65 s no perfil móvel do Lighthouse ("Slow 4G"; Q-25, 11/10/2026; antes, < 1,5 s); JS inicial ≤ 350 KB gzip (Q-25) | Lighthouse CI e orçamento do JS na CI desde a S35-02 (`frontend/lighthouserc.json`, `scripts/js-budget.mjs`): JS inicial de 104,5 KB com gzip; FCP de 1,51 s no perfil móvel, com a CI falhando acima de 1,65 s, a meta desde a Q-25 |
 | NFR-04 | Capacidade | Vazão sustentada no pico de entrega (P-01) | req/min, taxa de 5xx, taxa de timeout | 500 req/min por 15 min com 0% de 5xx e < 0,1% de timeouts | Cenário k6 `nfr04` do `deploy/load/run_load.py` (S34-03): 80% do tráfego de 4 IPs do campus (NAT, P-04) e o resto de IPs externos, com os limites por IP do piloto e o limite por conta aumentado só no teste; por release, à mão. No gratuito, não atingível (ADR-03, 11/10/2026) |
 | NFR-05 | Concorrência | Degradação controlada sob sobrecarga | Respostas 500/502/504, tempo de emissão do 503, tempo de recuperação | A 1.500 req/min: 0 respostas 500/502/504; 503 com `Retry-After` em ≤ 100 ms quando a fila de admissão está cheia (quem já esperava uma vaga recebe o 503 em até 1 s, P-11); recuperação ≤ 60 s após a carga | Cenário k6 `nfr05` do `run_load.py` (S34-03), com a recuperação medida em 90 s a 20 por minuto; por release, à mão. A recusa rápida com `Retry-After` também é testada no pytest (S10). No gratuito, sem 500/502/504 e com recuperação em 5,7 s, mas o 503 leva segundos (ADR-03, 11/10/2026) |
 | NFR-06 | Disponibilidade | Disponibilidade externa no período letivo, sem cold start | % mensal de checks OK; latência da 1ª verificação de usuário do dia | ≥ 99,5% (P-05); 1ª verificação do dia ≤ 300 ms | UptimeRobot a cada 5 min em `/ready`, que também mantém o plano gratuito do Render acordado (ADR-03), configurado pelo autor (`deploy/piloto.md`); teste sintético diário da 1ª verificação [PLANEJADO] |
@@ -231,14 +231,14 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-19 | Acessibilidade | Conformidade com WCAG 2.1 AA | Violações axe *critical/serious*; fluxo por teclado | 0 violações; fluxo completo operável só pelo teclado | Playwright com axe-core na CI e checklist manual por release |
 | NFR-20 | Portabilidade e recuperação | Implantação reproduzível | RTO; RPO da telemetria | RTO ≤ 30 min (VM limpa + `docker compose up`); RPO ≤ 24 h | Backup diário criptografado (`backup.yml`, S28-03; diário desde a S30-12) e ensaio de restauração uma vez por semestre (`docs/runbook.md`) |
 | NFR-21 | Compatibilidade | Gramática alinhada à do Dikastis, Python 3.13+ (Q-01) | Divergências no corpus de sintaxe específica de versão | 0 | Testes de corpus por versão na CI |
-| NFR-22 | Segurança | Autenticação e sessão | Parâmetros e atributos conferidos | Senha em Argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 iterações, paralelismo 1); sessão no servidor com identificador aleatório de 256 bits guardado só como hash; cookie `HttpOnly`, `Secure` e `SameSite=Lax`, rotacionado no login e invalidado no logout, na troca de senha, na mudança de cargo e na remoção; expiração após 12 h sem uso e em no máximo 7 dias [PREMISSA, Q-19]; tokens de verificação de 256 bits, de uso único e válidos por 24 h; limite de tentativas por conta e por IP nas rotas de autenticação, com espera progressiva depois de 5 falhas em 15 min [PREMISSA] | Suíte de segurança da autenticação (seção 8, itens 16 a 20) |
+| NFR-22 | Segurança | Autenticação e sessão | Parâmetros e atributos conferidos | Senha em Argon2id com os parâmetros mínimos da OWASP (19 MiB, 2 iterações, paralelismo 1); sessão no servidor com identificador aleatório de 256 bits guardado só como hash; cookie `HttpOnly`, `Secure` e `SameSite=Lax`, rotacionado no login e invalidado no logout, na troca de senha, na mudança de cargo e na remoção; expiração após 12 h sem uso e em no máximo 7 dias (Q-19); tokens de verificação de 256 bits, de uso único e válidos por 24 h; limite de tentativas por conta e por IP nas rotas de autenticação, com espera progressiva depois de 5 falhas em 15 min (premissa validada pelo autor em 12/10/2026) | Suíte de segurança da autenticação (seção 8, itens 16 a 20) |
 | NFR-23 | Segurança | Autorização sem brechas | Rotas sem verificação; combinações cargo × ação × alvo testadas | 0 rotas da API sem exigência de sessão, além das listadas no FR-22; 100% da matriz do FR-27 testada por chamada direta à API | Teste que percorre o OpenAPI sem sessão (401 em tudo) e teste de matriz na CI |
 | NFR-24 | Privacidade | Dados de conta e envio à LLM | Campos expostos; ocorrências do nome do aluno nas requisições ao provedor | Dados de conta mínimos (nome, e-mail, curso, tratamento, cargo, status e datas); tratamento visível só ao titular; 0 ocorrências do nome real do aluno nas requisições ao provedor; código nunca persistido, também no plágio e no feedback (NFR-11) | Provedor falso que inspeciona a requisição; teste de contrato das respostas sobre outras pessoas (sem tratamento); canário do NFR-11 estendido às rotas novas |
-| NFR-25 | Correção | Precisão do detector de plágio | Similaridade nos pares de referência; tempo | Cópia com identificadores renomeados ≥ 99%; cópia com espaços e comentários alterados = 100%; funções ou blocos independentes reordenados ≥ 90% [PREMISSA]; valores exatos de 99, 95, 90 e 80% na faixa que começa neles; dois códigos de 50 KB em ≤ 2 s no worker | Corpus de pares (`backend/tests/similarity/`) na CI |
+| NFR-25 | Correção | Precisão do detector de plágio | Similaridade nos pares de referência; tempo | Cópia com identificadores renomeados ≥ 99%; cópia com espaços e comentários alterados = 100%; funções ou blocos independentes reordenados ≥ 90% (premissa validada pelo autor em 12/10/2026); valores exatos de 99, 95, 90 e 80% na faixa que começa neles; dois códigos de 50 KB em ≤ 2 s no worker | Corpus de pares (`backend/tests/similarity/`) na CI |
 | NFR-26 | Correção | Fidelidade do feedback ao motor | % de textos com apresentação e frase obrigatória exatas; contradições | 100% com a apresentação da tabela do FR-30 e a frase obrigatória do resultado; 0 textos que contradizem o motor ou que, no tratamento neutro, trazem autorreferência com marcação de gênero (lista de termos); IA principal e de reserva com 12 s por tentativa e prazo total de 28 s (com uma IA só, uma nova tentativa) e, se nenhuma devolver texto válido, o feedback montado por modelos, sem IA (ADR-06, item 6) | Testes com provedor falso, com respostas boas e adversariais, na CI; amostra manual com o provedor real a cada mudança de prompt ou de modelo |
 | NFR-27 | Segurança | Confidencialidade dos gabaritos (ADR-10, revisto pela ADR-11 em 09/10/2026) | Gabaritos fora do repositório principal, da imagem, do disco, dos logs, da telemetria e do navegador; acesso da CI e da API | 0 arquivo de gabarito no `ip-checker` e na imagem; no piloto, só na memória do processo da API, baixados com credencial só de leitura; 0 bytes de texto do gabarito nas respostas, nos logs e na telemetria (teste canário); saída dos testes só com arquivo, regra e linha | `.gitignore` (`gabaritos/`), job "Gabaritos" do `ci.yml`, `backend/tests/official_answers/`, testes canário da Sprint 32, `rulesets/README.md` |
 | NFR-28 | Desempenho | Custo da comparação com o gabarito (ADR-11) | P95 do `POST /api/v1/validate` com a comparação; tempo da comparação no analisador | P95 ≤ 200 ms e P99 ≤ 500 ms (os do NFR-01) com a comparação ligada; comparação de 2 códigos de 50 KB dentro do orçamento da similaridade (NFR-25) | "Carga no piloto" com uma questão com gabarito; teste de orçamento em `tests/similarity` |
-| NFR-29 | Privacidade | Dados de alunos nos grupos de acompanhamento (ADR-13) [PLANEJADO, Sprint 47] | Colunas guardadas; idade dos registros; ocorrências de código | Só o nome de exibição e uma referência opcional (Q-26), nunca CPF, e-mail ou matrícula; 0 ocorrências de código (canário do NFR-11); nada de um período depois do encerramento dele ou de 12 meses do fim, o que vier primeiro (Q-29) | Teste de esquema e canário na CI; teste do expurgo por período |
+| NFR-29 | Privacidade | Dados de alunos nos grupos de acompanhamento (ADR-13) [PLANEJADO, Sprint 47] | Colunas guardadas; idade dos registros; ocorrências de código | Só o nome de exibição e, opcionalmente, o login do Dikastis (Q-26), nunca CPF, e-mail ou matrícula; de cada verificação, só o resultado resumido (Q-27), sem o feedback (Q-28); 0 ocorrências de código (canário do NFR-11); nada de um período depois do encerramento dele ou de 12 meses do fim, o que vier primeiro (Q-29) | Teste de esquema e canário na CI; teste do expurgo por período |
 | NFR-30 | Desempenho | Plágio da turma inteira (S40-02, S46-03) [PLANEJADO] | Tempo no worker | Matriz de 100 soluções (120 KB no total) em ≤ 5 s | Teste de orçamento com a turma sintética |
 
 ## 4. Backlog de User Stories
@@ -326,12 +326,12 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-38 | Membro da equipe | no plágio, ver também a semelhança de cada aluno com o gabarito e um alerta quando os dois códigos coincidem com ele | perceber que o gabarito pode estar circulando entre os alunos (má conduta) sem acusar ninguém por um número | Dados os códigos A e B de uma questão com gabarito, Quando comparo, Então vejo A×B, A×gabarito e B×gabarito na métrica da ADR-07; Quando os três passam do limiar e os códigos têm o tamanho mínimo, Então aparece o alerta "possível vazamento do gabarito", só para mim e sem registro | Should | FR-32, NFR-27 |
 | US-44 | Membro da equipe | ver a turma inteira como matriz, com grupos de soluções parecidas e os trechos de cada par | achar os grupos de cópias de uma vez e saber quanto o detector acerta | Dada a turma sintética de 30 soluções, Então os dois grupos de cópias aparecem e nenhuma independente passa de 90%; Dado um par com gabarito, Então vejo quanto da semelhança o gabarito explica | Should | FR-29, FR-37 |
 
-### Épico E8 — Acompanhamento dos alunos (proposta de 12/10/2026; bloqueado pelas Q-26 a Q-29)
+### Épico E8 — Acompanhamento dos alunos (proposta de 12/10/2026; Q-26 a Q-29 decididas no mesmo dia)
 
 | ID | Persona | Ação | Valor Esperado | Critérios de Aceite | Prioridade (MoSCoW) | FRs atendidos |
 |---|---|---|---|---|---|---|
 | US-45 | Monitor | criar o meu grupo de acompanhamento, convidar colegas e cadastrar os alunos pelos quais sou responsável | acompanhar os mesmos alunos sozinho, em dupla ou em trio | Dado um convite, Quando o colega aceita, Então ele vê o histórico do grupo; Dado um aluno em dois grupos, Então aparece nos dois; Dado alguém que sai do grupo, Então os registros continuam | Could | FR-36 |
-| US-46 | Monitor | ver o histórico de um aluno meu, com quem fez cada verificação | acompanhar a evolução e dividir o trabalho | Dado um aluno do grupo, Quando abro o histórico, Então vejo lista, questão, resultado, regras, gabarito, indícios e quem executou, sem o código; Dado um monitor fora do grupo, Quando chama a rota, Então recebe 403 | Could | FR-36 |
+| US-46 | Monitor | ver o histórico de um aluno meu, com quem fez cada verificação | acompanhar a evolução e dividir o trabalho | Dado um aluno do grupo, Quando abro o histórico, Então vejo, de cada verificação, o resultado resumido (lista, questão, validada ou anulada e por quê), a faixa dos indícios e do alerta de plágio e quem executou, sem o código nem o feedback; Dado um monitor fora do grupo, Quando chama a rota, Então recebe 403 | Could | FR-36 |
 | US-47 | Monitor-chefe ou professor | ver todos os grupos do período, só para leitura | supervisionar a monitoria sem editar o trabalho dos monitores | Dado o Gerenciar, Então vejo os grupos e o histórico; Dado uma tentativa de edição, inclusive pela API, Então recebo 403 | Could | FR-36 |
 
 ## 5. Arquitetura do Sistema e Stack
@@ -697,7 +697,7 @@ Nas Fases 0 e 2, o banco é um contêiner `postgres` fixado por digest, só na r
 | Isolamento por processo (Fase 1) | `supervisord`, UIDs distintos para `api` e `analyzer` e `pyseccomp` (libseccomp) nos workers | Compensa a falta de rede interna e de flags de contêiner no Render: o analisador não lê o ambiente da API, não abre sockets de rede e não executa programas | nsjail ou bubblewrap: dependem de *user namespaces*, em geral indisponíveis em PaaS |
 | Imagem base | `python:3.13-slim` (Debian), fixada por digest | glibc instala wheels binárias sem compilação, a superfície é reduzida e há atualizações de segurança do Debian | Alpine: o musl força compilar wheels e tem diferenças de comportamento. Distroless: depuração mais difícil para a equipe (reavaliar após o MVP) |
 | Telemetria/BD | PostgreSQL gerenciado (Supabase, §2 do rascunho) com `asyncpg` e o papel `ipc_writer`, que só faz INSERT | Backup diário próprio e criptografado (`backup.yml`, S28-03 e S30-12) [PREMISSA: o plano gratuito do Supabase não guarda backups que se possam baixar], SQL para as views do FR-17 e menor privilégio via conexão Postgres direta | supabase-py/REST com chave de serviço: credencial com privilégio amplo. SQLite: perde dados a cada deploy (§19 do rascunho) |
-| Observabilidade | structlog (JSON), prometheus-client, Grafana Alloy e Grafana Cloud [PREMISSA: plano gratuito], mais o UptimeRobot (linha seguinte) | Logs, métricas e alertas (NFR-14, NFR-15) sem servidor próprio | Prometheus, Grafana e Loki auto-hospedados: três serviços a mais para operar na VM |
+| Observabilidade | structlog (JSON) nos logs do Render, o `/health/slo` e o UptimeRobot (linha seguinte); sem Grafana nem `/metrics` (S35-06, decisão do autor de 11/10/2026) | Logs, métricas e alertas (NFR-14, NFR-15) sem servidor próprio | `/metrics` com Grafana Cloud (7.13.7, opção B, não adotada); Prometheus, Grafana e Loki auto-hospedados: três serviços a mais para operar na VM |
 | Keep-alive e monitoramento externo (Fase 1) | UptimeRobot, plano gratuito, checagem de `/ready` a cada 5 min e da SPA | O serviço gratuito do Render dorme após 15 min sem tráfego; uma checagem a cada 5 min o mantém acordado e ainda mede a disponibilidade (NFR-06) e alerta por e-mail (US-19). Um único serviço acordado o mês todo cabe nas 750 h/mês do plano gratuito | Cron do GitHub Actions: o intervalo mínimo é de 5 min e as execuções costumam atrasar, o que deixaria o serviço dormir. Render Starter: elimina a dormência, mas custa cerca de US$ 7/mês |
 | Repositório e CI/CD | Monorepo no GitHub e GitHub Actions (GHCR [PLANEJADO, Fase 2]) | Ruleset, motor e contrato mudam no mesmo PR; a aprovação de regras é conferida por quem faz o merge (Q-22), porque o GitHub Free não aplica CODEOWNERS em repositório privado | Dois repositórios (§20–21 do rascunho): contrato e ruleset ficam dessincronizados entre front e back |
 | Qualidade e segurança na CI | Na CI: ruff (com as regras do Bandit), `mypy --strict`, import-linter, pytest (com schemathesis para o contrato), Vitest com RTL e Playwright com axe-core; gitleaks, Semgrep, pip-audit e npm audit em todo PR e, com o Trivy, no workflow semanal (S31-03 e S31-04); à mão: k6. pytest-benchmark é [PLANEJADO] | Cada ferramenta verifica um NFR específico (NFR-02, 04, 05, 09, 13, 16, 18, 19) | Só linters e testes unitários (§18 do rascunho): não verificam isolamento, evasão nem carga |
@@ -757,14 +757,14 @@ decisão atualiza o status do ADR antigo e aponta para o novo.
 | [ADR-10](adr/ADR-10-questoes-e-gabaritos-por-periodo.md) | Questões e gabaritos por período | Aceito em 08/10/2026 (Q-14); decisão 3 revista pela ADR-12 (proposta) |
 | [ADR-11](adr/ADR-11-comparacao-com-o-gabarito.md) | Comparação com o gabarito na verificação, no plágio e nos indícios | Proposto em 09/10/2026 (Q-24); Sprint 32 |
 | [ADR-12](adr/ADR-12-varios-periodos-e-retencao-por-encerramento.md) | Vários períodos carregados e retenção por encerramento | Proposto em 12/10/2026; Sprint 43 |
-| [ADR-13](adr/ADR-13-grupos-de-acompanhamento-e-dados-de-alunos.md) | Grupos de acompanhamento e dados de alunos | Proposto em 12/10/2026; Sprint 47, bloqueada pelas Q-26 a Q-29 |
-| [ADR-14](adr/ADR-14-impressoes-digitais-persistentes.md) | Impressões digitais persistentes para plágio entre períodos e sinais com histórico | Proposto em 12/10/2026; Sprint 48, bloqueada pela Q-27 |
+| [ADR-13](adr/ADR-13-grupos-de-acompanhamento-e-dados-de-alunos.md) | Grupos de acompanhamento e dados de alunos | Proposto em 12/10/2026; Q-26 a Q-29 decididas no mesmo dia; Sprint 47 |
+| [ADR-14](adr/ADR-14-impressoes-digitais-persistentes.md) | Impressões digitais persistentes para plágio entre períodos e sinais com histórico | Rejeitado em 12/10/2026 (Q-27: só o resultado resumido é guardado) |
 
 ## 7. Roadmap de Sprints e Tasks do MVP
 
 ### 7.1 Roadmap
 
-Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 h por semana, em sprints de 2 semanas a partir de 05/10/2026. O plano usa 6 SP por sprint (1 SP ≈ 2 h de trabalho focado [PREMISSA]) e metade disso nos recessos de fim de ano e de Carnaval. A meta é ter a equipe da disciplina usando a ferramenta em 2027.1 (Q-10, P-13), com início do período estimado em março de 2027 (P-10). As Sprints 1 a 12 foram concluídas em 01/10/2026, muito antes do calendário previsto. Em 02/10/2026, o roadmap foi refeito a partir da Sprint 13, com o acesso restrito, o plágio e o feedback antes das listas; as datas da Sprint 13 em diante foram re-estimadas a partir de 05/10/2026, com a mesma premissa de 6 SP por sprint, que serve de teto.
+Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 h por semana, em sprints de 2 semanas a partir de 05/10/2026. O plano usa 6 SP por sprint (1 SP ≈ 2 h de trabalho focado; premissa validada pelo autor em 12/10/2026) e metade disso nos recessos de fim de ano e de Carnaval. A meta é ter a equipe da disciplina usando a ferramenta em 2027.1 (Q-10, P-13), com início do período estimado em março de 2027 (P-10). As Sprints 1 a 12 foram concluídas em 01/10/2026, muito antes do calendário previsto. Em 02/10/2026, o roadmap foi refeito a partir da Sprint 13, com o acesso restrito, o plágio e o feedback antes das listas; as datas da Sprint 13 em diante foram re-estimadas a partir de 05/10/2026, com a mesma premissa de 6 SP por sprint, que serve de teto.
 
 - **Fase 0 — MVP local (Sprints 1–9):** tudo roda com Docker Compose na máquina do desenvolvedor. O MVP (Marco 1) ficou pronto em 01/10/2026.
 - **Fase 1a — Preparação do piloto (Sprints 10–12, concluídas):** rate limit, isolamento por processo no Render, pipeline de deploy na Vercel e no Render, exigência da Lista 1, teste de carga e material da apresentação.
@@ -773,7 +773,7 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1d — Endurecimento, experiência e passagem de bastão (Sprints 25–29), criada em 06/10/2026 a partir da revisão de fim da Sprint 23:** primeiro deploy seguro, correção em lote, plágio por árvore, carga e eficácia, documentação para o próximo mantenedor e, se a Q-21 aprovar, os indícios de uso de IA. Como o ritmo real tem sido muito maior que 6 SP por sprint e não há calendário fixo (P-10), as datas da tabela são só a ordem prevista.
 - **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (renumerada para 41 em 11/10/2026). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
 - **Fase 1f — Polimento (Sprints 36–40), criada em 11/10/2026:** até o fim do piloto, melhorar o que existe: os defeitos e os documentos da equipe (36), a tela de verificação (37), a explicação de cada regra e a exportação (38), a qualidade interna, a operação e a documentação (39) e a correção da turma inteira (40). As tasks estão em 7.15.
-- **Fase 1g — Indícios, período, feedback, plágio e acompanhamento (Sprints 42–48), proposta de 12/10/2026:** a partir da revisão das seis frentes ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): os indícios de IA ligados no piloto (42, a pedido do autor), o período na página e a retenção por encerramento (43), o feedback rastreável e o padrão do monitor (44), o "Aprimorar com IA" com validação e crítica (45), o plágio calibrado (46), os grupos de acompanhamento dos alunos (47) e os sinais com histórico (48). A 47 e a 48 dependem de decisões sobre dados de alunos (Q-26 a Q-29). As tasks estão em 7.16.
+- **Fase 1g — Indícios, período, feedback, plágio, acompanhamento e Google (Sprints 42–48), proposta de 12/10/2026:** a partir da revisão das seis frentes ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): os indícios de IA ligados no piloto (42, a pedido do autor), o período na página e a retenção por encerramento (43), o feedback rastreável e o padrão do monitor (44), o "Aprimorar com IA" com validação e crítica (45), o plágio calibrado (46), os grupos de acompanhamento dos alunos (47) e a entrada com o Google no piloto (48, no fim da fila). As decisões sobre dados de alunos (Q-26 a Q-29) foram tomadas em 12/10/2026, e a 47 só vai ao piloto com o aviso de privacidade aprovado pela coordenação. As tasks estão em 7.16.
 - **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
@@ -821,13 +821,13 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 39 (sob comando do autor) | Qualidade interna, operação e documentação | US-14, US-15, US-20, US-35 | Arquivos menores; testes das páginas; CI mais rápida; backup agendado e restauração ensaiada; documentação reorganizada | Refatorar sem mudar comportamento |
 | 40 (sob comando do autor) | A correção da turma inteira | US-16, US-31, US-33 | Correção em lote por upload com CSV; plágio todos contra todos com grupos; painel por lista | Carga concentrada no plano gratuito |
 | 41 (após 2027.1) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
-| 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; corpus de calibração (Q-35) |
+| 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; critérios a validar (Q-35) |
 | 43 (sob comando do autor) | Período na página e retenção por encerramento | US-37, US-39, US-40 | Período antes de Lista e Questão; o ativo e os 5 anteriores carregados; `retire-period` com simulação | `ruleset_version` por período nos painéis |
 | 44 (sob comando do autor) | Feedback rastreável e o padrão do monitor | US-32, US-41, US-42 | Cada violação com linha e motivo no feedback sem IA; `estilo.yaml` revisado por PR | Texto mais longo para o Dikastis |
 | 45 (sob comando do autor) | "Aprimorar com IA" com validação e crítica | US-32, US-43 | Nenhuma construção fora dos achados; nada de solução pronta nem de gabarito; uma rodada de crítica | Uma chamada a mais da cota gratuita |
 | 46 (sob comando do autor) | Plágio calibrado | US-31, US-38, US-44 | Precisão e revocação medidas com plágio sintético; IDF de base por questão; matriz com trechos | Corpus pequeno até a P-21 |
-| 47 (bloqueada pelas Q-26 a Q-29) | Grupos de acompanhamento e histórico dos alunos | US-45, US-46, US-47 | Grupos com convite e aceite; histórico sem código; expurgo por período | Primeiro dado pessoal de alunos; aviso de privacidade com a coordenação |
-| 48 (bloqueada pela Q-27) | Sinais com histórico e plágio entre períodos | US-31, US-34 | Impressão digital não reversível; comparação com períodos anteriores; indício de mudança de estilo | Reabre a REC-07 |
+| 47 (sob comando do autor) | Grupos de acompanhamento e histórico dos alunos | US-45, US-46, US-47 | Grupos com convite e aceite; histórico com o resultado resumido, sem código nem feedback; expurgo por período | Primeiro dado pessoal de alunos; aviso de privacidade aprovado pela coordenação antes da release |
+| 48 (no fim da fila) | Entrada com o Google no piloto | US-25 | Cliente OAuth criado pelo autor; botão do Google no piloto; ensaio de domínio e de aprovação | Tela de consentimento publicada |
 | Backlog (após o piloto) | Melhorias de experiência | US-10 | Tela de permissões da lista, editor com realce (CodeMirror) e análise do fluxo de controle no plágio (ADR-07, alternativa D, reavaliada com os números da Sprint 46); o upload de `.py` e a alternância de tema entraram nas Sprints 38 e 37 | Dependem da avaliação do piloto |
 
 ### 7.2 Tasks do MVP (Sprints 1 a 9)
@@ -1036,7 +1036,7 @@ Vercel (S30-03). Falta só conferir, em 09/10/2026, os 24 h verdes do UptimeRobo
 | S30-11 | US-22 | Decisão | Plano do Render (ADR-03): gratuito ou Starter (cerca de US$ 7 por mês), com a medição da S30-09 (opções em 7.13.6) | `render.yaml` (`plan`), painel do Render | Autor | — | S30-09 | Decisão registrada no ADR-03; se Starter, `plan: starter` por PR e nova rodada da S30-09 com P95 do servidor ≤ 200 ms |
 | S30-12 | US-35 | Decisão | RPO do banco do piloto: o backup semanal dá RPO de até 7 dias, acima da meta de 24 h da NFR-20; escolher entre o backup diário (só o `cron` do `backup.yml` muda) e revisar a NFR-20 para o piloto (opções em 7.13.8) | `.github/workflows/backup.yml`, NFR-20 | Autor | — | S30-07 | Desbloqueio: decisão registrada na NFR-20; se diário, o `cron` alterado por PR e uma semana de artefatos diários |
 
-*Diagnóstico da S30-10 (a confirmar na própria task).* O `supervisord` roda como root (`user=root`) e encerra cada programa com `stopasgroup=true` e `killasgroup=true`, ou seja, manda o sinal ao grupo de processos de `ipc-api` (UID 10001) e de `ipc-analyzer` (UID 10002). Um processo root só sinaliza processos de outro usuário com a capacidade `CAP_KILL`; a hipótese (P-17) é que o Render roda o contêiner sem ela, e o `kill()` devolve `EPERM`, que o supervisord registra como `PermissionError`. Os processos acabam encerrados quando o Render destrói o contêiner, por isso nada quebra. Opções a avaliar na task: (a) um intermediário root por programa, que inicia o serviço com `setpriv --reuid ... --pdeathsig TERM` e apenas sai ao receber o sinal, para o kernel entregar o `SIGTERM` ao filho, sem precisar de `CAP_KILL` [A CONFIRMAR: se o `setpriv` da imagem mantém o `pdeathsig` depois de trocar o usuário]; (b) cada serviço encerrar-se sozinho quando o pai morre, configurando o `PR_SET_PDEATHSIG` no início do processo; (c) aceitar o registro e documentá-lo no runbook (só se (a) e (b) enfraquecerem o isolamento). A correção não pode dar ao analisador o mesmo UID da API nem rodar algum serviço como root.
+*Diagnóstico da S30-10 (confirmado em 08/10/2026, P-17).* O `supervisord` roda como root (`user=root`) e encerra cada programa com `stopasgroup=true` e `killasgroup=true`, ou seja, manda o sinal ao grupo de processos de `ipc-api` (UID 10001) e de `ipc-analyzer` (UID 10002). Um processo root só sinaliza processos de outro usuário com a capacidade `CAP_KILL`; a hipótese (P-17) é que o Render roda o contêiner sem ela, e o `kill()` devolve `EPERM`, que o supervisord registra como `PermissionError`. Os processos acabam encerrados quando o Render destrói o contêiner, por isso nada quebra. Opções a avaliar na task: (a) um intermediário root por programa, que inicia o serviço com `setpriv --reuid ... --pdeathsig TERM` e apenas sai ao receber o sinal, para o kernel entregar o `SIGTERM` ao filho, sem precisar de `CAP_KILL` (resolvido na S30-10; ver a P-17); (b) cada serviço encerrar-se sozinho quando o pai morre, configurando o `PR_SET_PDEATHSIG` no início do processo; (c) aceitar o registro e documentá-lo no runbook (só se (a) e (b) enfraquecerem o isolamento). A correção não pode dar ao analisador o mesmo UID da API nem rodar algum serviço como root.
 *Resultado (08/10/2026):* a P-17 se confirmou no Render, e as opções (a) e (b) não servem: o kernel
 entrega o `PR_SET_PDEATHSIG` com a mesma checagem de permissão do `kill()`. Foi aplicada uma quarta
 opção, sem sinal entre usuários: um lançador root por serviço fecha um pipe ao receber o `SIGTERM`, e
@@ -1115,7 +1115,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | S31-01 | US-34 | Decisão | Levar à coordenação a política dos indícios de IA (S29-04, ADR-08): o texto aos alunos e quem gera as referências (opções em 7.13.1) | `docs/indicios-de-ia.md` | Coordenação | — | — | Entrada: aprovação ou pedido de mudança, por escrito. Desbloqueio: a decisão registrada na Q-21 e no ADR-08, com a data |
 | S31-02 | US-32 | Decisão | Q-16: provedor de IA do feedback (opções em 7.13.2); se aprovado, o autor grava `IPC_LLM_*` no Render | `docs/decisoes.md` (Q-16), `deploy/compose.md` ("Feedback por IA") | Autor e Coordenação | — | — | Desbloqueio: Q-16 decidida; se houver provedor, um feedback no piloto com `source` = `llm` e o nome do aluno ausente do pedido ao provedor |
 | S31-03 | US-15 | Engenharia | Triar a auditoria semanal (S25-01) e torná-la bloqueante: corrigir ou justificar cada achado alto ou crítico corrigível, tirar o `continue-on-error` do `audit.yml` e rodar gitleaks, pip-audit e npm audit também no `ci.yml`, em todo PR (Trivy fica no semanal, por demorar) | `.github/workflows/audit.yml`, `.github/workflows/ci.yml` | Autor | 2 | — | Uma rodada do `audit.yml` sem achado aberto; PR com uma dependência vulnerável de teste falha no CI; NFR-13 e item 14 da seção 8 sem a ressalva "ainda não bloqueante" |
-| S31-04 | US-15 | Engenharia | Semgrep no CI (NFR-09): imagem fixada por digest, regras para Python e TypeScript, achados novos bloqueiam o PR | `.github/workflows/ci.yml`, `.semgrep.yml` (novo) [A CONFIRMAR o conjunto de regras] | Autor | 1 | — | Job verde na `develop`; um PR com `eval` sobre dado de requisição falha; NFR-09 sem [PLANEJADO] |
+| S31-04 | US-15 | Engenharia | Semgrep no CI (NFR-09): imagem fixada por digest, regras para Python e TypeScript, achados novos bloqueiam o PR | `.github/workflows/ci.yml`, `.semgrep.yml` (novo; o conjunto de regras foi decidido na P-20) | Autor | 1 | — | Job verde na `develop`; um PR com `eval` sobre dado de requisição falha; NFR-09 sem [PLANEJADO] |
 | S31-05 | US-11 | Externa | Marco 2: revisar o guia da equipe e marcar a data da apresentação a monitores-chefes e professores | `docs/guia-da-equipe.md`; arquivo da apresentação [A CONFIRMAR: não está no repositório] | Autor | — | — | Entrada: data marcada e guia revisado. Desbloqueio: apresentação feita, com as decisões registradas em `docs/decisoes.md` |
 | S31-06 | US-23 | Externa | Criar o formulário da pesquisa de satisfação e a planilha do critério 3, como especificados (S28-02) | `docs/eficacia.md` (seções 3 e 4) | Equipe | — | — | Entrada: formulário anônimo e planilha sem dados de aluno. Desbloqueio: os dois links registrados em `docs/eficacia.md` |
 | S31-07 | US-11 | Decisão | Q-17: remetente definitivo dos e-mails e, se for `@cin.ufpe.br`, SPF, DKIM e DMARC conferidos com o NTI (opções em 7.13.3) | `docs/decisoes.md` (Q-17), `deploy/compose.md` ("Registro e e-mails"), `IPC_EMAIL_FROM` no Render | Autor e NTI | — | — | Desbloqueio: um e-mail de verificação entregue na caixa de entrada de um `@cin.ufpe.br` e de um `@ufpe.br`, fora do spam |
@@ -1164,7 +1164,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 
 **Missão, persona e execução:** a missão é dar à equipe, na hora da correção, a distância entre o código do aluno e a solução oficial, e um sinal de que o gabarito pode estar circulando, sem guardar nada e sem expor o gabarito. A persona é quem corrige (monitor, monitor-chefe ou professor; US-37 e US-38), com o Tech Lead cuidando da confidencialidade (NFR-27). Execução: a credencial do autor primeiro (S32-01); depois, em PRs pequenos, o carregamento na API (S32-02), a comparação no analisador (S32-03), as rotas (S32-04, S32-05), as telas (S32-06, S32-07), o sinal dos indícios (S32-08), os testes de confidencialidade e desempenho (S32-09) e a documentação (S32-10). O carregamento entra numa release sem migração (P-18).
 
-**Premissas:** Q-24 decidida pelo autor (1B 2B 3A 4B 5A 6B); a troca de período sem código (S31-09, S31-10) já está pronta; o limiar do alerta (95%) e o tamanho mínimo são [PREMISSA] até a calibração (S33-02 e S33-03); a credencial só de leitura é criada pelo autor [A CONFIRMAR: a validade máxima que o GitHub aceita para ela, que define a troca no runbook].
+**Premissas:** Q-24 decidida pelo autor (1B 2B 3A 4B 5A 6B); a troca de período sem código (S31-09, S31-10) já está pronta; o limiar do alerta (95%) e o tamanho mínimo (60 tokens) foram validados pelo autor em 12/10/2026; a credencial só de leitura é criada pelo autor [A CONFIRMAR: a validade máxima que o GitHub aceita para ela, que define a troca no runbook].
 
 **Histórias:** US-37 e US-38 (seção 4); FR-32; NFR-27 (revisto) e NFR-28; US-32, FR-30 e NFR-26 para o "Aprimorar com IA" (Q-16).
 
@@ -1229,7 +1229,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
 | S33-01 | US-14 | Externa | Copiar os gabaritos do Notion para o repositório privado já criado (`Lionzio/ip-checker-gabaritos`, H-02), em `<período>/lista-<n>/L<n>-Q<m>.py`, dar acesso à equipe (colaboradores) e, depois do primeiro gabarito, gravar a variável `GABARITOS_REPO` | `rulesets/README.md` ("Gabaritos"), README do repositório dos gabaritos, `backend/tests/official_answers/` | Autor e Equipe | — | — | Desbloqueio: o job "Gabaritos (zero violação, Q-14)" do `ci.yml` roda (não fica "skipped") e passa |
-| S33-02 | US-34 | Externa | Obter as soluções humanas de períodos anteriores a 2023 para a calibração, no mesmo formato, fora do repositório [A CONFIRMAR: se os gabaritos da Q-14 trazem soluções de alunos ou só as respostas oficiais; se forem só oficiais, a fonte das soluções é a coordenação] | Pasta local fora do repositório | Autor e Coordenação | — | — | Entrada: pelo menos 200 soluções [PREMISSA] distribuídas pelas 6 listas. Desbloqueio: pasta disponível ao autor, sem dado de aluno no repositório |
+| S33-02 | US-34 | Externa | **Descartada pelo autor em 12/10/2026.** Obter as soluções humanas de períodos anteriores a 2023 para a calibração, no mesmo formato, fora do repositório [A CONFIRMAR: se os gabaritos da Q-14 trazem soluções de alunos ou só as respostas oficiais; se forem só oficiais, a fonte das soluções é a coordenação] | Pasta local fora do repositório | Autor e Coordenação | — | — | Entrada: pelo menos 200 soluções [PREMISSA] distribuídas pelas 6 listas. Desbloqueio: pasta disponível ao autor, sem dado de aluno no repositório |
 | S33-03 | US-34 | Engenharia | Calibrar os indícios: rodar `ipc-rules calibrate` nas soluções da S33-02, ajustar as faixas de `engine/indicators.py` por PR até a faixa alta ficar em ≤ 5%, e registrar a distribuição no ADR-08 | `backend/src/ipc_analyzer/cli.py`, `backend/src/ipc_analyzer/engine/indicators.py`, `docs/adr/ADR-08-indicios-de-uso-de-ia-nunca.md` | Autor | 2 | S33-02 | `uv run ipc-rules calibrate ../rulesets/2026.2 <pasta> --max-alto 5` sai com 0; os testes de `test_indicators.py` atualizados para as faixas novas |
 | S33-04 | US-13 | Externa | Criar o período 2027.1 com `ipc-rules new-period 2027.1 --from 2026.2` (S31-10), ajustar o `base.yaml` ao documento de permissões validado pelo professor, trocar o período ativo (S31-09) e cadastrar as questões das listas liberadas (R-01) pelo `RULES.md` | `rulesets/2027.1/base.yaml` e `questions/` (novos) | Professor e Equipe | — | Documento de permissões de 2027.1; S31-09, S31-10 | Desbloqueio: `ipc-rules validate ../rulesets/2027.1 --golden tests/golden` verde, com pelo menos uma questão por lista habilitada |
 | S33-05 | US-34 | Externa | Gerar as referências por IA das questões cadastradas (S29-02), conforme a decisão da S31-01 sobre quem gera | `rulesets/2027.1/referencias/<questão>/*.py` (novos), `RULES.md` (passo 5) | Equipe (a decidir na S31-01) | — | S31-01, S33-04 | Desbloqueio: `ipc-rules validate` mostra "referências de IA: N em M questões", com M igual ao número de questões cadastradas |
@@ -1263,7 +1263,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | S33-09 | US-34 | Engenharia | (Opcional, a decidir pelo autor) gerar as referências por IA a partir do enunciado, pela cadeia do Aprimorar com IA, para quem cadastra revisar | a definir | Autor | 1 | S33-04 | Aguardando a decisão |
 | S33-10 | US-15 | Externa | Volta da cota do Actions (01/11/2026): CI com o job "Gabaritos", "Deploy do piloto", backup e auditoria rodando no Actions (runbook, "Sem GitHub Actions") | `.github/workflows/` | Autor | — | 01/11/2026 | Os quatro workflows verdes |
 
-**Situação (11/10/2026):** S33-07 e S33-08 entregues. S33-03 em parte: a medição preliminar nos 23 gabaritos de 2026.2 deu 0% na faixa alta (ADR-08), sem valor de calibração. Aguardando, com as premissas da P-21: S33-01 (períodos anteriores e Listas 4 a 6 de 2026.2), S33-02, S33-04, S33-05, S33-06 (depois da S33-02), S33-09 (decisão do autor) e S33-10 (01/11/2026). **Proposta de 12/10/2026:** as S33-02, S33-03, S33-05 e S33-06 passam para a Sprint 42 (7.16), que liga os indícios no piloto.
+**Situação (11/10/2026):** S33-07 e S33-08 entregues. S33-03 em parte: a medição preliminar nos 23 gabaritos de 2026.2 deu 0% na faixa alta (ADR-08), sem valor de calibração. Aguardando, com as premissas da P-21: S33-01 (períodos anteriores e Listas 4 a 6 de 2026.2), S33-02, S33-04, S33-05, S33-06 (depois da S33-02), S33-09 (decisão do autor) e S33-10 (01/11/2026). **Proposta de 12/10/2026:** as S33-03, S33-05, S33-06 e S33-09 passam para a Sprint 42 (7.16), que liga os indícios no piloto. **Decisões do autor (12/10/2026):** a S33-02 foi descartada, porque as soluções anteriores a 2023 não existem e não serão buscadas; a S33-09 foi aprovada; as questões de 2027.1 (S33-04) ficam prontas perto de março de 2027, até uma semana antes de cada lista.
 
 **Definition of Done:** a da seção 8; nenhum gabarito ou solução de aluno no repositório (Q-14, NFR-11).
 
@@ -1282,7 +1282,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
 | S34-01 | US-22 | Engenharia | Medir o pico no plano gratuito (S30-11, troca aceita pelo autor em 08/10/2026): "Carga no piloto" em degraus até o `OVERLOADED` aparecer, com a taxa máxima sem recusa e a porcentagem de recusas a 500 por minuto registradas no ADR-03 | `.github/workflows/load.yml`, `docs/adr/ADR-03-topologia-de-implantacao-por-fase.md` | Autor | 0,5 | S30-11 | Taxa máxima sem `OVERLOADED` e recusas a 500 por minuto no ADR-03; nenhum 500/502/504 |
-| S34-02 | US-19 | Engenharia | Teste sintético diário da primeira verificação (NFR-06): workflow agendado que entra com a conta de verificação, verifica uma solução da Lista 1 e mede o tempo | `.github/workflows/synthetic.yml` (novo), `backend/tests/pilot/` | Autor | 1 | S30-01 | Roda todo dia útil às 07:00 (horário de Brasília), falha se a verificação passar de 300 ms no servidor [A CONFIRMAR: medir pelo `latency_ms` do log ou pelo `/health/slo`] ou se der erro |
+| S34-02 | US-19 | Engenharia | Teste sintético diário da primeira verificação (NFR-06): workflow agendado que entra com a conta de verificação, verifica uma solução da Lista 1 e mede o tempo | `.github/workflows/synthetic.yml` (novo), `backend/tests/pilot/` | Autor | 1 | S30-01 | Roda todo dia útil às 07:00 (horário de Brasília), falha se a verificação passar de 300 ms no servidor (medido pelo `Server-Timing`; ver a situação da Sprint 34) ou se der erro |
 | S34-03 | US-22 | Engenharia | Cenários de carga por release: o NFR-04 (500 por minuto por 15 min, 80% de 4 IPs) e o NFR-05 (1.500 por minuto, recusa com `Retry-After` em ≤ 100 ms e recuperação em ≤ 60 s), na emulação local, com `X-Forwarded-For` simulado e `IPC_TRUSTED_PROXY_HOPS` = 1 só no contêiner de teste | `deploy/load/run_load.py`, `deploy/load/pilot-load.js` | Autor | 2 | — | Relatório dos dois cenários no plano escolhido: 0 respostas 500, 502 ou 504; 503 com `Retry-After`; recuperação ≤ 60 s |
 | S34-04 | US-19 | Engenharia | Exercício de alertas a cada release (NFR-15): o roteiro da S30-05 entra no checklist da release e no runbook, com uma linha por release | `docs/runbook.md`, `scripts/release.sh` (mensagem final) | Autor | 0,5 | S30-05 | Tabela do runbook com uma linha por release desde a Sprint 34 |
 | S34-05 | US-12 | Externa | Habilitar as listas no piloto conforme o professor validar o ruleset de 2027.1 (`IPC_ENABLED_LISTS`) | `render.yaml` | Professor e Autor | — | S33-04 | Desbloqueio: `/api/v1/lists` do piloto mostra só as listas validadas, antes da data de liberação de cada uma |
@@ -1452,6 +1452,8 @@ no Render P95 do servidor abaixo de 200 ms a 20 por minuto; o pico segue com a d
 | A. `/health/slo` e UptimeRobot (como hoje) | Sem conta nova | Só a janela de 5 min; sem histórico | Nenhuma task |
 | B. `/metrics` com `prometheus-client` e Grafana Cloud gratuito | Histórico e painéis | Conta nova; o `/metrics` precisa ficar fora da internet | Uma task de implementação (cerca de 3 SP) |
 
+**Decidido (11/10/2026, autor, S35-06):** opção A: só o `/health/slo` com o UptimeRobot, sem Grafana nem `/metrics`.
+
 #### 7.13.8 RPO do banco do piloto (NFR-20) — Autor
 
 | Opção | Prós | Contras | Impacto |
@@ -1461,59 +1463,59 @@ no Render P95 do servidor abaixo de 200 ms a 20 por minuto; o pico segue com a d
 
 **Decidido (08/10/2026, autor):** opção A, backup diário; a NFR-20 fica como está (RPO ≤ 24 h).
 
-### 7.14 Matriz de rastreabilidade das pendências (07/10/2026)
+### 7.14 Matriz de rastreabilidade das pendências (07/10/2026, atualizada em 12/10/2026)
 
-O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quando uma task fechar, o item é marcado aqui e na origem.
+Criada em 07/10/2026 e atualizada em 12/10/2026 pelo CHANGELOG e pelas decisões do autor. A última coluna diz o que já foi resolvido; quando uma task fechar, o item é marcado aqui e na origem.
 
-| Pendência original | Seção da lista de 07/10/2026 | Sprint/Task | Tipo |
-|---|---|---|---|
-| Conta de verificação e `PILOT_CHECK_*` | 2 | S30-01 | Externa |
-| Primeiro deploy com login (S11, S16, S19, S25; P-15) | 2 e 5 | S30-02 | Engenharia |
-| UptimeRobot, três monitores (S11, S21) | 2 e 5 | S30-04, S34-06 | Externa |
-| Exercício de alerta no piloto (S21; NFR-15) | 5 e 6 | S30-05, S34-04 | Engenharia |
-| Chave do backup e `BACKUP_AGE_RECIPIENT` (S28-03) | 2 | S30-06 | Externa |
-| Ensaio de restauração do backup (S28-03; NFR-20) | 5 | S30-07 | Engenharia |
-| Ensaio cronometrado do rollback (S28-03) | 2 e 5 | S30-08 | Engenharia |
-| Carga no piloto de verdade (S28-01) e latência até o Supabase (Q-20) | 2, 4 e 5 | S30-09 | Engenharia |
-| Plano Starter (ADR-03) | 2 e 3 | S30-11 (decisão), S34-01 (aplicação) | Decisão |
-| P-12 (a): `X-Forwarded-For` | 4 | S30-03 | Engenharia |
-| P-15 (a): login com cookie e feedback em até 30 s | 4 | S30-02 | Engenharia |
-| P-15 (b): IP do cliente como penúltimo endereço | 4 | S30-03 | Engenharia |
-| `PermissionError` do supervisord | Dívida técnica | S30-10 | Engenharia |
-| Política dos indícios (S29-04, ADR-08) | 3 | S31-01 | Decisão |
-| Q-16: provedor de IA | 3 | S31-02 | Decisão |
-| Q-17: remetente dos e-mails | 3 | S31-07 | Decisão |
-| Q-22: governança das regras | 3 | S31-08 | Decisão |
-| Q-12: servidor do CIn | 3 | S41-02 | Externa |
-| Auditoria bloqueante (S25-01; NFR-13) | 5 e 6 | S31-03 | Engenharia |
-| Semgrep (NFR-09) | 6 | S31-04 | Engenharia |
-| Marco 2: guia e apresentação | 5 | S31-05 | Externa |
-| Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa |
-| Gabaritos de períodos anteriores (S20, Q-14) | 5 | S33-01 | Externa |
-| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03; S42-01 e S42-02 (12/10/2026) | Externa e Engenharia |
-| Questões reais de 2027.1 (S24, R-01) | 5 | S33-04 | Externa |
-| Referências reais por IA (S29-02) | 5 | S33-05; S42-04 (12/10/2026) | Externa |
-| Ligar os indícios no piloto | 3 | S33-06; S42-05 e S42-06 (12/10/2026) | Engenharia (bloqueada até a calibração ou a Q-35) |
-| Listas habilitadas conforme o professor | Prioridade 4 | S34-05 | Externa |
-| Teste sintético diário (NFR-06) | 6 | S34-02 | Engenharia |
-| k6 por release: NFR-04 e NFR-05 | 6 | S34-03 | Engenharia |
-| Membros ativos sem o desenvolvedor (S28-02) | 4 | Premissa mantida; revista com a coordenação na S31-05 | Decisão |
-| Backup do Supabase gratuito (premissa) | 4 | Premissa mantida; o `backup.yml` já cobre (S30-07 ensaia) | Engenharia |
-| RPO de 24 h da NFR-20 com backup semanal (achado de 07/10/2026) | — | S30-12 | Decisão |
-| `pytest-benchmark` (NFR-02) | 6 | S35-01 | Engenharia |
-| Lighthouse CI (NFR-03) | 6 | S35-02 | Engenharia |
-| Cobertura por pasta (NFR-16) | 6 | S35-03 | Engenharia |
-| Canário mensal em produção (NFR-11) | 6 | S35-04 | Engenharia |
-| JSON Schema e `ipc-rules compile` (C6) | 6 | S35-05 | Engenharia |
-| `/metrics`, Grafana e Prometheus (C8, opcionais) | 6 | S35-06 | Decisão |
-| GHCR por digest, deploy por SSH e staging (Fase 2) | 6 | S41-03, S41-04 | Engenharia (bloqueada) |
-| Backlog de experiência e REC fora do escopo | 7 | Seção 7.1, "Backlog"; sem task | — |
-| Comparação com o gabarito na verificação, no plágio e nos indícios (pedido do autor, 09/10/2026) | Q-24 | S32-01 a S32-10 | Externa e Engenharia |
-| Aviso da Sprint 20: repositório privado dos gabaritos | Revisão de 08/10/2026 | H-02, S33-01 | Engenharia e Externa |
-| Aviso da Sprint 22: casos em aberto do mapeamento | Revisão de 08/10/2026 | H-03, S31-05, S31-12 | Externa |
-| Aviso da Sprint 24: nenhuma questão real cadastrada | Revisão de 08/10/2026 | S31-09, S31-10, S31-11, S31-13, S33-04 | Engenharia e Externa |
-| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06; Sprint 42 (12/10/2026) | Decisão, Externa e Engenharia |
-| Avisos das Sprints 11, 19, 21, 25 e 28 | Revisão de 08/10/2026 | Resolvidos (S30); README corrigido (H-01) | — |
+| Pendência original | Seção da lista de 07/10/2026 | Sprint/Task | Tipo | Situação em 12/10/2026 |
+|---|---|---|---|---|
+| Conta de verificação e `PILOT_CHECK_*` | 2 | S30-01 | Externa | Feito (08/10/2026) |
+| Primeiro deploy com login (S11, S16, S19, S25; P-15) | 2 e 5 | S30-02 | Engenharia | Feito (08/10/2026) |
+| UptimeRobot, três monitores (S11, S21) | 2 e 5 | S30-04, S34-06 | Externa | Feito (08/10/2026); a conferência para 2027.1 (S34-06) espera as datas |
+| Exercício de alerta no piloto (S21; NFR-15) | 5 e 6 | S30-05, S34-04 | Engenharia | Feito; repetido a cada release (runbook) |
+| Chave do backup e `BACKUP_AGE_RECIPIENT` (S28-03) | 2 | S30-06 | Externa | Feito (08/10/2026) |
+| Ensaio de restauração do backup (S28-03; NFR-20) | 5 | S30-07 | Engenharia | Feito (S30-07) |
+| Ensaio cronometrado do rollback (S28-03) | 2 e 5 | S30-08 | Engenharia | Feito (08/10/2026) |
+| Carga no piloto de verdade (S28-01) e latência até o Supabase (Q-20) | 2, 4 e 5 | S30-09 | Engenharia | Feito (S30-09) |
+| Plano Starter (ADR-03) | 2 e 3 | S30-11 (decisão), S34-01 (aplicação) | Decisão | Decidido: plano gratuito (08/10/2026); medido na S34-01 |
+| P-12 (a): `X-Forwarded-For` | 4 | S30-03 | Engenharia | Resolvido (08/10/2026) |
+| P-15 (a): login com cookie e feedback em até 30 s | 4 | S30-02 | Engenharia | Resolvido (08/10/2026) |
+| P-15 (b): IP do cliente como penúltimo endereço | 4 | S30-03 | Engenharia | Resolvido (08/10/2026) |
+| `PermissionError` do supervisord | Dívida técnica | S30-10 | Engenharia | Resolvido (08/10/2026, P-17) |
+| Política dos indícios (S29-04, ADR-08) | 3 | S31-01 | Decisão | Decidido: aprovada (09/10/2026, Q-21) |
+| Q-16: provedor de IA | 3 | S31-02 | Decisão | Decidido (09/10/2026) |
+| Q-17: remetente dos e-mails | 3 | S31-07 | Decisão | Decidido (09/10/2026) |
+| Q-22: governança das regras | 3 | S31-08 | Decisão | Decidido (09/10/2026) |
+| Q-12: servidor do CIn | 3 | S41-02 | Externa | Adiada até a P-09 |
+| Auditoria bloqueante (S25-01; NFR-13) | 5 e 6 | S31-03 | Engenharia | Feito (09/10/2026) |
+| Semgrep (NFR-09) | 6 | S31-04 | Engenharia | Feito (09/10/2026, P-20) |
+| Marco 2: guia e apresentação | 5 | S31-05 | Externa | Pendente: apresentação em 19/10/2026 |
+| Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa | Descartado pelo autor (12/10/2026; Q-36) |
+| Gabaritos de períodos anteriores (S20, Q-14) | 5 | S33-01 | Externa | Em parte: Listas 1 a 4 de 2026.2 carregadas; faltam as Listas 5 e 6 e os períodos anteriores |
+| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03; S42-01 e S42-02 (12/10/2026) | Externa e Engenharia | Soluções anteriores a 2023 descartadas (12/10/2026); critérios e base pela Q-35 |
+| Questões reais de 2027.1 (S24, R-01) | 5 | S33-04 | Externa | Perto de março de 2027, até uma semana antes de cada lista |
+| Referências reais por IA (S29-02) | 5 | S33-05; S42-04 (12/10/2026) | Externa | Gerador aprovado (S33-09, 12/10/2026); na Sprint 42 |
+| Ligar os indícios no piloto | 3 | S33-06; S42-05 e S42-06 (12/10/2026) | Engenharia (bloqueada até a calibração ou a Q-35) | Sprint 42, depois da Q-35 |
+| Listas habilitadas conforme o professor | Prioridade 4 | S34-05 | Externa | Espera as datas de 2027.1 |
+| Teste sintético diário (NFR-06) | 6 | S34-02 | Engenharia | Feito (11/10/2026) |
+| k6 por release: NFR-04 e NFR-05 | 6 | S34-03 | Engenharia | Feito (11/10/2026) |
+| Membros ativos sem o desenvolvedor (S28-02) | 4 | Premissa mantida; revista com a coordenação na S31-05 | Decisão | Premissa mantida; revisão no Marco 2 |
+| Backup do Supabase gratuito (premissa) | 4 | Premissa mantida; o `backup.yml` já cobre (S30-07 ensaia) | Engenharia | Resolvido: o `backup.yml` cobre, ensaiado na S30-07 |
+| RPO de 24 h da NFR-20 com backup semanal (achado de 07/10/2026) | — | S30-12 | Decisão | Decidido: backup diário (08/10/2026) |
+| `pytest-benchmark` (NFR-02) | 6 | S35-01 | Engenharia | Feito (11/10/2026) |
+| Lighthouse CI (NFR-03) | 6 | S35-02 | Engenharia | Feito (11/10/2026) |
+| Cobertura por pasta (NFR-16) | 6 | S35-03 | Engenharia | Feito (11/10/2026) |
+| Canário mensal em produção (NFR-11) | 6 | S35-04 | Engenharia | Feito (11/10/2026): só no banco, com os logs pelo painel |
+| JSON Schema e `ipc-rules compile` (C6) | 6 | S35-05 | Engenharia | Feito (11/10/2026) |
+| `/metrics`, Grafana e Prometheus (C8, opcionais) | 6 | S35-06 | Decisão | Decidido: só o `/health/slo` com o UptimeRobot (11/10/2026) |
+| GHCR por digest, deploy por SSH e staging (Fase 2) | 6 | S41-03, S41-04 | Engenharia (bloqueada) | Bloqueado (Sprint 41) |
+| Backlog de experiência e REC fora do escopo | 7 | Seção 7.1, "Backlog"; sem task | — | — |
+| Comparação com o gabarito na verificação, no plágio e nos indícios (pedido do autor, 09/10/2026) | Q-24 | S32-01 a S32-10 | Externa e Engenharia | Feito (Sprint 32; 23 gabaritos no piloto em 10/10/2026) |
+| Aviso da Sprint 20: repositório privado dos gabaritos | Revisão de 08/10/2026 | H-02, S33-01 | Engenharia e Externa | Feito (08/10/2026) |
+| Aviso da Sprint 22: casos em aberto do mapeamento | Revisão de 08/10/2026 | H-03, S31-05, S31-12 | Externa | Casos decididos (ruleset 2026.2.5, 09/10/2026); a revisão do guia fica para o Marco 2 |
+| Aviso da Sprint 24: nenhuma questão real cadastrada | Revisão de 08/10/2026 | S31-09, S31-10, S31-11, S31-13, S33-04 | Engenharia e Externa | Em parte: 3 questões em 2026.2; as de 2027.1 perto de março de 2027 |
+| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06; Sprint 42 (12/10/2026) | Decisão, Externa e Engenharia | Sprint 42, depois da Q-35 |
+| Avisos das Sprints 11, 19, 21, 25 e 28 | Revisão de 08/10/2026 | Resolvidos (S30); README corrigido (H-01) | — | Resolvidos (S30) |
 
 ### 7.15 Tasks das Sprints 36 a 41 (plano de polimento de 11/10/2026)
 
@@ -1697,7 +1699,7 @@ feedback sem IA seja bom o bastante para dispensar o "Aprimorar com IA" na maior
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
-| S38-01 | US-10, US-08 | Engenharia | Explicação de cada regra: campos `explicacao` (por que é proibida) e `alternativa` (o que usar nesta lista) no `base.yaml`, mostrados no cartão da violação. Os textos saem do documento de permissões, sem inventar regra; quem revisa é um monitor-chefe ou professor [A CONFIRMAR: quem]. Rulesets `2026.2.6` e `2027.1.1` | `rulesets/*/base.yaml`, `engine/ruleset.py`, esquema JSON (S35-05), `ResultPanel.tsx` | Autor e revisor | 2 | — | Todas as regras com os dois campos; esquema e golden verdes; revisão registrada no PR |
+| S38-01 | US-10, US-08 | Engenharia | Explicação de cada regra: campos `explicacao` (por que é proibida) e `alternativa` (o que usar nesta lista) no `base.yaml`, mostrados no cartão da violação. Os textos saem do documento de permissões, sem inventar regra; quem revisa é um monitor-chefe, um professor ou o desenvolvedor (Q-31). Rulesets `2026.2.6` e `2027.1.1` | `rulesets/*/base.yaml`, `engine/ruleset.py`, esquema JSON (S35-05), `ResultPanel.tsx` | Autor e revisor | 2 | — | Todas as regras com os dois campos; esquema e golden verdes; revisão registrada no PR |
 | S38-02 | US-32 | Engenharia | O feedback sem IA usa a explicação e a alternativa de cada regra violada | `engine/feedback.py` | Autor | 1 | S38-01 | Testes do texto montado; a frase obrigatória e o `[ALUNO]` inalterados |
 | S38-03 | US-02, US-33 | Engenharia | Carregar um `.py` no editor (botão e arrastar; UTF-8 de até 50 KB). Exportar o relatório: copiar como texto e baixar um `.txt` com a lista, a questão, as regras e as linhas. Nada é guardado | `frontend/src/pages/Checker.tsx`, `ResultPanel.tsx` | Autor | 1 | — | Testes de arquivo grande demais, de encoding errado e do texto exportado |
 | S38-04 | US-32, US-22 | Engenharia | O feedback deixa de reanalisar o código: a API guarda em memória, por 10 min, só o resultado (nunca o código), pela chave do hash do código, da lista e da questão. "Gerar" e "Aprimorar" reaproveitam o resultado; sem ele, a API analisa como hoje | `ipc_api/routes/feedback.py`, um cache com limite de itens | Autor | 1,5 | — | Teste: o segundo "Gerar" não chama o analisador; nenhum código no cache |
@@ -1870,7 +1872,7 @@ Era a Sprint 36 do plano de 07/10/2026, renumerada em 11/10/2026 (as tasks S36-0
 
 **Riscos e bloqueios:** a sprint inteira está bloqueada pela P-09 e pela Q-12 e só é detalhada depois do piloto.
 
-### 7.16 Tasks das Sprints 42 a 48 (proposta de 12/10/2026: indícios de IA, período, feedback, plágio e acompanhamento)
+### 7.16 Tasks das Sprints 42 a 48 (proposta de 12/10/2026: indícios de IA, período, feedback, plágio, acompanhamento e Google)
 
 Proposta criada em 12/10/2026 a partir da revisão técnica das seis frentes pedidas pelo autor
 ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): o período da turma, a qualidade do
@@ -1881,8 +1883,9 @@ dia. Nenhuma destas sprints começa sem o comando do autor.
 
 **Por que é uma fase nova (Fase 1g):** até aqui o IP-Checker não guarda nada sobre alunos (NFR-11,
 REC-07). As Sprints 42 a 46 continuam sem guardar dados de alunos. A 47 cria a primeira
-persistência de dados pessoais de alunos e só começa depois das decisões Q-26 a Q-29 e da revisão
-do aviso de privacidade pela coordenação. A 48 depende da Q-27.
+persistência de dados pessoais de alunos, só com o resultado resumido de cada verificação (Q-26 a
+Q-29, decididas em 12/10/2026), e só vai ao piloto com o aviso de privacidade aprovado pela
+coordenação. A 48, a entrada com o Google no piloto, fica no fim da fila (decisão de 12/10/2026).
 
 **Ordem sugerida, intercalada com o plano de polimento (7.15):** 36 → 37 → 38 → **42** → **43** → **44** →
 39 → 40 → **46** → **45** → **47** → **48**, com a 41 (Fase 2) quando a P-09 e a Q-12 permitirem.
@@ -1894,17 +1897,22 @@ seletor de período; a 44 depende da S38-01 e da S38-02; a 46 depende da S40-02.
 por `scripts/release.sh NN`, sintético e exercício de alerta depois do deploy, migração nunca junto
 com o `render.yaml`, P-18).
 
-**Decisões que bloqueiam ou mudam o plano:** Q-26 a Q-34 em [`decisoes.md`](decisoes.md).
+**Decisões do plano:** respostas do autor em 12/10/2026, registradas em [`decisoes.md`](decisoes.md).
 
-| Decisão | Bloqueia |
-|---|---|
-| Q-35 (como calibrar os indícios se as soluções anteriores a 2023 não chegarem) | Sprint 42 (padrão: esperar as soluções, como diz a política) |
-| Q-26 (identificador do aluno), Q-28 (texto do feedback no histórico), Q-29 (retenção) | Sprint 47 |
-| Q-27 (guardar algo do código ligado ao aluno) | Sprint 48 |
-| Q-30 (nome da regra ou `R-xx` no feedback), Q-31 (quem revisa o estilo) | Sprint 44 (padrão até a resposta: nome da regra; monitor-chefe) |
-| Q-32 (metas de precisão e revocação do plágio) | Sprint 46 (padrão: a proposta) |
-| Q-33 (ambiguidades do documento de permissões) | Nenhuma; muda o catálogo se a resposta divergir |
-| Q-34 (o período ativo conta na janela de 6) | Sprint 43 (padrão: conta) |
+| Decisão | Resposta | Sprints |
+|---|---|---|
+| Q-26: identificador do aluno | O nome de exibição e, opcionalmente, o login do Dikastis; nunca CPF, e-mail ou matrícula | 47 |
+| Q-27: o que guardar | Só o resultado resumido, como "L3-Q1 anulada por Laços de repetição" ou "L4-Q2 validada"; nada do código (a ADR-14 foi rejeitada) | 47 |
+| Q-28: feedback no histórico | Não | 47 |
+| Q-29: retenção | Ao encerrar o período ou 12 meses depois do fim dele, o que vier primeiro | 43 e 47 |
+| Q-30: regra no feedback | Só o nome da regra | 44 |
+| Q-31: quem revisa o estilo e os textos das regras | Um monitor-chefe, um professor ou o desenvolvedor | 38 e 44 |
+| Q-32: metas do plágio | Revocação ≥ 95% na faixa de 90%; precisão de 100% na de 95% e ≥ 90% na de 90% | 46 |
+| Q-33: leituras do documento de permissões | Aguardando o autor | Catálogo |
+| Q-34: janela de períodos | O ativo e os 5 anteriores | 43 |
+| Q-35: critérios dos indícios de IA | Aguardando o autor; as soluções anteriores a 2023 foram descartadas | 42 |
+| Q-36: satisfação sem o formulário | Aguardando o autor | Eficácia (P-09) |
+| S33-09: gerador de referências por IA | Aprovado, com revisão de quem cadastra | 42 |
 
 #### Sprint 42 — Indícios de IA ligados no piloto (incluída a pedido do autor em 12/10/2026)
 
@@ -1918,14 +1926,14 @@ de permissões, sem que o painel possa ser lido como prova.
 política, e o monitor-mantenedor que calibra.
 
 **Por que agora e o que a bloqueia:** o código está pronto desde a Sprint 29 e a política foi
-aprovada em 09/10/2026. Pela política (`docs/indicios-de-ia.md`, "Como ligar no piloto"), o painel
-só é ligado com a calibração dentro da meta (no máximo 5% das soluções humanas na faixa alta), e a
-calibração espera as soluções anteriores a 2023 (S33-02). Esta sprint reúne o que faltava da Sprint
-33 (S33-02, S33-03, S33-05 e S33-06, que passam a ser S42-01, S42-02, S42-04 e S42-06) e acrescenta
-uma ligação gradual por cargo. Se as soluções não chegarem, a Q-35 decide como calibrar.
+aprovada em 09/10/2026. A política pedia a calibração com soluções humanas anteriores a 2023
+(S33-02), mas o autor a descartou em 12/10/2026: essas soluções não existem e não serão buscadas.
+Esta sprint reúne o que faltava da Sprint 33 (S33-03, S33-05, S33-06 e o gerador da S33-09,
+aprovado em 12/10/2026) e acrescenta uma ligação gradual por cargo. Os critérios dos indícios e a
+nova base de calibração esperam a validação do autor (Q-35).
 
 **Execução:**
-1. O corpus de calibração (S42-01) ou a alternativa da Q-35.
+1. Os critérios e a base de calibração validados pelo autor (S42-01, Q-35).
 2. A calibração (S42-02) e, em paralelo, a evidência e a confiança em cada indício (S42-03).
 3. As referências por IA das questões cadastradas (S42-04), que não bloqueiam a ligação: sem elas,
    o sinal de referência fica inerte e os outros funcionam.
@@ -1937,18 +1945,18 @@ uma ligação gradual por cargo. Se as soluções não chegarem, a Q-35 decide c
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
-| S42-01 | US-34 | Externa | Corpus de calibração: as soluções humanas anteriores a 2023 (era a S33-02), fora do repositório, no formato dos gabaritos, ou a alternativa escolhida na Q-35 | Pasta local fora do repositório | Autor e coordenação | — | Q-35 | Pelo menos 200 soluções nas 6 listas [PREMISSA]; nenhum dado de aluno no repositório |
-| S42-02 | US-34 | Engenharia | Calibração (era a S33-03): `ipc-rules calibrate` com `--max-alto 5` em cada período carregado; faixas de `engine/indicators.py` ajustadas por PR até a meta; a distribuição registrada no ADR-08 | `cli.py`, `engine/indicators.py`, ADR-08 | Autor | 2 | S42-01 | O comando sai com 0; `test_indicators.py` com as faixas novas |
+| S42-01 | US-34 | Decisão | Validar os critérios dos indícios e a base de calibração sem as soluções anteriores a 2023 (Q-35): os gabaritos da equipe para os alarmes falsos e soluções novas geradas por IA, diferentes das referências, para os acertos | `docs/indicios-de-ia.md`, ADR-08 | Autor | — | Q-35 | Critérios e metas aprovados e registrados; pelo menos 200 soluções no total, entre gabaritos e soluções geradas por IA (premissa validada pelo autor em 12/10/2026) |
+| S42-02 | US-34 | Engenharia | Calibração (era a S33-03): `ipc-rules calibrate` na base da S42-01, em cada período carregado; faixas de `engine/indicators.py` ajustadas por PR até as metas; a distribuição registrada no ADR-08 | `cli.py`, `engine/indicators.py`, ADR-08 | Autor | 2 | S42-01 | Nenhum gabarito na faixa alta e as metas de acerto da S42-01 cumpridas; `test_indicators.py` com as faixas novas |
 | S42-03 | US-34 | Engenharia | Cada indício passa a trazer a evidência (regra, linhas e um trecho de até 120 caracteres) e a confiança (baixa, média ou alta); o painel ganha um teste de vocabulário que recusa "prova", "veredito", "plagiou" e "usou IA" como afirmação | `engine/indicators.py`, `IndicatorsPanel.tsx`, OpenAPI | Autor | 1 | — | pytest e Vitest; contrato atualizado |
-| S42-04 | US-34 | Externa | Referências por IA das questões cadastradas do período ativo (era a S33-05; com o gerador da S33-09 se o autor decidir), revisadas por quem cadastra | `rulesets/<período>/referencias/` | Equipe | — | S33-04 | `ipc-rules validate` mostra as referências em todas as questões cadastradas |
+| S42-04 | US-34 | Engenharia e equipe | Referências por IA das questões cadastradas (era a S33-05), geradas a partir do enunciado pela cadeia do "Aprimorar com IA" (gerador da S33-09, aprovado em 12/10/2026) e revisadas por quem cadastra; as de 2027.1 saem com as questões, perto de março de 2027 | `cli.py`, `rulesets/<período>/referencias/` | Autor e equipe | 1 | S33-04 | `ipc-rules validate` mostra as referências em todas as questões cadastradas |
 | S42-05 | US-34 | Engenharia | Ligação gradual: `IPC_AI_INDICATORS` aceita `0` (desligado), `chefia` (desenvolvedor, professores e monitores-chefes) e `1` (toda a equipe); a API só calcula e devolve o painel para os cargos ligados, e `/api/v1/auth/options` informa a cada conta se ela o vê | `settings.py`, `routes/validate.py`, `routes/auth.py`, `test_indicators_api.py` | Autor | 1 | — | Matriz cargo × valor testada por chamada direta; o feedback continua sem indícios |
 | S42-06 | US-34 | Engenharia | Ligar no piloto (era a S33-06): um PR com `IPC_AI_INDICATORS: chefia` no `render.yaml`, a variável `PILOT_AI_INDICATORS` e o teste do piloto; depois de uma lista com o registro de casos, outro PR com `1` | `render.yaml`, `.github/workflows/deploy.yml`, `backend/tests/pilot/` | Autor | 0,5 | S42-02, S42-05 | Painel visível numa verificação com a conta de verificação; o sintético e o exercício de alerta depois de cada deploy |
-| S42-07 | US-34 | Documentação | Guia da equipe (como ler o painel e conduzir a conversa, com as perguntas sugeridas), o registro de casos confirmados e descartados por lista, sem nome nem matrícula (planilha do critério 3), o runbook (desligar pela variável no Render, sem deploy de código) e o status da ADR-08 e de `docs/indicios-de-ia.md` | docs | Autor | 1 | — | Revisão pela coordenação |
+| S42-07 | US-34 | Documentação | Guia da equipe (como ler o painel e conduzir a conversa, com as perguntas sugeridas), como a chefia registra, sem nome nem matrícula, os casos confirmados e descartados (sem a planilha, descartada em 12/10/2026), o runbook (desligar pela variável no Render, sem deploy de código) e o status da ADR-08 e de `docs/indicios-de-ia.md` | docs | Autor | 1 | — | Revisão pela coordenação |
 
 **ADRs:** ADR-08 (status: ligado no piloto, com a calibração registrada).
 
 **Critérios de aceite:**
-1. A calibração deixa no máximo 5% das soluções humanas na faixa alta.
+1. Nenhum gabarito da equipe fica na faixa alta, e as metas de acerto validadas na Q-35 são cumpridas.
 2. Com `chefia`, um monitor não recebe o painel, e um monitor-chefe recebe.
 3. Com `1`, toda a equipe recebe o painel, e o feedback nunca leva os indícios.
 4. Cada indício mostra a regra, as linhas, o trecho e a confiança, com o aviso de que não é prova.
@@ -1967,8 +1975,8 @@ junto, P-18); a Vercel só se o painel mudar. Depois, o sintético e o exercíci
 
 **Riscos:**
 - O painel ser lido como prova: o texto, o guia e a ligação primeiro para a chefia reduzem o risco.
-- Um corpus de calibração pequeno ou enviesado (Q-35): a meta é revista a cada período com o
-  registro de casos.
+- A base humana é pequena (os gabaritos da equipe): as metas são revistas a cada lista, com o uso
+  pela chefia.
 - Desligar é imediato: a variável no Render volta a `0` sem deploy de código.
 
 #### Sprint 43 — Período na interface e retenção por encerramento
@@ -1991,7 +1999,7 @@ o mantenedor encerre períodos antigos sem perder nada do Git.
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
-| S43-01 | US-39 | Engenharia | `load_rulesets(root)` carrega o período do `ATIVO` e os 5 anteriores presentes em `rulesets/` (ignora `rulesets/encerrados/`); o manifesto passa a listar `periods` (período, ativo, `ruleset_version`, questões); cache de preparação por (período, hash) | `engine/ruleset.py`, `service/app.py`, `/internal/ruleset/manifest` | Autor | 2 | — | Testes com 7 períodos em `tmp_path` (6 carregados); hash por período; subida até +2 s em relação a um período [PREMISSA] |
+| S43-01 | US-39 | Engenharia | `load_rulesets(root)` carrega o período do `ATIVO` e os 5 anteriores presentes em `rulesets/` (ignora `rulesets/encerrados/`); o manifesto passa a listar `periods` (período, ativo, `ruleset_version`, questões); cache de preparação por (período, hash) | `engine/ruleset.py`, `service/app.py`, `/internal/ruleset/manifest` | Autor | 2 | — | Testes com 7 períodos em `tmp_path` (6 carregados); hash por período; subida até +2 s em relação a um período (premissa validada pelo autor em 12/10/2026) |
 | S43-02 | US-39 | Engenharia | `period` opcional em `/validate`, `/similarity`, `/similarity/batch` e `/feedback` (padrão: o ativo); `GET /api/v1/periods`; 422 `UNKNOWN_PERIOD`; `questions.py` resolve por (período, questão); a telemetria e a adoção gravam o período da requisição | `ipc_api/schemas.py`, `routes/*`, `questions.py`, `telemetry.py`, `adoption.py`, OpenAPI | Autor | 1 | S43-01 | Contrato OpenAPI; teste com `L3-Q9` de 2026.2 e o ativo em 2027.1 |
 | S43-03 | US-39 | Engenharia | `PeriodSelector` antes de `ListSelector` no verificador e no plágio, com "(ativo)" no rótulo; o rascunho (S37-05) guarda o período; "Próximo aluno" mantém o período | `frontend/src/components/`, `Checker.tsx`, `Plagiarism.tsx` | Autor | 1 | S43-02 | Vitest e e2e da lista atrasada |
 | S43-04 | US-40 | Engenharia | `ipc-rules retire-period <período> [--dry-run]` move a pasta para `rulesets/encerrados/` e recusa o ativo e os períodos da janela; o índice de gabaritos ignora `encerrados/`; aviso em `/health/slo` quando o `ATIVO` parece defasado em relação à data (só aviso, nunca troca automática) | `cli.py`, `gabaritos.py`, `routes/meta.py` | Autor | 1 | S43-01 | `--dry-run` não toca no disco; recusas testadas |
@@ -2130,7 +2138,7 @@ e naturais da mesma questão não pareçam cópia.
 **ADRs:** ADR-07 (revisão).
 
 **Critérios de aceite:**
-1. A medição mostra revocação ≥ 95% na faixa de 90% para as três transformações e precisão de 100% na faixa de 95% [PREMISSA até a Q-32].
+1. A medição mostra revocação ≥ 95% na faixa de 90% para as três transformações e precisão de 100% na faixa de 95% (Q-32).
 2. A turma sintética de 30 soluções tem os dois grupos achados e nenhum independente acima de 90%.
 
 **Testes:**
@@ -2146,14 +2154,14 @@ e naturais da mesma questão não pareçam cópia.
 **Riscos:** o corpus de independentes é pequeno até chegarem as soluções anteriores a 2023 (P-21);
 os números da primeira medição são provisórios.
 
-#### Sprint 47 — Grupos de acompanhamento e histórico dos alunos (bloqueada pelas Q-26 a Q-29)
+#### Sprint 47 — Grupos de acompanhamento e histórico dos alunos (vai ao piloto com o aviso de privacidade aprovado)
 
 **Objetivo:** cada monitor cadastra os alunos pelos quais é responsável e acompanha o histórico
 deles, sozinho, em dupla ou em trio.
 
 **Missão:** que um grupo de acompanhamento (N monitores e M alunos, por período) compartilhe as
-verificações, os indícios, os alertas de plágio e, se a Q-28 permitir, os feedbacks, sem guardar o
-código do aluno.
+verificações, os indícios e os alertas de plágio como resultados resumidos, sem o feedback (Q-28) e
+sem nada do código do aluno (Q-27).
 
 **Personas:** o monitor (US-45, US-46) e o monitor-chefe e o professor que supervisionam (US-47).
 
@@ -2167,7 +2175,7 @@ código do aluno.
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
-| S47-01 | US-45 | Engenharia | Migração `0007_acompanhamento`: `app.student` (período, nome de exibição, referência opcional, nunca CPF, e-mail ou matrícula), `app.follow_group`, `app.group_member` (convite e aceite), `app.group_student`, `app.check_record` (só inserção; resultado, regras e linhas, faixas, quem executou, hash do código; sem o código) e `app.group_log`; `app.purge_semester()` `SECURITY DEFINER`; o `ipc_app` sem `DELETE` direto | `database/migrations/0007_*` | Autor | 2 | Q-26 a Q-29 | Ida e volta testadas (`test_migrations.py`) |
+| S47-01 | US-45 | Engenharia | Migração `0007_acompanhamento`: `app.student` (período, nome de exibição e, opcionalmente, o login do Dikastis, Q-26; nunca CPF, e-mail ou matrícula), `app.follow_group`, `app.group_member` (convite e aceite), `app.group_student`, `app.check_record` (só inserção; o resultado resumido, como "L3-Q1 anulada por Laços de repetição" ou "L4-Q2 validada", com as regras, a faixa dos indícios de IA e a do alerta de plágio quando houver e quem executou; sem código, hash, linhas, trechos ou feedback, Q-27 e Q-28) e `app.group_log`; `app.purge_semester()` `SECURITY DEFINER`; o `ipc_app` sem `DELETE` direto | `database/migrations/0007_*` | Autor | 2 | — | Ida e volta testadas (`test_migrations.py`) |
 | S47-02 | US-45, US-47 | Engenharia | Política cargo × ação × alvo em `auth/policy.py` (membro vê e edita o próprio grupo; monitor-chefe, professor e desenvolvedor leem todos os grupos do período); rotas `groups`, `invites`, `students` e `history` | `auth/policy.py`, `routes/groups.py`, OpenAPI | Autor | 2 | S47-01 | Matriz testada por chamada direta (NFR-23) |
 | S47-03 | US-46 | Engenharia | `student_id` e `group_id` opcionais em `/validate`, `/feedback` e `/similarity`; o registro é gravado em segundo plano e descartado sob `StoreBusy`, como a telemetria | `routes/*`, `telemetry.py` (padrão) | Autor | 1 | S47-02 | A resposta não muda com o banco ocupado |
 | S47-04 | US-45, US-46, US-47 | Engenharia | Telas "Meus alunos" (grupos, convites, alunos), campo "Aluno" no verificador e no plágio, "Histórico do aluno" (linha do tempo com quem executou) e a leitura no Gerenciar | `frontend/src/pages/` | Autor | 3 | S47-02 | e2e: criar grupo, convidar, aceitar, adicionar aluno fictício, verificar e ver no histórico |
@@ -2190,29 +2198,63 @@ código do aluno.
 | Fluxo completo | e2e | PR | Criar, convidar, aceitar, verificar e ver no histórico |
 | Carga | `run_load.py` | Uma vez | Sem 500; registros descartados sob carga |
 
-**Deploy:** release `sprint-47`. Migração antes da release e nunca junto com o `render.yaml` (P-18);
+**Deploy:** release `sprint-47`, só depois da aprovação do aviso de privacidade (S47-05). Migração antes da release e nunca junto com o `render.yaml` (P-18);
 depois, Render e Vercel.
 
 **Riscos:** dado pessoal novo de terceiros (os alunos não usam a ferramenta, P-13); a base legal e o
 aviso dependem da coordenação. Mais escritas no banco do plano gratuito (`POOL_SIZE=5`).
 
-#### Sprint 48 — Sinais com histórico e plágio entre períodos (bloqueada pela Q-27)
+#### Sprint 48 — Entrada com o Google no piloto (no fim da fila, decisão de 12/10/2026)
 
-**Objetivo:** usar o histórico para dois sinais que hoje são impossíveis: a mudança brusca de estilo
-do mesmo aluno e a semelhança com soluções de períodos anteriores.
+**Objetivo:** que a equipe entre no piloto também com a conta Google da UFPE, além da senha.
 
-**Missão:** que o monitor veja, como indício e nunca como veredito, quando uma solução destoa do
-histórico do aluno ou coincide com a de um período anterior.
+**Missão:** ligar no piloto a entrada pelo Google que existe desde a Sprint 16, sem afrouxar as regras
+de domínio e de aprovação.
 
-**Personas:** o membro da equipe que analisa indícios (US-34) e plágio (US-31).
+**Personas:** o membro da equipe que prefere não guardar outra senha (US-25).
 
-**Condição:** só com a Q-27 respondida com "impressão digital" (o multiconjunto de hashes de
-subárvores, que não reconstrói o código). A ADR-14 registra a decisão; as tasks S48-01 a S48-04
-serão detalhadas depois dela: a impressão digital no `check_record`, a comparação com os registros
-da mesma questão em períodos anteriores, o indício de mudança de estilo e a calibração com a mesma
-meta da ADR-08 (no máximo 5% de faixa alta em soluções humanas).
+**Contexto:** o código, os testes e a recusa de domínios fora da UFPE e de e-mail não verificado
+existem desde a Sprint 16 (US-25, `auth/google.py`). No piloto, o botão não aparece porque faltam o
+cliente OAuth e as variáveis `IPC_GOOGLE_CLIENT_ID` e `IPC_GOOGLE_CLIENT_SECRET` (`deploy/piloto.md`,
+passo 6). A antiga Sprint 48 (impressões digitais, ADR-14) saiu do plano com a Q-27; a integração
+com outros projetos da monitoria (Q-23) fica para depois, sem sprint por enquanto.
 
-**ADRs:** ADR-14 (novo), ADR-08 e ADR-07 (revisões).
+**Execução:**
+1. O autor cria o cliente OAuth e grava as variáveis no painel do Render (S48-01).
+2. A verificação no piloto e o ensaio de entrada (S48-02).
+3. Os documentos (S48-03).
+
+**Histórias:** US-25.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S48-01 | US-25 | Externa | Criar no Google Cloud o cliente OAuth do tipo aplicativo da Web, com a URI de retorno `<endereço da Vercel>/api/v1/auth/google/callback`, só os escopos `openid`, `email` e `profile` e a tela de consentimento publicada; gravar `IPC_GOOGLE_CLIENT_ID` e `IPC_GOOGLE_CLIENT_SECRET` no painel do Render, nunca no repositório | Google Cloud, painel do Render | Autor | — | — | `/api/v1/auth/options` responde com o Google ligado no piloto |
+| S48-02 | US-25 | Engenharia | O teste do piloto confere o Google ligado; ensaio com uma conta `@cin.ufpe.br` nova (entra na fila de aprovação), uma já existente (chega à mesma conta) e uma de outro domínio (recusada) | `backend/tests/pilot/`, `docs/runbook.md` | Autor | 1 | S48-01 | Os três casos registrados no runbook |
+| S48-03 | US-25 | Documentação | Guia da equipe (entrar com o Google), aviso de privacidade (o Google como provedor de identidade), runbook (troca do segredo) e README | docs, `Privacy.tsx` | Autor | 0,5 | — | Revisão |
+
+**ADRs:** nenhum novo; o ADR-04 já cobre a entrada pelo Google.
+
+**Critérios de aceite:**
+1. O botão de entrar com o Google aparece no piloto.
+2. Uma conta Google fora de `cin.ufpe.br` e `ufpe.br` é recusada, mesmo com o parâmetro `hd` alterado (US-25).
+3. Uma conta nova pelo Google só tem acesso depois da aprovação.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Domínio e aprovação | pytest (os testes da Sprint 16) | PR | Verdes |
+| Google ligado no piloto | `tests/pilot` | Depois do deploy | O Google aparece ligado |
+| Ensaio de entrada | Roteiro do runbook | Uma vez | Os três casos |
+
+**Deploy:** release `sprint-48` (teste do piloto e documentos). As variáveis do Google valem no
+Render depois de um Manual Deploy; a Vercel não muda. Depois, o sintético.
+
+**Riscos:**
+- Em modo de teste, a tela de consentimento só aceita os usuários listados; ela precisa estar
+  publicada. Com só os escopos básicos, o Google não deve exigir a revisão do aplicativo
+  [A CONFIRMAR no console].
+- Um segredo a mais para trocar (runbook).
 
 ## 8. Definition of Done (DoD)
 
@@ -2283,7 +2325,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] README, `RULES.md` e runbook foram atualizados quando o setup, a operação ou o processo de regras mudou.
 - [ ] Toda premissa ou questão nova ou resolvida foi registrada em `docs/decisoes.md` (seção 1.3).
 - [ ] O aviso de privacidade foi atualizado quando mudaram os dados pessoais guardados ou enviados a terceiros (a partir da Sprint 14).
-- [ ] [PLANEJADO, a partir da Sprint 44] O `estilo.yaml` do feedback passa no esquema, e as mudanças de tom foram revisadas por quem a Q-31 indicar.
+- [ ] [PLANEJADO, a partir da Sprint 44] O `estilo.yaml` do feedback passa no esquema, e as mudanças de tom foram revisadas por um monitor-chefe, um professor ou o desenvolvedor (Q-31).
 
 ### Implantação
 
