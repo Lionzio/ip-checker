@@ -815,13 +815,13 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 33 (12/07–25/07) | Gabaritos, questões de 2027.1 e calibração | US-13, US-14, US-34 | Job dos gabaritos rodando; calibração com ≤ 5% de faixa alta; ruleset de 2027.1 com questões e referências | Dados externos (Q-14, soluções anteriores a 2023, documento de permissões de 2027.1) |
 | 34 (26/07–08/08) | Prontidão para 2027.1 | US-12, US-19, US-22 | Plano do Render aplicado e medido; teste sintético diário; cenários do NFR-04 e do NFR-05; listas validadas habilitadas | Custo do Starter (decisão do autor); calendário da UFPE (P-10) |
 | 35 (09/08–22/08) | Controles de qualidade e observabilidade | US-14, US-15, US-17, US-21 | pytest-benchmark, Lighthouse CI, cobertura por pasta, canário mensal e esquema do ruleset sem [PLANEJADO] | Variação de tempo dos runners; chave de API do Render para os logs |
-| 36 (sob comando do autor) | Defeitos e documentos certos para a campanha de testes | US-11, US-20, US-22, US-31, US-33, US-37 | Turma com nomes repetidos e `###` no código corrigida; Tab e Shift+Tab no editor; construções em português; tempo de 50 KB medido no piloto; guia e documentação fiéis ao motor | O separador novo muda um hábito da equipe |
+| 36 (sob comando do autor) | Defeitos e documentos certos para a campanha de testes | US-06, US-08, US-11, US-20, US-22, US-31, US-33, US-37 | Turma com nomes repetidos e `###` no código corrigida; Tab e Shift+Tab no editor; recursão só na Lista 6 (Q-33); construções em português; tempo de 50 KB medido no piloto; guia e documentação fiéis ao motor | O separador novo muda um hábito da equipe |
 | 37 (sob comando do autor) | Verificação mais clara | US-09, US-11, US-21, US-33 | Resumo por categoria e cartões; editor fixo e abas no celular; componentes comuns; identidade visual; tema, rascunho e atalhos | Mudança visual grande |
 | 38 (sob comando do autor) | Explicar cada regra e exportar | US-02, US-08, US-10, US-12, US-22, US-32, US-33 | Porquê e alternativa em cada violação; feedback sem IA mais completo; exportar e carregar `.py`; feedback sem nova análise | Revisão dos textos por quem conhece o documento |
 | 39 (sob comando do autor) | Qualidade interna, operação e documentação | US-14, US-15, US-20, US-35 | Arquivos menores; testes das páginas; CI mais rápida; backup agendado e restauração ensaiada; documentação reorganizada | Refatorar sem mudar comportamento |
 | 40 (sob comando do autor) | A correção da turma inteira | US-16, US-31, US-33 | Correção em lote por upload com CSV; plágio todos contra todos com grupos; painel por lista | Carga concentrada no plano gratuito |
 | 41 (após 2027.1) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
-| 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; critérios a validar (Q-35) |
+| 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; base humana pequena (os gabaritos da equipe) |
 | 43 (sob comando do autor) | Período na página e retenção por encerramento | US-37, US-39, US-40 | Período antes de Lista e Questão; o ativo e os 5 anteriores carregados; `retire-period` com simulação | `ruleset_version` por período nos painéis |
 | 44 (sob comando do autor) | Feedback rastreável e o padrão do monitor | US-32, US-41, US-42 | Cada violação com linha e motivo no feedback sem IA; `estilo.yaml` revisado por PR | Texto mais longo para o Dikastis |
 | 45 (sob comando do autor) | "Aprimorar com IA" com validação e crítica | US-32, US-43 | Nenhuma construção fora dos achados; nada de solução pronta nem de gabarito; uma rodada de crítica | Uma chamada a mais da cota gratuita |
@@ -1490,12 +1490,12 @@ Criada em 07/10/2026 e atualizada em 12/10/2026 pelo CHANGELOG e pelas decisões
 | Auditoria bloqueante (S25-01; NFR-13) | 5 e 6 | S31-03 | Engenharia | Feito (09/10/2026) |
 | Semgrep (NFR-09) | 6 | S31-04 | Engenharia | Feito (09/10/2026, P-20) |
 | Marco 2: guia e apresentação | 5 | S31-05 | Externa | Pendente: apresentação em 19/10/2026 |
-| Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa | Descartado pelo autor (12/10/2026; Q-36) |
+| Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa | Descartado pelo autor; a satisfação será medida com os feedbacks coletados pelo autor (Q-36, 12/10/2026) |
 | Gabaritos de períodos anteriores (S20, Q-14) | 5 | S33-01 | Externa | Em parte: Listas 1 a 4 de 2026.2 carregadas; faltam as Listas 5 e 6 e os períodos anteriores |
-| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03; S42-01 e S42-02 (12/10/2026) | Externa e Engenharia | Soluções anteriores a 2023 descartadas (12/10/2026); critérios e base pela Q-35 |
+| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03; S42-01 e S42-02 (12/10/2026) | Externa e Engenharia | Soluções anteriores a 2023 descartadas (12/10/2026); critérios e base aprovados (Q-35, 12/10/2026); calibração na S42-02 |
 | Questões reais de 2027.1 (S24, R-01) | 5 | S33-04 | Externa | Perto de março de 2027, até uma semana antes de cada lista |
 | Referências reais por IA (S29-02) | 5 | S33-05; S42-04 (12/10/2026) | Externa | Gerador aprovado (S33-09, 12/10/2026); na Sprint 42 |
-| Ligar os indícios no piloto | 3 | S33-06; S42-05 e S42-06 (12/10/2026) | Engenharia (bloqueada até a calibração ou a Q-35) | Sprint 42, depois da Q-35 |
+| Ligar os indícios no piloto | 3 | S33-06; S42-05 e S42-06 (12/10/2026) | Engenharia | Sprint 42 (critérios aprovados em 12/10/2026) |
 | Listas habilitadas conforme o professor | Prioridade 4 | S34-05 | Externa | Espera as datas de 2027.1 |
 | Teste sintético diário (NFR-06) | 6 | S34-02 | Engenharia | Feito (11/10/2026) |
 | k6 por release: NFR-04 e NFR-05 | 6 | S34-03 | Engenharia | Feito (11/10/2026) |
@@ -1514,7 +1514,7 @@ Criada em 07/10/2026 e atualizada em 12/10/2026 pelo CHANGELOG e pelas decisões
 | Aviso da Sprint 20: repositório privado dos gabaritos | Revisão de 08/10/2026 | H-02, S33-01 | Engenharia e Externa | Feito (08/10/2026) |
 | Aviso da Sprint 22: casos em aberto do mapeamento | Revisão de 08/10/2026 | H-03, S31-05, S31-12 | Externa | Casos decididos (ruleset 2026.2.5, 09/10/2026); a revisão do guia fica para o Marco 2 |
 | Aviso da Sprint 24: nenhuma questão real cadastrada | Revisão de 08/10/2026 | S31-09, S31-10, S31-11, S31-13, S33-04 | Engenharia e Externa | Em parte: 3 questões em 2026.2; as de 2027.1 perto de março de 2027 |
-| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06; Sprint 42 (12/10/2026) | Decisão, Externa e Engenharia | Sprint 42, depois da Q-35 |
+| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06; Sprint 42 (12/10/2026) | Decisão, Externa e Engenharia | Sprint 42 (critérios aprovados em 12/10/2026) |
 | Avisos das Sprints 11, 19, 21, 25 e 28 | Revisão de 08/10/2026 | Resolvidos (S30); README corrigido (H-01) | — | Resolvidos (S30) |
 
 ### 7.15 Tasks das Sprints 36 a 41 (plano de polimento de 11/10/2026)
@@ -1567,9 +1567,10 @@ que cuida da documentação (US-20).
 2. O editor (S36-03).
 3. A tela de verificação (S36-04 e S36-05).
 4. A medição no piloto (S36-06), que depende do deploy da release anterior.
-5. Por último, a documentação (S36-07), num PR só de `.md`.
+5. A recursão só na Lista 6 (S36-09), num PR de regras.
+6. Por último, a documentação (S36-07), num PR só de `.md`.
 
-**Histórias:** US-11, US-20, US-22, US-31, US-33 e US-37.
+**Histórias:** US-06, US-08, US-11, US-20, US-22, US-31, US-33 e US-37.
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
@@ -1581,6 +1582,7 @@ que cuida da documentação (US-20).
 | S36-06 | US-22 | Engenharia | Medir no piloto (0,1 CPU) a análise da entrada de 50 KB do benchmark, pela conta de verificação e pelo `Server-Timing`. Se passar de 1 s, subir o `IPC_TIMEOUT_S` do analisador no `render.yaml`, com folga até o prazo da API, ou limitar o tamanho no piloto | ADR-03, `render.yaml` se preciso | Autor | 0,5 | Deploy da release anterior | Tempo registrado no ADR-03; nenhum 422 por prazo para entradas legítimas de até 50 KB |
 | S36-07 | US-20 | Engenharia | Documentação fiel ao que existe. Ver a lista logo abaixo da tabela | `docs/`, `deploy/piloto.md`, `README.md` | Autor | 1,5 | — | Os achados da revisão de 11/10/2026 resolvidos; o guia diz o mesmo que o motor nos cenários do roteiro |
 | S36-08 | US-11 | Externa | Campanha de testes manuais pela equipe, com `docs/testes-manuais.md` (continua a S35-10). Cada falha confirmada vira task, com teste | Fichas de falha | Equipe | — | S36-07 | Fichas respondidas; falhas viram tasks na Sprint 37 |
+| S36-09 | US-06, US-08 | Engenharia | Recursão só na Lista 6 (Q-33, decisão do autor de 12/10/2026): uma função que chama a si mesma, direta ou mutuamente (C-03), passa a ser "Fora da lista" nas Listas 4 e 5, liberada a partir da 6; as outras formas de função continuam permitidas desde a 4. O `derived:recursion` sai dos fatos estruturais e passa a ser permitido a partir da Lista 6 pela regra da recursão (de preferência com o ID da R-68, sem criar ID fora do catálogo); o comentário da R-59, a seção 5.2.3 e a matriz de mapeamento acompanham. Rulesets de 2026.2 e de 2027.1 numa versão nova, com o de acordo do professor (DoD) | `rulesets/*/base.yaml`, `engine/policy.py` (se preciso), `backend/tests/golden/`, `docs/mapping-R-xx.md` | Autor | 1 | — | Pelo menos 3 casos golden (recursão na Lista 6 permitida, recursão direta na Lista 4 e mútua na Lista 5 "Fora da lista"), com 0 FP e 0 FN; os gabaritos das Listas 4 e 5 de 2026.2 seguem sem violação, ou o caso vai ao autor |
 
 **O que a S36-07 corrige:**
 - **Guia da equipe:**
@@ -1608,6 +1610,7 @@ que cuida da documentação (US-20).
 3. Nenhum termo técnico em inglês na comparação com o gabarito.
 4. O tempo de 50 KB no piloto está medido.
 5. O guia e a documentação passam na conferência da revisão.
+6. Uma função recursiva na Lista 4 ou na 5 aparece como "Fora da lista", liberada na Lista 6 (Q-33).
 
 **Testes:**
 
@@ -1618,11 +1621,12 @@ que cuida da documentação (US-20).
 | Nomes das construções | pytest ou Vitest | PR | Mapa completo, sem termo do `ast` na tela |
 | Verificando e Cancelar | Vitest (`Checker`) | PR | Estado de espera e cancelamento |
 | Tempo de 50 KB no piloto | `Server-Timing` pela conta de verificação | Depois do deploy | Registrado no ADR-03 |
+| Recursão só na Lista 6 | pytest golden e `official_answers` | PR | 0 FP e 0 FN; gabaritos sem violação |
 | Regressão | base de 7.12.1 (27 etapas) | PR e `develop` | Verde |
 
 **Deploy:** release `sprint-36`.
 - **Vercel:** sim, porque a página muda (S36-01 a S36-05), com **Create Deployment > main**.
-- **Render:** Manual Deploy se a S36-04 mudar o analisador; publica sozinho se a S36-06 mudar o `render.yaml`. Sem migração.
+- **Render:** Manual Deploy, porque o ruleset muda (S36-09) e talvez o analisador (S36-04); publica sozinho se a S36-06 mudar o `render.yaml`. Sem migração.
 - **Depois:** sintético e exercício de alerta.
 
 **Riscos:** o separador novo muda um hábito da equipe; por isso o `### nome` continua aceito, com aviso.
@@ -1908,10 +1912,10 @@ com o `render.yaml`, P-18).
 | Q-30: regra no feedback | Só o nome da regra | 44 |
 | Q-31: quem revisa o estilo e os textos das regras | Um monitor-chefe, um professor ou o desenvolvedor | 38 e 44 |
 | Q-32: metas do plágio | Revocação ≥ 95% na faixa de 90%; precisão de 100% na de 95% e ≥ 90% na de 90% | 46 |
-| Q-33: leituras do documento de permissões | Aguardando o autor | Catálogo |
+| Q-33: leituras do documento de permissões | Recursão só na Lista 6; só o literal `None` anula; `in`, `pop()` e `copy()` em tuplas e dicionários seguem as listas desses tipos | 36 (S36-09) |
 | Q-34: janela de períodos | O ativo e os 5 anteriores | 43 |
-| Q-35: critérios dos indícios de IA | Aguardando o autor; as soluções anteriores a 2023 foram descartadas | 42 |
-| Q-36: satisfação sem o formulário | Aguardando o autor | Eficácia (P-09) |
+| Q-35: critérios dos indícios de IA | Os critérios propostos, com a repetição no máximo média, dois marcadores novos e a calibração pelos gabaritos e por soluções novas geradas por IA | 42 |
+| Q-36: satisfação sem o formulário | O autor mede no futuro, com os feedbacks da equipe coletados manualmente | Eficácia (P-09) |
 | S33-09: gerador de referências por IA | Aprovado, com revisão de quem cadastra | 42 |
 
 #### Sprint 42 — Indícios de IA ligados no piloto (incluída a pedido do autor em 12/10/2026)
@@ -1930,7 +1934,7 @@ aprovada em 09/10/2026. A política pedia a calibração com soluções humanas 
 (S33-02), mas o autor a descartou em 12/10/2026: essas soluções não existem e não serão buscadas.
 Esta sprint reúne o que faltava da Sprint 33 (S33-03, S33-05, S33-06 e o gerador da S33-09,
 aprovado em 12/10/2026) e acrescenta uma ligação gradual por cargo. Os critérios dos indícios e a
-nova base de calibração esperam a validação do autor (Q-35).
+nova base de calibração foram aprovados pelo autor em 12/10/2026 (Q-35).
 
 **Execução:**
 1. Os critérios e a base de calibração validados pelo autor (S42-01, Q-35).
@@ -1945,9 +1949,9 @@ nova base de calibração esperam a validação do autor (Q-35).
 
 | ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
 |---|---|---|---|---|---|---|---|---|
-| S42-01 | US-34 | Decisão | Validar os critérios dos indícios e a base de calibração sem as soluções anteriores a 2023 (Q-35): os gabaritos da equipe para os alarmes falsos e soluções novas geradas por IA, diferentes das referências, para os acertos | `docs/indicios-de-ia.md`, ADR-08 | Autor | — | Q-35 | Critérios e metas aprovados e registrados; pelo menos 200 soluções no total, entre gabaritos e soluções geradas por IA (premissa validada pelo autor em 12/10/2026) |
+| S42-01 | US-34 | Decisão | Validar os critérios dos indícios e a base de calibração sem as soluções anteriores a 2023 (Q-35): os gabaritos da equipe para os alarmes falsos e soluções novas geradas por IA, diferentes das referências, para os acertos | `docs/indicios-de-ia.md`, ADR-08 | Autor | — | Q-35 | Feito em 12/10/2026 (Q-35): critérios e metas aprovados e registrados em `docs/indicios-de-ia.md`; pelo menos 200 soluções no total, entre gabaritos e soluções geradas por IA (premissa validada pelo autor em 12/10/2026) |
 | S42-02 | US-34 | Engenharia | Calibração (era a S33-03): `ipc-rules calibrate` na base da S42-01, em cada período carregado; faixas de `engine/indicators.py` ajustadas por PR até as metas; a distribuição registrada no ADR-08 | `cli.py`, `engine/indicators.py`, ADR-08 | Autor | 2 | S42-01 | Nenhum gabarito na faixa alta e as metas de acerto da S42-01 cumpridas; `test_indicators.py` com as faixas novas |
-| S42-03 | US-34 | Engenharia | Cada indício passa a trazer a evidência (regra, linhas e um trecho de até 120 caracteres) e a confiança (baixa, média ou alta); o painel ganha um teste de vocabulário que recusa "prova", "veredito", "plagiou" e "usou IA" como afirmação | `engine/indicators.py`, `IndicatorsPanel.tsx`, OpenAPI | Autor | 1 | — | pytest e Vitest; contrato atualizado |
+| S42-03 | US-34 | Engenharia | Os critérios aprovados na Q-35: a repetição da mesma proibição passa a ir no máximo à faixa média, e entram dois marcadores sem faixa (texto dentro do `input()` e validação de entrada que o enunciado não pede). Cada indício passa a trazer a evidência (regra, linhas e um trecho de até 120 caracteres) e a confiança (baixa, média ou alta); o painel ganha um teste de vocabulário que recusa "prova", "veredito", "plagiou" e "usou IA" como afirmação | `engine/indicators.py`, `IndicatorsPanel.tsx`, OpenAPI | Autor | 2 | — | pytest e Vitest; contrato atualizado |
 | S42-04 | US-34 | Engenharia e equipe | Referências por IA das questões cadastradas (era a S33-05), geradas a partir do enunciado pela cadeia do "Aprimorar com IA" (gerador da S33-09, aprovado em 12/10/2026) e revisadas por quem cadastra; as de 2027.1 saem com as questões, perto de março de 2027 | `cli.py`, `rulesets/<período>/referencias/` | Autor e equipe | 1 | S33-04 | `ipc-rules validate` mostra as referências em todas as questões cadastradas |
 | S42-05 | US-34 | Engenharia | Ligação gradual: `IPC_AI_INDICATORS` aceita `0` (desligado), `chefia` (desenvolvedor, professores e monitores-chefes) e `1` (toda a equipe); a API só calcula e devolve o painel para os cargos ligados, e `/api/v1/auth/options` informa a cada conta se ela o vê | `settings.py`, `routes/validate.py`, `routes/auth.py`, `test_indicators_api.py` | Autor | 1 | — | Matriz cargo × valor testada por chamada direta; o feedback continua sem indícios |
 | S42-06 | US-34 | Engenharia | Ligar no piloto (era a S33-06): um PR com `IPC_AI_INDICATORS: chefia` no `render.yaml`, a variável `PILOT_AI_INDICATORS` e o teste do piloto; depois de uma lista com o registro de casos, outro PR com `1` | `render.yaml`, `.github/workflows/deploy.yml`, `backend/tests/pilot/` | Autor | 0,5 | S42-02, S42-05 | Painel visível numa verificação com a conta de verificação; o sintético e o exercício de alerta depois de cada deploy |

@@ -68,8 +68,8 @@ O painel também sugere 2 ou 3 perguntas para a conversa, a partir do que encont
 ## Calibração (antes de ligar e a cada período)
 
 **12/10/2026:** o autor descartou as soluções anteriores a 2023, que não existem e não serão
-buscadas. A nova base de calibração e os critérios esperam a validação do autor (Q-35, Sprint 42);
-o texto abaixo descreve o procedimento original.
+buscadas, e aprovou os critérios e a nova base de calibração (Q-35), que estão na seção seguinte
+e entram na Sprint 42. O texto abaixo descreve o procedimento original.
 
 A meta da ADR-08 é **no máximo 5%** das soluções humanas (de períodos anteriores a 2023, antes dos
 assistentes de código) com faixa alta. Com as soluções organizadas como os gabaritos
@@ -84,6 +84,37 @@ O comando mostra quantas soluções caem em cada faixa e, para as de faixa alta,
 tipos de indício (nunca o código). Sai com 1 se a faixa alta passar de 5%. Nesse caso, ajuste as
 faixas em `backend/src/ipc_analyzer/engine/indicators.py`, por PR, e rode de novo. A cada período,
 repita com os casos confirmados e descartados do registro da monitoria.
+
+## Critérios aprovados em 12/10/2026 (Q-35, Sprint 42)
+
+Os quatro primeiros se apoiam no documento de permissões. Nenhum deles é prova; todos levam a uma
+conversa com o aluno.
+
+| # | Critério | Exemplo | Faixa |
+|---|---|---|---|
+| 1 | Construção liberada só 2 ou mais listas depois | Dicionário ou `lambda` na Lista 2 | Média com 1 construção, alta com 2 ou mais |
+| 2 | Construção que o documento não cita (R-04) | `match`, `:=`, `isdigit()`, `sorted(key=...)` | Baixa com 1 ou 2, média com 3 ou mais |
+| 3 | Várias proibições gerais diferentes juntas | `try/except` com `break` e `None` | Média com 2, alta com 3 ou mais |
+| 4 | A mesma proibição repetida | Três `break` | No máximo média: repetir um hábito não indica IA |
+| 5 | Parecida com uma solução gerada por IA para a questão | As referências do gerador aprovado (S33-09) | Baixa a partir de 80%, média a partir de 90%, alta a partir de 95% |
+| 6 | Parecida com o gabarito | Pode ser IA ou gabarito vazado | As mesmas faixas, com esse aviso |
+
+**Marcadores sem faixa, mostrados só como fatos:** docstrings, anotações de tipo,
+`if __name__ == "__main__"`, nomes e comentários em inglês e, novos, texto dentro do `input()` (por
+exemplo, `input("Digite um número: ")`) e validação de entrada que o enunciado não pede (por
+exemplo, repetir o `input` até o valor ser válido). A suposição de que as soluções do Dikastis usam
+`input()` sem texto é uma hipótese a confirmar com a equipe.
+
+**Fora dos critérios:** detectores de texto gerado por IA, perguntar a uma IA e comparar com o
+histórico do aluno, que a Q-27 tornou impossível.
+
+**Calibração sem as soluções anteriores a 2023:**
+- **Alarmes falsos:** os gabaritos da equipe; nenhum pode ficar na faixa alta (em 11/10/2026, 0%).
+- **Acertos:** cerca de seis soluções novas geradas por IA por questão, diferentes das referências;
+  pelo menos metade deve cair na faixa média ou alta. Com os gabaritos, a base chega às 200
+  soluções da premissa validada.
+- **Ligação:** primeiro só para a chefia (desenvolvedor, professores e monitores-chefes) durante
+  uma lista; depois, para toda a equipe.
 
 ## Como ligar no piloto
 
