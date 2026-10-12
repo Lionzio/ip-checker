@@ -14,6 +14,20 @@ def test_a_30_percent_slower_engine_fails_and_10_percent_does_not() -> None:
     assert regressions(baseline, {"lista1": 2.2, "grande": 11.0}) == []
 
 
+def test_noise_of_tenths_of_a_millisecond_is_not_a_regression() -> None:
+    """S36-10: na CI de 12/10/2026, 0,035 virou 0,045 (0,1 ms) numa entrada pequena."""
+    baseline = {"lista6": 0.035, "grande": 17.6}
+    references = {"lista6": 10.0, "grande": 10.0}
+
+    assert regressions(baseline, {"lista6": 0.045, "grande": 17.6}, reference_ms=references) == []
+    assert regressions(baseline, {"lista6": 0.2, "grande": 17.6}, reference_ms=references) == [
+        "lista6: razão 0.20 > 0.04 * 1.20 (+1.65 ms)"
+    ]
+    assert regressions(baseline, {"lista6": 0.035, "grande": 22.0}, reference_ms=references) == [
+        "grande: razão 22.00 > 17.60 * 1.20 (+44.00 ms)"
+    ]
+
+
 def test_a_new_input_without_baseline_is_not_a_regression() -> None:
     assert regressions({"lista1": 2.0}, {"lista1": 2.0, "nova": 99.0}) == []
 
