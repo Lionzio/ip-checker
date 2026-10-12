@@ -1,8 +1,9 @@
 """O que a borda faria no piloto (S11-02, NFR-10): CORS restrito e cabeçalhos de segurança.
 
-Nas Fases 0 e 2 o Caddy serve a página e a API na mesma origem: não há CORS. No piloto (Fase 1)
-a página está na Vercel e a API no Render, em origens diferentes, e a borda do Render não
-acrescenta cabeçalhos. Por isso a própria API:
+Nas Fases 0 e 2 o Caddy serve a página e a API na mesma origem: não há CORS. No piloto (Fase 1),
+desde a Sprint 16, a Vercel repassa ``/api/*`` ao Render (P-15) e a página e a API também ficam na
+mesma origem; o CORS fica disponível como plano B (``IPC_CORS_ORIGINS`` vazia o desliga). A borda do
+Render não acrescenta cabeçalhos. Por isso a própria API:
 
 - aceita chamadas do navegador só da origem da página (``IPC_CORS_ORIGINS``), sem cookies, e
   deixa a página ler ``Retry-After`` e ``X-Request-Id``;
