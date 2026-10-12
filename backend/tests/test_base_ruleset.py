@@ -23,7 +23,8 @@ def test_sprint_23_scope_is_the_whole_catalog(base_ruleset: CompiledRuleset) -> 
     ruleset = base_ruleset.ruleset
 
     # R-01 (questão) fica para a Sprint 24; R-02 e R-68 são exigências, e R-03 e R-04, meta-regras.
-    assert {rule.id for rule in ruleset.rules} == _ids(5, 67)
+    # A R-68 também é a permissão da recursão a partir da Lista 6 (Q-33, S36-09).
+    assert {rule.id for rule in ruleset.rules} == _ids(5, 68)
     assert {requirement.id for requirement in ruleset.requirements} == {"R-02", "R-68"}
     assert {meta.id for meta in ruleset.meta_rules} == {"R-03", "R-04"}
     assert {meta.kind for meta in ruleset.meta_rules} == {
@@ -151,10 +152,12 @@ def test_zip_condition_holds_from_list_2_to_4(base_ruleset: CompiledRuleset) -> 
     assert dict(free.matches())["builtin:zip"] is None
 
 
-def test_recursion_is_decided_by_the_function_rules(base_ruleset: CompiledRuleset) -> None:
-    # derived:recursion só serve à exigência da R-68; o def e a chamada são da R-59.
-    assert base_ruleset.is_structural("derived:recursion")
+def test_recursion_is_allowed_only_from_list_6(base_ruleset: CompiledRuleset) -> None:
+    # Q-33 (S36-09): o def e a chamada são da R-59 (Lista 4); a recursão, da R-68 (Lista 6).
+    assert not base_ruleset.is_structural("derived:recursion")
     assert {rule.id for rule in base_ruleset.rules_for("call:user")} == {"R-59"}
+    (recursion,) = base_ruleset.rules_for("derived:recursion")
+    assert (recursion.id, recursion.since_list) == ("R-68", 6)
 
 
 def test_requirements_follow_q05(base_ruleset: CompiledRuleset) -> None:

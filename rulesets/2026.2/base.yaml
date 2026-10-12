@@ -10,7 +10,7 @@
 # A R-01 (regras por questão) fica em questions/, um arquivo por questão (RULES.md).
 
 schema_version: 2
-ruleset_version: "2026.2.5"
+ruleset_version: "2026.2.6"
 period: "2026.2"
 source_document: "Permissões das listas de Introdução à Programação (.docx e .pdf, 3 páginas)"
 target_python: "3.13"
@@ -25,7 +25,8 @@ lists:
 
 # Fatos sempre aceitos: sua presença já é controlada pelo nó pai ou por um fato mais específico
 # (ex.: node:Attribute é decidido pelo fato method:<nome>; node:alias só existe dentro de import).
-# derived:recursion só serve à exigência da R-68: o def e a chamada já são decididos pela R-59.
+# derived:recursion não é estrutural desde a Q-33 (S36-09): a recursão é permitida só a partir da
+# Lista 6, pela R-68, que também a exige nessa lista.
 structural_facts:
   - "node:Module"
   - "node:Expr"
@@ -41,7 +42,6 @@ structural_facts:
   - "node:comprehension"
   - "node:alias"
   - "node:ExceptHandler"
-  - "derived:recursion"
 
 meta_rules:
   - id: "R-03"
@@ -524,8 +524,8 @@ rules:
     # Parâmetro com valor padrão e função dentro de função não constam (decisão Q-02, item f).
     # Desde 09/10/2026 (decisões do autor, casos 1 e 2 do Marco 2): os "parâmetros" incluem o
     # argumento nomeado na chamada de uma função do aluno (f(x=1)), e o if __name__ == "__main__":
-    # é permitido a partir desta lista. A recursão é uma chamada de função (call:user): permitida
-    # desde a Lista 4 e obrigatória na 6.
+    # é permitido a partir desta lista. A chamada de uma função pelo nome é permitida desde a
+    # Lista 4, mas a recursão (derived:recursion) só a partir da Lista 6, pela R-68 (Q-33).
     match: ["node:FunctionDef", "node:Return", "call:user", "call:user_kwarg", "builtin:__name__"]
     message: "Funções (def, return, a chamada de uma função sua, inclusive com argumentos nomeados, e o if __name__ == \"__main__\") só são permitidas a partir da Lista {allowed_from_list}."
     source: "Permissões, p.2, Lista 4: Funções com def, parâmetros e return"
@@ -538,7 +538,7 @@ rules:
     source: "Permissões, p.2, Lista 4: Retornar mais de um valor"
 
   # ---------------------------------------------------------------------------
-  # Lista 5 - Dicionários (R-61 a R-67). A R-68 (Lista 6) é uma exigência, mais abaixo.
+  # Lista 5 - Dicionários (R-61 a R-67). A R-68 (Lista 6) vem depois delas.
   # ---------------------------------------------------------------------------
   - id: "R-61"
     name: "Dicionários"
@@ -620,6 +620,20 @@ rules:
     match: ["node:Lambda"]
     message: "A função lambda só é permitida a partir da Lista {allowed_from_list}."
     source: "Permissões, p.3, Lista 5: Função lambda"
+
+  # ---------------------------------------------------------------------------
+  # Lista 6 - Recursão (R-68): permitida e obrigatória. Esta é a permissão; a exigência fica em
+  # requirements, com o mesmo id, como no catálogo (Q-33, S36-09).
+  # ---------------------------------------------------------------------------
+  - id: "R-68"
+    name: "Recursão"
+    effect: allow
+    since_list: 6
+    # Direta ou mútua (C-03): cada def num ciclo do grafo de chamadas. Uma função que só chama
+    # outras continua permitida desde a Lista 4 (R-59).
+    match: ["derived:recursion"]
+    message: "A recursão (uma função que chama a si mesma, direta ou indiretamente) só é permitida a partir da Lista {allowed_from_list}."
+    source: "Permissões, p.3, Lista 6: Recursão; decisões C-03 e Q-33"
 
 # -----------------------------------------------------------------------------
 # Exigências (R-02 e R-68): a solução precisa usar o assunto da lista (FR-10).

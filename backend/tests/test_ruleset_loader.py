@@ -90,7 +90,39 @@ def test_conditional_facts_may_share_a_fact_between_allow_and_deny(
     assert compiled.rules_for("node:Try")[0].unconditional_facts() == {"node:Try"}
 
 
+def _requirement(rule_id: str, list_number: int) -> dict[str, Any]:
+    return {
+        "id": rule_id,
+        "list": list_number,
+        "require_any": ["node:For"],
+        "message": "Use um laço.",
+        "source": "Permissões, p.1",
+    }
+
+
+def test_a_rule_may_share_the_id_of_the_requirement_it_allows_from_that_list(
+    minimal_data: dict[str, Any], write_ruleset: Writer
+) -> None:
+    """Q-33 (S36-09): a R-68 é a permissão da recursão a partir da Lista 6 e a exigência dela."""
+    minimal_data["requirements"] = [_requirement("R-34", 2)]
+
+    compiled = load_ruleset(write_ruleset(minimal_data))
+
+    assert [rule.id for rule in compiled.rules_for("node:For")] == ["R-34"]
+    assert [req.id for req in compiled.ruleset.requirements] == ["R-34"]
+
+
 INVALID_CASES: list[tuple[str, Callable[[dict[str, Any]], None], str]] = [
+    (
+        "exigência com o id de uma regra de outra lista",
+        lambda d: d.update(requirements=[_requirement("R-34", 3)]),
+        "como exigência",
+    ),
+    (
+        "exigência com o id de uma proibição geral",
+        lambda d: d.update(requirements=[_requirement("R-06", 2)]),
+        "como exigência",
+    ),
     ("id repetido", lambda d: _second_rule(d).update(id="R-06"), "id de regra repetido"),
     ("deny com since_list", lambda d: _first_rule(d).update(since_list=1), "não aceita since"),
     ("deny sem ANULACAO", lambda d: _first_rule(d).update(category="NAO_CONSTA"), "ANULACAO"),

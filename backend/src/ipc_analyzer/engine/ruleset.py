@@ -334,7 +334,18 @@ class Ruleset(_Frozen):
             raise ValueError(f"id de meta-regra repetido: {_duplicates(meta_ids)}")
         if clash := sorted(set(rule_ids) & set(meta_ids)):
             raise ValueError(f"id usado como regra e como meta-regra: {clash}")
-        if clash := sorted({req.id for req in self.requirements} & set(rule_ids)):
+        # Um id só é regra e exigência ao mesmo tempo quando o catálogo diz "permitido e
+        # obrigatório" numa lista: a regra é uma permissão que começa exatamente na lista da
+        # exigência (R-68, a recursão da Lista 6, Q-33).
+        required_in: dict[str, set[int]] = {}
+        for req in self.requirements:
+            required_in.setdefault(req.id, set()).add(req.list_number)
+        if clash := sorted(
+            rule.id
+            for rule in self.rules
+            if rule.id in required_in
+            and not (rule.effect is Effect.ALLOW and {rule.since_list} == required_in[rule.id])
+        ):
             raise ValueError(f"id usado como regra e como exigência: {clash}")
         if repeated := _duplicates((req.id, req.list_number) for req in self.requirements):
             raise ValueError(f"exigência repetida na mesma lista: {repeated}")

@@ -122,7 +122,7 @@ describe("Verificação com uma questão que só tem gabarito", () => {
     );
     const response: ValidateResponse = {
       request_id: "r1",
-      ruleset_version: "2026.2.5",
+      ruleset_version: "2026.2.6",
       status: "valid",
       list_number: 1,
       question_id: "L1-Q1",
