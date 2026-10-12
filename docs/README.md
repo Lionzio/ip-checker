@@ -32,7 +32,8 @@ e o plano; as decisões, os ADRs e o histórico das sprints têm arquivos própr
 
 | Documento | O que tem |
 |---|---|
-| [`blueprint.md`](blueprint.md) | Visão, personas, requisitos (FR e NFR), backlog, arquitetura, modelo de ameaças, roadmap das sprints (o plano das Sprints 36 a 41 em 7.15) e a Definition of Done |
+| [`blueprint.md`](blueprint.md) | Visão, personas, requisitos (FR e NFR), backlog, arquitetura, modelo de ameaças, roadmap das sprints (o plano das Sprints 36 a 41 em 7.15 e a proposta das Sprints 42 a 48 em 7.16) e a Definition of Done |
+| [`revisao-seis-frentes.md`](revisao-seis-frentes.md) | A revisão técnica de 12/10/2026: período, feedback, indícios de IA, plágio e acompanhamento dos alunos, com o mapa do código, as opções e a proposta das Sprints 42 a 48 |
 | [`decisoes.md`](decisoes.md) | Premissas, conflitos, questões e recomendações (P-xx, C-xx, Q-xx, REC-xx) |
 | [`adr/`](adr/) | Os ADRs, um por arquivo, com o índice na seção 6 do blueprint |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | O que cada sprint entregou e as decisões de implementação |
