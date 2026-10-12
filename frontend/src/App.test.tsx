@@ -210,7 +210,7 @@ describe("App com sessão", () => {
 
     // A Lista 1 não tem questões cadastradas; a 3 tem uma, na demonstração.
     await user.selectOptions(screen.getByLabelText("Lista"), "1");
-    expect(question).toHaveDisplayValue("Nenhuma questão com regra específica cadastrada");
+    expect(question).toHaveDisplayValue("Nenhuma questão nesta lista");
     await user.selectOptions(screen.getByLabelText("Lista"), "3");
     await user.selectOptions(question, "L3-Q1");
     expect(screen.getByText(/regras da questão L3-Q1/)).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe("App com sessão", () => {
     expect(await screen.findByText(/questão L3-Q1/, { selector: "p.text-xs" })).toBeInTheDocument();
     // Trocar de lista volta para "sem questão".
     await user.selectOptions(screen.getByLabelText("Lista"), "2");
-    expect(question).toHaveDisplayValue("Nenhuma questão com regra específica cadastrada");
+    expect(question).toHaveDisplayValue("Nenhuma questão nesta lista");
   });
 
   it("avisa que as respostas são simuladas", async () => {

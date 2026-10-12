@@ -1,5 +1,6 @@
 import { BAND_STYLES, PERCENT } from "../bands";
 import type { GabaritoComparison } from "../types/api";
+import { constructHint } from "../constructTerms";
 
 /**
  * Comparação com o gabarito oficial da questão (S32-06; ADR-11, FR-32, US-37): a semelhança, pela
@@ -21,7 +22,7 @@ function Constructs({ title, items, empty }: { title: string; items: string[]; e
       ) : (
         <ul className="mt-1 flex flex-wrap gap-1" aria-label={title}>
           {items.map((item) => (
-            <li key={item} className="rounded bg-slate-100 px-2 py-0.5 font-mono text-sm dark:bg-slate-800">
+            <li key={item} title={constructHint(item)} className="rounded bg-slate-100 px-2 py-0.5 font-mono text-sm dark:bg-slate-800">
               {item}
             </li>
           ))}

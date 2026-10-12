@@ -141,3 +141,49 @@ def test_missing_condition_always_holds() -> None:
 )
 def test_describe(fact: str, text: str) -> None:
     assert describe(fact) == text
+
+
+#: Apelidos antigos que o parser do Python 3.13 não produz mais.
+_DEPRECATED_NODES = {"AugLoad", "AugStore", "Param", "Suite", "Interactive", "Expression"}
+
+
+def test_every_node_the_extractor_can_emit_has_a_portuguese_name() -> None:
+    """S36-04: nenhum nome de nó do ``ast`` (``Assign``, ``Compare``, ``BinOp``...) chega à tela."""
+    import ast
+
+    from conftest import BASE_RULESET
+    from ipc_analyzer.engine.ruleset import load_ruleset
+
+    ruleset = load_ruleset(BASE_RULESET)
+    structural = {fact.removeprefix("node:") for fact in ruleset.structural_facts}
+    groups: tuple[type[ast.AST], ...] = (
+        ast.stmt,
+        ast.expr,
+        ast.excepthandler,
+        ast.pattern,
+        ast.type_param,
+    )
+    extras: tuple[type[ast.AST], ...] = (
+        ast.comprehension,
+        ast.arguments,
+        ast.arg,
+        ast.keyword,
+        ast.alias,
+        ast.withitem,
+        ast.match_case,
+    )
+    nodes = {
+        name
+        for name, cls in vars(ast).items()
+        if isinstance(cls, type)
+        and issubclass(cls, groups + extras)
+        and cls not in groups
+        and not cls.__subclasses__()
+        and not name.startswith("_")
+    }
+    candidates = nodes - structural - _DEPRECATED_NODES
+    missing = sorted(name for name in candidates if describe(f"node:{name}") == name)
+    assert missing == []
+    assert describe("node:Assign") == "atribuição"
+    assert describe("node:Compare") == "comparação"
+    assert describe("node:BinOp") == "conta aritmética"

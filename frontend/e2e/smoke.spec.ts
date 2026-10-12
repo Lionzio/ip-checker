@@ -34,10 +34,13 @@ test("a página carrega as listas da API real, sem o aviso de demonstração", a
   const question = page.getByLabel("Questão");
   await expect(question).toBeDisabled();
   await page.getByLabel("Lista").selectOption("2");
-  await expect(question).toHaveText("Nenhuma questão com regra específica cadastrada");
+  await expect(question).toHaveText("Nenhuma questão nesta lista");
   await page.getByLabel("Lista").selectOption("3");
   await expect(question).toBeEnabled();
-  await expect(page.getByRole("option", { name: "L3-Q9: Ensaio: média da turma sem sum()" })).toBeAttached();
+  // S36-05: a opção é curta; o título da questão aparece na frase abaixo dos seletores.
+  await expect(page.getByRole("option", { name: "L3-Q9", exact: true })).toBeAttached();
+  await question.selectOption("L3-Q9");
+  await expect(page.locator("#question-description")).toContainText('"Ensaio: média da turma sem sum()"');
 });
 
 test("a questão do ensaio (L3-Q9) libera o map() e proíbe o sum() que a Lista 3 permite", async ({ page }) => {

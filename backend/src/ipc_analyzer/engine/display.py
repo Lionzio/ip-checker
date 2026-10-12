@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
+#: Todo nó que o extrator pode emitir tem nome em português (S36-04): a comparação com o gabarito
+#: mostra estes nomes, e o termo técnico (o nome do nó) aparece só na dica da página.
 _NODES = {
     "AnnAssign": "atribuição com anotação de tipo",
+    "Assign": "atribuição",
+    "AugAssign": "atribuição composta (+=, -=...)",
+    "BinOp": "conta aritmética",
+    "BoolOp": "operador lógico (and, or)",
+    "Compare": "comparação",
+    "UnaryOp": "operador unário (-, not)",
+    "JoinedStr": "f-string",
+    "FormattedValue": "valor dentro de f-string",
     "Assert": "assert",
     "AsyncFor": "async for",
     "AsyncFunctionDef": "async def",
@@ -28,6 +38,18 @@ _NODES = {
     "List": "lista",
     "ListComp": "list comprehension",
     "Match": "match",
+    "match_case": "case do match",
+    "MatchAs": "padrão do match com as",
+    "MatchClass": "padrão de classe do match",
+    "MatchMapping": "padrão de dicionário do match",
+    "MatchOr": "padrão alternativo do match (|)",
+    "MatchSequence": "padrão de sequência do match",
+    "MatchSingleton": "padrão None, True ou False do match",
+    "MatchStar": "padrão * do match",
+    "MatchValue": "padrão de valor do match",
+    "TypeVar": "parâmetro de tipo genérico",
+    "ParamSpec": "parâmetro de tipo genérico (**)",
+    "TypeVarTuple": "parâmetro de tipo genérico (*)",
     "NamedExpr": ":= (operador morsa)",
     "Nonlocal": "nonlocal",
     "Pass": "pass",

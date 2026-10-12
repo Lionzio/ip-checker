@@ -33,7 +33,7 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const [lists, setLists] = useState<ListInfo[]>([]);
   const [listsError, setListsError] = useState<string | null>(null);
   const [listsAttempt, setListsAttempt] = useState(0);
-  const { state, validate, retry, reset } = useValidateCode(client);
+  const { state, validate, retry, reset, cancel } = useValidateCode(client);
   // O pedido enviado: é o que o resultado descreve, mesmo que o editor mude depois.
   const [verified, setVerified] = useState<ValidateRequest | null>(null);
   const [marked, setMarked] = useState<{ first: number; last: number } | null>(null);
@@ -72,7 +72,7 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const loading = state.kind === "loading";
   const currentList = listNumber === null ? undefined : lists.find((list) => list.number === listNumber);
   const questions = listNumber === null ? null : questionOptions(currentList);
-  const registered = questionId !== null && (currentList?.questions ?? []).some((question) => question.id === questionId);
+  const selected = questionId === null ? undefined : questions?.find((question) => question.id === questionId);
   const canVerify = listNumber !== null && code.trim() !== "" && !loading;
   const stale =
     verified !== null && (verified.code !== code || verified.list_number !== listNumber || verified.question_id !== questionId);
@@ -112,12 +112,12 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
             <ListSelector lists={lists} value={listNumber} onChange={setList} disabled={loading} />
             <QuestionSelector questions={questions} value={questionId} onChange={setQuestion} disabled={loading} />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {questionId === null
+          <p id="question-description" className="text-sm text-slate-600 dark:text-slate-300">
+            {selected === undefined
               ? "Sem questão, valem só as permissões da lista: se o enunciado liberar ou proibir algo, vale o enunciado."
-              : registered
-                ? `Valem as permissões da lista e as regras da questão ${questionId}, cadastradas a partir do enunciado.`
-                : `A questão ${questionId} não tem regra cadastrada: valem as permissões da lista, e o código é comparado com o gabarito.`}
+              : selected.rules
+                ? `${selected.id}, "${selected.title}": valem as permissões da lista e as regras da questão ${selected.id}, cadastradas a partir do enunciado.${selected.gabarito ? " O código também é comparado com o gabarito." : ""}`
+                : `A questão ${selected.id} não tem regra cadastrada: valem as permissões da lista, e o código é comparado com o gabarito.`}
           </p>
           {listsError !== null && (
             <div className="flex flex-wrap items-center gap-3">
@@ -137,8 +137,13 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
           />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={!canVerify}>
-              Verificar
+              {loading ? "Verificando…" : "Verificar"}
             </Button>
+            {loading && (
+              <Button variant="secondary" onClick={cancel}>
+                Cancelar
+              </Button>
+            )}
             <Button variant="secondary" onClick={next} disabled={code === "" && draft.feedback.student === "" && verified === null}>
               Próximo aluno
             </Button>

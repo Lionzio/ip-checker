@@ -240,3 +240,41 @@ describe("Relatório (S26-03)", () => {
     expect(result()).not.toHaveAttribute("aria-live");
   });
 });
+
+describe("Verificando e Cancelar (S36-05)", () => {
+  it("enquanto verifica, o botão diz Verificando… e o Cancelar interrompe", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    const signals: AbortSignal[] = [];
+    vi.spyOn(client, "validate").mockImplementation(
+      (_request, signal) =>
+        new Promise((_resolve, reject) => {
+          if (signal) signals.push(signal);
+          signal?.addEventListener("abort", () => reject(signal.reason));
+        }),
+    );
+    const user = await ready(client);
+    await user.selectOptions(screen.getByLabelText("Lista"), "1");
+    await user.click(editor());
+    await user.paste(VALID);
+    await user.click(screen.getByRole("button", { name: "Verificar" }));
+
+    expect(screen.getByRole("button", { name: "Verificando…" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(screen.getByRole("button", { name: "Verificar" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+    expect(editor()).toHaveValue(VALID);
+  });
+
+  it("a opção da questão é curta, e o título aparece na descrição", async () => {
+    const user = await ready();
+    await user.selectOptions(screen.getByLabelText("Lista"), "3");
+    const question = screen.getByRole("combobox", { name: "Questão" });
+    expect(within(question).getByRole("option", { name: "Sem questão" })).toBeInTheDocument();
+
+    await user.selectOptions(question, "L3-Q1");
+    expect(question).toHaveDisplayValue(/^L3-Q1/);
+    expect(question).toHaveAccessibleDescription(/L3-Q1, ".+": valem as permissões da lista e as regras da questão L3-Q1/);
+  });
+});

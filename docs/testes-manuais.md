@@ -1253,13 +1253,26 @@ print(i)
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
+### V-45. Verificando e Cancelar (S36-05)
+
+- **Objetivo:** A verificação mostra que está em andamento e pode ser cancelada.
+- **Passos:**
+  1. Escolha a **Lista 1**, cole um código de umas 30 KB (peça ao desenvolvedor a entrada do benchmark) e clique em **Verificar**.
+  2. Enquanto o botão diz **Verificando…**, clique em **Cancelar**.
+- **Esperado:**
+  - O botão muda para **Verificando…** e aparece **Cancelar**.
+  - Depois de Cancelar, o código continua no editor, e o botão volta a **Verificar**.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
 ## 5. Verificador: questões cadastradas
 
 Hoje há três questões com regras cadastradas: a **L3-Q9** (questão do ensaio: libera `map()` e
 proíbe `sum()`, `sort()` e `sorted()`), a **L4-Q4** (libera `eval()` para ler listas e o
 `reverse=` no `sort()`) e a **L4-Q5** (libera o valor padrão de parâmetro). As
-questões que só têm gabarito aparecem no seletor como "sem regra cadastrada (comparação com o
-gabarito)".
+questões que só têm gabarito aparecem no seletor como "L4-Q1 · só gabarito"; as que têm regra e
+gabarito, como "L4-Q4 · gabarito" (S36-05). O título da questão e o que vale aparecem na frase logo
+abaixo dos seletores.
 
 ### Q-01. L3-Q9 (ensaio): map liberado pela questão
 
@@ -1372,8 +1385,9 @@ print(total(eval(input())))
   1. Escolha a **Lista 4** e abra o seletor **Questão**.
   2. Escolha a **Lista 5** e abra o seletor de novo.
 - **Esperado:**
-  - Na Lista 4 aparecem a L4-Q4 e a L4-Q5, com regras, e as questões com gabarito (L4-Q1 a L4-Q5); as sem regra trazem "sem regra cadastrada (comparação com o gabarito)".
-  - Na Lista 5, que ainda não tem questão nem gabarito, o seletor diz que não há questão cadastrada.
+  - Na Lista 4 aparecem a L4-Q4 e a L4-Q5, com regras ("L4-Q4 · gabarito"), e as que só têm gabarito ("L4-Q1 · só gabarito"). Nenhuma opção aparece cortada, no computador e no celular.
+  - Escolhida a L4-Q4, a frase abaixo dos seletores traz o título da questão e diz que valem as regras dela e que o código também é comparado com o gabarito.
+  - Na Lista 5, que ainda não tem questão nem gabarito, o seletor diz "Nenhuma questão nesta lista".
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

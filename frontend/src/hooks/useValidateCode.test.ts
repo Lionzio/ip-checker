@@ -103,6 +103,23 @@ describe("useValidateCode", () => {
     expect(result.current.state).toEqual({ kind: "success", response: RESPONSE });
   });
 
+  it("Cancelar interrompe a verificação e volta ao estado inicial (S36-05)", async () => {
+    const signals: AbortSignal[] = [];
+    const { result } = renderHook(() => useValidateCode(clientWith(neverEnding(signals))));
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.validate(REQUEST);
+    });
+    expect(result.current.state).toEqual({ kind: "loading" });
+
+    act(() => result.current.cancel());
+    await act(() => pending);
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(result.current.state).toEqual({ kind: "idle" });
+  });
+
   it("repete a última requisição", async () => {
     const validate = vi.fn<ValidationClient["validate"]>(() => Promise.resolve(RESPONSE));
     const { result } = renderHook(() => useValidateCode(clientWith(validate)));
