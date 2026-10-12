@@ -195,3 +195,8 @@ extrapolação de 3,1 s ficou curta). Com o máximo de 3,8 s, 7 s não dava o do
 a página continua com 10 s. O `tests/test_pilot_timeouts.py` usa a maior entrada medida (3,8 s), e
 o `tests/pilot/test_large_input.py` confere, depois de cada deploy, que nenhuma entrada de até 50
 KB é recusada e que a mediana da maior fica em até metade do prazo.
+
+**Medição depois do deploy da `sprint-36.1` (12/10/2026, prazo de 8 s):** nenhuma recusa nas 10
+verificações de 10 a 50 KB; a de 50 KB levou 3.587 e 4.033 ms (mediana de 3,8 s, dentro da metade
+do prazo). O teste passou. A variação no plano gratuito é grande (de 3,3 a 4,0 s na mesma entrada
+ao longo do dia); se a mediana passar de 4 s, o próximo passo é limitar o tamanho no piloto.

@@ -15,6 +15,10 @@ mudaram.
   a extrapolação de 3,1 s ficou curta, e 7 s não dava o dobro da maior entrada. O analisador do
   piloto passa a ter 8 s e a API espera 9 s; a página continua com 10 s. O teste dos prazos usa a
   maior entrada medida, e o teste do piloto confere a mediana da maior entrada (ADR-03).
+- **12/10/2026, depois do deploy da `sprint-36.1`:** a medição no piloto passou (nenhuma recusa;
+  50 KB com mediana de 3,8 s), o sintético ficou em 18 ms no servidor, e o exercício de alerta
+  (#103 e #104) teve o e-mail de queda às 16:16 e o de volta às 16:26, cerca de 4 min e meio depois
+  do primeiro 503 (NFR-15: até 5 min; runbook).
 
 ## Sprint 36 — Defeitos e documentos certos para a campanha de testes
 
