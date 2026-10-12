@@ -194,7 +194,17 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 
 - **FR-31** — Questões e gabaritos por período (ADR-10, US-36): as regras das questões ficam em `rulesets/<período>/questions/`, uma pasta por período, e o período ativo é escolhido num só lugar, sem mudar código (S31-09). `ipc-rules new-period <novo> --from <anterior>` cria a pasta de um período novo a partir do anterior (S31-10). Os gabaritos oficiais ficam no repositório privado `Lionzio/ip-checker-gabaritos`, em `<período>/lista-<n>/L<n>-Q<m>.py`, e cada um é conferido com zero violação usando as questões do próprio período (S31-11).
 
-- **FR-32** — Comparação com o gabarito (ADR-11, US-37, US-38): (1) na verificação, com a questão escolhida no seletor de período, lista e questão (as questões do período ativo que têm gabarito), o resultado traz a semelhança com o gabarito pela métrica da ADR-07, a faixa do FR-29, as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem; (2) no plágio, com a questão escolhida, A×gabarito e B×gabarito, e o alerta de possível vazamento quando A×B, A×gabarito e B×gabarito passam do limiar e os códigos têm o tamanho mínimo [PREMISSA: 95% e o mínimo, configuráveis, calibrados na S33-02]; (3) nos indícios de IA, a semelhança com o gabarito como mais um sinal, só com `IPC_AI_INDICATORS`. A análise é determinística (sem IA); nenhum texto do gabarito vai ao navegador; sem gabarito ou com o download falho, a comparação fica de fora com um aviso, e o resto funciona.
+- **FR-32** — Comparação com o gabarito (ADR-11, US-37, US-38): (1) na verificação, com a questão escolhida no seletor de período, lista e questão (as questões do período ativo que têm gabarito; o seletor de período entra na Sprint 43, FR-33, e até lá vale o período ativo), o resultado traz a semelhança com o gabarito pela métrica da ADR-07, a faixa do FR-29, as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem; (2) no plágio, com a questão escolhida, A×gabarito e B×gabarito, e o alerta de possível vazamento quando A×B, A×gabarito e B×gabarito passam do limiar e os códigos têm o tamanho mínimo [PREMISSA: 95% e o mínimo, configuráveis, calibrados na S33-02]; (3) nos indícios de IA, a semelhança com o gabarito como mais um sinal, só com `IPC_AI_INDICATORS`. A análise é determinística (sem IA); nenhum texto do gabarito vai ao navegador; sem gabarito ou com o download falho, a comparação fica de fora com um aviso, e o resto funciona.
+
+- **FR-33** — Vários períodos na página (ADR-12, US-39, US-40) [PLANEJADO, Sprint 43]: o analisador carrega o período do `ATIVO` e os 5 anteriores; a página mostra Período antes de Lista e Questão, com o ativo já escolhido; a API aceita `period` opcional na verificação, no plágio e no feedback. Um período sai da janela por `ipc-rules retire-period`, que o move para `rulesets/encerrados/`, sem apagar nada do Git.
+
+- **FR-34** — Feedback rastreável (US-41) [PLANEJADO, Sprint 44]: no feedback sem IA, cada violação citada traz o nome da regra, a linha, o motivo e um caminho de correção sem a solução (a explicação e a alternativa da S38-01), na ordem do motor; a frase obrigatória do FR-30 não muda.
+
+- **FR-35** — Padrão do monitor (US-42, US-43) [PLANEJADO, Sprints 44 e 45]: o tom, as dicas e os exemplos do feedback ficam em `backend/src/ipc_api/feedback/estilo.yaml`, validado por esquema na CI e revisado por PR; o "Aprimorar com IA" usa esses exemplos, recusa qualquer construção que o motor não apontou, código de 3 ou mais linhas e trechos iguais ao gabarito, faz no máximo uma rodada de crítica e, se nada passar, devolve o texto sem IA.
+
+- **FR-36** — Grupos de acompanhamento (ADR-13, US-45 a US-47) [PLANEJADO, Sprint 47, bloqueado pelas Q-26 a Q-29]: cada monitor cadastra os alunos pelos quais é responsável, sozinho ou num grupo com outros monitores (convite e aceite), por período; o grupo compartilha o histórico de verificações, indícios, alertas de plágio e, se a Q-28 permitir, feedbacks, com quem executou cada um; nenhum código é guardado.
+
+- **FR-37** — Plágio medido (US-44) [PLANEJADO, Sprint 46]: precisão e revocação por faixa, num conjunto rotulado com plágio sintético (variáveis renomeadas, blocos reordenados, `for` trocado por `while`), a cada mudança no plágio; o par mostra quanto da semelhança o gabarito explica.
 
 ### 3.3 Requisitos Não Funcionais
 
@@ -228,6 +238,8 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-26 | Correção | Fidelidade do feedback ao motor | % de textos com apresentação e frase obrigatória exatas; contradições | 100% com a apresentação da tabela do FR-30 e a frase obrigatória do resultado; 0 textos que contradizem o motor ou que, no tratamento neutro, trazem autorreferência com marcação de gênero (lista de termos); IA principal e de reserva com 12 s por tentativa e prazo total de 28 s (com uma IA só, uma nova tentativa) e, se nenhuma devolver texto válido, o feedback montado por modelos, sem IA (ADR-06, item 6) | Testes com provedor falso, com respostas boas e adversariais, na CI; amostra manual com o provedor real a cada mudança de prompt ou de modelo |
 | NFR-27 | Segurança | Confidencialidade dos gabaritos (ADR-10, revisto pela ADR-11 em 09/10/2026) | Gabaritos fora do repositório principal, da imagem, do disco, dos logs, da telemetria e do navegador; acesso da CI e da API | 0 arquivo de gabarito no `ip-checker` e na imagem; no piloto, só na memória do processo da API, baixados com credencial só de leitura; 0 bytes de texto do gabarito nas respostas, nos logs e na telemetria (teste canário); saída dos testes só com arquivo, regra e linha | `.gitignore` (`gabaritos/`), job "Gabaritos" do `ci.yml`, `backend/tests/official_answers/`, testes canário da Sprint 32, `rulesets/README.md` |
 | NFR-28 | Desempenho | Custo da comparação com o gabarito (ADR-11) | P95 do `POST /api/v1/validate` com a comparação; tempo da comparação no analisador | P95 ≤ 200 ms e P99 ≤ 500 ms (os do NFR-01) com a comparação ligada; comparação de 2 códigos de 50 KB dentro do orçamento da similaridade (NFR-25) | "Carga no piloto" com uma questão com gabarito; teste de orçamento em `tests/similarity` |
+| NFR-29 | Privacidade | Dados de alunos nos grupos de acompanhamento (ADR-13) [PLANEJADO, Sprint 47] | Colunas guardadas; idade dos registros; ocorrências de código | Só o nome de exibição e uma referência opcional (Q-26), nunca CPF, e-mail ou matrícula; 0 ocorrências de código (canário do NFR-11); nada de um período depois do encerramento dele ou de 12 meses do fim, o que vier primeiro (Q-29) | Teste de esquema e canário na CI; teste do expurgo por período |
+| NFR-30 | Desempenho | Plágio da turma inteira (S40-02, S46-03) [PLANEJADO] | Tempo no worker | Matriz de 100 soluções (120 KB no total) em ≤ 5 s | Teste de orçamento com a turma sintética |
 
 ## 4. Backlog de User Stories
 
@@ -243,6 +255,7 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-02 | Aluno | enviar um arquivo `.py` | não precisar copiar e colar à mão | Dado um `.py` UTF-8 de até 50 KB, Quando o seleciono ou arrasto, Então o conteúdo aparece no editor sem nenhum envio ao servidor; Dado um arquivo de mais de 50 KB ou com outra extensão, Quando o seleciono, Então vejo uma mensagem de rejeição e nada é enviado | Should | FR-02, FR-04 |
 | US-03 | Aluno | ver o erro de sintaxe com linha e coluna | corrigir o código antes da verificação de permissões | Dado um código com parêntese não fechado na linha 5, Quando verifico, Então recebo `syntax_error` com linha 5, coluna e mensagem em PT-BR e nenhuma violação de regra; Dado um código com byte nulo, Quando verifico, Então recebo 422 `INVALID_INPUT` | Must | FR-04, FR-05, FR-12 |
 | US-04 | Aluno | selecionar a questão que estou resolvendo | que as permissões e proibições explícitas da questão prevaleçam (R-01) | Dado a questão `L3-Q2` cadastrada com `allow` para um construto, Quando verifico um código que o usa com essa questão selecionada, Então não aparece violação desse construto; Dado o mesmo código sem questão selecionada, Quando verifico, Então a violação aparece com o aviso `QUESTION_RULES_NOT_APPLIED`; Dado uma lista sem questões cadastradas, Quando abro o seletor, Então vejo "Nenhuma questão com regra específica cadastrada" | Must | FR-03, FR-11, FR-12 |
+| US-39 | Monitor | escolher o período antes da lista e da questão | corrigir uma lista atrasada com as regras do período certo | Dado o `ATIVO` em 2027.1, Quando escolho 2026.2, a Lista 3 e a L3-Q9, Então a resposta traz a `ruleset_version` de 2026.2; Dado nenhum período escolhido, Então vale o ativo | Should | FR-33 |
 
 ### Épico E2 — Conformidade com o documento de permissões
 
@@ -260,6 +273,9 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-09 | Aluno | clicar em uma violação e ir à linha destacada no editor | corrigir rapidamente | Dado um relatório com violação na linha 7, Quando clico no card, Então o cursor vai para a linha 7 e o trecho aparece sublinhado; Dado o foco no card, Quando pressiono Enter, Então acontece o mesmo | Should | FR-13, FR-20 |
 | US-10 | Aluno | consultar as permissões vigentes da lista e da questão | planejar a solução sem reler o documento | Dado a Lista 3, Quando abro "Permissões", Então vejo R-15…R-58 como permitidas, R-05…R-14 como proibições gerais e a exigência R-02; Dado uma questão com override, Quando a seleciono, Então o override aparece destacado | Could | FR-14 |
 | US-11 | Monitor | verificar o código de um aluno durante a correção ou o atendimento, com a minha conta (P-13) | dedicar o atendimento à lógica, não às permissões | Dado o código colado e a lista do aluno, Quando verifico, Então obtenho o relatório da lista e da questão; Dado o fim da verificação, Quando procuro o canário em logs e no banco, Então não há cópia do código (NFR-11) | Should | FR-01, FR-12 |
+| US-41 | Membro da equipe | ver no feedback a linha e o motivo de cada violação | que o aluno saiba onde e por que a questão foi anulada | Dado `for` e `range()` na Lista 1, Quando gero o feedback sem IA, Então cada construção aparece com a linha e com a lista que a libera; Dado qualquer feedback, Então a frase obrigatória do FR-30 é a mesma | Should | FR-34 |
+| US-42 | Monitor-chefe | ajustar o tom, as dicas e os exemplos do feedback por PR | padronizar a equipe sem programar | Dado um `estilo.yaml` inválido, Quando a CI roda, Então falha; Dado uma mudança aprovada, Quando o deploy termina, Então o próximo feedback a usa | Could | FR-35 |
+| US-43 | Membro da equipe | receber do "Aprimorar com IA" um texto que só fala do que o verificador achou | nunca mandar ao aluno um erro inventado ou a solução pronta | Dado um texto da IA que cita uma construção ausente dos achados, Então ele é recusado e reescrito ou trocado pelo texto sem IA; Dado um texto com 3 ou mais linhas de código ou com um trecho igual ao gabarito, Então é recusado | Should | FR-35 |
 
 ### Épico E4 — Governança do ruleset
 
@@ -269,6 +285,7 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-13 | Monitor | cadastrar as permissões e proibições explícitas de uma questão | que a ferramenta reflita o enunciado (R-01) | Dado `questions/L3-Q2.yaml` com `allow`/`deny` de R-xx ou de fatos e o campo `source`, Quando o PR passa na CI, é aprovado e publicado, Então a questão aparece no seletor; Dado um PR aberto por mim, Quando tento fazer o merge, Então ele exige a aprovação de um monitor-chefe ou professor, e não a minha; Dado um override que libera uma proibição geral (R-05…R-14), Quando a CI roda, Então o PR exige aprovação de professor; Dado um override que cita um R-xx inexistente, Quando a CI roda, Então o PR falha com o caminho do erro | Must | FR-11, FR-15, FR-21 |
 | US-14 | Monitor-mantenedor | validar o ruleset com um comando, localmente e na CI | impedir que uma regra inválida chegue à produção | Dado um ruleset válido, Quando executo `ipc-rules validate rulesets/2026.2`, Então o comando sai com código 0; Dado um ruleset inválido, Quando executo, Então recebo erros com o caminho do campo e código ≠ 0; Dado um PR, Quando a CI roda, Então o mesmo comando é bloqueante | Must | FR-15, FR-21 |
 | US-36 | Monitor-mantenedor | começar um período novo e guardar os gabaritos do anterior sem mudar código | as questões mudam a cada período, e os gabaritos de cada período encerrado protegem os seguintes contra falsos positivos | Dado o fim de 2026.2, Quando rodo `ipc-rules new-period 2027.1 --from 2026.2` e troco o período ativo num só arquivo, Então o deploy usa 2027.1 sem outra mudança; Dado um gabarito de 2026.2 no repositório privado, Quando a CI roda com 2027.1 ativo, Então ele é conferido com as questões de 2026.2 e tem zero violação | Should | FR-31, NFR-27 |
+| US-40 | Monitor-mantenedor | encerrar um período antigo com uma simulação antes | manter só os 6 períodos mais recentes carregados, sem perder nada do Git | Dado `retire-period --dry-run`, Então nada muda no disco; Dado o período ativo ou um da janela, Quando tento encerrar, Então o comando recusa | Could | FR-33 |
 
 ### Épico E5 — Operação, segurança e telemetria
 
@@ -305,8 +322,17 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-33 | Membro da equipe | corrigir várias soluções seguidas, no computador ou no celular | verificar, gerar o feedback e copiar em poucas ações, sem levar o nome de um aluno para o próximo | Dado um feedback gerado, Quando aciono "Próximo aluno", Então código, nome, anotação e resultado são limpos, a lista continua escolhida e o foco vai para o editor; Dado o editor com foco, Quando aperto Ctrl+Enter, Então o código é verificado e o foco vai para o título do resultado; Dado um celular de 375 px, Quando abro qualquer tela, Então nada passa da largura da tela; Dado um relatório, Quando clico numa violação, Então o trecho fica selecionado no editor | Must | FR-07, FR-30 |
 | US-34 | Membro da equipe | ver indícios de que uma solução pode ter sido gerada por IA, com o motivo de cada um | decidir com quem conversar, sem acusar ninguém por um número | Dado uma solução com várias violações (por exemplo `break`, `pass` e `continue` juntos, vários `pass` ou construções da Lista 6 numa solução da Lista 3), com construções acima da lista ou muito parecida com uma solução de referência gerada por IA para a questão, Quando verifico, Então vejo cada indício com o motivo e o trecho, e o texto diz que não é prova; Dado uma solução sem indícios, Então nada é mostrado; Dado o painel, Então nenhum dado do aluno sai do servidor | Should (Q-21) | FR-29 |
 | US-32 | Membro da equipe | gerar um feedback para o aluno a partir do resultado do IP-Checker | devolver um texto cordial e coerente sem escrever do zero | Dado um código com violações, Quando gero o feedback, Então ele contém "Sua questão apresenta problemas, como o uso de ..., portanto ela foi anulada." com as proibições encontradas; Dado um código sem violações, Então contém "Sua questão está ótima, não houve nenhuma violação de regras."; Dado o tratamento feminino, Então a apresentação e todas as autorreferências estão no feminino; Dado o tratamento neutro, Então não há autorreferência com marcação de gênero; Dado a requisição ao provedor, Quando a inspeciono, Então o nome real do aluno não aparece | Must | FR-30 |
-| US-37 | Membro da equipe | escolher o período, a lista e a questão e ver, junto com as violações, o quanto o código do aluno se parece com o gabarito oficial e em quê | entender a solução do aluno em relação à esperada, sem ver nem expor o gabarito | Dada a questão L1-Q1 de 2026.2 com gabarito, Quando verifico o código de um aluno, Então vejo a porcentagem e a faixa (FR-29), as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem, e nenhum texto do gabarito; Dada uma questão sem gabarito, Então a verificação segue normal, com o aviso "sem gabarito para comparar" | Should | FR-32, NFR-27, NFR-28 |
+| US-37 | Membro da equipe | escolher o período (seletor na Sprint 43; até lá, o ativo), a lista e a questão e ver, junto com as violações, o quanto o código do aluno se parece com o gabarito oficial e em quê | entender a solução do aluno em relação à esperada, sem ver nem expor o gabarito | Dada a questão L1-Q1 de 2026.2 com gabarito, Quando verifico o código de um aluno, Então vejo a porcentagem e a faixa (FR-29), as construções em comum, só no aluno e só no gabarito e as linhas do aluno que coincidem, e nenhum texto do gabarito; Dada uma questão sem gabarito, Então a verificação segue normal, com o aviso "sem gabarito para comparar" | Should | FR-32, NFR-27, NFR-28 |
 | US-38 | Membro da equipe | no plágio, ver também a semelhança de cada aluno com o gabarito e um alerta quando os dois códigos coincidem com ele | perceber que o gabarito pode estar circulando entre os alunos (má conduta) sem acusar ninguém por um número | Dados os códigos A e B de uma questão com gabarito, Quando comparo, Então vejo A×B, A×gabarito e B×gabarito na métrica da ADR-07; Quando os três passam do limiar e os códigos têm o tamanho mínimo, Então aparece o alerta "possível vazamento do gabarito", só para mim e sem registro | Should | FR-32, NFR-27 |
+| US-44 | Membro da equipe | ver a turma inteira como matriz, com grupos de soluções parecidas e os trechos de cada par | achar os grupos de cópias de uma vez e saber quanto o detector acerta | Dada a turma sintética de 30 soluções, Então os dois grupos de cópias aparecem e nenhuma independente passa de 90%; Dado um par com gabarito, Então vejo quanto da semelhança o gabarito explica | Should | FR-29, FR-37 |
+
+### Épico E8 — Acompanhamento dos alunos (proposta de 12/10/2026; bloqueado pelas Q-26 a Q-29)
+
+| ID | Persona | Ação | Valor Esperado | Critérios de Aceite | Prioridade (MoSCoW) | FRs atendidos |
+|---|---|---|---|---|---|---|
+| US-45 | Monitor | criar o meu grupo de acompanhamento, convidar colegas e cadastrar os alunos pelos quais sou responsável | acompanhar os mesmos alunos sozinho, em dupla ou em trio | Dado um convite, Quando o colega aceita, Então ele vê o histórico do grupo; Dado um aluno em dois grupos, Então aparece nos dois; Dado alguém que sai do grupo, Então os registros continuam | Could | FR-36 |
+| US-46 | Monitor | ver o histórico de um aluno meu, com quem fez cada verificação | acompanhar a evolução e dividir o trabalho | Dado um aluno do grupo, Quando abro o histórico, Então vejo lista, questão, resultado, regras, gabarito, indícios e quem executou, sem o código; Dado um monitor fora do grupo, Quando chama a rota, Então recebe 403 | Could | FR-36 |
+| US-47 | Monitor-chefe ou professor | ver todos os grupos do período, só para leitura | supervisionar a monitoria sem editar o trabalho dos monitores | Dado o Gerenciar, Então vejo os grupos e o histórico; Dado uma tentativa de edição, inclusive pela API, Então recebo 403 | Could | FR-36 |
 
 ## 5. Arquitetura do Sistema e Stack
 
@@ -724,12 +750,15 @@ decisão atualiza o status do ADR antigo e aponta para o novo.
 | [ADR-03](adr/ADR-03-topologia-de-implantacao-por-fase.md) | Topologia de implantação por fase | Aceito em 01/10/2026 (Q-10); plano do Render revisto na S28-01 |
 | [ADR-04](adr/ADR-04-autenticacao-sessao-e-autorizacao-da-equipe.md) | Autenticação, sessão e autorização da equipe | Implementado nas Sprints 13 a 16 |
 | [ADR-05](adr/ADR-05-metodo-de-deteccao-de-plagio.md) | Método de detecção de plágio | Implementado na Sprint 17 |
-| [ADR-06](adr/ADR-06-feedback-por-llm-com-moldura-deterministica.md) | Feedback por LLM com moldura determinística | Implementado na Sprint 18 |
-| [ADR-07](adr/ADR-07-plagio-por-arvore-canonizada-insensivel-a.md) | Plágio por árvore canonizada, insensível à ordem | Implementado na Sprint 27 |
-| [ADR-08](adr/ADR-08-indicios-de-uso-de-ia-nunca.md) | Indícios de uso de IA, nunca veredito | Implementado na Sprint 29; desligado no piloto até a política (S29-04) |
+| [ADR-06](adr/ADR-06-feedback-por-llm-com-moldura-deterministica.md) | Feedback por LLM com moldura determinística | Implementado na Sprint 18; revisão proposta nas Sprints 44 e 45 (7.16) |
+| [ADR-07](adr/ADR-07-plagio-por-arvore-canonizada-insensivel-a.md) | Plágio por árvore canonizada, insensível à ordem | Implementado na Sprint 27; revisão proposta na Sprint 46 (7.16) |
+| [ADR-08](adr/ADR-08-indicios-de-uso-de-ia-nunca.md) | Indícios de uso de IA, nunca veredito | Implementado na Sprint 29; desligado no piloto até a política (S29-04); ligação no piloto proposta na Sprint 42 (7.16) |
 | [ADR-09](adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md) | Integração com outros projetos da monitoria | Proposto em 07/10/2026 (Q-23); não confirmada |
-| [ADR-10](adr/ADR-10-questoes-e-gabaritos-por-periodo.md) | Questões e gabaritos por período | Aceito em 08/10/2026 (Q-14) |
+| [ADR-10](adr/ADR-10-questoes-e-gabaritos-por-periodo.md) | Questões e gabaritos por período | Aceito em 08/10/2026 (Q-14); decisão 3 revista pela ADR-12 (proposta) |
 | [ADR-11](adr/ADR-11-comparacao-com-o-gabarito.md) | Comparação com o gabarito na verificação, no plágio e nos indícios | Proposto em 09/10/2026 (Q-24); Sprint 32 |
+| [ADR-12](adr/ADR-12-varios-periodos-e-retencao-por-encerramento.md) | Vários períodos carregados e retenção por encerramento | Proposto em 12/10/2026; Sprint 43 |
+| [ADR-13](adr/ADR-13-grupos-de-acompanhamento-e-dados-de-alunos.md) | Grupos de acompanhamento e dados de alunos | Proposto em 12/10/2026; Sprint 47, bloqueada pelas Q-26 a Q-29 |
+| [ADR-14](adr/ADR-14-impressoes-digitais-persistentes.md) | Impressões digitais persistentes para plágio entre períodos e sinais com histórico | Proposto em 12/10/2026; Sprint 48, bloqueada pela Q-27 |
 
 ## 7. Roadmap de Sprints e Tasks do MVP
 
@@ -744,6 +773,7 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1d — Endurecimento, experiência e passagem de bastão (Sprints 25–29), criada em 06/10/2026 a partir da revisão de fim da Sprint 23:** primeiro deploy seguro, correção em lote, plágio por árvore, carga e eficácia, documentação para o próximo mantenedor e, se a Q-21 aprovar, os indícios de uso de IA. Como o ritmo real tem sido muito maior que 6 SP por sprint e não há calendário fixo (P-10), as datas da tabela são só a ordem prevista.
 - **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (renumerada para 41 em 11/10/2026). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
 - **Fase 1f — Polimento (Sprints 36–40), criada em 11/10/2026:** até o fim do piloto, melhorar o que existe: os defeitos e os documentos da equipe (36), a tela de verificação (37), a explicação de cada regra e a exportação (38), a qualidade interna, a operação e a documentação (39) e a correção da turma inteira (40). As tasks estão em 7.15.
+- **Fase 1g — Indícios, período, feedback, plágio e acompanhamento (Sprints 42–48), proposta de 12/10/2026:** a partir da revisão das seis frentes ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): os indícios de IA ligados no piloto (42, a pedido do autor), o período na página e a retenção por encerramento (43), o feedback rastreável e o padrão do monitor (44), o "Aprimorar com IA" com validação e crítica (45), o plágio calibrado (46), os grupos de acompanhamento dos alunos (47) e os sinais com histórico (48). A 47 e a 48 dependem de decisões sobre dados de alunos (Q-26 a Q-29). As tasks estão em 7.16.
 - **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
@@ -791,7 +821,14 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 39 (sob comando do autor) | Qualidade interna, operação e documentação | US-14, US-15, US-20, US-35 | Arquivos menores; testes das páginas; CI mais rápida; backup agendado e restauração ensaiada; documentação reorganizada | Refatorar sem mudar comportamento |
 | 40 (sob comando do autor) | A correção da turma inteira | US-16, US-31, US-33 | Correção em lote por upload com CSV; plágio todos contra todos com grupos; painel por lista | Carga concentrada no plano gratuito |
 | 41 (após 2027.1) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
-| Backlog (após o piloto) | Melhorias de experiência | US-10 | Tela de permissões da lista, editor com realce (CodeMirror) e análise do fluxo de controle no plágio (ADR-07, alternativa D); o upload de `.py` e a alternância de tema entraram nas Sprints 38 e 37 | Dependem da avaliação do piloto |
+| 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; corpus de calibração (Q-35) |
+| 43 (sob comando do autor) | Período na página e retenção por encerramento | US-37, US-39, US-40 | Período antes de Lista e Questão; o ativo e os 5 anteriores carregados; `retire-period` com simulação | `ruleset_version` por período nos painéis |
+| 44 (sob comando do autor) | Feedback rastreável e o padrão do monitor | US-32, US-41, US-42 | Cada violação com linha e motivo no feedback sem IA; `estilo.yaml` revisado por PR | Texto mais longo para o Dikastis |
+| 45 (sob comando do autor) | "Aprimorar com IA" com validação e crítica | US-32, US-43 | Nenhuma construção fora dos achados; nada de solução pronta nem de gabarito; uma rodada de crítica | Uma chamada a mais da cota gratuita |
+| 46 (sob comando do autor) | Plágio calibrado | US-31, US-38, US-44 | Precisão e revocação medidas com plágio sintético; IDF de base por questão; matriz com trechos | Corpus pequeno até a P-21 |
+| 47 (bloqueada pelas Q-26 a Q-29) | Grupos de acompanhamento e histórico dos alunos | US-45, US-46, US-47 | Grupos com convite e aceite; histórico sem código; expurgo por período | Primeiro dado pessoal de alunos; aviso de privacidade com a coordenação |
+| 48 (bloqueada pela Q-27) | Sinais com histórico e plágio entre períodos | US-31, US-34 | Impressão digital não reversível; comparação com períodos anteriores; indício de mudança de estilo | Reabre a REC-07 |
+| Backlog (após o piloto) | Melhorias de experiência | US-10 | Tela de permissões da lista, editor com realce (CodeMirror) e análise do fluxo de controle no plágio (ADR-07, alternativa D, reavaliada com os números da Sprint 46); o upload de `.py` e a alternância de tema entraram nas Sprints 38 e 37 | Dependem da avaliação do piloto |
 
 ### 7.2 Tasks do MVP (Sprints 1 a 9)
 
@@ -1226,7 +1263,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 | S33-09 | US-34 | Engenharia | (Opcional, a decidir pelo autor) gerar as referências por IA a partir do enunciado, pela cadeia do Aprimorar com IA, para quem cadastra revisar | a definir | Autor | 1 | S33-04 | Aguardando a decisão |
 | S33-10 | US-15 | Externa | Volta da cota do Actions (01/11/2026): CI com o job "Gabaritos", "Deploy do piloto", backup e auditoria rodando no Actions (runbook, "Sem GitHub Actions") | `.github/workflows/` | Autor | — | 01/11/2026 | Os quatro workflows verdes |
 
-**Situação (11/10/2026):** S33-07 e S33-08 entregues. S33-03 em parte: a medição preliminar nos 23 gabaritos de 2026.2 deu 0% na faixa alta (ADR-08), sem valor de calibração. Aguardando, com as premissas da P-21: S33-01 (períodos anteriores e Listas 4 a 6 de 2026.2), S33-02, S33-04, S33-05, S33-06 (depois da S33-02), S33-09 (decisão do autor) e S33-10 (01/11/2026).
+**Situação (11/10/2026):** S33-07 e S33-08 entregues. S33-03 em parte: a medição preliminar nos 23 gabaritos de 2026.2 deu 0% na faixa alta (ADR-08), sem valor de calibração. Aguardando, com as premissas da P-21: S33-01 (períodos anteriores e Listas 4 a 6 de 2026.2), S33-02, S33-04, S33-05, S33-06 (depois da S33-02), S33-09 (decisão do autor) e S33-10 (01/11/2026). **Proposta de 12/10/2026:** as S33-02, S33-03, S33-05 e S33-06 passam para a Sprint 42 (7.16), que liga os indícios no piloto.
 
 **Definition of Done:** a da seção 8; nenhum gabarito ou solução de aluno no repositório (Q-14, NFR-11).
 
@@ -1453,10 +1490,10 @@ O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quand
 | Marco 2: guia e apresentação | 5 | S31-05 | Externa |
 | Formulário e planilha do critério 3 (S28-02) | 5 | S31-06 | Externa |
 | Gabaritos de períodos anteriores (S20, Q-14) | 5 | S33-01 | Externa |
-| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03 | Externa e Engenharia |
+| Calibração dos indícios (S29-03/04) e faixas (ADR-08) | 4 e 5 | S33-02 (dados), S33-03; S42-01 e S42-02 (12/10/2026) | Externa e Engenharia |
 | Questões reais de 2027.1 (S24, R-01) | 5 | S33-04 | Externa |
-| Referências reais por IA (S29-02) | 5 | S33-05 | Externa |
-| Ligar os indícios no piloto | 3 | S33-06 | Engenharia (bloqueada) |
+| Referências reais por IA (S29-02) | 5 | S33-05; S42-04 (12/10/2026) | Externa |
+| Ligar os indícios no piloto | 3 | S33-06; S42-05 e S42-06 (12/10/2026) | Engenharia (bloqueada até a calibração ou a Q-35) |
 | Listas habilitadas conforme o professor | Prioridade 4 | S34-05 | Externa |
 | Teste sintético diário (NFR-06) | 6 | S34-02 | Engenharia |
 | k6 por release: NFR-04 e NFR-05 | 6 | S34-03 | Engenharia |
@@ -1475,7 +1512,7 @@ O estado é o desta data: nenhum item abaixo foi resolvido por este plano. Quand
 | Aviso da Sprint 20: repositório privado dos gabaritos | Revisão de 08/10/2026 | H-02, S33-01 | Engenharia e Externa |
 | Aviso da Sprint 22: casos em aberto do mapeamento | Revisão de 08/10/2026 | H-03, S31-05, S31-12 | Externa |
 | Aviso da Sprint 24: nenhuma questão real cadastrada | Revisão de 08/10/2026 | S31-09, S31-10, S31-11, S31-13, S33-04 | Engenharia e Externa |
-| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06 | Decisão, Externa e Engenharia |
+| Aviso da Sprint 29: indícios desligados no piloto | Revisão de 08/10/2026 | S31-01, S33-02, S33-03, S33-06; Sprint 42 (12/10/2026) | Decisão, Externa e Engenharia |
 | Avisos das Sprints 11, 19, 21, 25 e 28 | Revisão de 08/10/2026 | Resolvidos (S30); README corrigido (H-01) | — |
 
 ### 7.15 Tasks das Sprints 36 a 41 (plano de polimento de 11/10/2026)
@@ -1833,6 +1870,350 @@ Era a Sprint 36 do plano de 07/10/2026, renumerada em 11/10/2026 (as tasks S36-0
 
 **Riscos e bloqueios:** a sprint inteira está bloqueada pela P-09 e pela Q-12 e só é detalhada depois do piloto.
 
+### 7.16 Tasks das Sprints 42 a 48 (proposta de 12/10/2026: indícios de IA, período, feedback, plágio e acompanhamento)
+
+Proposta criada em 12/10/2026 a partir da revisão técnica das seis frentes pedidas pelo autor
+([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): o período da turma, a qualidade do
+feedback, os indícios de uso de IA, o plágio, os alunos sob responsabilidade de cada monitor e os
+grupos de monitores. A revisão mapeou o código atual com `caminho:linha`; esta seção traz só o
+plano. A Sprint 42, a ligação dos indícios de IA no piloto, entrou a pedido do autor no mesmo
+dia. Nenhuma destas sprints começa sem o comando do autor.
+
+**Por que é uma fase nova (Fase 1g):** até aqui o IP-Checker não guarda nada sobre alunos (NFR-11,
+REC-07). As Sprints 42 a 46 continuam sem guardar dados de alunos. A 47 cria a primeira
+persistência de dados pessoais de alunos e só começa depois das decisões Q-26 a Q-29 e da revisão
+do aviso de privacidade pela coordenação. A 48 depende da Q-27.
+
+**Ordem sugerida, intercalada com o plano de polimento (7.15):** 36 → 37 → 38 → **42** → **43** → **44** →
+39 → 40 → **46** → **45** → **47** → **48**, com a 41 (Fase 2) quando a P-09 e a Q-12 permitirem.
+A 42 começa assim que houver o corpus de calibração ou a resposta da Q-35 e pode correr em
+paralelo com as outras, porque toca poucos arquivos. A 43 vem antes da 39 para que a refatoração de `Checker.tsx` e `Plagiarism.tsx` já inclua o
+seletor de período; a 44 depende da S38-01 e da S38-02; a 46 depende da S40-02.
+
+**Base comum:** a mesma de 7.15 (evidência por `ci-local.sh --e2e` enquanto durar a P-19, release
+por `scripts/release.sh NN`, sintético e exercício de alerta depois do deploy, migração nunca junto
+com o `render.yaml`, P-18).
+
+**Decisões que bloqueiam ou mudam o plano:** Q-26 a Q-34 em [`decisoes.md`](decisoes.md).
+
+| Decisão | Bloqueia |
+|---|---|
+| Q-35 (como calibrar os indícios se as soluções anteriores a 2023 não chegarem) | Sprint 42 (padrão: esperar as soluções, como diz a política) |
+| Q-26 (identificador do aluno), Q-28 (texto do feedback no histórico), Q-29 (retenção) | Sprint 47 |
+| Q-27 (guardar algo do código ligado ao aluno) | Sprint 48 |
+| Q-30 (nome da regra ou `R-xx` no feedback), Q-31 (quem revisa o estilo) | Sprint 44 (padrão até a resposta: nome da regra; monitor-chefe) |
+| Q-32 (metas de precisão e revocação do plágio) | Sprint 46 (padrão: a proposta) |
+| Q-33 (ambiguidades do documento de permissões) | Nenhuma; muda o catálogo se a resposta divergir |
+| Q-34 (o período ativo conta na janela de 6) | Sprint 43 (padrão: conta) |
+
+#### Sprint 42 — Indícios de IA ligados no piloto (incluída a pedido do autor em 12/10/2026)
+
+**Objetivo:** que a equipe veja os indícios de uso de IA no piloto, calibrados, com a política já
+aprovada (Q-21, 7.13.1, opção A).
+
+**Missão:** que o monitor decida com quem conversar a partir de evidências ancoradas no documento
+de permissões, sem que o painel possa ser lido como prova.
+
+**Personas:** o membro da equipe que corrige e conversa com o aluno (US-34), a coordenação, dona da
+política, e o monitor-mantenedor que calibra.
+
+**Por que agora e o que a bloqueia:** o código está pronto desde a Sprint 29 e a política foi
+aprovada em 09/10/2026. Pela política (`docs/indicios-de-ia.md`, "Como ligar no piloto"), o painel
+só é ligado com a calibração dentro da meta (no máximo 5% das soluções humanas na faixa alta), e a
+calibração espera as soluções anteriores a 2023 (S33-02). Esta sprint reúne o que faltava da Sprint
+33 (S33-02, S33-03, S33-05 e S33-06, que passam a ser S42-01, S42-02, S42-04 e S42-06) e acrescenta
+uma ligação gradual por cargo. Se as soluções não chegarem, a Q-35 decide como calibrar.
+
+**Execução:**
+1. O corpus de calibração (S42-01) ou a alternativa da Q-35.
+2. A calibração (S42-02) e, em paralelo, a evidência e a confiança em cada indício (S42-03).
+3. As referências por IA das questões cadastradas (S42-04), que não bloqueiam a ligação: sem elas,
+   o sinal de referência fica inerte e os outros funcionam.
+4. A ligação gradual (S42-05): primeiro a chefia (desenvolvedor, professores e monitores-chefes),
+   por uma lista; depois a equipe toda (S42-06).
+5. O guia, o registro de casos e o runbook (S42-07).
+
+**Histórias:** US-34.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S42-01 | US-34 | Externa | Corpus de calibração: as soluções humanas anteriores a 2023 (era a S33-02), fora do repositório, no formato dos gabaritos, ou a alternativa escolhida na Q-35 | Pasta local fora do repositório | Autor e coordenação | — | Q-35 | Pelo menos 200 soluções nas 6 listas [PREMISSA]; nenhum dado de aluno no repositório |
+| S42-02 | US-34 | Engenharia | Calibração (era a S33-03): `ipc-rules calibrate` com `--max-alto 5` em cada período carregado; faixas de `engine/indicators.py` ajustadas por PR até a meta; a distribuição registrada no ADR-08 | `cli.py`, `engine/indicators.py`, ADR-08 | Autor | 2 | S42-01 | O comando sai com 0; `test_indicators.py` com as faixas novas |
+| S42-03 | US-34 | Engenharia | Cada indício passa a trazer a evidência (regra, linhas e um trecho de até 120 caracteres) e a confiança (baixa, média ou alta); o painel ganha um teste de vocabulário que recusa "prova", "veredito", "plagiou" e "usou IA" como afirmação | `engine/indicators.py`, `IndicatorsPanel.tsx`, OpenAPI | Autor | 1 | — | pytest e Vitest; contrato atualizado |
+| S42-04 | US-34 | Externa | Referências por IA das questões cadastradas do período ativo (era a S33-05; com o gerador da S33-09 se o autor decidir), revisadas por quem cadastra | `rulesets/<período>/referencias/` | Equipe | — | S33-04 | `ipc-rules validate` mostra as referências em todas as questões cadastradas |
+| S42-05 | US-34 | Engenharia | Ligação gradual: `IPC_AI_INDICATORS` aceita `0` (desligado), `chefia` (desenvolvedor, professores e monitores-chefes) e `1` (toda a equipe); a API só calcula e devolve o painel para os cargos ligados, e `/api/v1/auth/options` informa a cada conta se ela o vê | `settings.py`, `routes/validate.py`, `routes/auth.py`, `test_indicators_api.py` | Autor | 1 | — | Matriz cargo × valor testada por chamada direta; o feedback continua sem indícios |
+| S42-06 | US-34 | Engenharia | Ligar no piloto (era a S33-06): um PR com `IPC_AI_INDICATORS: chefia` no `render.yaml`, a variável `PILOT_AI_INDICATORS` e o teste do piloto; depois de uma lista com o registro de casos, outro PR com `1` | `render.yaml`, `.github/workflows/deploy.yml`, `backend/tests/pilot/` | Autor | 0,5 | S42-02, S42-05 | Painel visível numa verificação com a conta de verificação; o sintético e o exercício de alerta depois de cada deploy |
+| S42-07 | US-34 | Documentação | Guia da equipe (como ler o painel e conduzir a conversa, com as perguntas sugeridas), o registro de casos confirmados e descartados por lista, sem nome nem matrícula (planilha do critério 3), o runbook (desligar pela variável no Render, sem deploy de código) e o status da ADR-08 e de `docs/indicios-de-ia.md` | docs | Autor | 1 | — | Revisão pela coordenação |
+
+**ADRs:** ADR-08 (status: ligado no piloto, com a calibração registrada).
+
+**Critérios de aceite:**
+1. A calibração deixa no máximo 5% das soluções humanas na faixa alta.
+2. Com `chefia`, um monitor não recebe o painel, e um monitor-chefe recebe.
+3. Com `1`, toda a equipe recebe o painel, e o feedback nunca leva os indícios.
+4. Cada indício mostra a regra, as linhas, o trecho e a confiança, com o aviso de que não é prova.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Calibração | `ipc-rules calibrate` | À mão, a cada período | Sai com 0; a saída nunca mostra código |
+| Ligação por cargo | pytest (matriz) | PR | `0`, `chefia` e `1` com o painel certo para cada cargo |
+| Evidência e vocabulário | pytest e Vitest | PR | Todo indício com evidência; nenhum termo de veredito |
+| Piloto | `tests/pilot` com `PILOT_AI_INDICATORS` | Depois do deploy | `ai_indicators` igual ao esperado |
+
+**Deploy:** release `sprint-42`. A mudança do `render.yaml` publica sozinha no Render (sem migração
+junto, P-18); a Vercel só se o painel mudar. Depois, o sintético e o exercício de alerta.
+
+**Riscos:**
+- O painel ser lido como prova: o texto, o guia e a ligação primeiro para a chefia reduzem o risco.
+- Um corpus de calibração pequeno ou enviesado (Q-35): a meta é revista a cada período com o
+  registro de casos.
+- Desligar é imediato: a variável no Render volta a `0` sem deploy de código.
+
+#### Sprint 43 — Período na interface e retenção por encerramento
+
+**Objetivo:** corrigir uma lista atrasada com as regras do período certo e manter só os períodos
+recentes carregados.
+
+**Missão:** que o monitor escolha Período → Lista → Questão, com o período ativo já escolhido, e que
+o mantenedor encerre períodos antigos sem perder nada do Git.
+
+**Personas:** o monitor que corrige uma lista de outro período (US-39) e o monitor-mantenedor
+(US-40).
+
+**Execução:**
+1. O analisador carrega o ativo e os 5 anteriores (S43-01), e a API aceita o período (S43-02).
+2. O seletor na página (S43-03).
+3. O encerramento por CLI com simulação (S43-04) e os documentos (S43-05).
+
+**Histórias:** US-37, US-39 e US-40.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S43-01 | US-39 | Engenharia | `load_rulesets(root)` carrega o período do `ATIVO` e os 5 anteriores presentes em `rulesets/` (ignora `rulesets/encerrados/`); o manifesto passa a listar `periods` (período, ativo, `ruleset_version`, questões); cache de preparação por (período, hash) | `engine/ruleset.py`, `service/app.py`, `/internal/ruleset/manifest` | Autor | 2 | — | Testes com 7 períodos em `tmp_path` (6 carregados); hash por período; subida até +2 s em relação a um período [PREMISSA] |
+| S43-02 | US-39 | Engenharia | `period` opcional em `/validate`, `/similarity`, `/similarity/batch` e `/feedback` (padrão: o ativo); `GET /api/v1/periods`; 422 `UNKNOWN_PERIOD`; `questions.py` resolve por (período, questão); a telemetria e a adoção gravam o período da requisição | `ipc_api/schemas.py`, `routes/*`, `questions.py`, `telemetry.py`, `adoption.py`, OpenAPI | Autor | 1 | S43-01 | Contrato OpenAPI; teste com `L3-Q9` de 2026.2 e o ativo em 2027.1 |
+| S43-03 | US-39 | Engenharia | `PeriodSelector` antes de `ListSelector` no verificador e no plágio, com "(ativo)" no rótulo; o rascunho (S37-05) guarda o período; "Próximo aluno" mantém o período | `frontend/src/components/`, `Checker.tsx`, `Plagiarism.tsx` | Autor | 1 | S43-02 | Vitest e e2e da lista atrasada |
+| S43-04 | US-40 | Engenharia | `ipc-rules retire-period <período> [--dry-run]` move a pasta para `rulesets/encerrados/` e recusa o ativo e os períodos da janela; o índice de gabaritos ignora `encerrados/`; aviso em `/health/slo` quando o `ATIVO` parece defasado em relação à data (só aviso, nunca troca automática) | `cli.py`, `gabaritos.py`, `routes/meta.py` | Autor | 1 | S43-01 | `--dry-run` não toca no disco; recusas testadas |
+| S43-05 | US-40 | Documentação | ADR-12; revisão da ADR-10 (decisão 3); `rulesets/README.md` ("Encerrar um período"); README dos gabaritos (`encerrados/`); FR-32 e US-37 sem a nota de "até a Sprint 43"; `new-period` deixa de copiar a lista de questões do `LEIA-ME.md` (hoje `rulesets/2027.1/questions/LEIA-ME.md` cita questões que não existem) | docs, `cli.py` | Autor | 1 | — | Revisão |
+
+**ADRs:** ADR-12 (novo) e ADR-10 (revisão).
+
+**Critérios de aceite:**
+1. Com o `ATIVO` em 2027.1, o monitor escolhe 2026.2, a Lista 3 e a L3-Q9, e a resposta traz a `ruleset_version` de 2026.2.
+2. Sem período na requisição, tudo funciona como hoje.
+3. O `retire-period --dry-run` mostra o que sairia, e o ativo nunca é encerrado.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Carregamento de vários períodos | pytest | PR | 6 carregados, `encerrados/` ignorado, hash por período |
+| Período na API | pytest e contrato OpenAPI | PR | Padrão = ativo; 422 para período desconhecido |
+| Seletor | Vitest e e2e | PR | Lista atrasada verificada com as regras do período |
+| Encerramento | pytest com `tmp_path` | PR | Simulação sem efeito; recusas |
+
+**Deploy:** release `sprint-43`. Render (analisador e API) e Vercel; sem migração.
+
+**Riscos:** as views que agrupam por `ruleset_version` passam a misturar períodos na mesma semana
+(conferir `v_top_rules_by_list`); mais memória no analisador (dezenas de KB por período).
+
+#### Sprint 44 — Feedback rastreável e o padrão do monitor
+
+**Objetivo:** que cada violação citada no feedback traga a linha e o motivo, e que o tom da equipe
+fique num arquivo revisável.
+
+**Missão:** o aluno sabe onde e por que a questão foi anulada, e o monitor-chefe ajusta o tom sem
+programar.
+
+**Personas:** o monitor que manda o feedback (US-41) e o monitor-chefe (US-42).
+
+**Execução:**
+1. Os itens do feedback com regra, linhas, explicação e alternativa (S44-01), sobre a S38-01 e a S38-02.
+2. O `estilo.yaml` com o esquema (S44-02).
+3. A tela destaca as linhas citadas (S44-03) e os documentos (S44-04).
+
+**Histórias:** US-32, US-41 e US-42.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S44-01 | US-41 | Engenharia | `FeedbackItem` ganha `rule_id`, `lines`, `explanation` e `alternative` (do ruleset); o trecho sem IA cita cada item na ordem do motor, com o nome da regra (Q-30), a linha, o porquê e um caminho, sem a solução; a frase obrigatória não muda (NFR-26) | `engine/feedback.py`, `feedback/compose.py` | Autor | 2 | S38-01, S38-02 | Casos T1 a T3 da revisão; NFR-26 intacto |
+| S44-02 | US-42 | Engenharia | `backend/src/ipc_api/feedback/estilo.yaml` (tom, dicas, fechamentos e 3 a 5 exemplos com `[ALUNO]`) com esquema JSON validado na CI; os prompts usam o tom e os exemplos | `feedback/estilo.yaml`, `estilo.schema.json`, `compose.py` | Autor | 1 | — | Arquivo inválido falha na CI; a mudança aparece no próximo feedback |
+| S44-03 | US-41 | Engenharia | `FeedbackResponse.items`; a página destaca no editor a linha de cada item citado | `schemas.py`, `FeedbackPanel.tsx`, OpenAPI | Autor | 1 | S44-01 | Vitest |
+| S44-04 | US-42 | Documentação | `docs/estilo-do-feedback.md` (como editar e quem revisa, Q-31); FR-34 e FR-35; revisão da ADR-06; guia da equipe | docs | Autor | 1 | — | Revisão |
+
+**ADRs:** ADR-06 (revisão).
+
+**Critérios de aceite:**
+1. Para `for` e `range()` na Lista 1, o feedback sem IA cita as duas construções com a linha e diz que são liberadas na Lista 2.
+2. Um `estilo.yaml` inválido não passa na CI.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Itens rastreáveis | pytest (`test_compose.py`, `test_feedback_engine.py`) | PR | Linha e motivo em todo item; ordem do motor |
+| Esquema do estilo | pytest | PR | Arquivo inválido recusado |
+| Destaque na página | Vitest e e2e | PR | A linha citada é marcada no editor |
+
+**Deploy:** release `sprint-44`. Render e Vercel.
+
+**Riscos:** um texto mais longo pode passar do que cabe no Dikastis (**hipótese**; medir com a equipe
+na campanha de testes).
+
+#### Sprint 45 — Aprimorar com IA: validação rastreável e crítica
+
+**Objetivo:** nenhum erro inventado pela IA chega ao aluno.
+
+**Missão:** que o texto da IA só fale do que o verificador achou, não entregue a solução nem o
+gabarito, e seja reescrito uma vez antes de cair no texto sem IA.
+
+**Personas:** o membro da equipe que usa o "Aprimorar com IA" (US-43).
+
+**Execução:**
+1. Os validadores novos (S45-01).
+2. Uma rodada de crítica e reescrita dentro do prazo atual de 28 s (S45-02).
+3. A avaliação com a rubrica (S45-03).
+
+**Histórias:** US-32 e US-43.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S45-01 | US-43 | Engenharia | Validação da saída além dos filtros atuais: (a) toda construção citada (vocabulário de `display.py`) está entre os itens do motor; (b) nenhum bloco com 3 ou mais linhas de código; (c) nenhum trecho com 6 ou mais tokens seguidos iguais ao gabarito, conferido na API, sem enviar o gabarito ao provedor; (d) ao menos uma frase de encorajamento do estilo; (e) até 6 frases e 900 caracteres | `feedback/compose.py`, `feedback/service.py` | Autor | 2 | S44-01, S44-02 | Casos T4 a T6 da revisão; 0 texto de gabarito nos logs (canário) |
+| S45-02 | US-43 | Engenharia | Uma rodada de crítica: com a lista de problemas da validação, uma chamada de reescrita, só se sobrarem pelo menos 10 s; depois, o texto sem IA (`NO_ANSWER`) | `feedback/service.py` | Autor | 1 | S45-01 | Caso T8 (fallback em até 28 s); `test_service.py` |
+| S45-03 | US-43 | Avaliação | 20 casos revisados pela equipe com a rubrica de 5 critérios (achado com linha; nada sem achado; caminho sem solução; tom; forma), de 0 a 2 cada; resultado em `docs/eficacia.md` | docs | Autor e equipe | 1 | S45-02 | Média de pelo menos 9 em 10 |
+
+**ADRs:** ADR-06 (revisão: etapas de validação e crítica). O NFR-26 ganha "0 construções citadas
+fora dos achados do motor e 0 trechos de 6 ou mais tokens iguais ao gabarito".
+
+**Critérios de aceite:**
+1. Um texto da IA que cita `while` num código sem `while` nunca é exibido.
+2. Sem resposta válida em 28 s, aparece o texto sem IA, como hoje.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Validadores | pytest com o provedor falso | PR | Os casos adversariais novos são recusados |
+| Crítica e prazo | pytest | PR | Uma rodada só; fallback no prazo |
+| Gabarito fora dos logs | canário do NFR-11 e do NFR-27 | PR | 0 ocorrências |
+| Rubrica | revisão humana | Uma vez | Média ≥ 9/10 |
+
+**Deploy:** release `sprint-45`. Render.
+
+**Riscos:** a crítica gasta uma chamada a mais da cota gratuita (60 por conta e 1.000 por dia); com a
+cota no fim, a crítica é pulada.
+
+#### Sprint 46 — Plágio calibrado
+
+**Objetivo:** limiares medidos, código comum descontado e a matriz da turma com trechos.
+
+**Missão:** que a equipe saiba quanto o detector acerta (precisão e revocação) e que soluções curtas
+e naturais da mesma questão não pareçam cópia.
+
+**Personas:** o membro da equipe que compara a turma (US-44).
+
+**Execução:**
+1. O gerador de plágio sintético e a medição (S46-01).
+2. O peso de base por questão e a parte explicada pelo gabarito (S46-02).
+3. A matriz com grupos e trechos (S46-03), sobre a S40-02, e os documentos (S46-04).
+
+**Histórias:** US-31, US-38 e US-44.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S46-01 | US-44 | Engenharia | Gerador de plágio sintético (variáveis renomeadas, blocos reordenados, `for` trocado por `while`, linha inerte e a combinação) sobre o corpus de `pares.yaml`, as referências e, só com `IPC_GABARITOS_DIR` na CI local, os gabaritos; `ipc-rules calibrate-plagio` imprime precisão e revocação por faixa e falha abaixo das metas (Q-32) | `backend/tests/similarity/sintetico.py`, `cli.py` | Autor | 2 | — | Relatório por faixa; gate na CI local |
+| S46-02 | US-31, US-38 | Engenharia | IDF de base por questão (gabarito, referências e soluções independentes) combinado com o IDF da turma; o par mostra a parte da semelhança explicada pelo gabarito, sem descontá-la (descontar esconderia uma cópia do gabarito) | `engine/similarity_tree.py`, `routes/similarity.py`, `Plagiarism.tsx` | Autor | 2 | S46-01 | Pares independentes curtos abaixo de 80% |
+| S46-03 | US-44 | Engenharia | Na matriz da S40-02, os trechos de cada par sob demanda e os grupos acima de 90% | `engine/similarity.py`, `Plagiarism.tsx` | Autor | 1 | S40-02 | Turma de 100 soluções (120 KB) em até 5 s no worker (NFR-30) |
+| S46-04 | US-44 | Documentação | NFR-25 com os valores medidos; revisão da ADR-07 (IDF de base; alternativa D reavaliada com os números); seção "Plágio" em `docs/eficacia.md` | docs | Autor | 1 | S46-01 | Revisão |
+
+**ADRs:** ADR-07 (revisão).
+
+**Critérios de aceite:**
+1. A medição mostra revocação ≥ 95% na faixa de 90% para as três transformações e precisão de 100% na faixa de 95% [PREMISSA até a Q-32].
+2. A turma sintética de 30 soluções tem os dois grupos achados e nenhum independente acima de 90%.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Precisão e revocação | `ipc-rules calibrate-plagio` | PR que toca o plágio | Metas da Q-32 |
+| Peso de base | pytest | PR | Independentes curtos abaixo de 80% |
+| Matriz e orçamento | pytest | PR | 100 soluções em até 5 s |
+
+**Deploy:** release `sprint-46`. Render e Vercel.
+
+**Riscos:** o corpus de independentes é pequeno até chegarem as soluções anteriores a 2023 (P-21);
+os números da primeira medição são provisórios.
+
+#### Sprint 47 — Grupos de acompanhamento e histórico dos alunos (bloqueada pelas Q-26 a Q-29)
+
+**Objetivo:** cada monitor cadastra os alunos pelos quais é responsável e acompanha o histórico
+deles, sozinho, em dupla ou em trio.
+
+**Missão:** que um grupo de acompanhamento (N monitores e M alunos, por período) compartilhe as
+verificações, os indícios, os alertas de plágio e, se a Q-28 permitir, os feedbacks, sem guardar o
+código do aluno.
+
+**Personas:** o monitor (US-45, US-46) e o monitor-chefe e o professor que supervisionam (US-47).
+
+**Execução:**
+1. A migração com as tabelas, o expurgo e os papéis (S47-01).
+2. A política de acesso e as rotas (S47-02).
+3. A gravação assíncrona do registro (S47-03).
+4. As telas (S47-04) e a privacidade (S47-05).
+
+**Histórias:** US-45, US-46 e US-47.
+
+| ID | História | Tipo | Descrição técnica | Componente/API/Esquema | Responsável | Estimativa (SP) | Dependências | Critério de conclusão |
+|---|---|---|---|---|---|---|---|---|
+| S47-01 | US-45 | Engenharia | Migração `0007_acompanhamento`: `app.student` (período, nome de exibição, referência opcional, nunca CPF, e-mail ou matrícula), `app.follow_group`, `app.group_member` (convite e aceite), `app.group_student`, `app.check_record` (só inserção; resultado, regras e linhas, faixas, quem executou, hash do código; sem o código) e `app.group_log`; `app.purge_semester()` `SECURITY DEFINER`; o `ipc_app` sem `DELETE` direto | `database/migrations/0007_*` | Autor | 2 | Q-26 a Q-29 | Ida e volta testadas (`test_migrations.py`) |
+| S47-02 | US-45, US-47 | Engenharia | Política cargo × ação × alvo em `auth/policy.py` (membro vê e edita o próprio grupo; monitor-chefe, professor e desenvolvedor leem todos os grupos do período); rotas `groups`, `invites`, `students` e `history` | `auth/policy.py`, `routes/groups.py`, OpenAPI | Autor | 2 | S47-01 | Matriz testada por chamada direta (NFR-23) |
+| S47-03 | US-46 | Engenharia | `student_id` e `group_id` opcionais em `/validate`, `/feedback` e `/similarity`; o registro é gravado em segundo plano e descartado sob `StoreBusy`, como a telemetria | `routes/*`, `telemetry.py` (padrão) | Autor | 1 | S47-02 | A resposta não muda com o banco ocupado |
+| S47-04 | US-45, US-46, US-47 | Engenharia | Telas "Meus alunos" (grupos, convites, alunos), campo "Aluno" no verificador e no plágio, "Histórico do aluno" (linha do tempo com quem executou) e a leitura no Gerenciar | `frontend/src/pages/` | Autor | 3 | S47-02 | e2e: criar grupo, convidar, aceitar, adicionar aluno fictício, verificar e ver no histórico |
+| S47-05 | US-45 | Documentação | Aviso de privacidade, seção 9.2, NFR-29, ADR-13, runbook (expurgo por período), guia da equipe | docs, `Privacy.tsx` | Autor e coordenação | 1 | — | Aprovação da coordenação |
+
+**ADRs:** ADR-13 (novo) e ADR-04 (rotas novas na matriz de autorização).
+
+**Critérios de aceite:**
+1. Um aluno em dois grupos aparece nos dois; sair de um grupo não apaga os registros.
+2. Nenhuma coluna guarda código (canário do NFR-11 estendido às tabelas novas).
+3. O expurgo de um período remove alunos, grupos e registros daquele período.
+
+**Testes:**
+
+| Teste | Ferramenta | Gatilho | Critério |
+|---|---|---|---|
+| Migração e expurgo | pytest com PostgreSQL | PR | Ida e volta; `purge_semester` |
+| Autorização | pytest (matriz) | PR | 403 fora do grupo; leitura pela chefia |
+| Sem código guardado | canário do NFR-11 | PR | 0 ocorrências |
+| Fluxo completo | e2e | PR | Criar, convidar, aceitar, verificar e ver no histórico |
+| Carga | `run_load.py` | Uma vez | Sem 500; registros descartados sob carga |
+
+**Deploy:** release `sprint-47`. Migração antes da release e nunca junto com o `render.yaml` (P-18);
+depois, Render e Vercel.
+
+**Riscos:** dado pessoal novo de terceiros (os alunos não usam a ferramenta, P-13); a base legal e o
+aviso dependem da coordenação. Mais escritas no banco do plano gratuito (`POOL_SIZE=5`).
+
+#### Sprint 48 — Sinais com histórico e plágio entre períodos (bloqueada pela Q-27)
+
+**Objetivo:** usar o histórico para dois sinais que hoje são impossíveis: a mudança brusca de estilo
+do mesmo aluno e a semelhança com soluções de períodos anteriores.
+
+**Missão:** que o monitor veja, como indício e nunca como veredito, quando uma solução destoa do
+histórico do aluno ou coincide com a de um período anterior.
+
+**Personas:** o membro da equipe que analisa indícios (US-34) e plágio (US-31).
+
+**Condição:** só com a Q-27 respondida com "impressão digital" (o multiconjunto de hashes de
+subárvores, que não reconstrói o código). A ADR-14 registra a decisão; as tasks S48-01 a S48-04
+serão detalhadas depois dela: a impressão digital no `check_record`, a comparação com os registros
+da mesma questão em períodos anteriores, o indício de mudança de estilo e a calibração com a mesma
+meta da ADR-08 (no máximo 5% de faixa alta em soluções humanas).
+
+**ADRs:** ADR-14 (novo), ADR-08 e ADR-07 (revisões).
+
 ## 8. Definition of Done (DoD)
 
 Cada item é verificado como sim ou não. Uma task ou história só está pronta quando todos os itens aplicáveis estão marcados como "sim".
@@ -1855,6 +2236,8 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] [PLANEJADO] O benchmark do motor não regrediu mais de 20% (NFR-02).
 - [ ] O smoke e2e (Playwright) está verde: localmente na Fase 0 e no ambiente do piloto a partir da Sprint 11.
 - [ ] Quando a entrega afeta o caminho de requisição (a partir da Sprint 28), o `deploy/load/run_load.py` no plano do piloto ou o workflow "Carga no piloto" mostra o P95 dentro do NFR-01; os cenários do NFR-04 e do NFR-05 são [PLANEJADO].
+- [ ] [PLANEJADO, a partir da Sprint 46] Uma mudança no plágio não baixa a precisão nem a revocação medidas pelo `ipc-rules calibrate-plagio` (FR-37).
+- [ ] [PLANEJADO, a partir da Sprint 47] Toda rota dos grupos de acompanhamento tem a matriz cargo × ação × alvo testada por chamada direta, e o canário do NFR-11 cobre as tabelas da ADR-13.
 
 ### Segurança: submissões maliciosas contra o isolamento e o motor de regras
 
@@ -1900,6 +2283,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] README, `RULES.md` e runbook foram atualizados quando o setup, a operação ou o processo de regras mudou.
 - [ ] Toda premissa ou questão nova ou resolvida foi registrada em `docs/decisoes.md` (seção 1.3).
 - [ ] O aviso de privacidade foi atualizado quando mudaram os dados pessoais guardados ou enviados a terceiros (a partir da Sprint 14).
+- [ ] [PLANEJADO, a partir da Sprint 44] O `estilo.yaml` do feedback passa no esquema, e as mudanças de tom foram revisadas por quem a Q-31 indicar.
 
 ### Implantação
 
@@ -1909,6 +2293,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] O rollback segue o `docs/runbook.md` e leva ≤ 5 min; o ensaio cronometrado fica registrado no runbook (a partir da Sprint 28).
 - [ ] O UptimeRobot monitora `/ready`, `/health/slo` e a SPA a cada 5 min, com alerta por e-mail, configurado pelo autor conforme `deploy/piloto.md` e registrado no runbook.
 - [ ] Toda migração de banco é reversível e foi testada antes de ir para o piloto (a partir da Sprint 13).
+- [ ] [PLANEJADO, a partir da Sprint 47] Uma migração que cria tabelas com dados pessoais de alunos traz a função de expurgo e o teste dela (NFR-29).
 - [ ] Os segredos novos (banco de contas, cliente OAuth, e-mail e LLM) existem só no ambiente da `api`, nunca no do `analyzer` nem no build da página (a partir da Sprint 13).
 
 ## 9. Integração com outros projetos da monitoria (possibilidade)

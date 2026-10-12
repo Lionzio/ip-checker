@@ -10,6 +10,7 @@ mudaram.
 
 ## Depois da Sprint 35
 
+- **12/10/2026, revisão das seis frentes:** análise só de leitura dos dois repositórios, do documento de permissões (o `.docx` e o `.pdf` têm o mesmo conteúdo) e dos documentos, com seis frentes: o período da turma, a qualidade do feedback, os indícios de uso de IA, o plágio, os alunos de cada monitor e os grupos de monitores. O resultado está em `docs/revisao-seis-frentes.md`; a proposta das Sprints 42 a 48 está em 7.16 do blueprint, com os FR-33 a FR-37, os NFR-29 e NFR-30, as US-39 a US-47 (Épico E8), as ADR-12 a ADR-14 propostas e as perguntas Q-26 a Q-35. A pedido do autor, a Sprint 42 liga os indícios de IA no piloto e reúne as S33-02, S33-03, S33-05 e S33-06.
 - **11/10/2026, plano de polimento:** até o fim do piloto, as Sprints 36 a 40 melhoram o que existe (defeitos e documentos da equipe, a tela de verificação, a explicação de cada regra e a exportação, a qualidade interna e a correção da turma inteira), a partir de uma análise com revisão dos documentos e do código e um tour da interface com 41 capturas. A Fase 2 passa a ser a Sprint 41 (S41-01 a S41-04). Plano em 7.15 do blueprint.
 - **11/10/2026, branches:** as 23 branches remotas já mergeadas (todas com PR fechado) foram apagadas; ficam a `develop`, a `main` e as tags das releases.
 - **11/10/2026, Q-25 decidida pelo autor:** o NFR-02 passa a ser ≤ 50 ms para entradas de até 5 KB e

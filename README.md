@@ -18,9 +18,12 @@ benchmark, Lighthouse e cobertura por pasta na CI. O uso pela equipe é em 2027.
 
 Até o fim do piloto, as Sprints 36 a 40 melhoram o que existe: os defeitos e os documentos da
 equipe, a tela de verificação, a explicação de cada regra, a qualidade interna e a correção da turma
-inteira (seção 7.15 do blueprint). A Fase 2 (Sprint 41) está bloqueada até o piloto, e a integração
-com outros 2 projetos da monitoria é só uma possibilidade, ainda não confirmada (seção 9 do
-blueprint e ADR-09).
+inteira (seção 7.15 do blueprint). A proposta de 12/10/2026 acrescenta as Sprints 42 a 48: os
+indícios de IA ligados no piloto, o período na página, o feedback que cita a linha e o motivo, o
+plágio calibrado e os grupos de acompanhamento dos alunos, estes dependentes de decisões sobre
+dados pessoais (seção 7.16 e [`docs/revisao-seis-frentes.md`](docs/revisao-seis-frentes.md)).
+A Fase 2 (Sprint 41) está bloqueada até o piloto, e a integração com outros 2 projetos da
+monitoria é só uma possibilidade, ainda não confirmada (seção 9 do blueprint e ADR-09).
 
 | Para | Leia |
 |---|---|
@@ -30,7 +33,8 @@ blueprint e ADR-09).
 | Relatar uma falha de segurança | [`SECURITY.md`](SECURITY.md) |
 | Achar qualquer outro documento | [`docs/README.md`](docs/README.md) |
 | O que cada sprint entregou | [`CHANGELOG.md`](CHANGELOG.md) |
-| O que vem a seguir (Sprints 36 a 41) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.13 a 7.15 |
+| O que vem a seguir (Sprints 36 a 48) e as decisões em aberto | [`docs/blueprint.md`](docs/blueprint.md), seções 7.13 a 7.16 |
+| A revisão das seis frentes: período, feedback, indícios de IA, plágio e acompanhamento dos alunos | [`docs/revisao-seis-frentes.md`](docs/revisao-seis-frentes.md) |
 | A pauta do Marco 2 (casos do mapeamento e decisões da coordenação) | [`docs/marco-2.md`](docs/marco-2.md) |
 | A comparação com o gabarito (Sprint 32) | [`docs/adr/ADR-11-comparacao-com-o-gabarito.md`](docs/adr/ADR-11-comparacao-com-o-gabarito.md) |
 | Questões e gabaritos por período | [`docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md`](docs/adr/ADR-10-questoes-e-gabaritos-por-periodo.md), [`RULES.md`](RULES.md) e [`rulesets/README.md`](rulesets/README.md) |
@@ -191,6 +195,13 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 39 | Qualidade interna, operação e documentação: arquivos menores, testes das páginas, CI mais rápida, backup agendado, restauração ensaiada, documentação reorganizada | Planejada |
 | 40 | A correção da turma inteira: correção em lote por upload com CSV, plágio todos contra todos, painel por lista | Planejada |
 | 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12) |
+| 42 | Indícios de IA ligados no piloto: calibração, evidência em cada indício, primeiro para a chefia e depois para todos | Proposta (aguarda o corpus de calibração ou a Q-35) |
+| 43 | Período na página (antes de Lista e Questão), o ativo e os 5 anteriores carregados, encerramento com simulação | Proposta |
+| 44 | Feedback com a linha e o motivo de cada violação; o padrão do monitor em `estilo.yaml` | Proposta |
+| 45 | "Aprimorar com IA" que só fala do que o verificador achou, com uma rodada de crítica | Proposta |
+| 46 | Plágio calibrado: precisão e revocação com plágio sintético, peso de base por questão, matriz com trechos | Proposta |
+| 47 | Grupos de acompanhamento: cada monitor com os seus alunos, sozinho ou em grupo, e o histórico sem código | Proposta; bloqueada (Q-26 a Q-29) |
+| 48 | Sinais com histórico e plágio entre períodos, por impressão digital não reversível | Proposta; bloqueada (Q-27) |
 
 O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
@@ -200,6 +211,7 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 
 | ID | Decisão |
 |---|---|
+| Proposta de 12/10/2026 | Sprints 42 a 48 a partir da revisão das seis frentes, com os indícios de IA no piloto primeiro; as decisões Q-26 a Q-35 ficam com o autor, a coordenação e os professores |
 | Plano de 11/10/2026 | Até o fim do piloto, melhorar o que existe (Sprints 36 a 40); a Fase 2 vira a Sprint 41 |
 | Q-25 | NFR-02: ≤ 50 ms até 5 KB e linear até 50 KB; NFR-03: FCP ≤ 1,65 s no perfil móvel (11/10/2026) |
 | P-22 | As permissões de 2027.1 são as de 2026.2; o período 2027.1 já existe, inativo (11/10/2026) |
@@ -251,6 +263,9 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Datas de 2027.1, para trocar o período ativo e conferir os monitores (S34-06; P-22)
 - [x] Metas de desempenho medidas na Sprint 35: NFR-02 e NFR-03 revistas (Q-25, 11/10/2026)
 - [ ] Campanha de testes manuais com a equipe (`docs/testes-manuais.md`, S35-10)
+- [ ] Decisões da revisão das seis frentes (Q-26 a Q-35 em `docs/decisoes.md`): dados de alunos
+      e retenção (com a coordenação), como calibrar os indícios para ligá-los no piloto, estilo do
+      feedback, metas do plágio e as leituras do documento de permissões (com os professores)
 - [x] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; 23
       gabaritos carregados no piloto em 10/10/2026)
 - [x] Chaves gratuitas do Gemini e da Groq e a cadeia `gemini,groq` no Render (S32-11; o
