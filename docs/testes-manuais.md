@@ -1420,10 +1420,12 @@ print(total(eval(input())))
 - **Objetivo:** O editor é usável pelo teclado.
 - **Passos:**
   1. No editor, aperte Tab.
-  2. Aperte Esc e depois Tab.
-  3. Volte ao editor e aperte Ctrl+Enter.
+  2. Escreva três linhas, selecione as três e aperte Tab; depois, Shift+Tab (S36-03).
+  3. Aperte Esc e depois Tab.
+  4. Volte ao editor e aperte Ctrl+Enter.
 - **Esperado:**
   - Tab insere 4 espaços.
+  - Com as três linhas selecionadas, Tab indenta as três e Shift+Tab desfaz.
   - Esc e Tab tiram o foco do editor.
   - Ctrl+Enter verifica e leva o foco ao resultado.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado

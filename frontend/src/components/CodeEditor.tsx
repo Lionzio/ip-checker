@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type Ref, useImperativeHandle, useRef, useState } from "react";
+import { lineBlock } from "../editorLines";
 
 /** O que a página pode pedir ao editor (S26-02 e S26-03). */
 export interface CodeEditorHandle {
@@ -40,6 +41,8 @@ const INDENT = "    ";
 const LINE_HEIGHT_PX = 24;
 
 /** O deslocamento do começo de cada linha no texto. */
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
 function lineStarts(text: string): number[] {
   const starts = [0];
   for (let index = 0; index < text.length; index += 1) {
@@ -49,8 +52,9 @@ function lineStarts(text: string): number[] {
 }
 
 /**
- * Área de código com numeração de linhas (S26-02): tabulação de 4, Tab que insere espaços (Esc e
- * depois Tab sai do editor), altura ajustável, Limpar e Colar.
+ * Área de código com numeração de linhas (S26-02): tabulação de 4, Tab que insere espaços ou
+ * indenta as linhas selecionadas e Shift+Tab que desindenta (S36-03; Esc e depois Tab sai do
+ * editor), altura ajustável, Limpar e Colar.
  */
 export function CodeEditor({
   value,
@@ -112,7 +116,36 @@ export function CodeEditor({
     requestAnimationFrame(() => area.setSelectionRange(selectionStart + text.length, selectionStart + text.length));
   }
 
+  /** Troca um trecho e seleciona o resultado, mantendo o desfazer do navegador quando ele existe. */
+  function replaceRange(area: HTMLTextAreaElement, start: number, end: number, text: string, select: [number, number]) {
+    area.setSelectionRange(start, end);
+    const native = typeof document.execCommand === "function" && document.execCommand("insertText", false, text);
+    if (!native) onChange(area.value.slice(0, start) + text + area.value.slice(end));
+    requestAnimationFrame(() => area.setSelectionRange(select[0], select[1]));
+  }
+
+  /** Tab com várias linhas selecionadas indenta todas; Shift+Tab desindenta a linha ou a seleção (S36-03). */
+  function shiftLines(area: HTMLTextAreaElement, outdent: boolean) {
+    const { selectionStart: start, selectionEnd: end } = area;
+    const [blockStart, blockEnd] = lineBlock(area.value, start, end);
+    const lines = area.value.slice(blockStart, blockEnd).split("\n");
+    const removed: number[] = [];
+    const updated = lines.map((line) => {
+      if (!outdent) return line === "" ? line : INDENT + line;
+      const cut = line.startsWith("\t") ? 1 : Math.min(INDENT.length, line.length - line.trimStart().length);
+      removed.push(cut);
+      return line.slice(cut);
+    });
+    const text = updated.join("\n");
+    if (text === lines.join("\n")) return;
+    const single = start === end;
+    const caret = Math.max(blockStart, start - (removed[0] ?? 0));
+    replaceRange(area, blockStart, blockEnd, text, single ? [caret, caret] : [blockStart, blockStart + text.length]);
+  }
+
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // Apertar só Shift, Ctrl, Alt ou Meta não desfaz o Esc: Esc e depois Shift+Tab também saem.
+    if (MODIFIERS.has(event.key)) return;
     if (event.key === "Escape") {
       escapedRef.current = true;
       return;
@@ -122,9 +155,13 @@ export function CodeEditor({
       onSubmitShortcut();
       return;
     }
-    if (event.key === "Tab" && !event.shiftKey && !escapedRef.current && !readOnly) {
+    const area = areaRef.current;
+    if (event.key === "Tab" && !escapedRef.current && !readOnly && area !== null) {
       event.preventDefault();
-      insert(INDENT);
+      const multiline = area.value.slice(area.selectionStart, area.selectionEnd).includes("\n");
+      if (event.shiftKey) shiftLines(area, true);
+      else if (multiline) shiftLines(area, false);
+      else insert(INDENT);
     }
     escapedRef.current = false;
   }
@@ -201,7 +238,8 @@ export function CodeEditor({
           Limpar
         </button>
         <span id={hintId} className="text-slate-600 dark:text-slate-300">
-          Tab insere 4 espaços; Esc e depois Tab sai do editor.{onSubmitShortcut ? " Ctrl+Enter verifica." : ""}
+          Tab insere 4 espaços ou indenta as linhas selecionadas; Shift+Tab desindenta. Esc e depois Tab sai do editor.
+          {onSubmitShortcut ? " Ctrl+Enter verifica." : ""}
         </span>
       </div>
       {notice !== null && (

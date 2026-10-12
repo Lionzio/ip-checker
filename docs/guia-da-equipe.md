@@ -101,7 +101,8 @@ todas as linhas em que ela aparece e o trecho do código. Clicar numa linha sele
 editor e marca a linha na numeração. Se você mudar o código depois de verificar, o relatório avisa
 que é do código anterior.
 
-No editor, Tab insere 4 espaços; para sair do editor pelo teclado, aperte Esc e depois Tab. A
+No editor, Tab insere 4 espaços; com várias linhas selecionadas, Tab indenta todas e Shift+Tab
+desindenta. Para sair do editor pelo teclado, aperte Esc e depois Tab (ou Shift+Tab). A
 altura do editor se ajusta pelo canto inferior direito.
 
 ### Comparação com o gabarito
