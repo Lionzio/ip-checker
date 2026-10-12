@@ -2,7 +2,7 @@
 
 **Título:** O que guardar das soluções para comparar com períodos anteriores e com o histórico do próprio aluno, sem guardar o código.
 
-**Status:** Proposto em 12/10/2026 (revisão das seis frentes, [`revisao-seis-frentes.md`](../revisao-seis-frentes.md)); Sprint 48, bloqueada pela Q-27. Depende da ADR-13.
+**Status:** Rejeitado em 12/10/2026 (Q-27). O autor decidiu guardar só o resultado resumido de cada verificação (ADR-13), sem nada do código. Proposto no mesmo dia na revisão das seis frentes ([`revisao-seis-frentes.md`](../revisao-seis-frentes.md)); fica registrado como alternativa para o futuro. A Sprint 48 passou a ser a entrada com o Google no piloto.
 
 **Contexto:** O plágio compara só o que é enviado na hora (ADR-05 e ADR-07). Não há comparação entre turmas nem entre períodos, porque nada das soluções é guardado (NFR-11). A mudança de estilo em relação ao histórico do próprio aluno é o sinal de indício mais forte da literatura. Ele ficou de fora pela REC-07 e pela ADR-08, porque exige guardar código ligado à pessoa.
 

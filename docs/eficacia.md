@@ -10,8 +10,8 @@ O relatório é a tabela abaixo, preenchida para cada lista habilitada no perío
 |---|---|---|---|---|
 | 1. Precisão | 100% no corpus golden e nenhum falso positivo confirmado sem correção em até 2 dias úteis | Seção 1 | | |
 | 2. Uso pela equipe | Pelo menos 70% dos membros ativos usam a ferramenta em cada lista | Seção 2 | | |
-| 3. Apoio à correção | Informativo, sem meta | Seção 3 | | — |
-| 4. Satisfação | Pelo menos 70% da equipe avalia a ferramenta como útil ou muito útil | Seção 4 | | |
+| 3. Apoio à correção | Descartado pelo autor em 12/10/2026 | Seção 3 | | — |
+| 4. Satisfação | Pelo menos 70% da equipe avalia a ferramenta como útil ou muito útil | Sem medição desde 12/10/2026 (formulário descartado; Q-36) | | |
 | 5. Operação | NFR-01 e NFR-06 atendidos e nenhum incidente de segurança | Seção 5 | | |
 
 ## 1. Precisão
@@ -56,7 +56,7 @@ monitoria, com só estas colunas, sem nome nem matrícula de aluno:
 | Lista | Tipo (proibição, plágio ou uso de IA) | Quantidade | Observação (opcional, sem dados de aluno) |
 |---|---|---|---|
 
-**Planilha (S31-06):** [aguardando: a equipe cria a planilha e registra o link aqui].
+**Planilha (S31-06):** descartada pelo autor em 12/10/2026.
 
 Como contexto, a telemetria mostra as regras mais apontadas por lista (`v_top_rules_by_list`) e o
 volume por semana (`v_weekly_volume`).
@@ -81,7 +81,7 @@ enviada à equipe depois da última lista do período. Perguntas:
 A meta é cumprida se pelo menos 70% de quem usou (pergunta 3, sem "não usei") respondeu "muito útil"
 ou "útil".
 
-**Formulário (S31-06):** [aguardando: a equipe cria o formulário anônimo e registra o link aqui].
+**Formulário (S31-06):** descartado pelo autor em 12/10/2026; o critério 4 fica sem medição até a resposta da Q-36.
 
 ## 5. Operação
 

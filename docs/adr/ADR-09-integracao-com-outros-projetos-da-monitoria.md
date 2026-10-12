@@ -4,6 +4,8 @@
 
 **Status:** Proposto em 07/10/2026 (Q-23). A integração não está confirmada e os outros projetos não são conhecidos; nenhuma sprint a implementa.
 
+**Atualização (12/10/2026, autor):** a integração será feita, mas depois; por enquanto, o foco é o IP-Checker, e nenhuma sprint a implementa.
+
 **Contexto:** Há a possibilidade de o IP-Checker ser integrado a 2 projetos de outros monitores da disciplina. Hoje a API (seção 9.1 do blueprint) atende só a página do próprio IP-Checker: autenticação por cookie de sessão de uma conta aprovada da equipe (ADR-04), mesma origem no piloto (CORS desligado), `frame-ancestors 'none'`, limite de 30 análises por minuto por conta e nenhum dado de aluno guardado (NFR-11). Integrar sem decidir o modelo arriscaria abrir a API a chamadas sem conta, a dados de alunos fora do escopo da LGPD combinado com a coordenação ou a uma carga que o plano do Render não sustenta (ADR-03).
 
 **Decisão (proposta, a confirmar depois das perguntas da seção 9.4):**
