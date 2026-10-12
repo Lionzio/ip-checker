@@ -226,8 +226,8 @@ um *fine-grained token* do GitHub, só de leitura e só desse repositório. Quem
 o valor nunca vai para o Git, para uma conversa nem para o log.
 
 1. No GitHub: **Settings > Developer settings > Personal access tokens > Fine-grained tokens >
-   Generate new token**. Nome: `ip-checker-render-gabaritos`. Expiração: a maior que o GitHub
-   oferecer [A CONFIRMAR: a validade máxima aceita hoje]; anote a data para trocar antes. **Resource
+   Generate new token**. Nome: `ip-checker-render-gabaritos`. Expiração: **No expiration** (sem
+   vencimento), como o token em uso, criado em 10/10/2026 (S32-01; decisão do autor de 12/10/2026, P-23). **Resource
    owner**: Lionzio. **Repository access**: *Only select repositories*,
    `Lionzio/ip-checker-gabaritos`. **Permissions > Repository permissions > Contents**: *Read-only*
    (o *Metadata: Read-only* vem junto). Nada mais.
@@ -240,9 +240,19 @@ o valor nunca vai para o Git, para uma conversa nem para o log.
 
 **Gabaritos indisponíveis** (a página avisa "Os gabaritos não estão disponíveis neste servidor
 agora"): nos logs do Render, a linha `gabaritos indisponíveis: ...` diz o tipo da falha. "o GitHub
-respondeu 401" é credencial vencida ou apagada: troque-a (passos acima). "respondeu 404" é o nome do
+respondeu 401" é credencial revogada ou apagada (o token não vence): troque-a (passos acima). "respondeu 404" é o nome do
 repositório ou a branch errados, ou o token sem acesso a ele. A verificação e o plágio continuam
 funcionando sem a comparação.
+
+**Quando trocar o token (P-23):** como ele não vence, a troca é por evento, nunca por data:
+- suspeita de que o valor vazou (apareceu num log, num print, num chat ou num repositório);
+- mudança de quem administra a conta Lionzio ou o serviço no Render;
+- "o GitHub respondeu 401" nos logs do Render.
+
+Para trocar, gere um token novo (passos 1 a 3) e, depois de conferir a página (passo 4), apague o
+antigo em **Fine-grained tokens > Delete**. O token é só de leitura e só do repositório dos
+gabaritos, o que limita o estrago de um vazamento, mas um token sem vencimento continua valendo
+até ser apagado.
 
 **Gabarito novo:** a API só lê os gabaritos ao subir. Depois de um push no repositório dos
 gabaritos, reinicie o serviço no Render (**Manual Deploy > Restart service**) para que os novos
