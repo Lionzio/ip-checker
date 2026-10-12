@@ -492,7 +492,7 @@ Códigos de erro: 413 `PAYLOAD_TOO_LARGE`, 422 `INVALID_INPUT` / `LIST_NOT_ENABL
 | `const:<tipo>` | `Constant` | `const:int`, `const:str`, `const:None` |
 | `param:<tipo>` | `arguments` de `def`/`lambda` | `param:vararg`, `param:kwarg`, `param:default` |
 | `call:user`, `return:multi`, `target:for_unpack` | Contexto estrutural | Chamada de função do aluno; `return a, b`; `for a, b in ...` |
-| `derived:recursion` | Grafo de chamadas entre `FunctionDef` do aluno, com detecção de ciclo por Tarjan (iterativo); as chamadas são pelo nome, como `call:user`, e um `lambda` não entra no grafo | Recursão direta ou mútua (C-03). Desde a Sprint 23 é um fato estrutural: só serve à exigência da R-68, porque o `def` e a chamada já são decididos pela R-59 |
+| `derived:recursion` | Grafo de chamadas entre `FunctionDef` do aluno, com detecção de ciclo por Tarjan (iterativo); as chamadas são pelo nome, como `call:user`, e um `lambda` não entra no grafo | Recursão direta ou mútua (C-03). Da Sprint 23 à S36-09 foi um fato estrutural, só para a exigência da R-68; desde a Q-33, a R-68 também o permite só a partir da Lista 6, e nas Listas 1 a 5 ele é "Fora da lista" (o `def` e a chamada seguem decididos pela R-59) |
 | `derived:loop_else`, `derived:decorator`, `derived:dict_unpack` | Sintaxe sem nó próprio na AST: o `else` de um laço, cada `@decorador` e cada `**d` num dicionário literal | Nenhuma regra os permite, então viram R-04 (Q-02 g; DoD, item 9) |
 
 Fatos estruturais sempre aceitos, porque sua presença já é controlada pelo nó pai: `node:Module`, `node:Expr`, `node:Name`, `node:Call`, `node:keyword`, `node:Load`, `node:Store`, `node:arguments`, `node:arg` e `node:comprehension`. Nomes ligados pelo aluno (alvos de atribuição, `for` e compreensões, parâmetros e nomes de `def`) são coletados antes, para distinguir `len` (built-in) de uma variável do aluno chamada `len`. Assim, `getattr`, `eval`, `exec`, `__import__`, `globals` e atributos *dunder* caem no *default deny*, o que fecha a evasão por acesso dinâmico.
@@ -590,7 +590,7 @@ Decisão da Sprint 23 (06/10/2026): a partir da Lista 5, vários nomes no alvo d
 | R-50…R-58 | `method:strip`, `replace`, `index`, `join`, `split`, `rsplit`, `count`, `copy`; `builtin:sum`, `builtin:tuple` |
 | R-59, R-60 | `node:FunctionDef`, `node:Return`, `call:user`; `return:multi` |
 | R-61…R-67 | `node:Dict`; `builtin:dict`, `enumerate`, `zip` (R-64, livre); `method:keys`, `values`, `items`, `get`, `update`; `node:Lambda`; `target:for_unpack` com `enumerate_in_for_header` (R-63), `zip_in_for_header` (R-64) ou `items_in_for_header` (R-65) |
-| R-68 | `derived:recursion` (exigência da Lista 6) |
+| R-68 | `derived:recursion` (permitido a partir da Lista 6 e exigido nela; Q-33, S36-09) |
 
 #### 5.2.4 Modelo de dados (telemetria, Sprint 21)
 
