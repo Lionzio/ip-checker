@@ -1164,7 +1164,7 @@ A coluna "Situação" do README ainda trazia avisos de quando cada sprint fechou
 
 **Missão, persona e execução:** a missão é dar à equipe, na hora da correção, a distância entre o código do aluno e a solução oficial, e um sinal de que o gabarito pode estar circulando, sem guardar nada e sem expor o gabarito. A persona é quem corrige (monitor, monitor-chefe ou professor; US-37 e US-38), com o Tech Lead cuidando da confidencialidade (NFR-27). Execução: a credencial do autor primeiro (S32-01); depois, em PRs pequenos, o carregamento na API (S32-02), a comparação no analisador (S32-03), as rotas (S32-04, S32-05), as telas (S32-06, S32-07), o sinal dos indícios (S32-08), os testes de confidencialidade e desempenho (S32-09) e a documentação (S32-10). O carregamento entra numa release sem migração (P-18).
 
-**Premissas:** Q-24 decidida pelo autor (1B 2B 3A 4B 5A 6B); a troca de período sem código (S31-09, S31-10) já está pronta; o limiar do alerta (95%) e o tamanho mínimo (60 tokens) foram validados pelo autor em 12/10/2026; a credencial só de leitura é criada pelo autor [A CONFIRMAR: a validade máxima que o GitHub aceita para ela, que define a troca no runbook].
+**Premissas:** Q-24 decidida pelo autor (1B 2B 3A 4B 5A 6B); a troca de período sem código (S31-09, S31-10) já está pronta; o limiar do alerta (95%) e o tamanho mínimo (60 tokens) foram validados pelo autor em 12/10/2026; a credencial só de leitura é criada pelo autor, sem vencimento (P-23, decisão do autor de 12/10/2026); a troca é por evento (runbook, "Credencial dos gabaritos").
 
 **Histórias:** US-37 e US-38 (seção 4); FR-32; NFR-27 (revisto) e NFR-28; US-32, FR-30 e NFR-26 para o "Aprimorar com IA" (Q-16).
 
@@ -1757,7 +1757,7 @@ backup automático e restauração ensaiada, e a documentação reorganizada par
 | S39-01 | US-20 | Engenharia | Frontend em arquivos menores. `Plagiarism.tsx` (511 linhas) vira os modos "Dois códigos" e "Contra a turma" e os resultados em arquivos próprios. `Admin.tsx` (420) ganha as tabelas em componentes. O `parseClass` da turma deixa de rodar a cada tecla (`useMemo`) | `frontend/src/pages/` | Autor | 1,5 | S39-03 | Nenhum arquivo de página com mais de 300 linhas; os mesmos testes verdes |
 | S39-02 | US-14, US-20 | Engenharia | Backend em módulos menores. As listas de palavras dos indícios (cerca de 180 linhas de `indicators.py`) vão para um arquivo de dados. O `ruleset.py` se divide em esquema, compilação e carga. Os DTOs saem do `service/app.py` para `service/schemas.py` | `backend/src/ipc_analyzer/` | Autor | 1,5 | S39-03 | Import-linter e testes verdes; nenhum módulo com mais de 500 linhas |
 | S39-03 | US-15, US-20 | Engenharia | Os testes que faltam: `Login`, `Register`, `Profile`, `Verify`, `ForgotPassword` e `Landing` no Vitest. Os testes lentos ganham o marcador `slow`, e as esperas reais viram eventos ou relógio injetado. `pytest-xdist` nos testes sem banco | `frontend/src/pages/*.test.tsx`, `backend/tests/`, `backend/pyproject.toml` | Autor | 1,5 | — | Cobertura das páginas ≥ 80%; a etapa de pytest da CI local ≥ 30% mais rápida |
-| S39-04 | US-35 | Engenharia | Operação. O `scripts/backup-local.sh` agendado no Agendador de Tarefas do Windows (o backup do Actions volta com a cota). Um ensaio de restauração completo num PostgreSQL descartável, comparando as contagens. A troca do token dos gabaritos agendada antes de vencer | `scripts/`, `docs/runbook.md` | Autor | 0,5 | — | Restauração ensaiada com o tempo no runbook; tarefa agendada documentada |
+| S39-04 | US-35 | Engenharia | Operação. O `scripts/backup-local.sh` agendado no Agendador de Tarefas do Windows (o backup do Actions volta com a cota). Um ensaio de restauração completo num PostgreSQL descartável, comparando as contagens. A troca do token dos gabaritos por evento, porque ele não vence (P-23, decisão do autor de 12/10/2026): o roteiro do runbook para suspeita de vazamento, mudança de quem administra a conta e 401 nos logs | `scripts/`, `docs/runbook.md` | Autor | 0,5 | — | Restauração ensaiada com o tempo no runbook; tarefa agendada documentada |
 | S39-05 | US-20 | Engenharia | Documentação reorganizada. Ver a lista logo abaixo da tabela | `docs/` | Autor | 1 | S36-07 | O blueprint com menos de 1.000 linhas; os documentos novos no mapa (`docs/README.md`) |
 
 **O que a S39-05 reorganiza:**
@@ -1767,7 +1767,7 @@ backup automático e restauração ensaiada, e a documentação reorganizada par
   - um glossário (R-xx, P/C/Q/REC, Snn-mm, FR/NFR/US, fato, faixa, contenção);
   - uma página única de estado e pendências;
   - um FAQ do mantenedor (habilitar lista, trocar de período, gabarito novo e reinício do Render);
-  - a agenda das rotinas (backup, sintético, canário, auditoria, rollback, restauração, vencimento do token);
+  - a agenda das rotinas (backup, sintético, canário, auditoria, rollback e restauração) e os eventos que pedem a troca do token dos gabaritos, que não vence (P-23);
   - quem cuida de cada conta (Render, Vercel, Supabase, Brevo, UptimeRobot, gabaritos, chaves das IAs).
 - O índice de sintomas do runbook ganha os gabaritos indisponíveis, o "Aprimorar com IA" sem cota e a falha do sintético ou do canário.
 

@@ -264,8 +264,8 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [x] Metas de desempenho medidas na Sprint 35: NFR-02 e NFR-03 revistas (Q-25, 11/10/2026)
 - [ ] Campanha de testes manuais com a equipe (`docs/testes-manuais.md`, S35-10), em andamento
 - [x] Decisões da revisão das seis frentes: Q-26 a Q-36 (12/10/2026)
-- [ ] Data em que vence o token do GitHub usado pelo Render para baixar os gabaritos
-      (`IPC_GABARITOS_TOKEN`), só a data, para a troca antes do vencimento (S39-04)
+- [x] Token do GitHub usado pelo Render para baixar os gabaritos (`IPC_GABARITOS_TOKEN`): sem
+      vencimento (P-23, 12/10/2026); a troca é por evento, como diz o runbook (S39-04)
 - [x] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; 23
       gabaritos carregados no piloto em 10/10/2026)
 - [x] Chaves gratuitas do Gemini e da Groq e a cadeia `gemini,groq` no Render (S32-11; o
