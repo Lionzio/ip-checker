@@ -2,7 +2,7 @@
 
 **Título:** Contas próprias no PostgreSQL, com sessão no servidor, login por senha (Argon2id) ou pelo Google (OIDC), aprovação manual e uma única política de cargos no backend; página e API na mesma origem.
 
-**Status:** Proposto em 02/10/2026 (P-13 e P-14) e implementado nas Sprints 13 a 16; a confirmar no primeiro deploy com login (P-15).
+**Status:** Proposto em 02/10/2026 (P-13 e P-14) e implementado nas Sprints 13 a 16. **Confirmado no piloto (08/10/2026, S30-02 e S30-03; P-15):** o login pela página cria o cookie `__Host-ipc_session`, e o feedback pela página responde em até 30 s (P-15 a); o IP do cliente não é o penúltimo do `X-Forwarded-For`, e passou a vir do `Forwarded` ou da 4ª entrada a partir do fim (P-15 b).
 
 **Contexto:** A P-13 restringe tudo à equipe. Alunos também têm e-mail institucional, então o domínio não basta e a aprovação é manual. A checagem precisa estar no backend. No piloto, a página está na Vercel e a API no Render, que são sites diferentes (`vercel.app` e `onrender.com` estão na Public Suffix List), e navegadores como o Safari bloqueiam cookies de terceiros. O projeto já prevê um PostgreSQL gerenciado (P-03).
 
