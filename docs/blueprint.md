@@ -1633,7 +1633,7 @@ que cuida da documentação (US-20).
 
 **Riscos:** o separador novo muda um hábito da equipe; por isso o `### nome` continua aceito, com aviso.
 
-**Situação (12/10/2026):** engenharia concluída na release `sprint-36` (#95 a #101): S36-01 a S36-07, S36-09 (com o de acordo do professor) e S36-10, incluída a pedido do autor. A S36-06 achou que, no piloto, entradas legítimas de 40 e 50 KB recebiam 422 por prazo; o analisador do piloto passou a ter 7 s (ADR-03). Aguardando: a campanha de testes manuais da equipe (S36-08).
+**Situação (12/10/2026):** engenharia concluída na release `sprint-36` (#95 a #101): S36-01 a S36-07, S36-09 (com o de acordo do professor) e S36-10, incluída a pedido do autor. A S36-06 achou que, no piloto, entradas legítimas de 40 e 50 KB recebiam 422 por prazo; o analisador do piloto passou a ter 7 s e, depois da medição com o deploy, 8 s na release `sprint-36.1` (ADR-03). Aguardando: a campanha de testes manuais da equipe (S36-08).
 
 #### Sprint 37 — Verificação mais clara
 

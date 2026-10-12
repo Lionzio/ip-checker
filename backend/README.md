@@ -35,7 +35,7 @@ uv run uvicorn ipc_analyzer.service.app:create_app --factory --port 8001
 
 Configuração por variáveis de ambiente: `IPC_RULESET_PATH` (padrão: a pasta `rulesets/` do
 repositório, com o período do arquivo `rulesets/ATIVO`), `IPC_WORKERS` (2), `IPC_MAX_TASKS` (500),
-`IPC_TIMEOUT_S` (2; 7 no piloto, pelo `deploy/render/supervisord.conf`, S36-06) e `IPC_MEMORY_MB` (256).
+`IPC_TIMEOUT_S` (2; 8 no piloto, pelo `deploy/render/supervisord.conf`, S36-06) e `IPC_MEMORY_MB` (256).
 
 API pública fora do Docker (porta 8101; no compose, ela fica atrás do Caddy na 8180), com o
 analisador já rodando na 8001:

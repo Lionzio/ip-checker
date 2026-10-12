@@ -15,9 +15,9 @@ from conftest import REPO_ROOT
 from ipc_api.settings import ANALYZER_MARGIN_S
 
 CONF = REPO_ROOT / "deploy" / "render" / "supervisord.conf"
-#: A maior entrada legítima medida no piloto, em segundos (50 KB, extrapolado das medidas de 10 a
-#: 30 KB, que cresceram de forma linear).
-LARGEST_INPUT_S = 3.1
+#: A maior entrada legítima medida no piloto, em segundos: 50 KB levou de 3,3 a 3,8 s depois do
+#: deploy da sprint-36 (12/10/2026; antes, 3,1 s era só uma extrapolação de 10 a 30 KB).
+LARGEST_INPUT_S = 3.8
 #: O prazo da página para a verificação (``frontend/src/hooks/useValidateCode.ts``).
 PAGE_TIMEOUT_S = 10.0
 
