@@ -6,7 +6,7 @@ lista. Quando a pessoa escolhe a questão na página, essas regras prevalecem so
 inclusive sobre as proibições gerais (C-02).
 
 Cadastram questões e gabaritos: monitores, monitores-chefes, professores e o desenvolvedor
-(decisão do autor de 09/10/2026). Aprova um monitor-chefe ou professor, nunca quem cadastrou (passo 4).
+(decisão do autor de 09/10/2026, Q-22). Aprova um monitor-chefe ou professor, nunca quem cadastrou (passo 4).
 
 > Só cadastre o que está escrito no enunciado. Se o enunciado não diz nada sobre uma construção,
 > valem as permissões da lista: não precisa de cadastro.
@@ -76,8 +76,8 @@ endereço. Um PR de questão muda só `rulesets/<período>/questions/`.
 
 ## 4. Revisão e aprovação
 
-Até a release do piloto, a aprovação é **por processo** (a Q-22, que trata de fork e de um check
-automático, foi adiada para depois da release):
+A aprovação é **por processo**, sem fork nem check automático de aprovação. A Q-22 foi decidida
+em 09/10/2026: o autor manteve o processo atual (opção A de 7.13.4 do blueprint).
 
 - ninguém aprova o próprio PR;
 - o PR é aprovado por um monitor-chefe ou por um professor, que confere o `source` contra o

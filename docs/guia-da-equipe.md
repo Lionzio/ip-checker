@@ -25,24 +25,34 @@ Estão liberadas as seis listas: **1 (comandos condicionais), 2 (laços de repet
 tuplas), 4 (funções e escopo de variável), 5 (dicionários) e 6 (recursão)**.
 
 Na Lista 3, o assunto é comprovado por uma lista ou tupla escrita no código (`[1, 2]`, `(1, 2)`,
-`a, b = ...`), por `list()`, `tuple()` ou por uma *list comprehension*; uma lista que só vem de
-`split()` não basta. Na Lista 4, parâmetro com valor padrão (`def f(x=1)`) e função dentro de
-função não constam no documento e aparecem com a R-04.
+`a, b = ...`), por `list()`, `tuple()`, por uma *list comprehension* ou pela lista de um `split()`
+(`palavras = input().split()`; caso 6 do Marco 2, na exigência R-02 da Lista 3). A expressão
+geradora (`sum(x for x in v)`) é permitida a partir da Lista 3, como a *list comprehension* (R-41,
+caso 10), mas sozinha não comprova o assunto; a *dict comprehension* continua de fora (R-04).
 
-Na Lista 2, o `zip()` segue a condição do documento: só serve para variar mais de um índice no
-comando `for`. Então `for a, b in zip(nomes, notas):` passa, e o `zip()` em qualquer outro lugar
-(`z = zip(a, b)`, com uma sequência só ou dentro de outra chamada) aparece com a R-37. Vários nomes
-no `for` (`for a, b in ...`) só passam junto com esse `zip()`.
+Na Lista 4, o `if __name__ == "__main__":` e os argumentos nomeados na chamada de uma função sua
+(`f(x=1)`) são permitidos (R-59, casos 1 e 2 do Marco 2). Parâmetro com valor padrão
+(`def f(x=1)`) e função dentro de função não constam no documento e aparecem com a R-04.
+
+Nas Listas 2 a 4, o `zip()` segue a condição do documento: só serve para variar mais de um índice
+no comando `for`. Então `for a, b in zip(nomes, notas):` passa, e o `zip()` em qualquer outro lugar
+(`z = zip(a, b)`, com uma sequência só ou dentro de outra chamada) aparece com a R-37. Na Lista 2,
+vários nomes no `for` (`for a, b in ...`) só passam junto com esse `zip()`. A partir da Lista 3,
+eles valem com qualquer sequência (`for a, b in pares:`), pela R-40 (casos 3 e 8 do Marco 2).
 
 Na Lista 5, o assunto é comprovado por um dicionário escrito no código (`{"a": 1}`) ou por `dict()`;
 uma *dict comprehension* não consta no documento e aparece com a R-04. O `zip()` fica livre, e
-vários nomes no `for` passam quando o `for` percorre `zip()`, `enumerate()` ou `.items()`
-(`for chave, valor in d.items():`). O `lambda` é permitido, mas `key=` (como em
-`sorted(v, key=lambda x: x[1])`) continua sem constar no documento.
+`dict(a=1)`, `d.update(a=1)` e `enumerate(v, start=1)` são permitidos (caso 7 do Marco 2). Os
+outros argumentos nomeados continuam sem constar no documento (Q-02 c): o `lambda` é permitido, mas
+`key=` (como em `sorted(v, key=lambda x: x[1])`), `sep=` e `reverse=` aparecem com a R-04.
 
 Na Lista 6, toda questão precisa de recursão: uma função com `def` que chama a si mesma, direta ou
 indiretamente (`f` chama `g`, que chama `f`). Chamar a função várias vezes fora dela não é
 recursão, e um `lambda` que chama a si mesmo não conta.
+
+Os casos do Marco 2 citados acima foram decididos pelo autor em 09/10/2026 e já estão no motor
+(ruleset `2026.2.5`). A lista completa está na [pauta do Marco 2](marco-2.md) e no
+[mapeamento](mapping-R-xx.md).
 
 ## Entrar na equipe
 
@@ -140,10 +150,12 @@ avisa.
 Depois de verificar, o painel **Feedback para o aluno** aparece ao lado do resultado.
 
 1. Digite o **nome do aluno** e, se quiser, uma **anotação importante** (observações e dicas).
-2. Clique em **Gerar feedback**: o texto é montado sem IA, na hora.
+2. Clique em **Gerar feedback**: o texto é montado sem IA, na hora. Esse é o padrão (Q-16), e nada
+   sai do servidor.
 3. Se quiser um texto mais detalhado, com explicação e exemplo, clique em **Aprimorar com IA**. Uma
    IA reescreve a continuação a partir do texto sem IA; **Desfazer** volta ao texto sem IA. Se
-   nenhuma IA responder, o texto sem IA fica, com um aviso.
+   nenhuma IA responder, o texto sem IA fica, com um aviso. O envio só acontece quando você clica,
+   e o botão só aparece quando o servidor tem alguma IA configurada.
 4. **Revise o texto**: ele é editável. Depois, use **Copiar**.
 
 O texto sempre começa com a saudação, a sua apresentação (pelo seu cargo e tratamento) e a frase
@@ -215,10 +227,14 @@ for incomum e igual. **Comparar lado a lado** abre a dupla em **Dois códigos**,
 
 ## Indícios de uso de IA
 
-Quando estão ligados neste servidor (no piloto, só depois de a coordenação aprovar a política, em
-[`indicios-de-ia.md`](indicios-de-ia.md)), a verificação mostra, abaixo do resultado, o painel
-**Indícios de uso de IA**. Ele aparece só quando há algum indício, e só para a equipe: nada dele vai
-para o feedback do aluno.
+A política dos indícios ([`indicios-de-ia.md`](indicios-de-ia.md)) foi aprovada em 09/10/2026
+(Q-21). Mesmo assim, o painel segue **desligado no piloto** (`IPC_AI_INDICATORS=0`) até a calibração
+com os critérios aprovados em 12/10/2026 (Q-35), na Sprint 42. Hoje ele só funciona no ambiente
+local.
+
+Quando estão ligados no servidor, a verificação mostra, abaixo do resultado, o painel **Indícios de
+uso de IA**. Ele aparece só quando há algum indício, e só para a equipe: nada dele vai para o
+feedback do aluno.
 
 Cada indício vem com o motivo, as linhas (clique numa linha para selecioná-la no editor) e uma faixa:
 
@@ -292,9 +308,10 @@ ela prevalece sobre as permissões da lista: o que ela libera deixa de ser apont
 proíbe aparece como **Proibido nesta questão**. A exigência do assunto da lista continua valendo.
 Se a lista não tiver nenhuma questão cadastrada, o seletor diz isso.
 
-O cadastro é feito por monitores, por PR, e aprovado por monitor-chefe ou professor; o passo a
-passo está no [`RULES.md`](../RULES.md). Uma questão que libera uma proibição geral (por exemplo,
-`break`) só entra com a aprovação de um professor.
+O cadastro é feito por PR, por monitores, monitores-chefes, professores ou o desenvolvedor, e
+aprovado por um monitor-chefe ou professor, nunca por quem cadastrou (Q-22); o passo a passo está
+no [`RULES.md`](../RULES.md). Uma questão que libera uma proibição geral (por exemplo, `break`) só
+entra com a aprovação de um professor.
 
 ## Perguntas frequentes
 
@@ -314,8 +331,10 @@ editar antes de copiar. Peça o cadastro da questão a um monitor (ou cadastre s
 `RULES.md`), para a próxima pessoa não passar pelo mesmo.
 
 **O feedback saiu "montado sem IA". Está errado?**
-Não. A abertura e a frase obrigatória são as mesmas; só o trecho final é mais simples. Isso
-acontece quando nenhuma IA está configurada ou nenhuma respondeu a tempo.
+Não. Desde a Sprint 32 (Q-16), todo feedback começa montado sem IA: é o padrão. A abertura e a
+frase obrigatória são as mesmas do texto aprimorado; só o trecho final é mais simples. Para um
+texto mais detalhado, clique em **Aprimorar com IA**. Se o botão não aparecer, o servidor não tem
+IA configurada; se nenhuma IA responder, fica o texto sem IA, com um aviso.
 
 **Esqueci a senha.**
 Em **Entrar**, clique em **Esqueci minha senha** e siga o link do e-mail, que vale por 1 hora. Se a

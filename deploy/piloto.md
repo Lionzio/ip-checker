@@ -18,10 +18,25 @@ Desde a Sprint 16, a página e a API ficam na **mesma origem** (ADR-04): a Verce
 `/api/*` ao Render por *rewrite* (`frontend/scripts/vercel-config.mjs`). O navegador só fala com o
 endereço da Vercel, o cookie da sessão fica nele e o CORS deixa de existir. A API aceita, nas
 requisições que mudam estado, o `Origin` de `IPC_PUBLIC_BASE_URL` (o endereço da página), porque
-atrás do *rewrite* ela vê o `Host` do Render. Três suposições ficam para conferir no primeiro
-deploy com login (P-15): o *rewrite* externo no plano Hobby com cookies e tempo-limite suficiente;
-o IP do cliente como penúltimo endereço do `X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=2`); e o
-cookie `__Host-` atravessando o *rewrite*.
+atrás do *rewrite* ela vê o `Host` do Render. O *rewrite* com o cookie `__Host-` e o feedback em
+até 30 s foram confirmados no piloto em 08/10/2026 (P-15 a, S30-02).
+
+**IP do cliente (P-12 e P-15 b, S30-03).** A suposição antiga, o cliente como penúltimo endereço do
+`X-Forwarded-For` (`IPC_TRUSTED_PROXY_HOPS=2`), não valia: a borda do Render acrescenta duas
+entradas e não limpa o valor do cliente. Com a configuração atual do `render.yaml`, a API acha o
+cliente nesta ordem (`ipc_api.ratelimit.client_ip`):
+
+1. o IP que o middleware da página manda junto com o segredo `IPC_EDGE_SECRET`, quando o segredo
+   confere;
+2. o `for=` do cabeçalho `Forwarded`, que a Vercel sempre reescreve com o IP real
+   (`IPC_TRUST_FORWARDED_HEADER=1`);
+3. a 4ª entrada do `X-Forwarded-For` a partir do fim, ou a primeira quando há menos de 4
+   (`IPC_TRUSTED_PROXY_HOPS=4`): pela página, as entradas são o cliente, a saída da Vercel, o
+   Cloudflare e um proxy interno do Render.
+
+Sem sessão, um segundo limite, de 60 por minuto, usa o `cf-connecting-ip`, que o Cloudflare do
+Render escreve e o cliente não forja (`IPC_RATE_LIMIT_EDGE_HEADER`). Com `IPC_EDGE_SECRET` no
+Render, `/api/*` só atende pela página: o que chega direto no Render sem o segredo recebe 403.
 
 O UID 10002 não lê o ambiente da API nem o do supervisord: o kernel só permite isso ao dono. Com
 `IPC_SANDBOX=required`, se o Render não permitir o filtro seccomp, nenhum worker nasce e o `/ready`
@@ -155,15 +170,21 @@ repositório.
    | `IPC_DEV_INITIAL_PASSWORD` | Senha inicial da conta do desenvolvedor (9+ caracteres, 1 maiúscula, 1 especial); só vale na criação |
    | `IPC_EMAIL_API_KEY` e `IPC_EMAIL_FROM` | Chave do Brevo e remetente verificado (passo 3) |
    | `IPC_GOOGLE_CLIENT_ID` e `IPC_GOOGLE_CLIENT_SECRET` | Do passo 6, ou vazias |
-   | `IPC_LLM_*` e `IPC_LLM_FALLBACK_*` | As IAs do feedback ([`compose.md`](compose.md), "Feedback por IA"), ou vazias: sem elas, o feedback é montado sem IA |
+   | `IPC_EDGE_SECRET` | Segredo que só a página e a API conhecem (S30-03), com pelo menos 32 caracteres; o mesmo valor fica na Vercel. Ordem para ligar: primeiro na Vercel, depois aqui ([runbook](../docs/runbook.md), "Segredo da página") |
+   | `IPC_GABARITOS_TOKEN` | *Fine-grained token* do GitHub, só de leitura e só do repositório dos gabaritos, sem data de vencimento (S32-01, P-23); a troca é por evento ([runbook](../docs/runbook.md), "Credencial dos gabaritos"). Vazia, a comparação com o gabarito fica desligada, com um aviso |
+   | `IPC_LLM_CHAIN` e `IPC_LLM_<NOME>_*` | A cadeia de IAs do **Aprimorar com IA** (Q-16, S32-12), na ordem, como `gemini,groq`, e o provedor, o modelo, a URL e a chave de cada nome (`IPC_LLM_GEMINI_PROVIDER`, `IPC_LLM_GEMINI_MODEL`, `IPC_LLM_GEMINI_API_KEY`...; [runbook](../docs/runbook.md), "IAs do Aprimorar com IA"). Um nome da cadeia sem provedor, modelo ou chave impede a API de subir |
+   | `IPC_LLM_*` e `IPC_LLM_FALLBACK_*` | As duas vagas antigas, principal e de reserva ([`compose.md`](compose.md), "Feedback por IA"); só valem com `IPC_LLM_CHAIN` vazia. Sem nenhuma IA, o botão **Aprimorar com IA** não aparece, e o feedback continua montado sem IA, que é o padrão |
 
 8. **GitHub.** Em **Settings > Secrets and variables > Actions** do repositório:
    - secrets: `RENDER_DEPLOY_HOOK_URL` e `VERCEL_DEPLOY_HOOK_URL` (URLs dos hooks);
      `PILOT_DATABASE_ADMIN_URL` e `PILOT_DB_API_PASSWORD` (passo 2), para as migrações;
      `PILOT_CHECK_LOGIN`, `PILOT_CHECK_PASSWORD` e `PILOT_CHECK_NAME`, de uma conta ativa usada só
      nas verificações e no smoke e2e do piloto;
-   - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel); para o backup semanal,
-     `BACKUP_AGE_RECIPIENT` (chave pública age; [`docs/runbook.md`](../docs/runbook.md), "Backup").
+   - variables: `PILOT_API_URL` (Render) e `PILOT_WEB_URL` (Vercel); para o backup diário (às
+     06:00 UTC desde a S30-12, para o RPO de 24 h da NFR-20), `BACKUP_AGE_RECIPIENT` (chave pública
+     age; [`docs/runbook.md`](../docs/runbook.md), "Backup"). `PILOT_AI_INDICATORS` fica vazia
+     (ou `0`) enquanto os indícios de IA estiverem desligados no `render.yaml`
+     ([`docs/indicios-de-ia.md`](../docs/indicios-de-ia.md), "Como ligar no piloto").
 
    A conta de verificação só pode ser criada com a página no ar: entre como desenvolvedor na página
    da Vercel, registre a conta com um e-mail institucional seu que não seja da conta do
@@ -243,9 +264,9 @@ python deploy/load/run_load.py --plan starter --rate 500 --duration 3m --no-buil
 
 Resultado de 07/10/2026 (S28-01), com login: o gratuito tem P95 entre 383 ms (30/min) e 1,9 s
 (500/min, com 14,8% de recusas `OVERLOADED`); o Starter tem P95 de 28 ms a 500/min, sem falhas. A
-tabela completa e a recomendação (Starter antes do primeiro prazo) estão no
-[ADR-03](../docs/adr/ADR-03-topologia-de-implantacao-por-fase.md). A medição sem login, da
-S12-02, ficou no histórico do ADR.
+tabela completa está no [ADR-03](../docs/adr/ADR-03-topologia-de-implantacao-por-fase.md), com a
+recomendação da S28-01 (o Starter antes do primeiro prazo) e a decisão que a substituiu: o piloto
+fica no plano gratuito (S30-11). A medição sem login, da S12-02, ficou no histórico do ADR.
 
 **O piloto de verdade.** Com a conta de verificação criada e os secrets `PILOT_CHECK_*` gravados,
 rode **Actions > Carga no piloto > Run workflow** (taxa de 1 a 25 por minuto, abaixo do limite de 30
@@ -259,12 +280,13 @@ verificação não entram na telemetria nem no relatório de eficácia (S28-02).
 - **Seccomp no Render.** Testado aqui com o perfil padrão do Docker. Se o Render não permitir o
   filtro, o deploy fica vermelho (fail-closed). A saída, a decidir, é `IPC_SANDBOX=optional`, com o
   risco das ameaças 2 e 6 subindo para Médio durante o piloto (blueprint, 5.4).
-- **IP do cliente.** O limite por IP supõe que a Vercel e a borda do Render acrescentam, nessa ordem,
-  um endereço cada ao fim do `X-Forwarded-For`, e que o do cliente é o penúltimo
-  (`IPC_TRUSTED_PROXY_HOPS=2` desde a Sprint 16, P-12 e P-15). Conferir nos primeiros dias pelos
-  campos `rate_limit` do log.
-- **Plano gratuito.** 0,1 CPU e 512 MB: com login, o P95 passa de 200 ms mesmo com pouco tráfego
-  (teste de carga acima), e o `/health/slo` vai acusar latência quando a equipe usar. Funciona,
-  mas fora do NFR-01; a recomendação da S28-01 é o Starter antes do primeiro prazo (ADR-03).
+- **IP do cliente.** Resolvido na S30-03 (08/10/2026, P-12 e P-15 b): o cliente vem do segredo da
+  página, do `Forwarded` ou da 4ª entrada do `X-Forwarded-For` (seção do início). O passo "Limite por
+  IP no piloto" do "Deploy do piloto" (`backend/tests/pilot/test_rate_limit.py`) confere isso a cada
+  deploy.
+- **Plano gratuito.** 0,1 CPU e 512 MB. O autor decidiu ficar no gratuito (S30-11, 08/10/2026,
+  ADR-03): não há orçamento para o Starter. No Render de verdade, a 20 por minuto, o P95 do servidor
+  ficou abaixo dos 200 ms do NFR-01 (S30-09); no pico de referência, o piloto recusa parte das
+  verificações com `OVERLOADED`, em vez de cair (NFR-05; S34-01 e S34-03 no ADR-03).
 - **Supabase gratuito.** O plano pausa projetos sem atividade por uma semana. O `/ready` consulta o
   banco, então o monitor do UptimeRobot a cada 5 min também mantém o projeto ativo.
