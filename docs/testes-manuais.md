@@ -1,6 +1,6 @@
 # Roteiro de testes manuais do IP-Checker
 
-Versão do piloto: release `sprint-34` (11/10/2026), ruleset `2026.2.5` (período 2026.2).
+Versão do piloto: release `sprint-36` (12/10/2026), ruleset `2026.2.6` (período 2026.2).
 Endereço: <https://ip-checker-red-phi.vercel.app>.
 
 Este roteiro é para o desenvolvedor e os monitores testarem, à mão, tudo o que o IP-Checker faz
