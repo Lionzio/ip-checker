@@ -12,7 +12,7 @@ turma, por árvore canonizada), a comparação com o gabarito oficial (sem o gab
 servidor), o feedback por modelos de texto com o "Aprimorar com IA" a pedido, a correção em lote, o
 gerenciamento da equipe com registro das ações, a telemetria anônima, o relatório de eficácia e os
 indícios de uso de IA (desligados no piloto até a calibração com soluções de alunos). O piloto está
-no ar (Render, Vercel e Supabase) desde 07/10/2026, na release `sprint-36` desde 12/10/2026, com
+no ar (Render, Vercel e Supabase) desde 07/10/2026, na release `sprint-36.1` desde 12/10/2026, com
 um teste sintético diário da primeira verificação, o comportamento no pico medido (ADR-03) e
 benchmark, Lighthouse e cobertura por pasta na CI. O uso pela equipe é em 2027.1.
 
@@ -189,7 +189,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Engenharia concluída em 11/10/2026, no piloto com a release `sprint-34`: `ipc-rules calibrate-gabarito` (alerta de vazamento) e `ipc-rules import-gabaritos` (exportação do Notion) e a medição preliminar dos indícios. Aguardando dados externos (P-21): gabaritos das Listas 5 e 6 de 2026.2 e de períodos anteriores, soluções anteriores a 2023 e o documento de 2027.1 |
 | 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Concluída em 11/10/2026 (release `sprint-34`): teste sintético diário com `Server-Timing`, exercício de alerta a cada release e cenários de carga do NFR-04 e do NFR-05; no gratuito, até 100 verificações por minuto sem recusa (ADR-03). Aguardando: listas e monitores de 2027.1 (P-10) |
 | 35 | Controles de qualidade: benchmark do motor, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset; achados corrigidos (plágio dentro de blocos e sobrecarga) e o período 2027.1 | Concluída em 11/10/2026 (release `sprint-35`); a Q-25 foi decidida no mesmo dia |
-| 36 | Defeitos e documentos certos para a campanha de testes: turma com nomes repetidos e `###` no código, Tab no editor, recursão só na Lista 6 (Q-33), construções em português, tempo de 50 KB no piloto, guia e documentação fiéis ao motor | Concluída em 12/10/2026 (release `sprint-36`): o prazo da análise no piloto subiu para 7 s (S36-06) e a tolerância do benchmark entrou (S36-10). Aguardando a campanha de testes manuais da equipe (S36-08) |
+| 36 | Defeitos e documentos certos para a campanha de testes: turma com nomes repetidos e `###` no código, Tab no editor, recursão só na Lista 6 (Q-33), construções em português, tempo de 50 KB no piloto, guia e documentação fiéis ao motor | Concluída em 12/10/2026 (release `sprint-36`): o prazo da análise no piloto subiu para 8 s (S36-06, release `sprint-36.1`) e a tolerância do benchmark entrou (S36-10). Aguardando a campanha de testes manuais da equipe (S36-08) |
 | 37 | Verificação mais clara: resumo por categoria, editor fixo, abas no celular, componentes comuns, identidade visual, tema, rascunho e atalhos | Planejada |
 | 38 | Explicar cada regra e exportar: porquê e alternativa em cada violação, feedback sem IA mais completo, exportar e carregar `.py`, feedback sem nova análise | Planejada |
 | 39 | Qualidade interna, operação e documentação: arquivos menores, testes das páginas, CI mais rápida, backup agendado, restauração ensaiada, documentação reorganizada | Planejada |

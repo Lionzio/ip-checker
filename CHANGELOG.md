@@ -8,6 +8,14 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
+
+- **12/10/2026, S36-06:** depois do deploy da `sprint-36`, a medição no piloto (prazo de 7 s) não
+  teve nenhuma recusa nas 20 verificações de 10 a 50 KB, mas a entrada de 50 KB levou de 3,3 a 3,8 s:
+  a extrapolação de 3,1 s ficou curta, e 7 s não dava o dobro da maior entrada. O analisador do
+  piloto passa a ter 8 s e a API espera 9 s; a página continua com 10 s. O teste dos prazos usa a
+  maior entrada medida, e o teste do piloto confere a mediana da maior entrada (ADR-03).
+
 ## Sprint 36 — Defeitos e documentos certos para a campanha de testes
 
 A Sprint 36 (S36-01 a S36-10; US-06, US-08, US-11, US-20, US-22, US-31, US-33 e US-37) fechou a
