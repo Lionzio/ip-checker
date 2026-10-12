@@ -2122,7 +2122,7 @@ print('Ímpares:', impares)
 - **Turma:**
 
 ```python
-### Ana
+=== Ana
 quantidade = int(input())
 soma = 0
 maximo = 0
@@ -2134,14 +2134,14 @@ for k in range(quantidade):
         maximo = valor
 print('Soma dos pares:', soma)
 print('Maior:', maximo)
-### Bruno
+=== Bruno
 numeros = []
 for _ in range(int(input())):
     numeros.append(int(input()))
 pares = [v for v in numeros if v % 2 == 0]
 print('Soma dos pares:', sum(pares))
 print('Maior:', max(numeros) if numeros else 0)
-### Caio
+=== Caio
 n = int(input())
 total = 0
 maior = 0
@@ -2172,11 +2172,11 @@ print('Maior:', maior)
 
 ### T-03. Separador sem nome
 
-- **Objetivo:** Cada solução começa por uma linha `### nome`.
+- **Objetivo:** Cada solução começa por uma linha `=== nome`; sem nome, ela vira "Solução N".
 - **Passos:**
-  1. No campo da turma, cole duas soluções separadas por `###` sem nome.
+  1. No campo da turma, cole duas soluções separadas por uma linha `===` sem nome.
 - **Esperado:**
-  - A página explica o formato esperado, sem erro genérico.
+  - As duas aparecem como "Solução 1" e "Solução 2", sem erro genérico.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
@@ -2207,6 +2207,30 @@ print('Maior:', maior)
   1. Peça ao desenvolvedor o arquivo de teste com `\r` (ele vem dos testes automáticos) e cole-o como uma das soluções da turma.
 - **Esperado:**
   - A comparação termina normalmente, sem "erro inesperado".
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### T-07. Alunos com o mesmo nome (S36-01)
+
+- **Objetivo:** Dois alunos com o mesmo nome não se confundem.
+- **Passos:**
+  1. Na turma do T-01, troque `=== Caio` por `=== Ana` e verifique.
+  2. Clique em **Comparar lado a lado** na linha **Ana (2)** e depois na linha **Ana**.
+- **Esperado:**
+  - A página avisa que o nome Ana aparece mais de uma vez, e a segunda vira **Ana (2)**.
+  - Cada botão abre o código da própria solução.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### T-08. Comentário com ### dentro do código (S36-02)
+
+- **Objetivo:** Um comentário `### ...` dentro de uma solução não a parte em duas.
+- **Passos:**
+  1. Na turma do T-01, acrescente a linha `### calcula a soma` dentro da solução da Ana e verifique.
+  2. Repita com a turma toda no formato antigo, trocando cada `===` por `###`.
+- **Esperado:**
+  - Com `===`, continuam 3 soluções, sem aviso.
+  - No formato antigo, a página avisa para usar `=== nome`, porque o comentário partiu a solução.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

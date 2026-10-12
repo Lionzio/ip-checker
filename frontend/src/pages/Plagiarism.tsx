@@ -132,7 +132,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
     editorB.current?.scrollToLine(match.b_first);
   }
 
-  const solutions = parseClass(classText);
+  const { solutions, legacy: legacyClass, repeated } = parseClass(classText);
   const bytes = classBytes(target, solutions);
   const classProblem =
     solutions.length > MAX_CLASS
@@ -293,13 +293,26 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
                 readOnly={group.loading}
                 spellCheck={false}
                 wrap="off"
-                placeholder={"### Ana\nn = int(input())\n...\n### Bruno\n..."}
+                placeholder={"=== Ana\nn = int(input())\n...\n=== Bruno\n..."}
                 className={`${INPUT} h-80 min-h-40 resize-y font-mono text-sm`}
               />
               <p id="turma-dica" className="text-sm text-slate-600 dark:text-slate-300">
-                Cada solução começa por uma linha <code>### nome</code>. Até {MAX_CLASS} soluções, somando até 120 KB.{" "}
+                Cada solução começa por uma linha <code>=== nome</code>. Até {MAX_CLASS} soluções, somando até 120 KB.{" "}
                 {solutions.length === 1 ? "1 solução." : `${solutions.length} soluções.`}
               </p>
+              {legacyClass && (
+                <p role="note" className="text-sm text-amber-900 dark:text-amber-200">
+                  As soluções foram separadas pelo formato antigo <code>### nome</code>. Prefira <code>=== nome</code>: um
+                  comentário que começa com <code>###</code> dentro do código parte a solução em duas.
+                </p>
+              )}
+              {repeated.length > 0 && (
+                <p role="note" className="text-sm text-amber-900 dark:text-amber-200">
+                  {repeated.length === 1 ? "Este nome aparece" : "Estes nomes aparecem"} mais de uma vez:{" "}
+                  {repeated.join(", ")}. As repetições ganharam um número, como "{repeated[0]} (2)", para que cada
+                  solução abra o próprio código.
+                </p>
+              )}
               {classProblem !== null && <ErrorText>{classProblem}</ErrorText>}
             </div>
           </div>

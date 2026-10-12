@@ -113,15 +113,72 @@ describe("Trechos em comum (S27-03)", () => {
 });
 
 describe("Contra a turma (S27-02)", () => {
-  it("separa as soluções pelas linhas ###", () => {
-    expect(parseClass("### Ana\nx = 1\n\n### Bruno\ny = 2\n###\nz = 3")).toEqual([
-      { label: "Ana", code: "x = 1\n" },
-      { label: "Bruno", code: "y = 2\n" },
-      { label: "Solução 3", code: "z = 3\n" },
-    ]);
-    expect(parseClass("x = 1\n")).toEqual([{ label: "Solução 1", code: "x = 1\n" }]);
-    expect(parseClass("   \n")).toEqual([]);
+  it("separa as soluções pelas linhas === (S36-02)", () => {
+    expect(parseClass("=== Ana\nx = 1\n\n=== Bruno\ny = 2\n===\nz = 3")).toEqual({
+      solutions: [
+        { label: "Ana", code: "x = 1\n" },
+        { label: "Bruno", code: "y = 2\n" },
+        { label: "Solução 3", code: "z = 3\n" },
+      ],
+      legacy: false,
+      repeated: [],
+    });
+    expect(parseClass("x = 1\n").solutions).toEqual([{ label: "Solução 1", code: "x = 1\n" }]);
+    expect(parseClass("   \n").solutions).toEqual([]);
     expect(classBytes("ção", [{ label: "A", code: "é" }])).toBe(7);
+  });
+
+  it("com ===, um comentário ### ou ##### dentro do código não parte a solução (S36-02)", () => {
+    const parsed = parseClass("=== Ana\n### calcula a média\nm = 1\n#####\nprint(m)\n=== Bruno\ny = 2\n");
+    expect(parsed.legacy).toBe(false);
+    expect(parsed.solutions).toEqual([
+      { label: "Ana", code: "### calcula a média\nm = 1\n#####\nprint(m)\n" },
+      { label: "Bruno", code: "y = 2\n" },
+    ]);
+  });
+
+  it("sem nenhum ===, aceita o formato antigo ### e avisa (S36-02)", () => {
+    const parsed = parseClass("### Ana\nx = 1\n\n### Bruno\ny = 2\n###\nz = 3");
+    expect(parsed.legacy).toBe(true);
+    expect(parsed.solutions.map((item) => item.label)).toEqual(["Ana", "Bruno", "Solução 3"]);
+  });
+
+  it("nomes repetidos ganham um número, e o rótulo continua com até 80 caracteres (S36-01)", () => {
+    const longName = "x".repeat(80);
+    const parsed = parseClass(`=== Ana\na = 1\n=== Ana\nb = 2\n=== Ana\nc = 3\n=== ${longName}\nd = 4\n=== ${longName}\ne = 5\n`);
+    expect(parsed.solutions.map((item) => item.label)).toEqual([
+      "Ana",
+      "Ana (2)",
+      "Ana (3)",
+      longName,
+      `${"x".repeat(76)} (2)`,
+    ]);
+    expect(parsed.repeated).toEqual(["Ana", longName]);
+  });
+
+  it("duas alunas com o mesmo nome: cada uma abre o próprio código lado a lado (S36-01)", async () => {
+    const user = renderAt();
+    await user.click(await screen.findByRole("button", { name: "Contra a turma" }));
+    await user.click(screen.getByLabelText("Solução comparada"));
+    await user.paste("n = int(input())\nprint(n * 2)\n");
+    await user.click(screen.getByLabelText("Soluções da turma"));
+    await user.paste("=== Ana\nprint('oi')\n=== Ana\nn = int(input())\nprint(n * 2)\n");
+
+    expect(screen.getByRole("note")).toHaveTextContent('Este nome aparece mais de uma vez: Ana. As repetições ganharam um número, como "Ana (2)"');
+    await user.click(screen.getByRole("button", { name: "Comparar com a turma" }));
+
+    const rows = within(await screen.findByRole("table")).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getByRole("rowheader").textContent)).toEqual(["Ana (2)", "Ana"]);
+    await user.click(within(rows[1] as HTMLElement).getByRole("button", { name: "Comparar lado a lado com Ana" }));
+    expect(screen.getByLabelText("Código B")).toHaveValue("print('oi')\n");
+  });
+
+  it("o formato antigo ### mostra o aviso para usar === (S36-02)", async () => {
+    const user = renderAt();
+    await user.click(await screen.findByRole("button", { name: "Contra a turma" }));
+    await user.click(screen.getByLabelText("Soluções da turma"));
+    await user.paste("### Ana\nx = 1\n### Bruno\ny = 2\n");
+    expect(screen.getByRole("note")).toHaveTextContent("formato antigo");
   });
 
   it("compara com a turma, da mais parecida para a menos, e abre o par lado a lado", async () => {
