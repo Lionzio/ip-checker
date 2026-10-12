@@ -11,7 +11,7 @@ O relatório é a tabela abaixo, preenchida para cada lista habilitada no perío
 | 1. Precisão | 100% no corpus golden e nenhum falso positivo confirmado sem correção em até 2 dias úteis | Seção 1 | | |
 | 2. Uso pela equipe | Pelo menos 70% dos membros ativos usam a ferramenta em cada lista | Seção 2 | | |
 | 3. Apoio à correção | Descartado pelo autor em 12/10/2026 | Seção 3 | | — |
-| 4. Satisfação | Pelo menos 70% da equipe avalia a ferramenta como útil ou muito útil | Sem medição desde 12/10/2026 (formulário descartado; Q-36) | | |
+| 4. Satisfação | Pelo menos 70% da equipe avalia a ferramenta como útil ou muito útil | Feedbacks da equipe coletados manualmente pelo autor (Q-36) | | |
 | 5. Operação | NFR-01 e NFR-06 atendidos e nenhum incidente de segurança | Seção 5 | | |
 
 ## 1. Precisão
@@ -81,7 +81,7 @@ enviada à equipe depois da última lista do período. Perguntas:
 A meta é cumprida se pelo menos 70% de quem usou (pergunta 3, sem "não usei") respondeu "muito útil"
 ou "útil".
 
-**Formulário (S31-06):** descartado pelo autor em 12/10/2026; o critério 4 fica sem medição até a resposta da Q-36.
+**Formulário (S31-06):** descartado pelo autor em 12/10/2026. A satisfação será medida no futuro pelo autor, com os feedbacks da equipe coletados manualmente (Q-36).
 
 ## 5. Operação
 

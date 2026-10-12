@@ -189,13 +189,13 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 33 | Gabaritos de períodos anteriores (Q-14), calibração dos indícios, questões e referências de 2027.1 e, com a política aprovada, os indícios ligados no piloto | Engenharia concluída em 11/10/2026, no piloto com a release `sprint-34`: `ipc-rules calibrate-gabarito` (alerta de vazamento) e `ipc-rules import-gabaritos` (exportação do Notion) e a medição preliminar dos indícios. Aguardando dados externos (P-21): gabaritos das Listas 5 e 6 de 2026.2 e de períodos anteriores, soluções anteriores a 2023 e o documento de 2027.1 |
 | 34 | Prontidão para 2027.1: plano do Render, teste sintético diário, cenários de carga do NFR-04 e do NFR-05, listas validadas habilitadas | Concluída em 11/10/2026 (release `sprint-34`): teste sintético diário com `Server-Timing`, exercício de alerta a cada release e cenários de carga do NFR-04 e do NFR-05; no gratuito, até 100 verificações por minuto sem recusa (ADR-03). Aguardando: listas e monitores de 2027.1 (P-10) |
 | 35 | Controles de qualidade: benchmark do motor, Lighthouse CI, cobertura por pasta, canário mensal em produção, esquema do ruleset; achados corrigidos (plágio dentro de blocos e sobrecarga) e o período 2027.1 | Concluída em 11/10/2026 (release `sprint-35`); aguardando a decisão da Q-25 (metas do NFR-02 e do NFR-03) e a campanha de testes manuais (S35-10) |
-| 36 | Defeitos e documentos certos para a campanha de testes: turma com nomes repetidos e `###` no código, Tab no editor, construções em português, tempo de 50 KB no piloto, guia e documentação fiéis ao motor | Planejada |
+| 36 | Defeitos e documentos certos para a campanha de testes: turma com nomes repetidos e `###` no código, Tab no editor, recursão só na Lista 6 (Q-33), construções em português, tempo de 50 KB no piloto, guia e documentação fiéis ao motor | Planejada |
 | 37 | Verificação mais clara: resumo por categoria, editor fixo, abas no celular, componentes comuns, identidade visual, tema, rascunho e atalhos | Planejada |
 | 38 | Explicar cada regra e exportar: porquê e alternativa em cada violação, feedback sem IA mais completo, exportar e carregar `.py`, feedback sem nova análise | Planejada |
 | 39 | Qualidade interna, operação e documentação: arquivos menores, testes das páginas, CI mais rápida, backup agendado, restauração ensaiada, documentação reorganizada | Planejada |
 | 40 | A correção da turma inteira: correção em lote por upload com CSV, plágio todos contra todos, painel por lista | Planejada |
 | 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12) |
-| 42 | Indícios de IA ligados no piloto: calibração, evidência em cada indício, primeiro para a chefia e depois para todos | Proposta (aguarda a validação dos critérios, Q-35) |
+| 42 | Indícios de IA ligados no piloto: calibração, evidência em cada indício, primeiro para a chefia e depois para todos | Proposta; critérios aprovados (Q-35) |
 | 43 | Período na página (antes de Lista e Questão), o ativo e os 5 anteriores carregados, encerramento com simulação | Proposta |
 | 44 | Feedback com a linha e o motivo de cada violação; o padrão do monitor em `estilo.yaml` | Proposta |
 | 45 | "Aprimorar com IA" que só fala do que o verificador achou, com uma rodada de crítica | Proposta |
@@ -212,7 +212,7 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 | ID | Decisão |
 |---|---|
 | Proposta de 12/10/2026 | Sprints 42 a 48 a partir da revisão das seis frentes, com os indícios de IA no piloto primeiro e a entrada com o Google no fim |
-| Decisões de 12/10/2026 | Q-26 a Q-32 e Q-34 decididas: dos alunos, só o nome e o resultado resumido de cada verificação, sem código nem feedback; soluções anteriores a 2023 e formulário da pesquisa descartados; gerador de referências por IA aprovado; integração com outros projetos depois. Q-33, Q-35 e Q-36 aguardam o autor |
+| Decisões de 12/10/2026 | Q-26 a Q-36 decididas: dos alunos, só o nome e o resultado resumido de cada verificação, sem código nem feedback; soluções anteriores a 2023 e formulário da pesquisa descartados; gerador de referências por IA aprovado; integração com outros projetos depois. depois a Q-33 (recursão só na Lista 6), a Q-35 (critérios dos indícios de IA) e a Q-36 (satisfação medida com os feedbacks coletados pelo autor) |
 | Plano de 11/10/2026 | Até o fim do piloto, melhorar o que existe (Sprints 36 a 40); a Fase 2 vira a Sprint 41 |
 | Q-25 | NFR-02: ≤ 50 ms até 5 KB e linear até 50 KB; NFR-03: FCP ≤ 1,65 s no perfil móvel (11/10/2026) |
 | P-22 | As permissões de 2027.1 são as de 2026.2; o período 2027.1 já existe, inativo (11/10/2026) |
@@ -263,10 +263,9 @@ completo, com responsável, entrada esperada e critério de desbloqueio de cada 
 - [ ] Datas de 2027.1, para trocar o período ativo e conferir os monitores (S34-06; P-22)
 - [x] Metas de desempenho medidas na Sprint 35: NFR-02 e NFR-03 revistas (Q-25, 11/10/2026)
 - [ ] Campanha de testes manuais com a equipe (`docs/testes-manuais.md`, S35-10), em andamento
-- [x] Decisões da revisão das seis frentes: Q-26 a Q-32 e Q-34 (12/10/2026)
-- [ ] Q-33 (as quatro leituras do documento de permissões), Q-35 (os critérios dos indícios de IA)
-      e Q-36 (o critério de satisfação sem o formulário), em `docs/decisoes.md`
-- [ ] Data de validade da credencial dos gabaritos no Render, só a data (S39-04)
+- [x] Decisões da revisão das seis frentes: Q-26 a Q-36 (12/10/2026)
+- [ ] Data em que vence o token do GitHub usado pelo Render para baixar os gabaritos
+      (`IPC_GABARITOS_TOKEN`), só a data, para a troca antes do vencimento (S39-04)
 - [x] Credencial só de leitura dos gabaritos no Render, `IPC_GABARITOS_TOKEN` (S32-01; 23
       gabaritos carregados no piloto em 10/10/2026)
 - [x] Chaves gratuitas do Gemini e da Groq e a cadeia `gemini,groq` no Render (S32-11; o

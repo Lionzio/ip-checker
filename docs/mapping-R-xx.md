@@ -88,6 +88,7 @@ chamado ou passado a uma função do aluno.
 | Q-05 | Assunto obrigatório (R-02): L1 `if`/ternário; L2 `for`/`while`; L3 lista ou tupla; L4 `def`; L5 dicionário; L6 recursão. |
 | Q-06 | Todo `import`, inclusive da biblioteca padrão → R-05 (anulação). |
 | Q-07 | `type()` com 3 argumentos → R-09; com 1 argumento → R-33. |
+| Q-33 | Recursão (direta ou mútua) só a partir da Lista 6; nas Listas 4 e 5, só as outras formas de função (decisão do autor de 12/10/2026; entra no ruleset com a S36-09). Só o literal `None` anula (R-13). `in`, `pop()` e `copy()` em tuplas e dicionários seguem as listas em que esses tipos são liberados (R-40, R-58, R-61, R-62). |
 
 **Q-02 (d) desde a Sprint 22:** com as tuplas na Lista 3 (R-40), `a, b = 1, 2` antes da L3 aparece
 como "Fora da lista" pela R-40, e não mais como R-04. A decisão não muda: é proibido antes da
@@ -144,4 +145,4 @@ Lista 3 e permitido dali em diante; só a mensagem passa a dizer em que lista el
 | R-64 | `builtin:zip` (livre, Q-04); `target:for_unpack` com `zip_in_for_header` (`min: 1`) | No ruleset (Sprint 23) |
 | R-65–R-66 | `method:keys`, `values`, `items`; `target:for_unpack` com `items_in_for_header`; `method:get`, `update`, `kwarg:update.*` (caso 7, `2026.2.5`) | No ruleset (Sprint 23) |
 | R-67 | `node:Lambda` (valor padrão de parâmetro segue na R-04, Q-02 f) | No ruleset (Sprint 23) |
-| R-68 | `derived:recursion` (exigência na Lista 6, C-03) | No ruleset (Sprint 23) |
+| R-68 | `derived:recursion` (exigência na Lista 6, C-03; com a S36-09, também "Fora da lista" nas Listas 4 e 5, Q-33) | No ruleset (Sprint 23) |
