@@ -455,7 +455,7 @@ def test_pilot_api_cors_headers_and_release(pilot: str) -> None:
     assert validate.headers["strict-transport-security"].startswith("max-age=31536000")
     assert validate.headers["x-content-type-options"] == "nosniff"
     assert validate.status == 200
-    assert ready.body == {"status": "ready", "ruleset_version": "2026.2.5", "release": RELEASE}
+    assert ready.body == {"status": "ready", "ruleset_version": "2026.2.6", "release": RELEASE}
     assert "access-control-allow-origin" not in evil.headers
     assert (evil.status, evil.error_code) == (403, "ORIGIN_MISMATCH")
 

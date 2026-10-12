@@ -307,3 +307,20 @@
         d[i] = x
   # Só o start= foi liberado; outro nome continua sem constar.
   expect: [R-04 NAO_CONSTA 2]
+
+- id: R-68-mutual-recursion-before-list-L5
+  rule: R-68
+  list: 5
+  # Q-33 (S36-09): a recursão mútua também só é permitida a partir da Lista 6; cada def do ciclo
+  # recebe a violação.
+  code: |
+    def eh_par(n):
+        if n == 0:
+            return True
+        return eh_impar(n - 1)
+    def eh_impar(n):
+        if n == 0:
+            return False
+        return eh_par(n - 1)
+    print(eh_par({"n": 4}["n"]))
+  expect: [R-68 FORA_DA_LISTA 1, R-68 FORA_DA_LISTA 5]

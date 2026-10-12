@@ -48,7 +48,9 @@ outros argumentos nomeados continuam sem constar no documento (Q-02 c): o `lambd
 
 Na Lista 6, toda questão precisa de recursão: uma função com `def` que chama a si mesma, direta ou
 indiretamente (`f` chama `g`, que chama `f`). Chamar a função várias vezes fora dela não é
-recursão, e um `lambda` que chama a si mesmo não conta.
+recursão, e um `lambda` que chama a si mesmo não conta. A recursão só é permitida a partir da
+Lista 6 (Q-33): nas Listas 4 e 5, uma função que chama a si mesma aparece como "Fora da lista",
+e só as outras formas de função valem.
 
 Os casos do Marco 2 citados acima foram decididos pelo autor em 09/10/2026 e já estão no motor
 (ruleset `2026.2.5`). A lista completa está na [pauta do Marco 2](marco-2.md) e no

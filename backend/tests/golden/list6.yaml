@@ -1,5 +1,5 @@
-# Corpus golden: Lista 6, recursão (R-68). A recursão é permitida desde a Lista 4, como chamada de
-# função (R-59), e obrigatória na Lista 6: a solução precisa de uma função que chama a si mesma,
+# Corpus golden: Lista 6, recursão (R-68). A recursão é permitida só a partir da Lista 6 (Q-33,
+# S36-09) e obrigatória nela: a solução precisa de uma função que chama a si mesma,
 # direta ou indiretamente (ciclo no grafo de chamadas entre funções do aluno, C-03). Sem ela, a
 # solução inteira recebe EXIGENCIA (linha 1). As permissões das Listas 1 a 5 continuam valendo.
 
@@ -132,5 +132,5 @@
     def f(v):
         return f(v[1:]) if v else 0
     print(f([1, 2]))
-  # A recursão é chamada de função: só a partir da Lista 4 (R-59), e aparece como o def.
-  expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3]
+  # A função e as chamadas só a partir da Lista 4 (R-59); a recursão, só a partir da 6 (R-68, Q-33).
+  expect: [R-59 FORA_DA_LISTA 1, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 2, R-59 FORA_DA_LISTA 3, R-68 FORA_DA_LISTA 1]

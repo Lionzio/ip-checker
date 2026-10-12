@@ -1216,6 +1216,28 @@ print(dobro(dobro(3)))
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
+### V-46. Lista 4: recursão é fora da lista (Q-33, S36-09)
+
+- **Objetivo:** A recursão só é permitida a partir da Lista 6; nas Listas 4 e 5, ela é "Fora da lista".
+- **Passos:**
+  1. Escolha a **Lista 4**, cole o código e verifique.
+  2. Troque para a **Lista 6** e verifique de novo.
+- **Código:**
+
+```python
+def fatorial(n):
+    if n <= 1:
+        return 1
+    return n * fatorial(n - 1)
+print(fatorial(5))
+```
+
+- **Esperado:**
+  - Na Lista 4, aparece a **R-68** como "Fora da lista" na linha 1, dizendo que a recursão só é permitida a partir da Lista 6.
+  - Na Lista 6, nenhuma violação.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
 ### V-43. Erro de sintaxe: parêntese não fechado
 
 - **Objetivo:** Com erro de sintaxe, as permissões não são verificadas, e a página mostra o erro em português.

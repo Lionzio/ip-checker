@@ -20,15 +20,28 @@
     mostra(input())
   expect: []
 
-- id: R-59-recursion-allowed-L4
-  rule: R-59
+- id: R-68-direct-recursion-before-list-L4
+  rule: R-68
   list: 4
+  # Q-33 (S36-09): a recursão só é permitida a partir da Lista 6; o def e a chamada seguem da R-59.
   code: |
     def fat(n):
         if n <= 1:
             return 1
         return n * fat(n - 1)
     print(fat(5))
+  expect: [R-68 FORA_DA_LISTA 1]
+
+- id: R-59-function-calling-another-L4
+  rule: R-59
+  list: 4
+  # Uma função que chama outra, sem ciclo, continua permitida na Lista 4.
+  code: |
+    def dobro(n):
+        return 2 * n
+    def quadruplo(n):
+        return dobro(dobro(n))
+    print(quadruplo(5))
   expect: []
 
 - id: R-59-def-before-list-L3
