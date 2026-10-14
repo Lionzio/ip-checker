@@ -33,7 +33,7 @@ export function ErrorText({ children, id }: { children: ReactNode; id?: string }
 }
 
 const CARD = "rounded-md border border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
-const CARD_PADDING = { md: "p-4", sm: "p-3", none: "" } as const;
+const CARD_PADDING = { md: "p-4", sm: "p-3", xs: "px-3 py-2", none: "" } as const;
 
 interface CardProps extends HTMLAttributes<HTMLElement> {
   /** O elemento: uma seção com nome (padrão), um item de lista ou uma divisão sem semântica. */
@@ -57,6 +57,35 @@ interface LineChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 /** O botão pequeno "Linha 3, coluna 1" que seleciona um trecho no editor (S26-03). */
 export function LineChip({ mono = true, className = "", ...props }: LineChipProps) {
   return <button type="button" className={`${CHIP} ${mono ? "font-mono text-xs" : "text-sm"} ${className}`.trim()} {...props} />;
+}
+
+const PILL =
+  "inline-flex min-h-11 items-center rounded-full border border-transparent px-3 text-sm font-medium aria-pressed:border-slate-700 aria-pressed:ring-2 aria-pressed:ring-slate-700/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:min-h-7 dark:aria-pressed:border-slate-200";
+
+/** Um contador que filtra ("4 anulações imediatas"): pressionado, ganha a borda e o anel (S37-01). */
+export function Chip({ className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button type="button" className={`${PILL} ${className}`.trim()} {...props} />;
+}
+
+interface DisclosureProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  open: boolean;
+}
+
+/** O cabeçalho de um cartão que abre e fecha: a seta e `aria-expanded` (S37-01). */
+export function Disclosure({ open, className = "", children, ...props }: DisclosureProps) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      className={`flex w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${className}`.trim()}
+      {...props}
+    >
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0 text-slate-600 dark:text-slate-300">
+        <path d={open ? "M4 6l4 4 4-4" : "M6 4l4 4-4 4"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {children}
+    </button>
+  );
 }
 
 interface SyntaxErrorBoxProps {
