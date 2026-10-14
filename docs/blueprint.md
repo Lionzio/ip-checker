@@ -1687,6 +1687,8 @@ sem rolar a página e sem perder o código de vista.
 
 **Riscos:** mudança visual grande; mitigada pelas capturas de antes e depois e pela aprovação do autor.
 
+**Situação (14/10/2026):** engenharia concluída na release `sprint-37` (#106, #109 a #111): S37-01 a S37-05. Decisões tomadas na sprint (detalhes no `CHANGELOG.md`): o tema vale pelo `data-theme` do `<html>`, aplicado por `public/theme.js` (a CSP não aceita script inline); o rascunho fica no `sessionStorage` da aba e some no Sair (aviso de privacidade atualizado); acima de 5 regras os cartões nascem fechados; Perfil e Sair foram para o menu da conta; "Soluções da turma" virou um `CodeEditor`; Ctrl+Shift+C foi mantido (a página o intercepta no Chrome e no Edge). Aguardando: a aprovação das capturas pelo autor (`prints-sprint-37/`) e o deploy na Vercel.
+
 #### Sprint 38 — Explicar cada regra e exportar o resultado
 
 **Objetivo:** cada violação passa a dizer por que a construção é proibida e o que usar no lugar, o
