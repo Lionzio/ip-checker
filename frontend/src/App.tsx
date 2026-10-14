@@ -5,6 +5,7 @@ import { AppHeader } from "./components/AppHeader";
 import { Button } from "./components/ui";
 import { DraftProvider } from "./draft";
 import { useDraft } from "./draftContext";
+import { useThemeEffect } from "./hooks/useTheme";
 import { Admin } from "./pages/Admin";
 import { Checker } from "./pages/Checker";
 import { GoogleComplete } from "./pages/GoogleComplete";
@@ -45,6 +46,7 @@ const PUBLIC_PATHS = new Set(["/entrar", "/registrar", "/verificar", "/esqueci-s
 function Shell({ client, demoMode }: Required<AppProps>) {
   const { state, signIn, signOut, expire, retry, setAccount } = useSession();
   const { clear } = useDraft();
+  useThemeEffect();
   const navigate = useNavigate();
   const location = useLocation();
   const account = state.status === "signed-in" ? state.account : null;

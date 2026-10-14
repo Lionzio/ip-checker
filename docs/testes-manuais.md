@@ -1,6 +1,6 @@
 # Roteiro de testes manuais do IP-Checker
 
-Versão do piloto: release `sprint-36` (12/10/2026), ruleset `2026.2.6` (período 2026.2).
+Versão do piloto: release `sprint-37` (14/10/2026), ruleset `2026.2.6` (período 2026.2).
 Endereço: <https://ip-checker-red-phi.vercel.app>.
 
 Este roteiro é para o desenvolvedor e os monitores testarem, à mão, tudo o que o IP-Checker faz
@@ -165,7 +165,7 @@ ruleset mudou: confira a versão no rodapé do resultado).
 - **Objetivo:** Sair encerra a sessão e apaga o que estava na tela.
 - **Passos:**
   1. Entre, cole um código no verificador e verifique.
-  2. Clique em **Sair**.
+  2. Clique no seu primeiro nome, no canto do cabeçalho, e em **Sair**.
   3. Use o botão Voltar do navegador.
 - **Esperado:**
   - Depois de sair, a página volta para a entrada.
@@ -209,7 +209,7 @@ ruleset mudou: confira a versão no rodapé do resultado).
 
 - **Objetivo:** O perfil guarda as mudanças.
 - **Passos:**
-  1. Abra **Perfil**, mude o curso e o tratamento e salve.
+  1. Abra **Perfil** (no menu do seu primeiro nome, no cabeçalho), mude o curso e o tratamento e salve.
   2. Recarregue a página.
 - **Esperado:**
   - As mudanças continuam depois de recarregar.
@@ -1426,6 +1426,20 @@ print(total(eval(input())))
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
+### VI-01b. Resumo por categoria e cartões (Sprint 37)
+
+- **Objetivo:** Os contadores filtram, e os cartões abrem e fecham.
+- **Passos:**
+  1. Verifique o código do V-14 na Lista 1.
+  2. Clique no contador **anulações imediatas** e depois em **Todas**.
+  3. Clique no cabeçalho de um cartão; depois em **Abrir todos** ou **Fechar todos**, se aparecer.
+- **Esperado:**
+  - O contador mostra só os cartões daquela categoria; **Todas** volta a mostrar todos.
+  - Até 5 regras, os cartões vêm abertos; acima disso, fechados. Aberto, o cartão mostra as linhas e o trecho com a linha da violação em destaque e uma linha de contexto de cada lado.
+  - No computador, o editor fica parado na tela enquanto o resultado rola.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
 ### VI-02. Relatório de um código que mudou
 
 - **Objetivo:** Depois de mudar o código, o relatório avisa que é do código anterior.
@@ -2405,14 +2419,31 @@ if x > 0:
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
-### L-02. Rascunho guardado na navegação
+### L-01b. Atalhos Alt+N e Ctrl+Shift+C (Sprint 37)
 
-- **Objetivo:** O editor e o painel continuam ao trocar de tela.
+- **Objetivo:** Os atalhos copiam o feedback e passam ao próximo aluno.
+- **Passos:**
+  1. Cole o V-01, aperte Ctrl+Enter, digite o nome e aperte Enter.
+  2. Aperte **Ctrl+Shift+C** e cole o texto num bloco de notas.
+  3. Aperte **Alt+N**.
+  4. Abra **Atalhos do teclado**, abaixo dos botões.
+- **Esperado:**
+  - Ctrl+Shift+C copia o feedback gerado (dentro de um campo de texto, o atalho fica com o campo).
+  - Alt+N faz o mesmo que **Próximo aluno**.
+  - A ajuda lista Ctrl+Enter, Tab e Shift+Tab, Esc e Tab, Alt+N e Ctrl+Shift+C.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### L-02. Rascunho guardado na navegação e no recarregamento
+
+- **Objetivo:** O editor e o painel continuam ao trocar de tela e ao recarregar a página.
 - **Passos:**
   1. Cole um código e gere um feedback.
   2. Vá a **Plágio** e volte.
+  3. Aperte F5.
 - **Esperado:**
-  - O código, o resultado e o feedback continuam lá.
+  - Depois do passo 2, o código, o resultado e o feedback continuam lá.
+  - Depois do F5, o código, a questão, o nome e a anotação continuam (o resultado precisa de uma nova verificação).
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
@@ -2420,7 +2451,7 @@ if x > 0:
 
 - **Objetivo:** **Sair** apaga o que estava no editor e no painel.
 - **Passos:**
-  1. Com um código e um feedback na tela, clique em **Sair** e entre de novo.
+  1. Com um código e um feedback na tela, clique em **Sair** (no menu do seu primeiro nome) e entre de novo.
 - **Esperado:**
   - O editor e o painel estão vazios.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
@@ -2625,16 +2656,20 @@ print(soma)
   1. Abra https://ip-checker-red-phi.vercel.app no celular, entre, verifique o V-01 e gere o feedback.
 - **Esperado:**
   - O menu se adapta à tela, nada fica cortado e não há rolagem lateral.
+  - Depois de verificar, o resultado, os indícios e o feedback aparecem em abas, e **Voltar ao código** leva ao editor.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
-### U-02. Tema escuro
+### U-02. Tema claro, escuro e do sistema
 
-- **Objetivo:** A página segue o tema do sistema.
+- **Objetivo:** O tema escolhido vale neste navegador; "Do sistema" segue o sistema.
 - **Passos:**
-  1. Mude o sistema (ou o navegador) para o tema escuro e recarregue.
+  1. No menu do seu primeiro nome (ou em **Perfil > Aparência**), escolha **Escuro** e recarregue.
+  2. Escolha **Claro** com o sistema no tema escuro.
+  3. Escolha **Do sistema** e mude o tema do sistema.
 - **Esperado:**
-  - A página fica escura, com texto legível em todas as telas.
+  - **Escuro** deixa a página escura, sem piscar ao recarregar, com texto legível em todas as telas.
+  - **Claro** ignora o tema do sistema; **Do sistema** o acompanha.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

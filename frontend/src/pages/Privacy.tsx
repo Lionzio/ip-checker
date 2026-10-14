@@ -46,7 +46,9 @@ export function Privacy() {
         O código verificado, comparado no painel de plágio ou usado no feedback é analisado e
         descartado: não vai para o banco, para o disco nem para os logs, e nunca é executado. Os
         indícios de uso de IA, quando ligados, são calculados na hora a partir do mesmo código, só a
-        equipe os vê, e também não são guardados.
+        equipe os vê, e também não são guardados. O que está no editor, com o nome do aluno e a
+        anotação, fica só nesta aba do seu navegador, para sobreviver a um recarregamento, e some
+        quando a aba fecha ou quando você sai da conta; nada disso vai ao servidor.
       </p>
 
       <h3 className="text-lg font-semibold">Estatísticas de uso</h3>

@@ -1,6 +1,8 @@
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router";
+import { useTheme } from "../hooks/useTheme";
 import { NAV_LABELS } from "../labels";
+import { THEME_LABELS, THEME_OPTIONS } from "../theme";
 import type { Account } from "../types/api";
 import { Logo } from "./Logo";
 import { Button } from "./ui";
@@ -77,9 +79,13 @@ export function AppHeader({ account, onSignOut }: AppHeaderProps) {
   );
 }
 
-/** O menu da conta (S37-04): abre pelo clique ou pelo teclado; setas, Esc e clique fora. */
+/**
+ * O menu da conta (S37-04): abre pelo clique ou pelo teclado; setas, Esc e clique fora. Traz também
+ * o tema (S37-05), como itens de escolha única.
+ */
 function AccountMenu({ account, onSignOut }: { account: Account; onSignOut?: () => void }) {
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
@@ -106,7 +112,7 @@ function AccountMenu({ account, onSignOut }: { account: Account; onSignOut?: () 
       return;
     }
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    const items = [...(rootRef.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+    const items = [...(rootRef.current?.querySelectorAll<HTMLElement>("[role=menuitem], [role=menuitemradio]") ?? [])];
     if (items.length === 0) return;
     event.preventDefault();
     const index = items.indexOf(document.activeElement as HTMLElement);
@@ -140,6 +146,23 @@ function AccountMenu({ account, onSignOut }: { account: Account; onSignOut?: () 
             <Link role="menuitem" to="/perfil" className={MENU_ITEM} onClick={() => close(false)}>
               {NAV_LABELS.profile}
             </Link>
+            <p className="px-3 pt-2 pb-1 text-xs font-medium text-slate-600 uppercase dark:text-slate-300">Tema</p>
+            {THEME_OPTIONS.map((option) => (
+              <Button
+                key={option}
+                role="menuitemradio"
+                aria-checked={theme === option}
+                variant="link"
+                className="justify-start px-3 no-underline aria-checked:font-semibold hover:bg-slate-100 sm:min-h-9 dark:hover:bg-slate-800"
+                onClick={() => setTheme(option)}
+              >
+                <span aria-hidden="true" className="inline-block w-4">
+                  {theme === option ? "✓" : ""}
+                </span>
+                {THEME_LABELS[option]}
+              </Button>
+            ))}
+            <div role="separator" className="my-1 border-t border-slate-200 dark:border-slate-700" />
             <Button
               role="menuitem"
               variant="link"

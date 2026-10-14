@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { FeedbackForm } from "../draftContext";
 import { useApiCall } from "../hooks/useApiCall";
 import type { FeedbackClient } from "../services/client";
@@ -23,6 +23,13 @@ interface FeedbackPanelProps {
   /** O último feedback gerado na página: para avisar quando o código mudou e o nome não (S26-02). */
   previous?: { student: string; code: string } | null;
   onGenerated?: (generated: { student: string; code: string }) => void;
+  ref?: Ref<FeedbackPanelHandle>;
+}
+
+/** O que a página pode pedir ao painel: copiar o texto gerado, pelo atalho Ctrl+Shift+C (S37-05). */
+export interface FeedbackPanelHandle {
+  /** Copia o feedback gerado; sem texto, não faz nada e devolve `false`. */
+  copy(): Promise<boolean>;
 }
 
 interface Generated {
@@ -62,6 +69,7 @@ export function FeedbackPanel({
   onFormChange,
   previous = null,
   onGenerated,
+  ref,
 }: FeedbackPanelProps) {
   const { student, annotation } = form;
   const [generated, setGenerated] = useState<Generated | null>(null);
@@ -142,15 +150,18 @@ export function FeedbackPanel({
     setNotice(null);
   }
 
-  async function copy() {
-    if (current === null) return;
+  async function copy(): Promise<boolean> {
+    if (current === null) return false;
     try {
       await navigator.clipboard.writeText(current.text);
       setCopied("Copiado.");
     } catch {
       setCopied("Não foi possível copiar. Selecione o texto e copie com Ctrl+C.");
     }
+    return true;
   }
+
+  useImperativeHandle(ref, () => ({ copy }));
 
   return (
     <Card aria-labelledby="titulo-feedback" className="flex flex-col gap-3">

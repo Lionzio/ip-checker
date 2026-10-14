@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { PasswordRequirements } from "../components/PasswordRequirements";
+import { ThemeField } from "../components/ThemeField";
 import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
@@ -18,7 +19,7 @@ interface ProfileProps {
   onUnauthenticated?: () => void;
 }
 
-/** Perfil (FR-26): nome, curso, tratamento e senha. O cargo não se altera por aqui. */
+/** Perfil (FR-26): nome, curso, tratamento, senha e o tema da página (S37-05). O cargo não se altera por aqui. */
 export function Profile({ client, account, onUpdated, onUnauthenticated }: ProfileProps) {
   useDocumentTitle(PAGE_TITLES.profile);
   return (
@@ -30,6 +31,12 @@ export function Profile({ client, account, onUpdated, onUnauthenticated }: Profi
         onChanged={() => onUpdated({ ...account, has_password: true })}
         onUnauthenticated={onUnauthenticated}
       />
+      <section aria-labelledby="titulo-aparencia" className="flex flex-col gap-4">
+        <h2 id="titulo-aparencia" className="text-xl font-semibold">
+          Aparência
+        </h2>
+        <ThemeField />
+      </section>
       <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
         Voltar ao painel
       </Link>

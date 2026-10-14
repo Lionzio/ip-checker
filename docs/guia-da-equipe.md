@@ -81,9 +81,15 @@ da monitoria"); só você o vê.
 
 ## Perfil
 
+O seu primeiro nome, no canto direito do cabeçalho, abre o **menu da conta**, com o nome completo,
+o cargo, o **Perfil**, o tema da página e **Sair**.
+
 Em **Perfil**, você muda o nome, o curso, o tratamento e a senha. A troca de senha pede a senha
 atual e encerra as suas outras sessões; a desta aba continua. Uma conta criada pelo Google pode
 definir uma senha ali. O cargo não muda pelo perfil: quem aprova os cadastros é que o altera.
+
+Em **Aparência**, no Perfil (ou no menu da conta), o tema pode ser **claro**, **escuro** ou **do
+sistema**, que segue a escolha do seu computador ou celular. A escolha vale só neste navegador.
 
 A sessão termina depois de 12 horas sem uso, em no máximo 7 dias, e também quando você sai, troca
 a senha, muda de cargo ou é removido da equipe.
@@ -130,12 +136,22 @@ Para uma turma inteira, o caminho mais curto é:
 1. Cole o código do aluno.
 2. Aperte **Ctrl+Enter**: o foco vai ao resultado.
 3. Escreva o nome do aluno e aperte Enter: o feedback é gerado, e o foco vai a **Copiar**.
-4. Clique em **Próximo aluno**: o código, o nome, a anotação e o resultado são limpos, a lista e a
-   questão ficam, e o foco volta ao editor.
+4. Aperte **Ctrl+Shift+C** (ou clique em **Copiar**): o texto vai para a área de transferência.
+5. Aperte **Alt+N** (ou clique em **Próximo aluno**): o código, o nome, a anotação e o resultado
+   são limpos, a lista e a questão ficam, e o foco volta ao editor.
+
+A ajuda **Atalhos do teclado**, abaixo dos botões, lista todos os atalhos. Dentro de um campo de
+texto, o Ctrl+Shift+C fica com o campo.
 
 Se você verificar outro código sem trocar o nome do aluno, o painel de feedback avisa antes de você
 gerar um texto com o nome errado. O que está no editor e no painel fica na página enquanto você
-navega e mesmo se a sessão vencer e você entrar de novo; **Sair** apaga tudo.
+navega, sobrevive a um recarregamento (F5) e a um novo login depois de a sessão vencer, e some
+quando a aba fecha; **Sair** apaga tudo. Nada disso vai ao servidor.
+
+No computador, o editor fica fixo na tela enquanto o resultado rola. No celular, o resultado, os
+indícios e o feedback aparecem em abas, e o botão **Voltar ao código** leva de volta ao editor.
+Com mais de 5 regras violadas, os cartões do resultado vêm fechados: clique no cabeçalho de cada
+um, ou em **Abrir todos**, e use os contadores por categoria para filtrar.
 
 | Categoria | O que significa |
 |---|---|

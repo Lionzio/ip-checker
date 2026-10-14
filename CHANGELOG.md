@@ -60,6 +60,19 @@ de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem 
   "Soluções da turma" do plágio virou um `CodeEditor`, com numeração de linhas, Tab e Colar, e a
   dica do formato continua como descrição (`describedBy`). Os e2e que clicavam em Sair ou Perfil
   passam a abrir o menu antes.
+- **14/10/2026, S37-05:** preferências e atalhos. O **tema** passa a ser claro, escuro ou do
+  sistema, escolhido no Perfil ("Aparência") ou no menu da conta e guardado neste navegador
+  (`localStorage`, `ipc:tema`); a variante `dark` do Tailwind deixa de ser o `prefers-color-scheme`
+  e passa a ser o `data-theme="dark"` do `<html>`, que o `public/theme.js` (um arquivo de cerca de
+  500 bytes, carregado antes do módulo da página, porque a CSP só aceita scripts da própria origem)
+  aplica antes da primeira pintura, sem piscar, e que o `useTheme` mantém em dia, acompanhando o
+  sistema operacional na opção "Do sistema". O **rascunho** (código, questão, nome do aluno e
+  anotação) passa a sobreviver a um F5: fica no `sessionStorage` desta aba (`ipc:rascunho`), morre
+  com ela e some no Sair; a lista continua no `localStorage`; o aviso de privacidade diz isso. Os
+  **atalhos** Alt+N ("Próximo aluno") e Ctrl+Shift+C (copia o feedback gerado; dentro de um campo
+  de texto, o atalho fica com o campo) entram na tela de verificação, com uma ajuda "Atalhos do
+  teclado" abaixo dos botões que lista também Ctrl+Enter, Tab, Shift+Tab e Esc. O guia da equipe
+  ganhou o menu da conta, o tema, o rascunho e os atalhos.
 
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 

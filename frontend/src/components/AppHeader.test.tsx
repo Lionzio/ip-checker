@@ -74,10 +74,13 @@ describe("Menu da conta (S37-04)", () => {
     expect(within(menu).getByRole("menuitem", { name: "Perfil" })).toHaveFocus();
     expect(within(menu).getByRole("menuitem", { name: "Sair" })).toBeInTheDocument();
 
-    await user.keyboard("{ArrowDown}");
+    // As setas percorrem Perfil, os três temas e Sair, dando a volta nas pontas.
+    await user.keyboard("{ArrowUp}");
     expect(within(menu).getByRole("menuitem", { name: "Sair" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(within(menu).getByRole("menuitem", { name: "Perfil" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(within(menu).getByRole("menuitemradio", { name: "Claro" })).toHaveFocus();
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -98,6 +101,35 @@ describe("Menu da conta (S37-04)", () => {
     // Sem sessão, o perfil manda para Entrar.
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Menu da conta/ })).not.toBeInTheDocument();
+  });
+
+  it("o tema é escolhido no menu, vale no <html> e fica neste navegador (S37-05)", async () => {
+    const user = renderAt("/");
+    await user.click(await screen.findByRole("button", { name: /Menu da conta/ }));
+    const options = screen.getAllByRole("menuitemradio");
+
+    expect(options.map((item) => item.textContent?.replace("✓", ""))).toEqual(["Claro", "Escuro", "Do sistema"]);
+    expect(screen.getByRole("menuitemradio", { name: "Do sistema" })).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("menuitemradio", { name: "Escuro" }));
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(window.localStorage.getItem("ipc:tema")).toBe("dark");
+    expect(screen.getByRole("menuitemradio", { name: "Escuro" })).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("menuitemradio", { name: "Claro" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+
+  it("no Perfil, Aparência mostra a mesma escolha do menu", async () => {
+    window.localStorage.setItem("ipc:tema", "dark");
+    const user = renderAt("/perfil");
+
+    const escuro = await screen.findByRole("radio", { name: "Escuro" });
+    expect(escuro).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Claro" }));
+    expect(window.localStorage.getItem("ipc:tema")).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
   it("a navegação principal fica só com as telas; Perfil e Sair não estão nela", async () => {
