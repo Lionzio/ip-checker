@@ -106,22 +106,23 @@ function RuleCard({
   const whole = group.category === "EXIGENCIA";
   const first = group.occurrences[0];
   const count = group.occurrences.length;
+  // Tudo corre como texto: fechado, o cartão ocupa só as linhas que a mensagem pede.
   const header = (
     <>
-      <span className={`rounded px-2 py-0.5 text-sm font-medium ${CATEGORY_STYLES[group.category]}`}>{CATEGORY_LABELS[group.category]}</span>
-      <span className="text-sm text-slate-600 dark:text-slate-300">{group.ruleId}</span>
+      <span className={`mr-2 inline-block rounded px-2 font-medium ${CATEGORY_STYLES[group.category]}`}>{CATEGORY_LABELS[group.category]}</span>
+      <span className="mr-2 text-slate-600 dark:text-slate-300">{group.ruleId}</span>
       {whole ? (
-        <span className="font-mono text-sm text-slate-600 dark:text-slate-300">Solução inteira</span>
+        <span className="mr-2 font-mono text-slate-600 dark:text-slate-300">Solução inteira</span>
       ) : (
-        <span className="text-sm text-slate-600 dark:text-slate-300">{count === 1 ? "1 linha" : `${count} linhas`}</span>
+        <span className="mr-2 text-slate-600 dark:text-slate-300">{count === 1 ? "1 linha" : `${count} linhas`}</span>
       )}
-      <span className="basis-full">{group.message}</span>
+      <span>{group.message}</span>
     </>
   );
   return (
     <Card as="li" padding="xs" className={`border-l-4 ${CARD_BORDERS[group.category]}`}>
       {whole ? (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">{header}</div>
+        <p className="text-sm leading-6">{header}</p>
       ) : (
         <Disclosure open={open} aria-controls={bodyId} onClick={onToggle}>
           {header}
