@@ -3,7 +3,8 @@ import type { FeedbackForm } from "../draftContext";
 import { useApiCall } from "../hooks/useApiCall";
 import type { FeedbackClient } from "../services/client";
 import type { FeedbackResponse, ValidateRequest, ValidationStatus } from "../types/api";
-import { BUTTON, INPUT } from "../ui";
+import { INPUT } from "../ui";
+import { Button, Card } from "./ui";
 
 /** O servidor tem até 28 s para as IAs; o resto cobre a análise e a rede. */
 export const FEEDBACK_TIMEOUT_MS = 40_000;
@@ -152,10 +153,7 @@ export function FeedbackPanel({
   }
 
   return (
-    <section
-      aria-labelledby="titulo-feedback"
-      className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-    >
+    <Card aria-labelledby="titulo-feedback" className="flex flex-col gap-3">
       <h2 id="titulo-feedback" className="text-lg font-semibold">
         Feedback para o aluno
       </h2>
@@ -202,17 +200,13 @@ export function FeedbackPanel({
             </p>
           )}
           <div className="flex flex-wrap gap-3">
-            <button type="submit" disabled={loading || student.trim().length < 2} className={BUTTON}>
+            <Button type="submit" disabled={loading || student.trim().length < 2}>
               {loading ? "Gerando…" : "Gerar feedback"}
-            </button>
+            </Button>
             {loading && (
-              <button
-                type="button"
-                onClick={cancel}
-                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-              >
+              <Button variant="secondary" onClick={cancel}>
                 Cancelar
-              </button>
+              </Button>
             )}
           </div>
         </form>
@@ -246,42 +240,23 @@ export function FeedbackPanel({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              ref={copyRef}
-              type="button"
-              onClick={() => void copy()}
-              className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-            >
+            <Button ref={copyRef} variant="secondary" onClick={() => void copy()}>
               Copiar
-            </button>
+            </Button>
             {current.canEnhance && current.source === "template" && (
-              <button
-                type="button"
-                onClick={() => void enhance()}
-                disabled={enhancing.loading || loading}
-                aria-describedby="aviso-ia"
-                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 disabled:opacity-60 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-              >
+              <Button variant="secondary" onClick={() => void enhance()} disabled={enhancing.loading || loading} aria-describedby="aviso-ia">
                 {enhancing.loading ? "Aprimorando…" : "Aprimorar com IA"}
-              </button>
+              </Button>
             )}
             {enhancing.loading && (
-              <button
-                type="button"
-                onClick={enhancing.cancel}
-                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-              >
+              <Button variant="secondary" onClick={enhancing.cancel}>
                 Cancelar
-              </button>
+              </Button>
             )}
             {current.plain !== null && (
-              <button
-                type="button"
-                onClick={undo}
-                className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-              >
+              <Button variant="secondary" onClick={undo}>
                 Desfazer
-              </button>
+              </Button>
             )}
             <span role="status" className="text-sm">
               {copied}
@@ -289,6 +264,6 @@ export function FeedbackPanel({
           </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router";
 import { PasswordRequirements } from "../components/PasswordRequirements";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -79,9 +80,9 @@ export function ResetPassword({ client }: { client: AuthClient }) {
             />
           </label>
           {mismatch && <p className="text-sm text-red-700 dark:text-red-300">As duas senhas não são iguais.</p>}
-          <button type="submit" disabled={!ready || state === "sending"} className={`${BUTTON} self-start`}>
+          <Button type="submit" disabled={!ready || state === "sending"} className="self-start">
             Definir a senha nova
-          </button>
+          </Button>
         </>
       )}
       {error !== null && (

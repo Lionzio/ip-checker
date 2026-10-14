@@ -1,4 +1,5 @@
 import type { Indicator, Indicators } from "../types/api";
+import { Card, LineChip } from "./ui";
 
 /**
  * Painel de indícios de uso de IA (S29-03; ADR-08, US-34): só para a equipe, abaixo do resultado.
@@ -43,15 +44,9 @@ function Lines({ lines, onSelectLines }: { lines: number[]; onSelectLines?: (fir
       <span>{lines.length === 1 ? "Linha" : "Linhas"}:</span>
       {shown.map((line) =>
         onSelectLines ? (
-          <button
-            key={line}
-            type="button"
-            onClick={() => onSelectLines(line, line)}
-            aria-label={`Linha ${line}: selecionar no editor`}
-            className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
-          >
+          <LineChip key={line} mono={false} onClick={() => onSelectLines(line, line)} aria-label={`Linha ${line}: selecionar no editor`}>
             {line}
-          </button>
+          </LineChip>
         ) : (
           <span key={line}>{line}</span>
         ),
@@ -65,10 +60,7 @@ export function IndicatorsPanel({ indicators, onSelectLines }: IndicatorsPanelPr
   const weighted = indicators.items.filter((item) => item.level !== null);
   const style = indicators.items.filter((item) => item.level === null);
   return (
-    <section
-      aria-label="Indícios de uso de IA"
-      className="rounded-md border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-    >
+    <Card aria-label="Indícios de uso de IA">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">Indícios de uso de IA</h2>
         {indicators.level !== null ? (
@@ -125,6 +117,6 @@ export function IndicatorsPanel({ indicators, onSelectLines }: IndicatorsPanelPr
           </ol>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

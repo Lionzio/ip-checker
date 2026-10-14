@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { AuthClient } from "../services/client";
-import { BUTTON, errorMessage } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -41,9 +42,9 @@ export function Verify({ client }: { client: AuthClient }) {
       ) : (
         <>
           <p>Confirme que este e-mail é seu para mandar o cadastro para a aprovação.</p>
-          <button type="button" onClick={() => void confirm()} disabled={state === "sending"} className={`${BUTTON} self-start`}>
+          <Button onClick={() => void confirm()} disabled={state === "sending"} className="self-start">
             Confirmar meu e-mail
-          </button>
+          </Button>
         </>
       )}
       {error !== null && (

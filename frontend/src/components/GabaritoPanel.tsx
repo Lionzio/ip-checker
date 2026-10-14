@@ -1,6 +1,7 @@
 import { BAND_STYLES, PERCENT } from "../bands";
 import type { GabaritoComparison } from "../types/api";
 import { constructHint } from "../constructTerms";
+import { Card, LineChip } from "./ui";
 
 /**
  * Comparação com o gabarito oficial da questão (S32-06; ADR-11, FR-32, US-37): a semelhança, pela
@@ -39,10 +40,7 @@ function span(first: number, last: number): string {
 export function GabaritoPanel({ comparison, onSelectLines }: GabaritoPanelProps) {
   const compared = comparison.status === "compared" && comparison.similarity !== null && comparison.band !== null;
   return (
-    <section
-      aria-labelledby="gabarito-titulo"
-      className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
-    >
+    <Card aria-labelledby="gabarito-titulo" className="flex flex-col gap-3">
       <h3 id="gabarito-titulo" className="text-lg font-semibold">
         Comparação com o gabarito · {comparison.question_id}
       </h3>
@@ -83,14 +81,9 @@ export function GabaritoPanel({ comparison, onSelectLines }: GabaritoPanelProps)
                 {comparison.student_lines.map(({ first, last }) => (
                   <li key={`${first}-${last}`}>
                     {onSelectLines ? (
-                      <button
-                        type="button"
-                        onClick={() => onSelectLines(first, last)}
-                        aria-label={`${span(first, last)}: selecionar no editor`}
-                        className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 text-sm hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
-                      >
+                      <LineChip mono={false} onClick={() => onSelectLines(first, last)} aria-label={`${span(first, last)}: selecionar no editor`}>
                         {span(first, last)}
-                      </button>
+                      </LineChip>
                     ) : (
                       <span className="text-sm">{span(first, last)}</span>
                     )}
@@ -101,6 +94,6 @@ export function GabaritoPanel({ comparison, onSelectLines }: GabaritoPanelProps)
           )}
         </>
       )}
-    </section>
+    </Card>
   );
 }

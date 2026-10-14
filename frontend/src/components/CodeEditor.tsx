@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type Ref, useImperativeHandle, useRef, useState } from "react";
 import { lineBlock } from "../editorLines";
+import { Button } from "./ui";
 
 /** O que a página pode pedir ao editor (S26-02 e S26-03). */
 export interface CodeEditorHandle {
@@ -231,12 +232,12 @@ export function CodeEditor({
         />
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <button type="button" onClick={() => void paste()} disabled={readOnly} className="min-h-11 rounded-md px-2 text-blue-700 underline underline-offset-2 disabled:opacity-60 sm:min-h-0 dark:text-blue-300">
+        <Button variant="link" onClick={() => void paste()} disabled={readOnly}>
           Colar
-        </button>
-        <button type="button" onClick={clear} disabled={readOnly || value === ""} className="min-h-11 rounded-md px-2 text-blue-700 underline underline-offset-2 disabled:opacity-60 sm:min-h-0 dark:text-blue-300">
+        </Button>
+        <Button variant="link" onClick={clear} disabled={readOnly || value === ""}>
           Limpar
-        </button>
+        </Button>
         <span id={hintId} className="text-slate-600 dark:text-slate-300">
           Tab insere 4 espaços ou indenta as linhas selecionadas; Shift+Tab desindenta. Esc e depois Tab sai do editor.
           {onSubmitShortcut ? " Ctrl+Enter verifica." : ""}

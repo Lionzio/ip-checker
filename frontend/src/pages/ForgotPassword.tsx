@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import type { AuthClient } from "../services/client";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -54,9 +55,9 @@ export function ForgotPassword({ client }: { client: AuthClient }) {
               className={INPUT}
             />
           </label>
-          <button type="submit" disabled={sending} className={`${BUTTON} self-start`}>
+          <Button type="submit" disabled={sending} className="self-start">
             Enviar o link
-          </button>
+          </Button>
         </>
       )}
       {error !== null && (

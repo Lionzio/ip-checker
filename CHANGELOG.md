@@ -8,6 +8,27 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 37 — Verificação mais clara
+
+A Sprint 37 (S37-01 a S37-05; US-09, US-11, US-21 e US-33) começou em 14/10/2026. A missão é que o
+monitor, corrigindo dezenas de soluções seguidas, entenda o resultado num olhar, sem rolar a página
+e sem perder o código de vista, no computador e no celular. As personas são o monitor em correção
+em lote e o monitor no celular. Com a cota do Actions esgotada até 01/11/2026 (P-19), a evidência
+de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem do roteiro
+`frontend/scripts/capturas.mjs` e ficam fora do repositório (`prints-sprint-37/`).
+
+- **14/10/2026, S37-03:** os componentes comuns de `frontend/src/components/ui.tsx` passam a ser
+  os únicos botões da página: `Button` ganhou os tamanhos `md` e `sm` (o `sm` cabe numa linha de
+  tabela) e a variante `link`; entraram `Card` (a moldura dos painéis e dos cartões de regra),
+  `LineChip` (o botão "Linha 3, coluna 1" que seleciona no editor, também nos indícios, no gabarito
+  e nos trechos do plágio) e `SyntaxErrorBox` (o erro de sintaxe, igual na verificação e nos dois
+  modos do plágio). As dezessete cópias de classes de botão (resultado, feedback, indícios,
+  gabarito, plágio, editor, gerenciamento, cabeçalho e as telas de conta) foram trocadas. No
+  Gerenciar, os botões e os seletores de cargo têm 44 px nas telas de toque e o foco visível, e as
+  tabelas ganharam largura mínima para rolar na horizontal no celular em vez de espremer as
+  colunas. Um teste-guarda (`src/ui.guard.test.ts`) falha se algum `<button>` ou classe de botão
+  aparecer fora de `ui.tsx`, como a guarda de código do backend.
+
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 
 - **12/10/2026, S36-06:** depois do deploy da `sprint-36`, a medição no piloto (prazo de 7 s) não

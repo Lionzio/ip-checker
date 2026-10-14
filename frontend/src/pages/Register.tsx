@@ -7,7 +7,8 @@ import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
 import type { Treatment } from "../types/api";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -104,9 +105,9 @@ export function Register({ client }: { client: AuthClient }) {
         </p>
       )}
       <div className="flex items-center gap-4">
-        <button type="submit" disabled={sending || !ready} className={BUTTON}>
+        <Button type="submit" disabled={sending || !ready}>
           Registrar
-        </button>
+        </Button>
         <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
           Voltar
         </Link>
@@ -134,9 +135,9 @@ function CheckYourEmail({ client, email }: { client: AuthClient; email: string }
         Enviamos um link para <strong>{email}</strong>. Abra a mensagem e clique em “Clique aqui
         para verificar seu acesso.”. O link vale por 24 horas e só uma vez.
       </p>
-      <button type="button" onClick={() => void resend()} className="self-start text-sm text-blue-700 underline dark:text-blue-300">
+      <Button variant="link" className="self-start" onClick={() => void resend()}>
         Não recebi: enviar de novo
-      </button>
+      </Button>
       {notice !== null && <p role="status" className="text-sm">{notice}</p>}
       <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
         Voltar ao início

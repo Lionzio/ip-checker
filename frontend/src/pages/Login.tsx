@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router";
 import { GoogleButton } from "../components/GoogleButton";
 import { googleMessage } from "../google";
 import type { AuthClient } from "../services/client";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -78,13 +79,9 @@ export function Login({ client, onSignIn, notice = null }: LoginProps) {
         </p>
       )}
       <div className="flex items-center gap-4">
-        <button
-          type="submit"
-          disabled={sending}
-          className={BUTTON}
-        >
+        <Button type="submit" disabled={sending}>
           Entrar
-        </button>
+        </Button>
         <Link to="/esqueci-senha" className="text-sm text-blue-700 underline dark:text-blue-300">
           Esqueci minha senha
         </Link>
