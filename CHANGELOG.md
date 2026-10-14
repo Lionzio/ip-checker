@@ -37,6 +37,18 @@ de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem 
   linha de contexto antes e outra depois, sem o recuo comum, com a linha da violação em destaque.
   O filtro e os cartões recomeçam a cada verificação (a chave é o `request_id`). Os componentes
   `Chip` e `Disclosure` entraram em `ui.tsx`.
+- **14/10/2026, S37-02:** no computador, a coluna do editor fica fixa (`position: sticky`)
+  enquanto o resultado rola, com a altura limitada à janela e rolagem própria se a janela for
+  baixa; clicar numa linha do relatório continua selecionando o trecho, que já está à vista. No
+  celular (abaixo de `lg`, 64rem), o lado do resultado vira abas, "Resultado" (com a comparação com
+  o gabarito), "Indícios" (só quando a resposta os traz) e "Feedback", com `role="tablist"`, setas,
+  Home e End no teclado, e um "Voltar ao código" fixo no rodapé da coluna que devolve o foco ao
+  editor. O Verificar escolhe a aba Resultado antes de enviar, para que o foco vá ao título do
+  resultado como antes. A largura vem de um `useMediaQuery` (`hooks/useMediaQuery.ts`); sem
+  `matchMedia`, a página se comporta como no computador. `TabList` entrou em `ui.tsx`. O e2e
+  `checker-layout.spec.ts` (projeto "feedback") confere, com sete violações, a primeira tela de
+  1280×900 com os cartões fechados, o editor fixo, as duas telas de 375×812, as abas, o "Voltar ao
+  código" e o axe nos dois temas.
 
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 

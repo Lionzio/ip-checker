@@ -4,9 +4,9 @@
  * alvos de pelo menos 44 px nas telas de toque. Nenhuma tela escreve a classe de um botão: todas
  * usam estes componentes (o teste `ui.guard.test.ts` confere).
  */
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, Ref } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent, ReactNode, Ref } from "react";
 import { Link, type LinkProps } from "react-router";
-import { buttonClass, type Size, TEXT_LINK, type Variant } from "../ui";
+import { buttonClass, panelId, type Size, tabId, TEXT_LINK, type Variant } from "../ui";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -71,20 +71,81 @@ interface DisclosureProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   open: boolean;
 }
 
-/** O cabeçalho de um cartão que abre e fecha: a seta e `aria-expanded` (S37-01). */
+/**
+ * O cabeçalho de um cartão que abre e fecha: a seta e `aria-expanded` (S37-01). O conteúdo corre
+ * como texto, para o cabeçalho fechado ocupar o mínimo de linhas.
+ */
 export function Disclosure({ open, className = "", children, ...props }: DisclosureProps) {
   return (
     <button
       type="button"
       aria-expanded={open}
-      className={`flex w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${className}`.trim()}
+      className={`flex w-full cursor-pointer items-start gap-2 rounded text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${className}`.trim()}
       {...props}
     >
-      <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0 text-slate-600 dark:text-slate-300">
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="mt-0.5 size-4 shrink-0 text-slate-600 dark:text-slate-300">
         <path d={open ? "M4 6l4 4 4-4" : "M6 4l4 4-4 4"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {children}
+      <span className="min-w-0 flex-1 leading-6">{children}</span>
     </button>
+  );
+}
+
+export interface TabItem {
+  id: string;
+  label: string;
+}
+
+interface TabListProps {
+  label: string;
+  items: TabItem[];
+  value: string;
+  onChange: (id: string) => void;
+  /** O prefixo dos ids das abas e dos painéis: `${prefix}-aba-${id}` e `${prefix}-painel-${id}`. */
+  prefix: string;
+}
+
+/**
+ * Abas (S37-02): `role="tablist"`, uma aba só no Tab do teclado e as setas, Home e End trocando a
+ * aba, que já fica selecionada. Cada painel usa `role="tabpanel"` com o id de `panelId`.
+ */
+export function TabList({ label, items, value, onChange, prefix }: TabListProps) {
+  function keyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const moves: Record<string, number> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: items.length - 1 };
+    const target = moves[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    const next = items[(target + items.length) % items.length];
+    if (next === undefined) return;
+    onChange(next.id);
+    document.getElementById(tabId(prefix, next.id))?.focus();
+  }
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-1 border-b border-slate-300 dark:border-slate-600">
+      {items.map((item, index) => {
+        const selected = item.id === value;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            id={tabId(prefix, item.id)}
+            aria-selected={selected}
+            aria-controls={panelId(prefix, item.id)}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(item.id)}
+            onKeyDown={(event) => keyDown(event, index)}
+            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+              selected
+                ? "border-blue-700 text-blue-800 dark:border-blue-300 dark:text-blue-200"
+                : "border-transparent text-slate-700 hover:border-slate-300 dark:text-slate-200"
+            }`}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
