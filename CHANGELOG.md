@@ -28,6 +28,15 @@ de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem 
   tabelas ganharam largura mínima para rolar na horizontal no celular em vez de espremer as
   colunas. Um teste-guarda (`src/ui.guard.test.ts`) falha se algum `<button>` ou classe de botão
   aparecer fora de `ui.tsx`, como a guarda de código do backend.
+- **14/10/2026, S37-01:** o resultado da verificação ganhou o resumo por categoria: um contador
+  por categoria ("4 anulações imediatas"), na ordem de gravidade, que filtra os cartões ao clicar
+  (o resumo em frase continua para o leitor de tela). Cada regra é um cartão que abre e fecha pelo
+  cabeçalho, com a categoria, a regra, o número de linhas e a mensagem sempre à vista; até 5 regras
+  os cartões nascem abertos, acima disso fechados, com "Abrir todos" e "Fechar todos". A exigência
+  da lista ("Solução inteira") não tem o que abrir. O trecho de cada regra passou a mostrar uma
+  linha de contexto antes e outra depois, sem o recuo comum, com a linha da violação em destaque.
+  O filtro e os cartões recomeçam a cada verificação (a chave é o `request_id`). Os componentes
+  `Chip` e `Disclosure` entraram em `ui.tsx`.
 
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 

@@ -1,9 +1,12 @@
-import { type Ref, useEffect, useState } from "react";
+import { type Ref, useEffect, useId, useState } from "react";
 import type { ValidationState } from "../hooks/useValidateCode";
 import { BUSY_TITLES, CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
-import { announcement, groupViolations, type RuleGroup, summarize } from "../report";
+import { announcement, categoryCounts, groupViolations, type RuleGroup, snippetLines } from "../report";
 import type { Category, ValidateResponse } from "../types/api";
-import { Button, Card, LineChip, SyntaxErrorBox } from "./ui";
+import { Button, Card, Chip, Disclosure, LineChip, SyntaxErrorBox } from "./ui";
+
+/** Até este número de regras, os cartões nascem abertos; acima, fechados (S37-01). */
+export const OPEN_BY_DEFAULT = 5;
 
 interface ResultPanelProps {
   state: ValidationState;
@@ -57,45 +60,75 @@ function Notices({ response }: { response: ValidateResponse }) {
   );
 }
 
-function Snippet({ code, line }: { code: string | undefined; line: number }) {
-  const text = code?.split("\n")[line - 1]?.trim();
-  if (text === undefined || text === "") return null;
+/** O trecho do código com a linha da violação em destaque (S26-03; o contexto desde a S37-01). */
+function Snippet({ code, first, last }: { code: string | undefined; first: number; last: number }) {
+  if (code === undefined) return null;
+  const lines = snippetLines(code, first, last);
+  if (lines.every((item) => item.text === "")) return null;
   return (
-    <pre className="mt-2 overflow-x-auto rounded bg-slate-100 px-2 py-1 font-mono text-xs text-slate-800 dark:bg-slate-800 dark:text-slate-100">
+    <pre className="mt-2 overflow-x-auto rounded bg-slate-100 py-1 font-mono text-xs text-slate-800 dark:bg-slate-800 dark:text-slate-100">
       <code>
-        <span className="mr-2 text-slate-600 select-none dark:text-slate-300" aria-hidden="true">
-          {line}
-        </span>
-        {text}
+        {lines.map((item) => (
+          <span
+            key={item.line}
+            data-marked={item.marked || undefined}
+            className={`block px-2 ${item.marked ? "bg-amber-100 font-semibold dark:bg-amber-900/60" : ""}`}
+          >
+            <span className="mr-3 inline-block w-6 text-right text-slate-600 select-none dark:text-slate-300" aria-hidden="true">
+              {item.line}
+            </span>
+            {item.text}
+          </span>
+        ))}
       </code>
     </pre>
   );
 }
 
+/**
+ * Um cartão por regra (S37-01): a categoria, a regra e a mensagem sempre à vista; as linhas e o
+ * trecho abrem e fecham. Uma exigência (R-02, R-68) fala da solução inteira e não tem o que abrir.
+ */
 function RuleCard({
   group,
   code,
+  open,
+  onToggle,
   onSelectLines,
 }: {
   group: RuleGroup;
   code: string | undefined;
+  open: boolean;
+  onToggle: () => void;
   onSelectLines?: (first: number, last: number) => void;
 }) {
-  // Uma exigência (R-02, R-68) fala da solução inteira, não de um trecho.
+  const bodyId = useId();
   const whole = group.category === "EXIGENCIA";
   const first = group.occurrences[0];
+  const count = group.occurrences.length;
+  const header = (
+    <>
+      <span className={`rounded px-2 py-0.5 text-sm font-medium ${CATEGORY_STYLES[group.category]}`}>{CATEGORY_LABELS[group.category]}</span>
+      <span className="text-sm text-slate-600 dark:text-slate-300">{group.ruleId}</span>
+      {whole ? (
+        <span className="font-mono text-sm text-slate-600 dark:text-slate-300">Solução inteira</span>
+      ) : (
+        <span className="text-sm text-slate-600 dark:text-slate-300">{count === 1 ? "1 linha" : `${count} linhas`}</span>
+      )}
+      <span className="basis-full">{group.message}</span>
+    </>
+  );
   return (
-    <Card as="li" padding="sm" className={`border-l-4 ${CARD_BORDERS[group.category]}`}>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className={`rounded px-2 py-0.5 font-medium ${CATEGORY_STYLES[group.category]}`}>
-          {CATEGORY_LABELS[group.category]}
-        </span>
-        <span className="text-slate-600 dark:text-slate-300">{group.ruleId}</span>
-        {whole && <span className="font-mono text-slate-600 dark:text-slate-300">Solução inteira</span>}
-      </div>
-      <p className="mt-1">{group.message}</p>
-      {!whole && (
-        <>
+    <Card as="li" padding="xs" className={`border-l-4 ${CARD_BORDERS[group.category]}`}>
+      {whole ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">{header}</div>
+      ) : (
+        <Disclosure open={open} aria-controls={bodyId} onClick={onToggle}>
+          {header}
+        </Disclosure>
+      )}
+      {!whole && open && (
+        <div id={bodyId}>
           <div className="mt-2 flex flex-wrap gap-1">
             {group.occurrences.map((item) => {
               const where = `Linha ${item.line}, coluna ${item.col}`;
@@ -114,10 +147,97 @@ function RuleCard({
               );
             })}
           </div>
-          {first !== undefined && <Snippet code={code} line={first.line} />}
-        </>
+          {first !== undefined && <Snippet code={code} first={first.line} last={first.end_line} />}
+        </div>
       )}
     </Card>
+  );
+}
+
+const groupKey = (group: RuleGroup) => `${group.category}-${group.ruleId}-${group.message}`;
+
+/**
+ * O relatório das violações (S37-01): os contadores por categoria filtram os cartões; cada regra
+ * é um cartão que abre e fecha, aberto por padrão até OPEN_BY_DEFAULT regras.
+ */
+function ViolationsReport({
+  response,
+  code,
+  onSelectLines,
+}: {
+  response: ValidateResponse;
+  code: string | undefined;
+  onSelectLines?: (first: number, last: number) => void;
+}) {
+  const groups = groupViolations(response.violations);
+  const counts = categoryCounts(response.violations);
+  const [filter, setFilter] = useState<Category | null>(null);
+  const [open, setOpen] = useState<Set<string>>(
+    () => new Set(groups.length <= OPEN_BY_DEFAULT ? groups.map(groupKey) : []),
+  );
+  const shown = groups.filter((group) => filter === null || group.category === filter);
+  const collapsible = shown.filter((group) => group.category !== "EXIGENCIA");
+  const allOpen = collapsible.every((group) => open.has(groupKey(group)));
+
+  function toggle(key: string) {
+    setOpen((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function setAll(value: boolean) {
+    setOpen((current) => {
+      const next = new Set(current);
+      for (const group of collapsible) {
+        if (value) next.add(groupKey(group));
+        else next.delete(groupKey(group));
+      }
+      return next;
+    });
+  }
+
+  return (
+    <>
+      <div role="group" aria-label="Filtrar por categoria" className="mt-2 flex flex-wrap items-center gap-2">
+        {counts.map((item) => (
+          <Chip
+            key={item.category}
+            aria-pressed={filter === item.category}
+            onClick={() => setFilter(filter === item.category ? null : item.category)}
+            className={CATEGORY_STYLES[item.category]}
+          >
+            {item.label}
+          </Chip>
+        ))}
+        {filter !== null && (
+          <Button variant="link" onClick={() => setFilter(null)}>
+            Todas
+          </Button>
+        )}
+      </div>
+      {collapsible.length > 1 && (
+        <div className="mt-2 flex flex-wrap gap-x-3">
+          <Button variant="link" onClick={() => setAll(!allOpen)}>
+            {allOpen ? "Fechar todos" : "Abrir todos"}
+          </Button>
+        </div>
+      )}
+      <ul aria-label="Regras violadas" className="mt-2 space-y-1.5">
+        {shown.map((group) => (
+          <RuleCard
+            key={groupKey(group)}
+            group={group}
+            code={code}
+            open={open.has(groupKey(group))}
+            onToggle={() => toggle(groupKey(group))}
+            onSelectLines={onSelectLines}
+          />
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -159,18 +279,13 @@ function SuccessResult({
   }
 
   const count = response.violations.length;
-  const groups = groupViolations(response.violations);
   return (
     <div>
       <h2 ref={headingRef} tabIndex={-1} className={`${HEADING} text-red-700 dark:text-red-300`}>
         {count === 1 ? "1 violação encontrada" : `${count} violações encontradas`}
       </h2>
-      <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{summarize(response.violations)}</p>
-      <ul className="mt-3 space-y-2">
-        {groups.map((group) => (
-          <RuleCard key={`${group.category}-${group.ruleId}-${group.message}`} group={group} code={code} onSelectLines={onSelectLines} />
-        ))}
-      </ul>
+      {/* A chave recomeça o filtro e os cartões a cada verificação. */}
+      <ViolationsReport key={response.request_id} response={response} code={code} onSelectLines={onSelectLines} />
       {response.truncated && (
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
           Mostrando as {count} primeiras violações. Corrija estas e verifique de novo.
