@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   type Draft,
   DraftContext,
@@ -6,16 +6,27 @@ import {
   type FeedbackForm,
   rememberedList,
   rememberList,
+  restoreDraft,
+  storeDraft,
 } from "./draftContext";
 
-/** O provedor do rascunho (S26-02); fica acima da sessão, para sobreviver a um novo login. */
+/**
+ * O provedor do rascunho (S26-02); fica acima da sessão, para sobreviver a um novo login. Desde a
+ * S37-05, o código, a questão, o nome e a anotação também ficam no `sessionStorage` desta aba, para
+ * sobreviverem a um F5; Sair os apaga.
+ */
 export function DraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<Draft>(() => ({
     code: "",
     listNumber: rememberedList(),
     questionId: null,
     feedback: EMPTY_FEEDBACK,
+    ...restoreDraft(),
   }));
+
+  useEffect(() => {
+    storeDraft(draft);
+  }, [draft]);
 
   const setCode = useCallback((code: string) => setDraft((current) => ({ ...current, code })), []);
   const setList = useCallback((listNumber: number | null) => {

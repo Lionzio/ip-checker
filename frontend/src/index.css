@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * O tema escuro vale quando o <html> tem data-theme="dark" (S37-05). Quem põe o atributo é o
+ * public/theme.js, antes da primeira pintura, e depois o useTheme: a preferência "do sistema" segue
+ * o prefers-color-scheme, e as outras duas o ignoram.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* A cor da marca (S37-04): o azul que a página sempre usou, com nome, no logotipo e nos botões. */
 @theme {
@@ -10,4 +15,8 @@
 
 html {
   font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }

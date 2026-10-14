@@ -1,12 +1,12 @@
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { type CodeEditorHandle, CodeEditor } from "../components/CodeEditor";
-import { FeedbackPanel } from "../components/FeedbackPanel";
+import { FeedbackPanel, type FeedbackPanelHandle } from "../components/FeedbackPanel";
 import { GabaritoPanel } from "../components/GabaritoPanel";
 import { IndicatorsPanel } from "../components/IndicatorsPanel";
 import { ListSelector } from "../components/ListSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { ResultPanel } from "../components/ResultPanel";
-import { Button, ErrorText, type TabItem, TabList } from "../components/ui";
+import { Button, Disclosure, ErrorText, type TabItem, TabList } from "../components/ui";
 import { useDraft } from "../draftContext";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { NARROW, useMediaQuery } from "../hooks/useMediaQuery";
@@ -25,6 +25,21 @@ interface CheckerProps {
 
 type Tab = "resultado" | "indicios" | "feedback";
 const TABS = "verificacao";
+
+/** Os atalhos da tela, na ajuda (S37-05). */
+const SHORTCUTS: [string, string][] = [
+  ["Ctrl+Enter", "verifica o código do editor"],
+  ["Tab e Shift+Tab", "indentam e desindentam as linhas selecionadas no editor"],
+  ["Esc e depois Tab", "saem do editor"],
+  ["Alt+N", "próximo aluno: limpa o código, o nome e a anotação"],
+  ["Ctrl+Shift+C", "copia o feedback gerado"],
+];
+
+/** Dentro de um campo de texto, Ctrl+Shift+C fica com o campo; Alt+N vale em qualquer lugar. */
+function inTextField(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+}
 
 /**
  * Painel principal: verificação das permissões da lista (só com sessão, FR-22). Feito para corrigir
@@ -47,7 +62,9 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const [lastFeedback, setLastFeedback] = useState<{ student: string; code: string } | null>(null);
   const narrow = useMediaQuery(NARROW);
   const [tab, setTab] = useState<Tab>("resultado");
+  const [helpOpen, setHelpOpen] = useState(false);
   const editorRef = useRef<CodeEditorHandle>(null);
+  const feedbackRef = useRef<FeedbackPanelHandle>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -81,6 +98,28 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   }, [state]);
 
   const loading = state.kind === "loading";
+  const canNext = !(code === "" && draft.feedback.student === "" && verified === null);
+
+  // Atalhos da tela (S37-05): Alt+N e Ctrl+Shift+C, em qualquer lugar da página de verificação.
+  useEffect(() => {
+    function keyDown(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === "KeyN") {
+        if (!canNext) return;
+        event.preventDefault();
+        next();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === "KeyC") {
+        if (inTextField(event.target)) return;
+        event.preventDefault();
+        void feedbackRef.current?.copy();
+      }
+    }
+    document.addEventListener("keydown", keyDown);
+    return () => document.removeEventListener("keydown", keyDown);
+  });
+
   const currentList = listNumber === null ? undefined : lists.find((list) => list.number === listNumber);
   const questions = listNumber === null ? null : questionOptions(currentList);
   const selected = questionId === null ? undefined : questions?.find((question) => question.id === questionId);
@@ -193,9 +232,26 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
                 Cancelar
               </Button>
             )}
-            <Button variant="secondary" onClick={next} disabled={code === "" && draft.feedback.student === "" && verified === null}>
+            <Button variant="secondary" onClick={next} disabled={!canNext} title="Alt+N">
               Próximo aluno
             </Button>
+          </div>
+          <div className="text-sm">
+            <Disclosure open={helpOpen} onClick={() => setHelpOpen((current) => !current)} className="w-auto" aria-controls="atalhos">
+              Atalhos do teclado
+            </Disclosure>
+            {helpOpen && (
+              <dl id="atalhos" className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-slate-700 dark:text-slate-200">
+                {SHORTCUTS.map(([keys, what]) => (
+                  <div key={keys} className="contents">
+                    <dt>
+                      <kbd className="rounded border border-slate-300 bg-slate-50 px-1.5 font-mono text-xs dark:border-slate-600 dark:bg-slate-800">{keys}</kbd>
+                    </dt>
+                    <dd>{what}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
         </form>
 
@@ -221,6 +277,7 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
             panel(
               "feedback",
               <FeedbackPanel
+                ref={feedbackRef}
                 client={client}
                 request={verified}
                 verificationId={state.response.request_id}
