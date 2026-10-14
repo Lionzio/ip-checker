@@ -102,15 +102,18 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
 
   // Atalhos da tela (S37-05): Alt+N e Ctrl+Shift+C, em qualquer lugar da página de verificação.
   useEffect(() => {
+    // A tecla pelo `code` (a posição física) ou, quando o navegador não o informa, pela letra.
+    const isKey = (event: globalThis.KeyboardEvent, code: string, letter: string) =>
+      event.code === code || event.key.toLowerCase() === letter;
     function keyDown(event: globalThis.KeyboardEvent) {
       if (event.defaultPrevented) return;
-      if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === "KeyN") {
+      if (event.altKey && !event.ctrlKey && !event.metaKey && isKey(event, "KeyN", "n")) {
         if (!canNext) return;
         event.preventDefault();
         next();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === "KeyC") {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && isKey(event, "KeyC", "c")) {
         if (inTextField(event.target)) return;
         event.preventDefault();
         void feedbackRef.current?.copy();
