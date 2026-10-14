@@ -34,6 +34,10 @@ export const LINK = `text-sm ${TEXT_LINK}`;
 export const INPUT =
   "rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-900";
 
+/** Os ids de uma aba e do painel dela (`TabList`, S37-02). */
+export const tabId = (prefix: string, id: string) => `${prefix}-aba-${id}`;
+export const panelId = (prefix: string, id: string) => `${prefix}-painel-${id}`;
+
 /** A sessão venceu ou foi encerrada (S26-04). Outras 401, como senha atual errada, não contam. */
 export function sessionExpired(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401 && error.code === "UNAUTHENTICATED";
