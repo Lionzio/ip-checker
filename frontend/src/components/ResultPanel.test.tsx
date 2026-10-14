@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ValidationState } from "../hooks/useValidateCode";
@@ -131,6 +131,89 @@ describe("ResultPanel", () => {
     renderState({ kind: "success", response: { ...BASE, status: "invalid", violations, truncated: true } });
 
     expect(screen.getByText("Mostrando as 200 primeiras violações. Corrija estas e verifique de novo.")).toBeInTheDocument();
+  });
+
+  describe("resumo, filtros e cartões (S37-01)", () => {
+    const violation = (rule_id: string, category: ValidateResponse["violations"][number]["category"], line: number, message = `Mensagem da ${rule_id}.`) => ({
+      rule_id,
+      category,
+      line,
+      col: 1,
+      end_line: line,
+      end_col: 4,
+      construct: "node:X",
+      allowed_from_list: null,
+      message,
+    });
+    const three = [violation("R-06", "ANULACAO", 3), violation("R-13", "ANULACAO", 5), violation("R-34", "FORA_DA_LISTA", 7)];
+    const cards = () => within(screen.getByRole("list", { name: "Regras violadas" })).getAllByRole("listitem");
+    const filters = () => within(screen.getByRole("group", { name: "Filtrar por categoria" }));
+
+    it("mostra um contador por categoria e filtra os cartões ao clicar", async () => {
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: three } });
+
+      expect(filters().getByRole("button", { name: "2 anulações imediatas" })).toHaveAttribute("aria-pressed", "false");
+      expect(cards()).toHaveLength(3);
+
+      await userEvent.click(filters().getByRole("button", { name: "1 fora da lista" }));
+      expect(filters().getByRole("button", { name: "1 fora da lista" })).toHaveAttribute("aria-pressed", "true");
+      expect(cards()).toHaveLength(1);
+      expect(cards()[0]).toHaveTextContent("R-34");
+
+      await userEvent.click(screen.getByRole("button", { name: "Todas" }));
+      expect(cards()).toHaveLength(3);
+    });
+
+    it("até 5 regras, os cartões nascem abertos e fecham pelo cabeçalho", async () => {
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: three } });
+      const header = screen.getByRole("button", { name: /R-06/, expanded: true });
+
+      expect(screen.getByText("Linha 3, coluna 1")).toBeInTheDocument();
+      await userEvent.click(header);
+
+      expect(header).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByText("Linha 3, coluna 1")).not.toBeInTheDocument();
+      expect(screen.getByText("Mensagem da R-06.")).toBeInTheDocument();
+    });
+
+    it("acima de 5 regras, os cartões nascem fechados, e Abrir todos abre todos", async () => {
+      const six = ["R-05", "R-06", "R-11", "R-13", "R-34", "R-35"].map((rule, index) => violation(rule, "ANULACAO", index + 1));
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: six } });
+
+      expect(screen.getAllByRole("button", { expanded: false })).toHaveLength(6);
+      expect(screen.queryByRole("button", { expanded: true })).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Abrir todos" }));
+      expect(screen.getAllByRole("button", { expanded: true })).toHaveLength(6);
+      expect(screen.getByRole("button", { name: "Fechar todos" })).toBeInTheDocument();
+    });
+
+    it("a exigência (solução inteira) não abre nem fecha", () => {
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: [violation("R-02", "EXIGENCIA", 1)] } });
+
+      expect(screen.getByText("Solução inteira")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { expanded: true })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Abrir todos|Fechar todos/ })).not.toBeInTheDocument();
+    });
+
+    it("o trecho traz uma linha de contexto de cada lado, com a da violação em destaque", () => {
+      const code = "a = 1\nfor i in x:\n    pass\nb = 2\n";
+      render(
+        <ResultPanel
+          state={{ kind: "success", response: { ...BASE, status: "invalid", violations: [violation("R-34", "FORA_DA_LISTA", 2)] } }}
+          onRetry={vi.fn()}
+          code={code}
+        />,
+      );
+      const snippet = screen.getByText("for i in x:").closest("pre");
+
+      expect(snippet).toHaveTextContent(/a = 1/);
+      expect(snippet).toHaveTextContent(/pass/);
+      expect(snippet).not.toHaveTextContent(/b = 2/);
+      expect(screen.getByText("for i in x:").closest("[data-marked]")).not.toBeNull();
+      expect(screen.getByText("a = 1").closest("[data-marked]")).toBeNull();
+    });
   });
 
   it("mostra o erro de sintaxe com linha e coluna", () => {

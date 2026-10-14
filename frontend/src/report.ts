@@ -36,14 +36,46 @@ export function groupViolations(violations: Violation[]): RuleGroup[] {
     .sort((a, b) => SEVERITY.indexOf(a.category) - SEVERITY.indexOf(b.category) || firstLine(a) - firstLine(b));
 }
 
+export interface CategoryCount {
+  category: Category;
+  count: number;
+  /** "2 anulações imediatas", "1 fora da lista": o texto do contador e do resumo. */
+  label: string;
+}
+
+/** Quantas violações há em cada categoria, da mais grave para a mais leve, só as que aparecem (S37-01). */
+export function categoryCounts(violations: Violation[]): CategoryCount[] {
+  return SEVERITY.flatMap((category) => {
+    const count = violations.filter((violation) => violation.category === category).length;
+    return count > 0 ? [{ category, count, label: `${count} ${CATEGORY_COUNTS[category][count === 1 ? 0 : 1]}` }] : [];
+  });
+}
+
 /** "2 anulações imediatas, 1 fora da lista": o resumo do relatório e do leitor de tela. */
 export function summarize(violations: Violation[]): string {
-  const parts: string[] = [];
-  for (const category of SEVERITY) {
-    const count = violations.filter((violation) => violation.category === category).length;
-    if (count > 0) parts.push(`${count} ${CATEGORY_COUNTS[category][count === 1 ? 0 : 1]}`);
+  return categoryCounts(violations)
+    .map((item) => item.label)
+    .join(", ");
+}
+
+export interface SnippetLine {
+  line: number;
+  text: string;
+  /** A linha é da violação (e não do contexto). */
+  marked: boolean;
+}
+
+/** As linhas do trecho (S37-01): a violação com uma linha de contexto antes e outra depois, sem o recuo comum. */
+export function snippetLines(code: string, first: number, last: number): SnippetLine[] {
+  const all = code.split("\n");
+  const end = Math.max(first, last);
+  const window: SnippetLine[] = [];
+  for (let line = Math.max(1, first - 1); line <= Math.min(all.length, end + 1); line += 1) {
+    window.push({ line, text: (all[line - 1] ?? "").replace(/\s+$/, ""), marked: line >= first && line <= end });
   }
-  return parts.join(", ");
+  const indents = window.filter((item) => item.text !== "").map((item) => item.text.length - item.text.trimStart().length);
+  const indent = indents.length === 0 ? 0 : Math.min(...indents);
+  return window.map((item) => ({ ...item, text: item.text.slice(indent) }));
 }
 
 /** O texto curto que o leitor de tela anuncia (S26-04): só o resumo, nunca o relatório inteiro. */
