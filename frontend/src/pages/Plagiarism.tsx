@@ -282,19 +282,14 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
               />
             </div>
             <div className="flex min-w-0 flex-col gap-1">
-              <label htmlFor="turma" className="font-medium">
-                Soluções da turma
-              </label>
-              <textarea
-                id="turma"
-                aria-describedby="turma-dica"
+              <h3 className="font-medium">Soluções da turma</h3>
+              <CodeEditor
                 value={classText}
-                onChange={(event) => setClassText(event.target.value)}
+                onChange={setClassText}
                 readOnly={group.loading}
-                spellCheck={false}
-                wrap="off"
+                label="Soluções da turma"
                 placeholder={"=== Ana\nn = int(input())\n...\n=== Bruno\n..."}
-                className={`${INPUT} h-80 min-h-40 resize-y font-mono text-sm`}
+                describedBy="turma-dica"
               />
               <p id="turma-dica" className="text-sm text-slate-600 dark:text-slate-300">
                 Cada solução começa por uma linha <code>=== nome</code>. Até {MAX_CLASS} soluções, somando até 120 KB.{" "}

@@ -46,11 +46,65 @@ describe("Cabeçalho e navegação (S26-01)", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Verificação" })).toBeInTheDocument();
   });
 
-  it("o subtítulo e o nome de quem está logado somem nas telas estreitas", async () => {
+  it("o subtítulo some nas telas estreitas", async () => {
     renderAt("/");
     await screen.findByRole("navigation", { name: "Principal" });
 
     expect(screen.getByText(/Verificação das permissões das listas/)).toHaveClass("hidden", "sm:block");
-    expect(screen.getByText(/· Monitor/).closest("p")).toHaveClass("hidden", "lg:block");
+  });
+});
+
+describe("Menu da conta (S37-04)", () => {
+  it("abre pelo primeiro nome, com o nome completo, o cargo, Perfil e Sair; Esc fecha e devolve o foco", async () => {
+    const user = renderAt("/");
+    const trigger = await screen.findByRole("button", { name: /Menu da conta: / });
+    const fullName = trigger.getAttribute("aria-label")?.replace("Menu da conta: ", "") ?? "";
+
+    expect(trigger).toHaveTextContent(fullName.split(" ")[0] ?? "");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Perfil" })).not.toBeInTheDocument();
+
+    await user.click(trigger);
+
+    const menu = screen.getByRole("menu", { name: `Conta de ${fullName}` });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("banner")).toHaveTextContent(fullName);
+    expect(screen.getByRole("banner")).toHaveTextContent(/Monitor/);
+    expect(within(menu).getByRole("menuitem", { name: "Perfil" })).toHaveFocus();
+    expect(within(menu).getByRole("menuitem", { name: "Sair" })).toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+    expect(within(menu).getByRole("menuitem", { name: "Sair" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(within(menu).getByRole("menuitem", { name: "Perfil" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("Perfil leva ao perfil e fecha o menu; Sair encerra a sessão", async () => {
+    const user = renderAt("/");
+    await user.click(await screen.findByRole("button", { name: /Menu da conta/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Perfil" }));
+
+    expect(await screen.findByRole("heading", { name: "Perfil" })).toBeInTheDocument();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Menu da conta/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair" }));
+
+    // Sem sessão, o perfil manda para Entrar.
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Menu da conta/ })).not.toBeInTheDocument();
+  });
+
+  it("a navegação principal fica só com as telas; Perfil e Sair não estão nela", async () => {
+    renderAt("/", true);
+    const nav = await screen.findByRole("navigation", { name: "Principal" });
+
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual(["Verificar", "Plágio", "Gerenciar"]);
+    expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
   });
 });

@@ -73,7 +73,9 @@ test("sair encerra a sessão e volta para o início", async ({ page }) => {
   await page.getByLabel("Nome ou e-mail institucional").fill(process.env.E2E_NAME ?? "");
   await page.getByLabel("Senha").fill(process.env.E2E_PASSWORD ?? "");
   await page.getByRole("button", { name: "Entrar" }).click();
+  // O nome completo e o cargo ficam no menu da conta (S37-04).
   const header = page.getByRole("banner");
+  await header.getByRole("button", { name: "Menu da conta" }).click();
   await expect(header).toContainText(process.env.E2E_NAME ?? "");
   if (process.env.E2E_TARGET !== "pilot") {
     // No compose, a conta do e2e é a do desenvolvedor; no piloto, uma conta de verificação.
@@ -82,7 +84,7 @@ test("sair encerra a sessão e volta para o início", async ({ page }) => {
 
   expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(200);
 
-  await page.getByRole("button", { name: "Sair" }).click();
+  await page.getByRole("menuitem", { name: "Sair" }).click();
 
   await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
   expect((await pageFetch(page, "/api/v1/auth/me")).status).toBe(401);

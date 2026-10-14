@@ -115,7 +115,8 @@ describe("Correção em lote (S26-02)", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     expect(await screen.findByLabelText("Código Python")).toHaveValue(VALID);
-    await user.click(screen.getByRole("button", { name: "Sair" }));
+    await user.click(screen.getByRole("button", { name: /Menu da conta/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair" }));
     await user.click(await screen.findByRole("link", { name: "Entrar" }));
     await user.type(screen.getByLabelText("Nome ou e-mail institucional"), "demo@cin.ufpe.br");
     await user.type(screen.getByLabelText("Senha"), "Senha-forte-1");

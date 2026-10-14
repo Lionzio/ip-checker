@@ -64,7 +64,10 @@ test("aprova, remove e reativa um membro pela tela de gerenciamento", async ({ p
   // A pessoa aprovada entra, verifica código e não gerencia ninguém, nem pela API.
   await signIn(person, email, password);
   await expect(person.getByLabel("Código Python")).toBeVisible();
-  await expect(person.getByRole("banner")).toContainText(`${name} · Monitor`);
+  // O nome completo e o cargo ficam no menu da conta (S37-04).
+  await person.getByRole("button", { name: "Menu da conta" }).click();
+  await expect(person.getByRole("banner").locator("p", { hasText: name })).toHaveText(`${name}Monitor`);
+  await person.keyboard.press("Escape");
   await expect(person.getByRole("link", { name: "Gerenciar" })).toHaveCount(0);
   const forbidden = await pageFetch(person, "/api/v1/admin/requests");
   expect(forbidden.status).toBe(403);

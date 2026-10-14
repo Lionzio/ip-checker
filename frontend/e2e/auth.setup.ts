@@ -12,6 +12,6 @@ setup("entrar como desenvolvedor", async ({ page }) => {
   await page.getByRole("button", { name: "Entrar" }).click();
 
   await expect(page.getByLabel("Código Python")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Menu da conta" })).toBeVisible();
   await page.context().storageState({ path: STORAGE_STATE });
 });

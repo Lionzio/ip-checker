@@ -2,6 +2,12 @@
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
+/* A cor da marca (S37-04): o azul que a página sempre usou, com nome, no logotipo e nos botões. */
+@theme {
+  --color-brand: #1d4ed8;
+  --color-brand-strong: #1e40af;
+}
+
 html {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }

@@ -23,6 +23,16 @@ export function TextLink({ className = "", ...props }: LinkProps) {
   return <Link className={`${TEXT_LINK} ${className}`.trim()} {...props} />;
 }
 
+interface ButtonLinkProps extends LinkProps {
+  variant?: Variant;
+  size?: Size;
+}
+
+/** Um link com a cara de um botão (Registrar e Entrar na tela inicial, S37-04). */
+export function ButtonLink({ variant = "primary", size = "md", className = "", ...props }: ButtonLinkProps) {
+  return <Link className={buttonClass(variant, size, className)} {...props} />;
+}
+
 /** Um erro que a pessoa precisa ler: anunciado ao leitor de tela, com contraste AA nos dois temas. */
 export function ErrorText({ children, id }: { children: ReactNode; id?: string }) {
   return (

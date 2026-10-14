@@ -32,7 +32,8 @@ test("edita curso e tratamento no perfil, e a mudança fica salva", async ({ pag
   const before = me.body as { course: string; treatment: string };
   const course = before.course === "Ciência da Computação" ? "Engenharia da Computação" : "Ciência da Computação";
 
-  await page.getByRole("link", { name: "Perfil" }).click();
+  await page.getByRole("button", { name: "Menu da conta" }).click();
+  await page.getByRole("menuitem", { name: "Perfil" }).click();
   await expect(page.getByLabel("Nome", { exact: true })).not.toHaveValue("");
   await page.getByLabel("Curso", { exact: true }).fill(course);
   await page.getByLabel(/Neutro/).check();
@@ -54,7 +55,7 @@ test("troca a senha, encerra as outras sessões e mantém a atual", async ({ pag
   const temporary = `Temp-${Date.now()}!x`;
   const { password } = accountOf("conta");
   const other = await signIn(browser, password);
-  await expect(other.getByRole("button", { name: "Sair" })).toBeVisible();
+  await expect(other.getByRole("button", { name: "Menu da conta" })).toBeVisible();
 
   // A senha atual errada é recusada e não troca nada.
   await page.goto("/perfil");
@@ -72,7 +73,7 @@ test("troca a senha, encerra as outras sessões e mantém a atual", async ({ pag
     const withOld = await signIn(browser, password);
     await expect(withOld.getByRole("alert")).toContainText("Nome, e-mail ou senha incorretos.");
     const withNew = await signIn(browser, temporary);
-    await expect(withNew.getByRole("button", { name: "Sair" })).toBeVisible();
+    await expect(withNew.getByRole("button", { name: "Menu da conta" })).toBeVisible();
   } finally {
     // Devolve a senha original pela sessão guardada, para a próxima execução local.
     await changePassword(page, temporary, password);

@@ -15,7 +15,7 @@ const SIZES: Record<Size, string> = {
 const LINK_SIZE = "min-h-11 px-2 text-sm sm:min-h-0";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-blue-700 text-white hover:bg-blue-800 disabled:bg-slate-400 dark:disabled:bg-slate-600",
+  primary: "bg-brand text-white hover:bg-brand-strong disabled:bg-slate-400 dark:disabled:bg-slate-600",
   secondary:
     "border border-slate-300 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800",
   danger:
