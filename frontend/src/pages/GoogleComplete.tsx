@@ -4,7 +4,8 @@ import { PrivacyNotice } from "../components/PrivacyNotice";
 import { TreatmentField } from "../components/TreatmentField";
 import type { AuthClient } from "../services/client";
 import type { GooglePending, Treatment } from "../types/api";
-import { BUTTON, errorMessage, INPUT } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -108,9 +109,9 @@ export function GoogleComplete({ client }: { client: AuthClient }) {
           {error}
         </p>
       )}
-      <button type="submit" disabled={sending || !ready} className={`${BUTTON} self-start`}>
+      <Button type="submit" disabled={sending || !ready} className="self-start">
         Enviar cadastro
-      </button>
+      </Button>
     </form>
   );
 }

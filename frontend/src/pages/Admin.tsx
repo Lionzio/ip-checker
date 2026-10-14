@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { RoleBadge } from "../components/RoleBadge";
+import { Button, Card } from "../components/ui";
 import type { AdminClient } from "../services/client";
 import type { AccountStatus, ManagedAccount, ManagementLogEntry, MembersResponse, Role } from "../types/api";
 import { errorMessage, INPUT, sessionExpired } from "../ui";
@@ -27,13 +28,11 @@ const METHODS: Record<ManagedAccount["signup_method"], string> = {
   google: "Google",
   seed: "Conta inicial",
 };
-const SMALL_BUTTON =
-  "rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800";
-const PRIMARY_BUTTON =
-  "rounded-md bg-blue-700 px-3 py-1 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400";
-const DANGER_BUTTON =
-  "rounded-md border border-red-300 px-3 py-1 text-sm text-red-800 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-950";
-const SELECT = "rounded-md border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900";
+// Como os botões (S37-03): 44 px nas telas de toque, menor a partir de sm.
+const SELECT =
+  "min-h-11 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm sm:min-h-8 dark:border-slate-600 dark:bg-slate-900";
+const TABLE = "w-full text-left text-sm";
+const TABLE_HEAD = "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
 interface Lists {
   requests: ManagedAccount[];
@@ -159,9 +158,9 @@ export function Admin({ client, canViewLog = false, onUnauthenticated }: AdminPr
       {loadError !== null && (
         <div role="alert" className="flex flex-col items-start gap-2">
           <p>{loadError}</p>
-          <button type="button" className={SMALL_BUTTON} onClick={reload}>
+          <Button variant="secondary" size="sm" onClick={reload}>
             Tentar novamente
-          </button>
+          </Button>
         </div>
       )}
       {lists === null && loadError === null && <p className="text-slate-600 dark:text-slate-300">Carregando…</p>}
@@ -205,9 +204,9 @@ export function Admin({ client, canViewLog = false, onUnauthenticated }: AdminPr
               </p>
               <LogTable entries={lists.log.slice(0, logShown)} />
               {lists.log.length > logShown && (
-                <button type="button" className={`${SMALL_BUTTON} self-start`} onClick={() => setLogShown((shown) => shown + LOG_PAGE)}>
+                <Button variant="secondary" size="sm" className="self-start" onClick={() => setLogShown((shown) => shown + LOG_PAGE)}>
                   Mostrar mais ({lists.log.length - logShown} restantes)
-                </button>
+                </Button>
               )}
             </Section>
           )}
@@ -254,9 +253,9 @@ function AccountTable({
     return <p className="text-sm text-slate-600 dark:text-slate-300">Nenhuma conta corresponde à busca.</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+    <Card as="div" padding="none" className="overflow-x-auto">
+      <table className={`${TABLE} min-w-2xl`}>
+        <thead className={TABLE_HEAD}>
           <tr>
             <th scope="col" className="px-3 py-2 font-semibold">Nome</th>
             <th scope="col" className="px-3 py-2 font-semibold">E-mail</th>
@@ -306,7 +305,7 @@ function AccountTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -351,26 +350,26 @@ function Actions({ account, busy, handlers }: { account: ManagedAccount; busy: b
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            className={roleAction === "aprovar" ? PRIMARY_BUTTON : SMALL_BUTTON}
+          <Button
+            size="sm"
+            variant={roleAction === "aprovar" ? "primary" : "secondary"}
             disabled={busy || role === ""}
             onClick={submitRole}
             aria-label={`${roleLabel[roleAction]} ${account.name}`}
           >
             {roleLabel[roleAction]}
-          </button>
+          </Button>
         </>
       )}
       {can("recusar") && (
-        <button type="button" className={DANGER_BUTTON} disabled={busy} onClick={() => handlers.reject(account)} aria-label={`Recusar ${account.name}`}>
+        <Button variant="danger" size="sm" disabled={busy} onClick={() => handlers.reject(account)} aria-label={`Recusar ${account.name}`}>
           Recusar
-        </button>
+        </Button>
       )}
       {can("remover") && (
-        <button type="button" className={DANGER_BUTTON} disabled={busy} onClick={() => handlers.remove(account)} aria-label={`Remover ${account.name}`}>
+        <Button variant="danger" size="sm" disabled={busy} onClick={() => handlers.remove(account)} aria-label={`Remover ${account.name}`}>
           Remover
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -385,9 +384,9 @@ function change(entry: ManagementLogEntry): string {
 
 function LogTable({ entries }: { entries: ManagementLogEntry[] }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+    <Card as="div" padding="none" className="overflow-x-auto">
+      <table className={`${TABLE} min-w-xl`}>
+        <thead className={TABLE_HEAD}>
           <tr>
             <th scope="col" className="px-3 py-2 font-semibold">Quando</th>
             <th scope="col" className="px-3 py-2 font-semibold">Quem</th>
@@ -415,6 +414,6 @@ function LogTable({ entries }: { entries: ManagementLogEntry[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }

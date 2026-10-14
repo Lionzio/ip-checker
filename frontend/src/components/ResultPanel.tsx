@@ -3,6 +3,7 @@ import type { ValidationState } from "../hooks/useValidateCode";
 import { BUSY_TITLES, CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
 import { announcement, groupViolations, type RuleGroup, summarize } from "../report";
 import type { Category, ValidateResponse } from "../types/api";
+import { Button, Card, LineChip, SyntaxErrorBox } from "./ui";
 
 interface ResultPanelProps {
   state: ValidationState;
@@ -38,14 +39,9 @@ const HEADING = "text-lg font-semibold focus:outline-none";
 
 function RetryButton({ onRetry, disabled = false }: { onRetry: () => void; disabled?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onRetry}
-      disabled={disabled}
-      className="mt-3 inline-flex min-h-11 items-center rounded-md border border-slate-300 px-3 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9 dark:border-slate-600 dark:hover:bg-slate-800"
-    >
+    <Button variant="secondary" size="sm" onClick={onRetry} disabled={disabled} className="mt-3">
       Tentar novamente
-    </button>
+    </Button>
   );
 }
 
@@ -89,7 +85,7 @@ function RuleCard({
   const whole = group.category === "EXIGENCIA";
   const first = group.occurrences[0];
   return (
-    <li className={`rounded-md border border-l-4 border-slate-200 p-3 dark:border-slate-700 ${CARD_BORDERS[group.category]}`}>
+    <Card as="li" padding="sm" className={`border-l-4 ${CARD_BORDERS[group.category]}`}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className={`rounded px-2 py-0.5 font-medium ${CATEGORY_STYLES[group.category]}`}>
           {CATEGORY_LABELS[group.category]}
@@ -104,15 +100,13 @@ function RuleCard({
             {group.occurrences.map((item) => {
               const where = `Linha ${item.line}, coluna ${item.col}`;
               return onSelectLines ? (
-                <button
+                <LineChip
                   key={`${item.line}-${item.col}`}
-                  type="button"
                   onClick={() => onSelectLines(item.line, Math.max(item.line, item.end_line))}
                   aria-label={`${where}: selecionar no editor`}
-                  className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 font-mono text-xs hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
                 >
                   {where}
-                </button>
+                </LineChip>
               ) : (
                 <span key={`${item.line}-${item.col}`} className="font-mono text-xs text-slate-600 dark:text-slate-300">
                   {where}
@@ -123,7 +117,7 @@ function RuleCard({
           {first !== undefined && <Snippet code={code} line={first.line} />}
         </>
       )}
-    </li>
+    </Card>
   );
 }
 
@@ -141,24 +135,14 @@ function SuccessResult({
   if (response.status === "syntax_error" && response.syntax_error !== null) {
     const { line, col, message } = response.syntax_error;
     return (
-      <div>
-        <h2 ref={headingRef} tabIndex={-1} className={`${HEADING} text-red-700 dark:text-red-300`}>
-          Erro de sintaxe
-        </h2>
-        <p className="mt-1">
-          Linha {line}, coluna {col}: {message}
-        </p>
+      <SyntaxErrorBox title="Erro de sintaxe" line={line} col={col} message={message} headingRef={headingRef}>
         {onSelectLines && (
-          <button
-            type="button"
-            onClick={() => onSelectLines(line, line)}
-            className="mt-2 inline-flex min-h-11 items-center rounded border border-slate-300 px-2 text-sm hover:bg-slate-100 sm:min-h-7 dark:border-slate-600 dark:hover:bg-slate-800"
-          >
+          <LineChip mono={false} onClick={() => onSelectLines(line, line)} className="mt-2">
             Mostrar a linha {line} no editor
-          </button>
+          </LineChip>
         )}
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Corrija a sintaxe: as permissões só são verificadas depois.</p>
-      </div>
+        <p className="mt-2 text-sm">Corrija a sintaxe: as permissões só são verificadas depois.</p>
+      </SyntaxErrorBox>
     );
   }
 
@@ -273,11 +257,7 @@ function Content({ state, onRetry, code, onSelectLines, headingRef }: ResultPane
 export function ResultPanel(props: ResultPanelProps) {
   const { state, stale = false } = props;
   return (
-    <section
-      aria-label="Resultado da verificação"
-      aria-busy={state.kind === "loading"}
-      className="rounded-md border border-slate-200 bg-white p-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-    >
+    <Card aria-label="Resultado da verificação" aria-busy={state.kind === "loading"}>
       {/* Só o resumo vai para o leitor de tela; o relatório fica para ler no próprio ritmo. */}
       <p className="sr-only" aria-live="polite">
         {announcement(state)}
@@ -288,7 +268,7 @@ export function ResultPanel(props: ResultPanelProps) {
         </p>
       )}
       <Content {...props} />
-    </section>
+    </Card>
   );
 }
 

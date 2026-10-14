@@ -1,10 +1,18 @@
-/** Classes e mensagens compartilhadas pelas telas de conta (Sprint 14). */
+/** Classes e mensagens compartilhadas pelas telas (Sprint 14; os tamanhos de botão, S37-03). */
 import { ApiError } from "./services/client";
 
-export type Variant = "primary" | "secondary" | "danger";
+export type Variant = "primary" | "secondary" | "danger" | "link";
+export type Size = "md" | "sm";
 
 const BUTTON_BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed sm:min-h-9";
+  "inline-flex items-center justify-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed";
+
+// Alvos de 44 px nas telas de toque (S26-01); a partir de sm, o tamanho de mesa.
+const SIZES: Record<Size, string> = {
+  md: "min-h-11 px-4 text-sm font-medium sm:min-h-9",
+  sm: "min-h-11 px-3 text-sm font-medium sm:min-h-8",
+};
+const LINK_SIZE = "min-h-11 px-2 text-sm sm:min-h-0";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-blue-700 text-white hover:bg-blue-800 disabled:bg-slate-400 dark:disabled:bg-slate-600",
@@ -12,14 +20,14 @@ const VARIANTS: Record<Variant, string> = {
     "border border-slate-300 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-600 dark:hover:bg-slate-800",
   danger:
     "border border-red-300 text-red-800 hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-950",
+  link: "text-blue-700 underline underline-offset-2 hover:text-blue-900 disabled:opacity-60 dark:text-blue-300 dark:hover:text-blue-200",
 };
 
-export function buttonClass(variant: Variant = "primary", extra = ""): string {
-  return `${BUTTON_BASE} ${VARIANTS[variant]} ${extra}`.trim();
+export function buttonClass(variant: Variant = "primary", size: Size = "md", extra = ""): string {
+  const sizing = variant === "link" ? LINK_SIZE : SIZES[size];
+  return `${BUTTON_BASE} ${sizing} ${VARIANTS[variant]} ${extra}`.trim();
 }
 
-/** O botão principal de um formulário (S14; desde a S26-01, o mesmo do componente `Button`). */
-export const BUTTON = buttonClass("primary");
 export const TEXT_LINK = "text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200";
 export const LINK = `text-sm ${TEXT_LINK}`;
 

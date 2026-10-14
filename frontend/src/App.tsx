@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
+import { Button } from "./components/ui";
 import { DraftProvider } from "./draft";
 import { useDraft } from "./draftContext";
 import { Admin } from "./pages/Admin";
@@ -93,13 +94,7 @@ function Shell({ client, demoMode }: Required<AppProps>) {
         {state.status === "error" && (
           <div role="alert" className="flex flex-col items-start gap-3">
             <p>{state.message}</p>
-            <button
-              type="button"
-              onClick={retry}
-              className="rounded-md bg-blue-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-800"
-            >
-              Tentar novamente
-            </button>
+            <Button onClick={retry}>Tentar novamente</Button>
           </div>
         )}
         {(state.status === "anonymous" || state.status === "signed-in") && (

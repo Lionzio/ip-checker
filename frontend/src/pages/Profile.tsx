@@ -5,7 +5,8 @@ import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
 import type { AuthClient } from "../services/client";
 import type { Account, Treatment } from "../types/api";
-import { BUTTON, errorMessage, INPUT, sessionExpired } from "../ui";
+import { Button } from "../components/ui";
+import { errorMessage, INPUT, sessionExpired } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
@@ -79,9 +80,9 @@ function ProfileForm({ client, account, onUpdated, onUnauthenticated }: ProfileP
           {message.text}
         </p>
       )}
-      <button type="submit" className={`${BUTTON} self-start`}>
+      <Button type="submit" className="self-start">
         Salvar perfil
-      </button>
+      </Button>
     </form>
   );
 }
@@ -158,9 +159,9 @@ function PasswordForm({
           {message.text}
         </p>
       )}
-      <button type="submit" disabled={!matches || !passwordAccepted(next)} className={`${BUTTON} self-start`}>
+      <Button type="submit" disabled={!matches || !passwordAccepted(next)} className="self-start">
         {hasPassword ? "Alterar a senha" : "Definir a senha"}
-      </button>
+      </Button>
     </form>
   );
 }

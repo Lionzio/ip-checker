@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { BAND_STYLES, PERCENT } from "../bands";
 import { type CodeEditorHandle, CodeEditor, type LineRange } from "../components/CodeEditor";
-import { Button, ErrorText } from "../components/ui";
+import { Button, Card, ErrorText, LineChip, SyntaxErrorBox } from "../components/ui";
 import { useApiCall } from "../hooks/useApiCall";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
@@ -343,10 +343,7 @@ function GabaritoPair({ gabarito }: { gabarito: SimilarityGabarito }) {
     ["B", gabarito.b],
   ] as const;
   return (
-    <section
-      aria-label="Comparação com o gabarito"
-      className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
-    >
+    <Card aria-label="Comparação com o gabarito" className="flex flex-col gap-3">
       <h3 className="text-lg font-semibold">Comparação com o gabarito · {gabarito.question_id}</h3>
       {gabarito.leak_alert && (
         <div
@@ -377,7 +374,7 @@ function GabaritoPair({ gabarito }: { gabarito: SimilarityGabarito }) {
           {gabarito.message}
         </p>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -399,19 +396,21 @@ function PairResult({
   if (result.status === "syntax_error" && result.syntax_error !== null) {
     const problem = result.syntax_error;
     return (
-      <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-100">
-        <p className="font-semibold">O código {problem.code.toUpperCase()} tem um erro de sintaxe</p>
-        <p>
-          Linha {problem.line}, coluna {problem.col}: {problem.message}
-        </p>
-        <p className="text-sm">Os dois códigos precisam ser Python válido para serem comparados.</p>
-      </div>
+      <SyntaxErrorBox
+        title={`O código ${problem.code.toUpperCase()} tem um erro de sintaxe`}
+        line={problem.line}
+        col={problem.col}
+        message={problem.message}
+        alert
+      >
+        <p className="mt-2 text-sm">Os dois códigos precisam ser Python válido para serem comparados.</p>
+      </SyntaxErrorBox>
     );
   }
   if (result.similarity === null || result.band === null) return null;
   const metrics = result.metrics;
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+    <Card as="div" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-3xl font-bold" aria-label={`Similaridade de ${PERCENT.format(result.similarity)}%`}>
           {PERCENT.format(result.similarity)}%
@@ -437,21 +436,16 @@ function PairResult({
           <ul className="flex flex-wrap gap-2">
             {matches.map((match, index) => (
               <li key={`${match.a_first}-${match.b_first}`}>
-                <button
-                  type="button"
-                  aria-pressed={current === index}
-                  onClick={() => onShow(index)}
-                  className="inline-flex min-h-11 items-center rounded border border-slate-300 px-2 font-mono text-xs hover:bg-slate-100 aria-pressed:border-amber-500 aria-pressed:bg-amber-100 sm:min-h-8 dark:border-slate-600 dark:hover:bg-slate-800 dark:aria-pressed:bg-amber-900"
-                >
+                <LineChip aria-pressed={current === index} onClick={() => onShow(index)}>
                   A: {lines(match.a_first, match.a_last)} ↔ B: {lines(match.b_first, match.b_last)}
-                </button>
+                </LineChip>
               </li>
             ))}
           </ul>
         </div>
       )}
       <p className="text-sm text-slate-600 dark:text-slate-300">{result.notice}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -459,12 +453,13 @@ function ClassResult({ response, onSideBySide }: { response: SimilarityClassResp
   if (response.status === "syntax_error" && response.syntax_error) {
     const problem = response.syntax_error;
     return (
-      <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-100">
-        <p className="font-semibold">A solução comparada tem um erro de sintaxe</p>
-        <p>
-          Linha {problem.line}, coluna {problem.col}: {problem.message}
-        </p>
-      </div>
+      <SyntaxErrorBox
+        title="A solução comparada tem um erro de sintaxe"
+        line={problem.line}
+        col={problem.col}
+        message={problem.message}
+        alert
+      />
     );
   }
   return (
@@ -472,8 +467,8 @@ function ClassResult({ response, onSideBySide }: { response: SimilarityClassResp
       <p className="text-sm text-slate-700 dark:text-slate-200">
         Da mais parecida para a menos. Cada trecho pesa pela raridade na turma: o que todos escrevem quase não conta.
       </p>
-      <div className="overflow-x-auto rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <table className="w-full text-left text-sm">
+      <Card as="div" padding="none" className="overflow-x-auto">
+        <table className="w-full min-w-md text-left text-sm">
           <thead className="bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             <tr>
               <th scope="col" className="px-3 py-2 font-semibold">Solução</th>
@@ -496,14 +491,9 @@ function ClassResult({ response, onSideBySide }: { response: SimilarityClassResp
                       <Band band={item.band} />
                     </td>
                     <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => onSideBySide(item.label)}
-                        aria-label={`Comparar lado a lado com ${item.label}`}
-                        className="inline-flex min-h-11 items-center text-blue-700 underline underline-offset-2 sm:min-h-0 dark:text-blue-300"
-                      >
+                      <Button variant="link" onClick={() => onSideBySide(item.label)} aria-label={`Comparar lado a lado com ${item.label}`}>
                         Comparar lado a lado
-                      </button>
+                      </Button>
                     </td>
                   </>
                 ) : (
@@ -517,7 +507,7 @@ function ClassResult({ response, onSideBySide }: { response: SimilarityClassResp
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
       <p className="text-sm text-slate-600 dark:text-slate-300">{response.notice}</p>
     </div>
   );

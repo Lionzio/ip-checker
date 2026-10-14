@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router";
 import { NAV_LABELS } from "../labels";
 import type { Account } from "../types/api";
+import { Button } from "./ui";
 
 interface AppHeaderProps {
   account: Account | null;
@@ -64,9 +65,9 @@ export function AppHeader({ account, onSignOut }: AppHeaderProps) {
                   </NavLink>
                 </li>
                 <li>
-                  <button type="button" onClick={onSignOut} className={`${ITEM} border border-slate-300 dark:border-slate-600`}>
+                  <Button variant="secondary" onClick={onSignOut}>
                     {NAV_LABELS.signOut}
-                  </button>
+                  </Button>
                 </li>
               </ul>
             </nav>
