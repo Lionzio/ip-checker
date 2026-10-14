@@ -56,7 +56,7 @@ test("o cookie da sessão é HttpOnly, Secure e SameSite=Lax", async ({ page }) 
   await page.getByLabel("Nome ou e-mail institucional").fill(process.env.E2E_LOGIN ?? "");
   await page.getByLabel("Senha").fill(process.env.E2E_PASSWORD ?? "");
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Menu da conta" })).toBeVisible();
 
   const [cookie] = await page.context().cookies();
   expect(cookie?.name).toBe("__Host-ipc_session");
