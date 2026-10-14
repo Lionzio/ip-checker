@@ -49,6 +49,17 @@ de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem 
   `checker-layout.spec.ts` (projeto "feedback") confere, com sete violações, a primeira tela de
   1280×900 com os cartões fechados, o editor fixo, as duas telas de 375×812, as abas, o "Voltar ao
   código" e o axe nos dois temas.
+- **14/10/2026, S37-04:** a identidade visual: um logotipo em SVG inline (`components/Logo.tsx`,
+  um quadrado na cor da marca com duas linhas de código e a marca de verificação; o mesmo desenho
+  em `public/favicon.svg`) e a cor da marca com nome (`--color-brand`, o azul que a página sempre
+  usou, no `@theme` do Tailwind), usada no logotipo e nos botões principais. A tela inicial explica
+  Verificar, Plágio e Feedback em três blocos, com Entrar e Registrar como botões (`ButtonLink`).
+  O cabeçalho mostra o logotipo, a navegação (Verificar, Plágio, Gerenciar) e o **primeiro nome**
+  num botão que abre o menu da conta, com o nome completo, o cargo, Perfil e Sair (`role="menu"`,
+  setas, Esc devolve o foco, clique fora fecha); Perfil e Sair saíram da navegação. A área
+  "Soluções da turma" do plágio virou um `CodeEditor`, com numeração de linhas, Tab e Colar, e a
+  dica do formato continua como descrição (`describedBy`). Os e2e que clicavam em Sair ou Perfil
+  passam a abrir o menu antes.
 
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 

@@ -35,6 +35,8 @@ interface CodeEditorProps {
   current?: LineRange | null;
   /** Avisa a rolagem, para o painel de plágio rolar o outro código junto. */
   onScrollTop?: (top: number) => void;
+  /** O id de uma descrição a mais, além da dica do editor (as soluções da turma, S37-04). */
+  describedBy?: string;
   ref?: Ref<CodeEditorHandle>;
 }
 
@@ -67,6 +69,7 @@ export function CodeEditor({
   marked = null,
   current = null,
   onScrollTop,
+  describedBy,
   ref,
 }: CodeEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -213,7 +216,7 @@ export function CodeEditor({
         <textarea
           ref={areaRef}
           aria-label={label}
-          aria-describedby={hintId}
+          aria-describedby={describedBy === undefined ? hintId : `${hintId} ${describedBy}`}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={keyDown}

@@ -29,7 +29,7 @@ describe("App sem sessão (FR-22)", () => {
     expect(await screen.findByRole("link", { name: "Registrar" })).toHaveAttribute("href", "/registrar");
     expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/entrar");
     expect(screen.queryByLabelText("Código Python")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Menu da conta/ })).not.toBeInTheDocument();
   });
 
   it("entra com nome ou e-mail e senha e chega ao painel", async () => {
@@ -40,8 +40,8 @@ describe("App sem sessão (FR-22)", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     expect(await screen.findByLabelText("Código Python")).toBeInTheDocument();
-    expect(screen.getByText(DEMO_ACCOUNT.name)).toBeInTheDocument();
-    expect(screen.getByText(/· Monitor/)).toBeInTheDocument();
+    // O nome completo e o cargo ficam no menu da conta, aberto pelo primeiro nome (S37-04).
+    expect(screen.getByRole("button", { name: `Menu da conta: ${DEMO_ACCOUNT.name}` })).toHaveTextContent("Monitora");
   });
 
   it("mostra a mensagem da API quando a entrada é recusada", async () => {
@@ -267,7 +267,8 @@ describe("App com sessão", () => {
   it("sai e volta para a tela inicial", async () => {
     const user = await setup();
 
-    await user.click(screen.getByRole("button", { name: "Sair" }));
+    await user.click(screen.getByRole("button", { name: /Menu da conta/ }));
+    await user.click(screen.getByRole("menuitem", { name: "Sair" }));
 
     expect(await screen.findByRole("link", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Código Python")).not.toBeInTheDocument();
@@ -317,7 +318,7 @@ describe("App com sessão", () => {
     await user.click(screen.getByRole("button", { name: "Salvar perfil" }));
 
     expect(await screen.findByText("Perfil salvo.")).toBeInTheDocument();
-    expect(screen.getByRole("banner")).toHaveTextContent("Monitora Renomeada");
+    expect(screen.getByRole("button", { name: "Menu da conta: Monitora Renomeada" })).toBeInTheDocument();
   });
 
   it("troca a senha com a atual e a nova repetida", async () => {
