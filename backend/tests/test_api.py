@@ -39,6 +39,8 @@ VIOLATION = {
     "construct": "node:For",
     "allowed_from_list": 2,
     "message": "Laços de repetição (for, while) só são permitidos a partir da Lista 2.",
+    "explanation": "Laços só entram na Lista 2.",
+    "alternative": "Na Lista 1, use if, elif e else.",
 }
 INVALID = {**VALID, "status": "invalid", "violations": [VIOLATION]}
 MANIFEST = {

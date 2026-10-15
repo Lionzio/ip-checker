@@ -1528,6 +1528,16 @@ export interface components {
             allowed_from_list: number | null;
             /** Message */
             message: string;
+            /**
+             * Explanation
+             * @default
+             */
+            explanation: string;
+            /**
+             * Alternative
+             * @default
+             */
+            alternative: string;
         };
     };
     responses: never;

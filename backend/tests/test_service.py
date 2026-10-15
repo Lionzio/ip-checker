@@ -30,7 +30,7 @@ def test_health_reports_the_loaded_ruleset(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["ruleset_version"] == "2026.2.6"
+    assert body["ruleset_version"] == "2026.2.7"
     assert body["target_python"] == "3.13"
     assert body["workers"] == 1
     assert len(body["ruleset_sha256"]) == 64
@@ -41,7 +41,7 @@ def test_manifest_describes_the_active_ruleset(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["ruleset_version"] == "2026.2.6"
+    assert body["ruleset_version"] == "2026.2.7"
     assert body["period"] == "2026.2"
     assert len(body["ruleset_sha256"]) == 64
     assert [item["number"] for item in body["lists"]] == [1, 2, 3, 4, 5, 6]
@@ -55,7 +55,7 @@ def test_valid_code(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "ruleset_version": "2026.2.6",
+        "ruleset_version": "2026.2.7",
         "status": "valid",
         "list_number": 1,
         "syntax_error": None,
@@ -72,7 +72,11 @@ def test_violations_follow_the_contract(client: TestClient) -> None:
     response = client.post("/internal/analyze", json={"code": code, "list_number": 1})
 
     assert response.status_code == 200
-    assert response.json()["violations"] == [
+    violations = response.json()["violations"]
+    # S38-01: a explicação e a alternativa vêm do ruleset; o texto é conferido pelo golden.
+    assert violations[0].pop("explanation").startswith("O documento de permissões libera os laços")
+    assert violations[0].pop("alternative").startswith("Na Lista 1, resolva com comandos")
+    assert violations == [
         {
             "rule_id": "R-34",
             "category": "FORA_DA_LISTA",
@@ -262,6 +266,8 @@ def test_feedback_input_names_what_the_engine_found_and_strips_comments(client: 
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "invalid"
+    # S38-02: cada item traz a alternativa do ruleset, que o feedback sem IA usa.
+    assert all(item.pop("alternative") for item in body["items"])
     assert body["items"] == [
         {"kind": "falta", "label": "if ou operador ternário"},
         {"kind": "uso", "label": "for"},

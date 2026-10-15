@@ -61,6 +61,8 @@ describe("ResultPanel", () => {
             construct: "node:Try",
             allowed_from_list: null,
             message: "try/except é proibido em todas as listas e anula a questão.",
+            explanation: "Por que não vale.",
+            alternative: "O que usar no lugar.",
           },
           {
             rule_id: "R-34",
@@ -72,6 +74,8 @@ describe("ResultPanel", () => {
             construct: "node:For",
             allowed_from_list: 2,
             message: "Laços de repetição (for, while) só são permitidos a partir da Lista 2.",
+            explanation: "Por que não vale.",
+            alternative: "O que usar no lugar.",
           },
         ],
       },
@@ -102,6 +106,8 @@ describe("ResultPanel", () => {
             construct: "requirement:R-02",
             allowed_from_list: null,
             message: "A solução não usa o assunto da Lista 1.",
+            explanation: "Por que não vale.",
+            alternative: "O que usar no lugar.",
           },
         ],
       },
@@ -121,6 +127,8 @@ describe("ResultPanel", () => {
       construct: "node:Tuple",
       allowed_from_list: null,
       message: "Tuplas não constam no documento.",
+      explanation: "Por que não vale.",
+      alternative: "O que usar no lugar.",
     };
     const violations = Array.from({ length: 200 }, (_, index) => ({
       ...violation,
@@ -144,6 +152,8 @@ describe("ResultPanel", () => {
       construct: "node:X",
       allowed_from_list: null,
       message,
+      explanation: `Por que a ${rule_id} não vale.`,
+      alternative: `O que usar no lugar da ${rule_id}.`,
     });
     const three = [violation("R-06", "ANULACAO", 3), violation("R-13", "ANULACAO", 5), violation("R-34", "FORA_DA_LISTA", 7)];
     const cards = () => within(screen.getByRole("list", { name: "Regras violadas" })).getAllByRole("listitem");
@@ -188,11 +198,27 @@ describe("ResultPanel", () => {
       expect(screen.getByRole("button", { name: "Fechar todos" })).toBeInTheDocument();
     });
 
+    it("cada regra mostra o porquê e o que usar no lugar (S38-01)", () => {
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: three } });
+      const card = cards()[0];
+
+      expect(card).toHaveTextContent("Por quê: Por que a R-06 não vale.");
+      expect(card).toHaveTextContent("O que usar: O que usar no lugar da R-06.");
+    });
+
+    it("sem os textos (analisador antigo), o cartão não mostra rótulos vazios", () => {
+      const bare = three.map((item) => ({ ...item, explanation: "", alternative: "" }));
+      renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: bare } });
+
+      expect(screen.queryByText("Por quê:")).not.toBeInTheDocument();
+    });
+
     it("a exigência (solução inteira) não abre nem fecha", () => {
       renderState({ kind: "success", response: { ...BASE, status: "invalid", violations: [violation("R-02", "EXIGENCIA", 1)] } });
 
       expect(screen.getByText("Solução inteira")).toBeInTheDocument();
       expect(screen.queryByRole("button", { expanded: false })).not.toBeInTheDocument();
+      expect(screen.getByText(/O que usar no lugar da R-02/)).toBeInTheDocument();
       expect(screen.queryByRole("button", { expanded: true })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Abrir todos|Fechar todos/ })).not.toBeInTheDocument();
     });

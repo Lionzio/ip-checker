@@ -253,6 +253,10 @@ class Rule(_Frozen):
     until_list: ListNumber | None = None
     match: tuple[Fact | ConditionalFact, ...] = Field(min_length=1)
     message: Message
+    #: Por que a construção é proibida ou ainda não vale, e o que usar no lugar (S38-01). Saem do
+    #: documento de permissões, sem criar regra, e quem revisa é a chefia ou o desenvolvedor (Q-31).
+    explicacao: Text
+    alternativa: Text
     source: Text
 
     def matches(self) -> tuple[tuple[str, Condition | None], ...]:
@@ -294,6 +298,9 @@ class MetaRule(_Frozen):
     id: RuleId
     kind: MetaKind
     message: Message | None = None
+    #: Só a R-04 gera violação: ela precisa dos dois textos (S38-01).
+    explicacao: Text | None = None
+    alternativa: Text | None = None
     source: Text
 
 
@@ -304,6 +311,8 @@ class Requirement(_Frozen):
     list_number: ListNumber = Field(alias="list")
     require_any: tuple[Fact, ...] = Field(min_length=1)
     message: Message
+    explicacao: Text
+    alternativa: Text
     source: Text
 
 
@@ -354,6 +363,8 @@ class Ruleset(_Frozen):
         default_deny = [m for m in self.meta_rules if m.kind is MetaKind.DEFAULT_DENY]
         if not default_deny or default_deny[0].message is None:
             raise ValueError("é obrigatória a meta-regra default_deny (R-04) com mensagem")
+        if default_deny[0].explicacao is None or default_deny[0].alternativa is None:
+            raise ValueError("a meta-regra default_deny (R-04) precisa de explicacao e alternativa")
 
         if _duplicates(self.structural_facts):
             raise ValueError(f"fato estrutural repetido: {_duplicates(self.structural_facts)}")

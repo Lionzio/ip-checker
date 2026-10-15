@@ -29,7 +29,7 @@ import type {
 import { type ApiClient, ApiError } from "./client";
 
 const MAX_BYTES = 51_200;
-const RULESET_VERSION = "2026.2.6";
+const RULESET_VERSION = "2026.2.7";
 const ENABLED_LISTS: ListInfo[] = [
   { number: 1, title: "Comandos condicionais" },
   { number: 2, title: "Laços de repetição" },
@@ -148,6 +148,12 @@ function asSeen(member: ManagedAccount & { wasHeadMonitor: boolean }): ManagedAc
 }
 
 type Finding = Pick<Violation, "rule_id" | "category" | "construct" | "allowed_from_list" | "message">;
+
+/** O porquê e a alternativa de cada regra (S38-01), simulados: os de verdade vêm do ruleset. */
+const SIMULATED_TEXTS = {
+  explanation: "Explicação simulada: o documento de permissões não libera esta construção nesta lista.",
+  alternative: "Alternativa simulada: use o que a lista permite.",
+};
 
 interface SimulatedRule {
   pattern: RegExp;
@@ -365,6 +371,7 @@ function findViolations(code: string, listNumber: number): Violation[] {
       const col = match.index + match[0].indexOf(keyword) + 1;
       violations.push({
         ...finding,
+        ...SIMULATED_TEXTS,
         line: index + 1,
         col,
         end_line: index + 1,
@@ -752,6 +759,7 @@ export function createMockClient({
           construct: "node:Simulado",
           allowed_from_list: null,
           message: "Construção simulada que não consta no documento da lista.",
+          ...SIMULATED_TEXTS,
           line: index + 1,
           col: 1,
           end_line: index + 1,
@@ -775,6 +783,7 @@ export function createMockClient({
           construct: `requirement:${ruleId}`,
           allowed_from_list: null,
           message: requirement.message,
+          ...SIMULATED_TEXTS,
           line: 1,
           col: 1,
           end_line: 1,

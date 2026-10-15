@@ -96,6 +96,8 @@ def _requirement(rule_id: str, list_number: int) -> dict[str, Any]:
         "list": list_number,
         "require_any": ["node:For"],
         "message": "Use um laço.",
+        "explicacao": "O assunto da lista é obrigatório.",
+        "alternativa": "Use um laço.",
         "source": "Permissões, p.1",
     }
 
@@ -281,6 +283,8 @@ def test_requirement_uses_list_alias() -> None:
             "list": 6,
             "require_any": ["derived:recursion"],
             "message": "Toda questão da Lista 6 precisa de recursão.",
+            "explicacao": "A Lista 6 exige recursão.",
+            "alternativa": "Chame a função dentro dela mesma.",
             "source": "Permissões, p.3",
         }
     )

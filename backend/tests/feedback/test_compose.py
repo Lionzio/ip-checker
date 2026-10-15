@@ -3,6 +3,8 @@ do aluno fora do prompt e o trecho livre conferido com respostas boas e adversar
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ipc_api.feedback.compose import (
@@ -26,6 +28,18 @@ from ipc_api.feedback.compose import (
 )
 
 STUDENT = "Isabella Schultz"
+
+
+@pytest.fixture(scope="module")
+def base_alternatives() -> list[Item]:
+    """Uma construção por regra do ruleset ativo, com a alternativa real (S38-01)."""
+    from ipc_analyzer.engine.ruleset import load_ruleset, resolve_ruleset_path
+
+    ruleset = load_ruleset(resolve_ruleset_path(Path(__file__).parents[3] / "rulesets")).ruleset
+    return [Item("uso", rule.name, rule.alternativa) for rule in ruleset.rules] + [
+        Item("falta", f"assunto da Lista {req.list_number}", req.alternativa)
+        for req in ruleset.requirements
+    ]
 
 
 @pytest.mark.parametrize(
@@ -293,3 +307,57 @@ def test_the_free_text_cannot_repeat_a_masked_value(placeholder: str) -> None:
     text = f"Guarde o {placeholder} fora do código."
 
     assert free_text_problem(text, valid=True, treatment="neutro") == "link ou marcação"
+
+
+ALT_FOR = "Na Lista 1, resolva com comandos condicionais (if, elif, else)."
+ALT_RANGE = "Antes da Lista 2, não há laço: resolva com if, elif e else."
+ALT_IF = "Use pelo menos um if (com ou sem elif e else) onde a solução toma uma decisão."
+
+
+def test_the_template_explains_each_construct_with_the_rule_alternative() -> None:
+    """S38-02: cada construção usada ganha a alternativa do ruleset, sem repetir a mesma."""
+    items = [
+        Item("uso", "for", ALT_FOR),
+        Item("uso", "range()", ALT_RANGE),
+        Item("uso", "while", ALT_FOR),
+    ]
+
+    text = template_text(student=STUDENT, items=items, annotation=None)
+
+    assert f"Sobre for: {ALT_FOR}" in text
+    assert f"Sobre range(): {ALT_RANGE}" in text
+    assert text.count(ALT_FOR) == 1
+    assert free_text_problem(text, valid=False, treatment="neutro") is None
+
+
+def test_the_missing_subject_comes_with_what_to_do() -> None:
+    text = template_text(
+        student=STUDENT, items=[Item("falta", "if ou operador ternário", ALT_IF)], annotation=None
+    )
+
+    assert "Lembre que a solução precisa usar if ou operador ternário" in text
+    assert ALT_IF in text
+
+
+def test_what_does_not_fit_falls_back_to_the_general_tip() -> None:
+    """O trecho livre continua dentro do NFR-26 (4 frases, 600 caracteres) com muitas regras."""
+    long = (
+        "Uma alternativa bem comprida, com detalhes sobre o que a lista permite usar no lugar " * 2
+    )
+    items = [Item("uso", f"construção {n}", f"{long} ({n}).") for n in range(6)]
+
+    text = template_text(student=STUDENT, items=items, annotation="Revise a entrada")
+
+    assert free_text_problem(text, valid=False, treatment="masculino") is None
+    assert "construção 5" in text
+
+
+@pytest.mark.parametrize("treatment", ["masculino", "feminino", "neutro"])
+def test_the_real_alternatives_keep_the_template_valid(
+    base_alternatives: list[Item], treatment: Treatment
+) -> None:
+    """Com os textos reais do ruleset, o trecho sem IA passa na validação em qualquer tratamento."""
+    for first in range(0, len(base_alternatives), 3):
+        items = base_alternatives[first : first + 3]
+        text = template_text(student=STUDENT, items=items, annotation=None)
+        assert free_text_problem(text, valid=False, treatment=treatment) is None, items

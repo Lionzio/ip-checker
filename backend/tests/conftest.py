@@ -28,6 +28,8 @@ _MINIMAL: dict[str, Any] = {
             "id": "R-04",
             "kind": "default_deny",
             "message": "'{construct}' não consta no documento.",
+            "explicacao": "Tudo o que não está no documento é proibido.",
+            "alternativa": "Use o que a lista permite.",
             "source": "Permissões, p.1",
         }
     ],
@@ -39,6 +41,8 @@ _MINIMAL: dict[str, Any] = {
             "category": "ANULACAO",
             "match": ["node:Try"],
             "message": "try/except é proibido.",
+            "explicacao": "try/except está entre as proibições gerais.",
+            "alternativa": "Confira a entrada com if.",
             "source": "Permissões, p.1",
         },
         {
@@ -48,6 +52,8 @@ _MINIMAL: dict[str, Any] = {
             "since_list": 2,
             "match": ["node:For", "node:While"],
             "message": "Laços só a partir da Lista {allowed_from_list}.",
+            "explicacao": "Laços só entram na Lista 2.",
+            "alternativa": "Use if, elif e else.",
             "source": "Permissões, p.2",
         },
     ],

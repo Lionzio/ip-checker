@@ -134,7 +134,9 @@ async def feedback(
     role = account.role
     assert role is not None  # noqa: S101 - conta ativa sempre tem cargo (CHECK no banco)
     evaluator = Evaluator(name=account.name, role=role.value, treatment=account.treatment.value)
-    items = [Item(kind=item.kind, label=item.label) for item in data.items]
+    items = [
+        Item(kind=item.kind, label=item.label, alternative=item.alternative) for item in data.items
+    ]
     # Q-16 (opção A): o texto sem IA é o padrão e não gasta cota.
     result = service.write(student=student, annotation=annotation, evaluator=evaluator, items=items)
     notice: str | None = None

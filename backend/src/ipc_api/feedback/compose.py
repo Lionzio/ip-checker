@@ -69,6 +69,8 @@ class Item:
     #: "uso": construção que aparece; "falta": exigência da lista ausente (Q-18 b).
     kind: Literal["uso", "falta"]
     label: str
+    #: O que usar no lugar, do ruleset (S38-02); vazio quando o analisador não manda.
+    alternative: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +128,24 @@ _USE_TIPS = (
     "com {uso}.",
 )
 _MISSING_TIP = "Lembre que a solução precisa usar {falta}, que é o assunto desta lista."
+#: S38-02: uma frase por construção, com a alternativa do ruleset, enquanto couber no trecho livre.
+_ITEM_TIP = "Sobre {uso}: {alternativa}"
+
+
+def _sentence(text: str) -> str:
+    text = text.strip()
+    return text if not text or text[-1] in ".!?" else text + "."
+
+
+def _alternatives(used: list[Item]) -> list[tuple[str, str]]:
+    """(construção, alternativa) na ordem do resultado, sem repetir a mesma alternativa."""
+    seen: dict[str, str] = {}
+    for item in used:
+        if item.alternative and item.alternative not in seen.values():
+            seen[item.label] = item.alternative
+    return list(seen.items())
+
+
 _CLOSINGS = (
     "Qualquer dúvida, é só procurar a monitoria.",
     "Bons estudos e até a próxima lista!",
@@ -140,23 +160,45 @@ def _pick(options: tuple[str, ...], seed: str) -> str:
 
 
 def template_text(*, student: str, items: list[Item], annotation: str | None) -> str:
-    """O trecho livre montado sem IA. Sempre válido para qualquer tratamento (sem gênero)."""
+    """O trecho livre montado sem IA. Sempre válido para qualquer tratamento (sem gênero).
+
+    Desde a S38-02, cada construção usada ganha a alternativa do ruleset e a exigência que falta
+    ganha o que fazer, enquanto o trecho couber nos limites do NFR-26 (4 frases e 600 caracteres);
+    o que não couber fica com a dica geral, como antes.
+    """
     seed = student.casefold() + "|" + "|".join(f"{item.kind}:{item.label}" for item in items)
-    sentences = []
     note = (annotation or "").strip()
-    if note:
-        ending = "" if note[-1] in ".!?" else "."
-        sentences.append(f"Deixo também uma observação: {note}{ending}")
-    used = [item.label for item in items if item.kind == "uso"]
-    missing = [item.label for item in items if item.kind == "falta"]
-    if used:
-        sentences.append(_pick(_USE_TIPS, seed).format(uso=_join(used)))
-    if missing:
-        sentences.append(_MISSING_TIP.format(falta=_join(missing)))
-    if not items and not note:
-        sentences.append(_pick(_VALID_TIPS, seed))
-    sentences.append(_pick(_CLOSINGS, seed + "|fim"))
-    return " ".join(sentences)
+    head = (
+        [f"Deixo também uma observação: {note}{'' if note[-1] in '.!?' else '.'}"] if note else []
+    )
+    used = [item for item in items if item.kind == "uso"]
+    missing = [item for item in items if item.kind == "falta"]
+    tips = _alternatives(used)
+    closing = _pick(_CLOSINGS, seed + "|fim")
+    missing_plain = (
+        [_MISSING_TIP.format(falta=_join([item.label for item in missing]))] if missing else []
+    )
+    missing_help = [_sentence(item.alternative) for item in missing if item.alternative]
+    valid_tip = [_pick(_VALID_TIPS, seed)] if not items and not note else []
+
+    def compose(shown: int, with_help: bool) -> str:
+        body = list(head)
+        body += [
+            _ITEM_TIP.format(uso=label, alternativa=_sentence(alt)) for label, alt in tips[:shown]
+        ]
+        covered = {label for label, _ in tips[:shown]}
+        rest = [item.label for item in used if item.label not in covered]
+        if rest:
+            body.append(_pick(_USE_TIPS, seed).format(uso=_join(rest)))
+        body += missing_plain + (missing_help if with_help else []) + valid_tip + [closing]
+        return " ".join(body)
+
+    for shown in range(len(tips), -1, -1):
+        for with_help in (True, False):
+            text = compose(shown, with_help)
+            if free_text_problem(text, valid=not items, treatment="neutro") is None:
+                return text
+    return compose(0, False)
 
 
 # --- O nome do aluno nunca sai do servidor -----------------------------------------------------

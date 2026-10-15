@@ -88,6 +88,32 @@
     "MetaRule": {
       "additionalProperties": false,
       "properties": {
+        "alternativa": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alternativa"
+        },
+        "explicacao": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explicacao"
+        },
         "id": {
           "pattern": "^R-\\d{2}$",
           "title": "Id",
@@ -127,6 +153,16 @@
       "additionalProperties": false,
       "description": "Exigência de construção numa lista (R-02 e R-68).",
       "properties": {
+        "alternativa": {
+          "minLength": 1,
+          "title": "Alternativa",
+          "type": "string"
+        },
+        "explicacao": {
+          "minLength": 1,
+          "title": "Explicacao",
+          "type": "string"
+        },
         "id": {
           "pattern": "^R-\\d{2}$",
           "title": "Id",
@@ -162,6 +198,8 @@
         "list",
         "require_any",
         "message",
+        "explicacao",
+        "alternativa",
         "source"
       ],
       "title": "Requirement",
@@ -171,6 +209,11 @@
       "additionalProperties": false,
       "description": "Regra do catálogo que casa fatos: proibição geral (deny) ou permissão cumulativa (allow).",
       "properties": {
+        "alternativa": {
+          "minLength": 1,
+          "title": "Alternativa",
+          "type": "string"
+        },
         "category": {
           "anyOf": [
             {
@@ -184,6 +227,11 @@
         },
         "effect": {
           "$ref": "#/$defs/Effect"
+        },
+        "explicacao": {
+          "minLength": 1,
+          "title": "Explicacao",
+          "type": "string"
         },
         "id": {
           "pattern": "^R-\\d{2}$",
@@ -255,6 +303,8 @@
         "effect",
         "match",
         "message",
+        "explicacao",
+        "alternativa",
         "source"
       ],
       "title": "Rule",

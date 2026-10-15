@@ -8,6 +8,31 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 38 — Explicar cada regra e exportar o resultado
+
+A Sprint 38 (S38-01 a S38-05; US-02, US-08, US-10, US-12, US-22, US-32 e US-33) começou em
+15/10/2026. A missão é que o monitor explique a violação ao aluno sem reler o documento de
+permissões e que o feedback sem IA baste na maioria dos casos. As personas são o monitor que dá o
+feedback e o professor que mantém as regras. Sem a cota do Actions (P-19), a evidência de cada PR
+é o `scripts/ci-local.sh --e2e`.
+
+- **15/10/2026, S38-01:** cada regra do ruleset ganhou `explicacao` (por que a construção é
+  proibida ou ainda não vale) e `alternativa` (o que usar no lugar), obrigatórias no carregador e
+  no esquema JSON, também nas seis exigências e na R-04; a R-01, que vem do enunciado, tem textos
+  fixos no motor. Os 71 pares de textos saem do documento de permissões, sem criar regra: as
+  proibições gerais citam a lista do documento, as regras de listas posteriores dizem em que lista
+  entram e o que usar antes, e as que têm condição (zip(), enumerate(), items(), type()) explicam a
+  condição. Rulesets `2026.2.7` e `2027.1.2`. A violação passou a levar `explanation` e
+  `alternative` do analisador à página (contrato OpenAPI regenerado; vazios com um analisador
+  anterior), e o cartão de cada regra mostra "Por quê" e "O que usar". **Revisão dos textos:**
+  pela Q-31, um monitor-chefe, um professor ou o desenvolvedor; aguardando a do autor.
+- **15/10/2026, S38-02:** o feedback sem IA usa a alternativa de cada construção ("Sobre for: Na
+  Lista 1, resolva com…") e o que fazer quando falta o assunto da lista, sem repetir a mesma
+  alternativa. O trecho continua nos limites do NFR-26 (4 frases e 600 caracteres): entram as
+  alternativas que couberem, e o resto fica com a dica geral de antes. A abertura, a frase
+  obrigatória e o `[ALUNO]` não mudaram. Um teste passa todas as alternativas reais pela validação
+  nos três tratamentos.
+
 ## Sprint 37 — Verificação mais clara
 
 A Sprint 37 (S37-01 a S37-05; US-09, US-11, US-21 e US-33) começou em 14/10/2026. A missão é que o
