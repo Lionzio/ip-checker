@@ -24,6 +24,7 @@ from ipc_api.accounts.models import (
     AccountConflict,
     DeveloperSeed,
     HousekeepingCounts,
+    ListPanel,
     ManagementRecord,
     NewAccount,
     NewGoogleAccount,
@@ -151,6 +152,9 @@ class AccountStore(Protocol):
         conferência e o gasto acontecem juntos: dois pedidos ao mesmo tempo não passam do teto.
         """
 
+    async def list_panel(self, semester: str, list_number: int) -> ListPanel:
+        """O painel de uma lista do período (S40-03), lido só das views anônimas da telemetria."""
+
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         """As ações de gerenciamento, da mais recente para a mais antiga (REC-06).
 
@@ -212,6 +216,8 @@ class MemoryAccountStore:
         self.feedback_quota: dict[tuple[date, UUID], int] = {}
         #: Quem já usou a ferramenta em cada período e lista (``app.list_adoption``).
         self.adoption: set[tuple[UUID, str, int]] = set()
+        #: O que as views da telemetria devolveriam (S40-03); os testes preenchem.
+        self.panels: dict[tuple[str, int], ListPanel] = {}
         self.available = True
         #: Simula o pool cheio por sobrecarga (S35-08).
         self.busy = False
@@ -565,6 +571,11 @@ class MemoryAccountStore:
                 return "servidor"
             self.feedback_quota[(day, account_id)] = used + 1
             return None
+
+    async def list_panel(self, semester: str, list_number: int) -> ListPanel:
+        self._check()
+        empty = ListPanel(semester, list_number, (), 0, 0, None)
+        return self.panels.get((semester, list_number), empty)
 
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         self._check()

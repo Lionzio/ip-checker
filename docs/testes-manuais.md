@@ -383,6 +383,20 @@ Precisa de uma conta de **monitor-chefe**, **professor** ou do **desenvolvedor**
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
+### G-11. Painel por lista (S40-03)
+
+- **Objetivo:** A chefia vê as regras mais violadas de cada lista, sem nenhum dado de aluno.
+- **Passos:**
+  1. Com o desenvolvedor, um professor ou um monitor-chefe, abra **Gerenciar** e desça até o **Painel por lista**.
+  2. Troque a lista no seletor **Lista do painel**.
+  3. Com um monitor, procure o mesmo painel.
+- **Esperado:**
+  - O painel mostra o período, o número de verificações, a parte com erro de sintaxe, a adoção da equipe e a tabela de regras, que muda com a lista.
+  - Nenhum nome de aluno ou de monitor, conta ou código aparece no painel.
+  - O monitor não vê Gerenciar nem o painel.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
 ## 4. Verificador: regras de cada lista
 
 Em todos os cenários desta seção: escolha a lista indicada, deixe a **Questão** sem escolha (a não
@@ -2302,6 +2316,23 @@ print('Maior:', maior)
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 
+### T-09. Todos contra todos (S40-02)
+
+- **Objetivo:** A turma inteira é comparada de uma vez, e as cópias aparecem em grupo.
+- **Passos:**
+  1. Em **Plágio**, clique em **Todos contra todos**.
+  2. Cole a turma do T-01 e, no fim, uma cópia da solução da Ana com os nomes trocados, começando por `=== Davi`.
+  3. Clique em **Comparar todos**.
+  4. Clique em **Comparar lado a lado** no par **Ana × Davi**.
+  5. Tente com uma única solução e com 61.
+- **Esperado:**
+  - Em **Grupos de soluções parecidas**, aparece um grupo com Ana e Davi.
+  - A tabela começa pelos pares mais parecidos, a partir de 80%, e **Mostrar todos os pares** traz o resto.
+  - O lado a lado abre em **Dois códigos**, com os dois códigos.
+  - Com 1 solução, **Comparar todos** fica desligado; com 61, a página avisa que o limite é 60.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
 ## 11. Feedback para o aluno
 
 ### F-01. Feedback sem violações
@@ -2480,6 +2511,35 @@ if x > 0:
   1. Corrija 10 códigos seguidos deste roteiro (V-01 a V-10), com nomes diferentes, sem recarregar a página.
 - **Esperado:**
   - Nenhum feedback sai com o nome errado, e nenhum erro aparece.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### L-05. Turma inteira por arquivos (S40-01)
+
+- **Objetivo:** Os `.py` de uma turma são corrigidos de uma vez e viram um CSV sem código.
+- **Passos:**
+  1. Salve 10 códigos deste roteiro (V-01 a V-10) como `.py`, um por aluno (por exemplo, `ana.py`), e um arquivo `notas.txt`.
+  2. Em **Turma**, escolha a Lista 1, clique em **Escolher arquivos** e selecione os 11 arquivos.
+  3. Clique em **Corrigir a turma** e, no fim, em **Baixar CSV**.
+  4. Abra o CSV no Excel ou no Planilhas.
+- **Esperado:**
+  - A página diz que 1 arquivo ficou de fora (`notas.txt`) e que 10 estão prontos.
+  - O andamento sobe até 10 de 10, e a tabela tem uma linha por aluno, com o status e as violações por categoria.
+  - O CSV abre com acentos certos, uma linha por aluno, e sem nenhum trecho de código.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### L-06. Turma inteira por .zip (S40-01)
+
+- **Objetivo:** Um `.zip` com pastas funciona, e um `.zip` falso é recusado com uma mensagem clara.
+- **Passos:**
+  1. Compacte os 10 `.py` do L-05 num `.zip`, com alguns dentro de uma pasta, e arraste-o para a área tracejada.
+  2. Renomeie um `.txt` qualquer para `turma.zip` e escolha-o.
+  3. Durante uma correção, clique em **Cancelar**.
+- **Esperado:**
+  - O `.zip` dá 10 arquivos prontos, sem a pasta no nome do aluno.
+  - O `.zip` falso fica de fora, com o motivo.
+  - Cancelar para a correção e mantém as linhas já conferidas.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

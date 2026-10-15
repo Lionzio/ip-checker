@@ -169,6 +169,25 @@ Um **erro de sintaxe** aparece no lugar das violações: as permissões só são
 código está sintaticamente correto. Com mais de 200 violações, a página mostra as 200 primeiras e
 avisa.
 
+### Turma inteira
+
+Quando você já tem os arquivos da turma (baixados do Dikastis ou numa pasta), use **Turma** no
+menu:
+
+1. Escolha a lista e, se quiser, a questão (com ela, entra a semelhança com o gabarito).
+2. Clique em **Escolher arquivos** ou arraste para a área tracejada vários `.py` ou um `.zip` (até
+   100 arquivos, 50 KB cada e 2 MB no total). O que não é `.py`, os arquivos grandes demais e os que
+   passam do limite ficam de fora, e a página diz quais. Dentro do `.zip`, as pastas não importam.
+3. Clique em **Corrigir a turma**. A página manda os arquivos aos poucos e mostra o andamento; se o
+   servidor pedir uma pausa, ela espera e continua sozinha. **Cancelar** para no meio e mantém o
+   que já foi conferido.
+
+O resultado tem uma linha por aluno: o nome do arquivo sem o `.py` (dois `ana.py` viram "ana" e
+"ana (2)"), o status (**Válida**, **Com violações**, **Erro de sintaxe** ou **Recusada**, quando o
+arquivo passa dos limites da verificação), as violações por categoria, as regras e a semelhança
+com o gabarito. **Baixar CSV** leva a tabela para o Excel ou o Planilhas, **sem o código**. Para
+o feedback de um aluno, abra o arquivo dele em **Verificar**. Nada é guardado.
+
 ## Feedback para o aluno
 
 Depois de verificar, o painel **Feedback para o aluno** aparece ao lado do resultado.
@@ -249,6 +268,17 @@ página lista as soluções da mais parecida para a menos. Aqui, cada trecho pes
 turma: o que todo mundo escreve (ler a entrada, o laço óbvio) quase não conta, então só sobe o que
 for incomum e igual. **Comparar lado a lado** abre a dupla em **Dois códigos**, com os trechos.
 
+### Todos contra todos
+
+Em **Todos contra todos**, cole as soluções da turma no mesmo formato (`=== nome`), de 2 a 60,
+somando até 120 KB, e clique em **Comparar todos**. Cada solução é comparada com todas as outras,
+com o mesmo peso pela raridade na turma. O resultado começa pelos **grupos**: as soluções ligadas
+por pares a partir de 90% ("Requer atenção"). Se A parece com B e B com C, os três ficam no mesmo
+grupo, mesmo que A e C não pareçam tanto entre si: leia os pares do grupo para saber de onde veio
+a cópia. Abaixo, a tabela mostra os pares a partir de 80%, do mais parecido para o menos;
+**Mostrar todos os pares** traz o resto, e **Comparar lado a lado** abre o par em **Dois códigos**.
+Um grupo é um motivo para ler, não uma conclusão.
+
 ## Indícios de uso de IA
 
 A política dos indícios ([`indicios-de-ia.md`](indicios-de-ia.md)) foi aprovada em 09/10/2026
@@ -291,6 +321,11 @@ só os botões que o seu cargo permite, e o servidor confere de novo a cada aç�
 
 A busca acha contas por nome ou e-mail, sem diferenciar acentos, e o filtro de cargo vale para os
 membros ativos e as contas removidas.
+
+O **Painel por lista**, no fim da tela, mostra, para a lista escolhida no período ativo, as regras
+mais violadas (em quantas verificações e quantas vezes no total), quantas verificações houve,
+quantas tinham erro de sintaxe e quanto da equipe já usou a lista. Serve para decidir o que
+reforçar em aula. São só contagens anônimas: nenhum aluno, conta, código ou nome aparece ali.
 
 | Seu cargo | Aprova cadastros | Atribui cargo, altera cargo e remove contas de |
 |---|---|---|

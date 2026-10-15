@@ -239,7 +239,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-27 | Segurança | Confidencialidade dos gabaritos (ADR-10, revisto pela ADR-11 em 09/10/2026) | Gabaritos fora do repositório principal, da imagem, do disco, dos logs, da telemetria e do navegador; acesso da CI e da API | 0 arquivo de gabarito no `ip-checker` e na imagem; no piloto, só na memória do processo da API, baixados com credencial só de leitura; 0 bytes de texto do gabarito nas respostas, nos logs e na telemetria (teste canário); saída dos testes só com arquivo, regra e linha | `.gitignore` (`gabaritos/`), job "Gabaritos" do `ci.yml`, `backend/tests/official_answers/`, testes canário da Sprint 32, `rulesets/README.md` |
 | NFR-28 | Desempenho | Custo da comparação com o gabarito (ADR-11) | P95 do `POST /api/v1/validate` com a comparação; tempo da comparação no analisador | P95 ≤ 200 ms e P99 ≤ 500 ms (os do NFR-01) com a comparação ligada; comparação de 2 códigos de 50 KB dentro do orçamento da similaridade (NFR-25) | "Carga no piloto" com uma questão com gabarito; teste de orçamento em `tests/similarity` |
 | NFR-29 | Privacidade | Dados de alunos nos grupos de acompanhamento (ADR-13) [PLANEJADO, Sprint 47] | Colunas guardadas; idade dos registros; ocorrências de código | Só o nome de exibição e, opcionalmente, o login do Dikastis (Q-26), nunca CPF, e-mail ou matrícula; de cada verificação, só o resultado resumido (Q-27), sem o feedback (Q-28); 0 ocorrências de código (canário do NFR-11); nada de um período depois do encerramento dele ou de 12 meses do fim, o que vier primeiro (Q-29) | Teste de esquema e canário na CI; teste do expurgo por período |
-| NFR-30 | Desempenho | Plágio da turma inteira (S40-02, S46-03) [PLANEJADO] | Tempo no worker | Matriz de 100 soluções (120 KB no total) em ≤ 5 s | Teste de orçamento com a turma sintética |
+| NFR-30 | Desempenho | Plágio da turma inteira (S40-02, S46-03) [PARCIAL: 60 soluções na S40-02; 100 na S46-03] | Tempo no worker | Matriz de 100 soluções (120 KB no total) em ≤ 5 s | Teste de orçamento com a turma sintética |
 
 ## 4. Backlog de User Stories
 
@@ -1535,7 +1535,7 @@ Sprints 34 e 35. A ordem segue o valor e o risco:
 2. **Sprint 37:** a tela de verificação, a mais usada.
 3. **Sprint 38:** explicar cada regra e exportar o resultado.
 4. **Sprint 39:** qualidade interna, operação e documentação.
-5. **Sprint 40:** a correção da turma inteira.
+5. **Sprint 40:** a correção da turma inteira (feita antes da 39, em 15/10/2026, por pedido do autor).
 
 A campanha de testes manuais (S35-10) corre em paralelo. Cada falha confirmada vira uma task da
 sprint seguinte, com um teste automático.
@@ -1768,6 +1768,7 @@ backup automático e restauração ensaiada, e a documentação reorganizada par
 | S39-03 | US-15, US-20 | Engenharia | Os testes que faltam: `Login`, `Register`, `Profile`, `Verify`, `ForgotPassword` e `Landing` no Vitest. Os testes lentos ganham o marcador `slow`, e as esperas reais viram eventos ou relógio injetado. `pytest-xdist` nos testes sem banco | `frontend/src/pages/*.test.tsx`, `backend/tests/`, `backend/pyproject.toml` | Autor | 1,5 | — | Cobertura das páginas ≥ 80%; a etapa de pytest da CI local ≥ 30% mais rápida |
 | S39-04 | US-35 | Engenharia | Operação. O `scripts/backup-local.sh` agendado no Agendador de Tarefas do Windows (o backup do Actions volta com a cota). Um ensaio de restauração completo num PostgreSQL descartável, comparando as contagens. A troca do token dos gabaritos por evento, porque ele não vence (P-23, decisão do autor de 12/10/2026): o roteiro do runbook para suspeita de vazamento, mudança de quem administra a conta e 401 nos logs | `scripts/`, `docs/runbook.md` | Autor | 0,5 | — | Restauração ensaiada com o tempo no runbook; tarefa agendada documentada |
 | S39-05 | US-20 | Engenharia | Documentação reorganizada. Ver a lista logo abaixo da tabela | `docs/` | Autor | 1 | S36-07 | O blueprint com menos de 1.000 linhas; os documentos novos no mapa (`docs/README.md`) |
+| S39-06 | US-14 | Engenharia | 429 enganoso com o banco lento (achado na CI local da Sprint 40, em 15/10/2026): quando o `SessionMiddleware` recebe `StoreUnavailable`/`StoreBusy` ao resolver a sessão, a requisição fica sem `account_id` e o `RateLimitMiddleware` a conta como cliente anônimo pelo IP; com o balde do IP cheio, o monitor logado recebe 429 "Você fez muitas requisições" em vez de 503 `OVERLOADED`, e todos atrás do mesmo IP dividem 30 por minuto até 60 s depois de o banco voltar. Uma requisição com `session_error` conta só o balde do IP e responde 503 com `Retry-After`; os testes de borda (`tests/security/test_api_rate_limit_edge.py`) deixam de depender da virada do minuto e do que sobrou dos testes anteriores | `ratelimit.py`, `auth/middleware.py`, `tests/security` | Autor | 0,5 | — | Teste de unidade com um autenticador que levanta `StoreBusy`; a etapa de segurança da CI local passa 3 vezes seguidas com a máquina carregada; nenhum limite afrouxado |
 
 **O que a S39-05 reorganiza:**
 - O histórico das tasks das Sprints 1 a 35 sai do blueprint para `docs/historico/`.
@@ -1826,6 +1827,7 @@ tabela, o status de cada aluno e os grupos de soluções parecidas.
 | S40-01 | US-33 | Engenharia | Correção em lote por upload: vários `.py` ou um `.zip` (até 100 arquivos, 50 KB cada e 2 MB no total, com proteção contra zip bomb). Uma tabela com aluno (nome do arquivo), status, violações por categoria e semelhança com o gabarito, e exportação em CSV. Nada é guardado, e cada análise passa pelos mesmos limites e pela admissão | Rota nova `POST /api/v1/validate/batch`, `frontend/src/pages/` (tela nova), OpenAPI | Autor | 3 | S38-03 | Testes de limites e de zip malicioso; e2e com 10 arquivos; contrato OpenAPI atualizado |
 | S40-02 | US-31 | Engenharia | Plágio todos contra todos: os pares ordenados pela semelhança e grupos de soluções parecidas (componentes acima da faixa "Requer atenção"), com o peso pela raridade (IDF) da turma | `engine/similarity.py`, rota `POST /api/v1/similarity/class-matrix`, `Plagiarism.tsx` | Autor | 2 | — | Testes com uma turma sintética de 30 soluções (dois grupos de cópias e o resto independente); o tempo dentro do orçamento |
 | S40-03 | US-16 | Engenharia | Painel por lista para professores e monitores-chefes: as regras mais violadas por lista e período, a partir das views anônimas da telemetria (`v_top_rules_by_list`), sem dado de aluno | Rota de leitura, tela no Gerenciar | Autor | 1 | — | Só professores, monitores-chefes e o desenvolvedor veem; nenhum dado pessoal |
+| S40-04 | US-14 | Engenharia | Benchmark estável sob carga (incluída a pedido do autor em 15/10/2026): a razão passa a ser pareada (uma calibração antes e outra depois de cada execução da ação, na mesma amostra), e uma entrada acima da tolerância é medida de novo até 2 vezes, só contando como regressão se passar nas três. A linha de base é regravada. Em 4 rodadas da CI local, o `plagio_50kb` deu razão de 47 a 52 (máximo 51) com o notebook ocupado, sem mudança no motor | `backend/tests/benchmark/` | Autor | 0,5 | — | Teste da lógica com a carga mudando no meio da rodada e com a regressão de 30%; o benchmark passa com 16 processos ocupando a máquina e reprova uma regressão de mentira de 30% |
 
 **ADRs:** atualiza o ADR-07 (todos contra todos) e o ADR-04 (rota nova de lote, com os limites).
 
@@ -1846,12 +1848,14 @@ tabela, o status de cada aluno e os grupos de soluções parecidas.
 
 **Deploy:** release `sprint-40`.
 - **Render:** Manual Deploy (rotas novas e analisador).
-- **Vercel:** Create Deployment (tela nova). Sem migração, se as views existentes bastarem.
+- **Vercel:** Create Deployment (tela nova). As views existentes bastaram, mas a API precisou do papel que as lê: a migração `0007` vai antes do Render.
 - **Depois:** sintético e exercício de alerta.
 
 **Riscos:**
 - O lote concentra muita análise de uma vez no plano gratuito (0,1 CPU); a admissão e os limites protegem o serviço, e a tela mostra o progresso.
 - Uma lista grande pode levar minutos; a tela permite cancelar.
+
+**Situação (15/10/2026):** engenharia concluída na release `sprint-40`, feita antes da 39 por pedido do autor: S40-01 a S40-04, num PR só. Decisões da sprint (detalhes no `CHANGELOG.md`): a barreira de 128 KiB por requisição não mudou, e a página lê o `.zip` (com a proteção contra *zip bomb*) e manda os arquivos em partes de até 20, abaixo de 110 KB, para o `POST /api/v1/validate/batch`, que conta 1 no limite por conta e passa cada arquivo pela admissão; o todos contra todos aceita até 60 soluções (60 em 0,35 s na máquina do autor), e as 100 do NFR-30 ficam para a S46-03; o painel por lista lê as views anônimas pela migração `0007` (`GRANT ipc_reader TO ipc_app`); a S40-04 entrou depois de 4 rodadas da CI local reprovadas por ruído (benchmark, limite por IP e prazos do Vitest), e o 429 enganoso do limite por IP com o banco lento ficou registrado para a Sprint 39 (S39-06). Aguardando: o deploy, com a migração `0007` antes do Render.
 
 #### Sprint 41 — Fase 2: imagens no GHCR, deploy pelo servidor do CIn e staging (bloqueada)
 
@@ -2380,8 +2384,10 @@ Levantado das rotas em `backend/src/ipc_api/routes/` e conferido com o `docs/ope
 | POST | `/api/v1/profile/password` | Sessão | `PasswordChange` | — | 204, 401, 403, 422, 429, 503 | Limitada; 5 senhas atuais erradas em 15 min bloqueiam | `routes/profile.py` |
 | GET | `/api/v1/lists` | Sessão | — | Listas habilitadas e questões | 200, 401, 503 | Geral | `routes/meta.py` |
 | POST | `/api/v1/validate` | Sessão | `ValidateRequest` (`code`, `list_number`, `question_id`) | `ValidateResponse` (violações, avisos e, se ligados, `indicators`) | 200, 401, 403, 413, 422, 429, 503 | 30/min por conta | `routes/validate.py` |
+| POST | `/api/v1/validate/batch` | Sessão | `ValidateBatchRequest` (`list_number`, `question_id` e de 1 a 20 `files`) | `ValidateBatchResponse` (uma linha por arquivo) | 200, 401, 403, 413, 422, 429, 503 | 30/min por conta, dividido com a verificação; o lote conta 1, e cada arquivo passa pela admissão | `routes/validate.py` |
 | POST | `/api/v1/similarity` | Sessão | `SimilarityRequest` (`code_a`, `code_b`) | `SimilarityResponse` | 200, 401, 403, 413, 422, 429, 503 | 30/min por conta, dividido com a verificação | `routes/similarity.py` |
 | POST | `/api/v1/similarity/batch` | Sessão | `SimilarityClassRequest` (até 100 soluções) | `SimilarityClassResponse` | 200, 401, 403, 413, 422, 429, 503 | idem | `routes/similarity.py` |
+| POST | `/api/v1/similarity/class-matrix` | Sessão | `SimilarityMatrixRequest` (de 2 a 60 soluções) | `SimilarityMatrixResponse` (pares e grupos) | 200, 401, 403, 413, 422, 429, 503 | idem | `routes/similarity.py` |
 | POST | `/api/v1/feedback` | Sessão | `FeedbackRequest` (`code`, `list_number`, `student_name`, `annotation`, `question_id`) | `FeedbackResponse` (`text`, `source`, `provider`) | 200, 401, 403, 413, 422, 429, 503 | idem, mais 60/dia por conta e 1.000/dia no servidor | `routes/feedback.py` |
 | GET | `/api/v1/admin/requests` | Sessão de monitor-chefe, professor ou desenvolvedor | — | `RequestsResponse` | 200, 401, 403, 503 | Geral | `routes/admin.py` |
 | POST | `/api/v1/admin/requests/{account_id}/approve` | idem | `RoleChoice` | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
@@ -2391,12 +2397,13 @@ Levantado das rotas em `backend/src/ipc_api/routes/` e conferido com o `docs/ope
 | POST | `/api/v1/admin/members/{account_id}/remove` | idem | — | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
 | POST | `/api/v1/admin/members/{account_id}/reactivate` | idem | `RoleChoice` | — | 204, 401, 403, 404, 409, 422, 503 | Geral | `routes/admin.py` |
 | GET | `/api/v1/admin/log` | Sessão de professor ou desenvolvedor (REC-06) | — | `ManagementLogResponse` | 200, 401, 403, 503 | Geral | `routes/admin.py` |
+| GET | `/api/v1/admin/list-panel` | Sessão de monitor-chefe, professor ou desenvolvedor | `list_number` e `semester` (query) | `ListPanelResponse` (só contagens anônimas) | 200, 401, 403, 422, 503 | Geral | `routes/admin.py` |
 | GET | `/health` | Nenhuma | — | `HealthResponse` | 200 | Livre | `routes/meta.py` |
 | GET | `/ready` | Nenhuma | — | `ReadyResponse` (versão do ruleset e `release`; consulta o banco) | 200, 503 | Livre | `routes/meta.py` |
 | GET | `/health/service` | Nenhuma | — | `ReadyResponse` (sem o banco; health check do Render) | 200, 503 | Livre | `routes/meta.py` |
 | GET | `/health/slo` | Nenhuma | — | `SloResponse` (P95 e 5xx dos últimos 5 min) | 200, 503 | Livre | `routes/meta.py` |
 
-O analisador tem uma API interna (`/internal/analyze`, `/internal/feedback-input`, `/internal/similarity`, `/internal/similarity/class`, `/internal/ruleset/manifest` e `/internal/health`, em `backend/src/ipc_analyzer/service/app.py`), que escuta só em `127.0.0.1` (Render) ou na rede interna `analyzer_net` (compose) e não é ponto de integração (ADR-01).
+O analisador tem uma API interna (`/internal/analyze`, `/internal/feedback-input`, `/internal/similarity`, `/internal/similarity/class`, `/internal/similarity/matrix`, `/internal/ruleset/manifest` e `/internal/health`, em `backend/src/ipc_analyzer/service/app.py`), que escuta só em `127.0.0.1` (Render) ou na rede interna `analyzer_net` (compose) e não é ponto de integração (ADR-01).
 
 ### 9.2 Arquitetura atual, resumida para quem integra
 

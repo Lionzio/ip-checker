@@ -25,17 +25,21 @@ from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     AnalyzerClassItem,
     AnalyzerSimilarity,
+    MatrixPair,
+    MatrixSolution,
     SimilarityBand,
     SimilarityClassItem,
     SimilarityClassRequest,
     SimilarityClassResponse,
     SimilarityGabarito,
+    SimilarityMatrixRequest,
+    SimilarityMatrixResponse,
     SimilarityRequest,
     SimilarityResponse,
     SimilaritySyntaxError,
 )
 from ipc_api.settings import ApiSettings
-from ipc_api.similarity import NOTICE, SHORT_CODE_TOKENS, classify, displayed
+from ipc_api.similarity import BANDS, NOTICE, SHORT_CODE_TOKENS, classify, displayed
 from ipc_api.validation import check_code
 
 logger = logging.getLogger(__name__)
@@ -246,4 +250,81 @@ async def similarity_batch(
     items.sort(key=lambda item: (item.similarity is None, -(item.similarity or 0.0)))
     return SimilarityClassResponse(
         request_id=request_id, status="compared", syntax_error=None, results=items, notice=NOTICE
+    )
+
+
+#: Os grupos ligam as soluções a partir da faixa "Requer atenção" (S40-02).
+GROUP_MIN = next(band.minimum for band in BANDS if band.id == "requer_atencao")
+#: Quantos pares a página recebe: os mais parecidos, que são os que pedem leitura.
+MAX_PAIRS = 200
+
+
+@router.post(
+    "/similarity/class-matrix",
+    summary="Compara todas as soluções da turma entre si e agrupa as parecidas (S40-02)",
+    responses=error_docs(
+        {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            403: "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            413: "PAYLOAD_TOO_LARGE: corpo acima de 128 KB.",
+            422: "INVALID_INPUT: entrada inválida (menos de 2 ou mais de 60 soluções).",
+            429: (
+                "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. Veja "
+                "retry_after_s."
+            ),
+            503: "OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s.",
+        }
+    ),
+)
+async def similarity_matrix(
+    body: SimilarityMatrixRequest,
+    request: Request,
+    response: Response,
+    analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    admission: Annotated[Admission, Depends(get_admission)],
+    request_id: Annotated[str, Depends(get_request_id)],
+) -> SimilarityMatrixResponse:
+    response.headers["Cache-Control"] = "no-store"
+    labels = [
+        solution.label.strip() or str(index + 1) for index, solution in enumerate(body.solutions)
+    ]
+    try:
+        async with admission.slot():
+            result = await analyzer.similarity_matrix(
+                [solution.code for solution in body.solutions], GROUP_MIN, request_id=request_id
+            )
+    except Overloaded:
+        raise overloaded() from None
+    except AnalyzerRejected as exc:
+        raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
+    except AnalyzerUnavailable as exc:
+        logger.warning("analyzer indisponível: %s", exc)
+        raise analyzer_unavailable() from None
+
+    request.state.outcome = "compared"
+    pairs = []
+    for pair in result.pairs[:MAX_PAIRS]:
+        band = classify(pair.percent)
+        pairs.append(
+            MatrixPair(
+                a=labels[pair.first],
+                b=labels[pair.second],
+                similarity=displayed(pair.percent),
+                band=SimilarityBand(id=band.id, label=band.label, minimum=band.minimum),
+            )
+        )
+    return SimilarityMatrixResponse(
+        request_id=request_id,
+        solutions=[
+            MatrixSolution(
+                label=label,
+                status=item.status,
+                syntax_error=item.syntax_error,
+                message=item.message,
+            )
+            for label, item in zip(labels, result.solutions, strict=True)
+        ],
+        pairs=pairs,
+        groups=[[labels[index] for index in group] for group in result.groups],
+        notice=NOTICE,
     )

@@ -1574,6 +1574,103 @@
         ]
       }
     },
+    "/api/v1/admin/list-panel": {
+      "get": {
+        "tags": [
+          "gerenciamento"
+        ],
+        "summary": "Regras mais violadas numa lista do período, só com dados anônimos (S40-03)",
+        "description": "Para professores, monitores-chefes e o desenvolvedor: as contagens das views da telemetria (FR-17), sem código, conta, nome nem IP. Sem semestre, vale o período ativo.",
+        "operationId": "list_panel_api_v1_admin_list_panel_get",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "list_number",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 6,
+              "minimum": 1,
+              "title": "List Number"
+            }
+          },
+          {
+            "name": "semester",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}\\.[12]$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPanelResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: o cargo de quem chama não permite a ação (FR-27).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: lista fora de 1 a 6 ou semestre inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/validate": {
       "post": {
         "tags": [
@@ -1654,6 +1751,103 @@
           },
           "503": {
             "description": "OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/validate/batch": {
+      "post": {
+        "tags": [
+          "validação"
+        ],
+        "summary": "Confere até 20 arquivos de uma vez, para corrigir a turma inteira (S40-01)",
+        "description": "A turma inteira em partes (S40-01): cada arquivo passa pelos mesmos limites da verificação\ne pela admissão, um de cada vez, e entra na telemetria anônima; nada é guardado.",
+        "operationId": "validate_batch_api_v1_validate_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateBatchResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: corpo acima de 128 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED ou UNKNOWN_QUESTION. Um arquivo recusado não recusa os outros: ele volta com o status rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "OVERLOADED ou ANALYZER_UNAVAILABLE: a parte pode ser enviada de novo.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1826,6 +2020,102 @@
           },
           "422": {
             "description": "INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (solução comparada complexa demais).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/similarity/class-matrix": {
+      "post": {
+        "tags": [
+          "plágio"
+        ],
+        "summary": "Compara todas as soluções da turma entre si e agrupa as parecidas (S40-02)",
+        "operationId": "similarity_matrix_api_v1_similarity_class_matrix_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimilarityMatrixRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarityMatrixResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: corpo acima de 128 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: entrada inválida (menos de 2 ou mais de 60 soluções).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2222,6 +2512,116 @@
           "ai_indicators"
         ],
         "title": "AuthOptions"
+      },
+      "BatchFile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "description": "O nome do arquivo, que identifica o aluno na tabela (nada é guardado)."
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "O código do arquivo. Nunca é executado nem guardado."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "code"
+        ],
+        "title": "BatchFile"
+      },
+      "BatchResult": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid",
+              "syntax_error",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "ANULACAO",
+                "PROIBIDO_NA_QUESTAO",
+                "FORA_DA_LISTA",
+                "NAO_CONSTA",
+                "EXIGENCIA"
+              ]
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rule Ids",
+            "description": "As regras violadas, sem repetição, em ordem."
+          },
+          "syntax_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyntaxErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Por que o arquivo foi recusado."
+          },
+          "gabarito_similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gabarito Similarity",
+            "description": "Semelhança com o gabarito da questão, quando houver."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "status",
+          "counts",
+          "rule_ids"
+        ],
+        "title": "BatchResult"
       },
       "ClassSolution": {
         "properties": {
@@ -2880,6 +3280,62 @@
         ],
         "title": "ListInfo"
       },
+      "ListPanelResponse": {
+        "properties": {
+          "semester": {
+            "type": "string",
+            "title": "Semester"
+          },
+          "list_number": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "List Number"
+          },
+          "top_rules": {
+            "items": {
+              "$ref": "#/components/schemas/PanelRule"
+            },
+            "type": "array",
+            "title": "Top Rules",
+            "description": "As 15 regras mais violadas na lista."
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events",
+            "description": "Verificações da lista no período."
+          },
+          "syntax_errors": {
+            "type": "integer",
+            "title": "Syntax Errors",
+            "description": "Quantas delas tiveram erro de sintaxe."
+          },
+          "adoption_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adoption Pct",
+            "description": "Porcentagem da equipe ativa que já usou a lista (P-09, critério 2)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "semester",
+          "list_number",
+          "top_rules",
+          "events",
+          "syntax_errors",
+          "adoption_pct"
+        ],
+        "title": "ListPanelResponse",
+        "description": "O painel de uma lista do período (S40-03, US-16): só contagens anônimas da telemetria."
+      },
       "LoginRequest": {
         "properties": {
           "login": {
@@ -3233,6 +3689,83 @@
         ],
         "title": "ManagementLogResponse"
       },
+      "MatrixPair": {
+        "properties": {
+          "a": {
+            "type": "string",
+            "title": "A",
+            "description": "O rótulo da primeira solução do par."
+          },
+          "b": {
+            "type": "string",
+            "title": "B",
+            "description": "O rótulo da segunda solução do par."
+          },
+          "similarity": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Similarity"
+          },
+          "band": {
+            "$ref": "#/components/schemas/SimilarityBand"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "similarity",
+          "band"
+        ],
+        "title": "MatrixPair"
+      },
+      "MatrixSolution": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "compared",
+              "syntax_error",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "syntax_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyntaxErrorInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "status"
+        ],
+        "title": "MatrixSolution"
+      },
       "MembersResponse": {
         "properties": {
           "active": {
@@ -3258,6 +3791,32 @@
           "removed"
         ],
         "title": "MembersResponse"
+      },
+      "PanelRule": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events",
+            "description": "Em quantas verificações a regra apareceu."
+          },
+          "occurrences": {
+            "type": "integer",
+            "title": "Occurrences",
+            "description": "Quantas vezes, no total, somando as verificações."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule_id",
+          "events",
+          "occurrences"
+        ],
+        "title": "PanelRule"
       },
       "PasswordChange": {
         "properties": {
@@ -3835,6 +4394,76 @@
         "title": "SimilarityMatch",
         "description": "Linhas do código A com a mesma estrutura de linhas do código B (S27-03)."
       },
+      "SimilarityMatrixRequest": {
+        "properties": {
+          "solutions": {
+            "items": {
+              "$ref": "#/components/schemas/ClassSolution"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "minItems": 2,
+            "title": "Solutions",
+            "description": "De 2 a 60 soluções da turma, somando até 128 KB (S40-02)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "solutions"
+        ],
+        "title": "SimilarityMatrixRequest"
+      },
+      "SimilarityMatrixResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "solutions": {
+            "items": {
+              "$ref": "#/components/schemas/MatrixSolution"
+            },
+            "type": "array",
+            "title": "Solutions",
+            "description": "Na ordem enviada."
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/MatrixPair"
+            },
+            "type": "array",
+            "title": "Pairs",
+            "description": "Até 200 pares, do mais parecido para o menos."
+          },
+          "groups": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Groups",
+            "description": "Grupos de 2 ou mais soluções, maiores primeiro."
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "solutions",
+          "pairs",
+          "groups",
+          "notice"
+        ],
+        "title": "SimilarityMatrixResponse",
+        "description": "Todos contra todos (S40-02): os pares mais parecidos primeiro e os grupos de soluções\nligadas por pares a partir da faixa \"Requer atenção\"."
+      },
       "SimilarityMetrics": {
         "properties": {
           "sequence": {
@@ -4249,6 +4878,74 @@
           "message"
         ],
         "title": "SyntaxErrorInfo"
+      },
+      "ValidateBatchRequest": {
+        "properties": {
+          "list_number": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "List Number",
+            "description": "Lista de exercícios (1 a 6)."
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchFile"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Files",
+            "description": "Até 20 arquivos por requisição; a página divide a turma em partes."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "list_number",
+          "files"
+        ],
+        "title": "ValidateBatchRequest"
+      },
+      "ValidateBatchResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "ruleset_version": {
+            "type": "string",
+            "title": "Ruleset Version"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchResult"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Um por arquivo, na ordem enviada."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "ruleset_version",
+          "results"
+        ],
+        "title": "ValidateBatchResponse"
       },
       "ValidateRequest": {
         "properties": {

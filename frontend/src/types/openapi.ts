@@ -398,6 +398,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/list-panel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Regras mais violadas numa lista do período, só com dados anônimos (S40-03)
+         * @description Para professores, monitores-chefes e o desenvolvedor: as contagens das views da telemetria (FR-17), sem código, conta, nome nem IP. Sem semestre, vale o período ativo.
+         */
+        get: operations["list_panel_api_v1_admin_list_panel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate": {
         parameters: {
             query?: never;
@@ -409,6 +429,27 @@ export interface paths {
         put?: never;
         /** Confere se o código respeita as permissões da lista, sem executá-lo */
         post: operations["validate_api_v1_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/validate/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confere até 20 arquivos de uma vez, para corrigir a turma inteira (S40-01)
+         * @description A turma inteira em partes (S40-01): cada arquivo passa pelos mesmos limites da verificação
+         *     e pela admissão, um de cada vez, e entra na telemetria anônima; nada é guardado.
+         */
+        post: operations["validate_batch_api_v1_validate_batch_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -443,6 +484,23 @@ export interface paths {
         put?: never;
         /** Compara uma solução com até 100 da turma (S27-02): o que toda a turma escreve quase não conta */
         post: operations["similarity_batch_api_v1_similarity_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/similarity/class-matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compara todas as soluções da turma entre si e agrupa as parecidas (S40-02) */
+        post: operations["similarity_matrix_api_v1_similarity_class_matrix_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -617,6 +675,49 @@ export interface components {
              * @description Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29).
              */
             ai_indicators: boolean;
+        };
+        /** BatchFile */
+        BatchFile: {
+            /**
+             * Name
+             * @description O nome do arquivo, que identifica o aluno na tabela (nada é guardado).
+             */
+            name: string;
+            /**
+             * Code
+             * @description O código do arquivo. Nunca é executado nem guardado.
+             */
+            code: string;
+        };
+        /** BatchResult */
+        BatchResult: {
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "valid" | "invalid" | "syntax_error" | "rejected";
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Rule Ids
+             * @description As regras violadas, sem repetição, em ordem.
+             */
+            rule_ids: string[];
+            syntax_error?: components["schemas"]["SyntaxErrorInfo"] | null;
+            /**
+             * Message
+             * @description Por que o arquivo foi recusado.
+             */
+            message?: string | null;
+            /**
+             * Gabarito Similarity
+             * @description Semelhança com o gabarito da questão, quando houver.
+             */
+            gabarito_similarity?: number | null;
         };
         /** ClassSolution */
         ClassSolution: {
@@ -889,6 +990,36 @@ export interface components {
              */
             gabaritos?: string[];
         };
+        /**
+         * ListPanelResponse
+         * @description O painel de uma lista do período (S40-03, US-16): só contagens anônimas da telemetria.
+         */
+        ListPanelResponse: {
+            /** Semester */
+            semester: string;
+            /** List Number */
+            list_number: number;
+            /**
+             * Top Rules
+             * @description As 15 regras mais violadas na lista.
+             */
+            top_rules: components["schemas"]["PanelRule"][];
+            /**
+             * Events
+             * @description Verificações da lista no período.
+             */
+            events: number;
+            /**
+             * Syntax Errors
+             * @description Quantas delas tiveram erro de sintaxe.
+             */
+            syntax_errors: number;
+            /**
+             * Adoption Pct
+             * @description Porcentagem da equipe ativa que já usou a lista (P-09, critério 2).
+             */
+            adoption_pct: number | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -1029,6 +1160,35 @@ export interface components {
              */
             items: components["schemas"]["ManagementLogEntry"][];
         };
+        /** MatrixPair */
+        MatrixPair: {
+            /**
+             * A
+             * @description O rótulo da primeira solução do par.
+             */
+            a: string;
+            /**
+             * B
+             * @description O rótulo da segunda solução do par.
+             */
+            b: string;
+            /** Similarity */
+            similarity: number;
+            band: components["schemas"]["SimilarityBand"];
+        };
+        /** MatrixSolution */
+        MatrixSolution: {
+            /** Label */
+            label: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "compared" | "syntax_error" | "rejected";
+            syntax_error?: components["schemas"]["SyntaxErrorInfo"] | null;
+            /** Message */
+            message?: string | null;
+        };
         /** MembersResponse */
         MembersResponse: {
             /** Active */
@@ -1038,6 +1198,21 @@ export interface components {
              * @description Ex-monitores, conselheiros e inativos.
              */
             removed: components["schemas"]["ManagedAccount"][];
+        };
+        /** PanelRule */
+        PanelRule: {
+            /** Rule Id */
+            rule_id: string;
+            /**
+             * Events
+             * @description Em quantas verificações a regra apareceu.
+             */
+            events: number;
+            /**
+             * Occurrences
+             * @description Quantas vezes, no total, somando as verificações.
+             */
+            occurrences: number;
         };
         /** PasswordChange */
         PasswordChange: {
@@ -1256,6 +1431,40 @@ export interface components {
             /** B Last */
             b_last: number;
         };
+        /** SimilarityMatrixRequest */
+        SimilarityMatrixRequest: {
+            /**
+             * Solutions
+             * @description De 2 a 60 soluções da turma, somando até 128 KB (S40-02).
+             */
+            solutions: components["schemas"]["ClassSolution"][];
+        };
+        /**
+         * SimilarityMatrixResponse
+         * @description Todos contra todos (S40-02): os pares mais parecidos primeiro e os grupos de soluções
+         *     ligadas por pares a partir da faixa "Requer atenção".
+         */
+        SimilarityMatrixResponse: {
+            /** Request Id */
+            request_id: string;
+            /**
+             * Solutions
+             * @description Na ordem enviada.
+             */
+            solutions: components["schemas"]["MatrixSolution"][];
+            /**
+             * Pairs
+             * @description Até 200 pares, do mais parecido para o menos.
+             */
+            pairs: components["schemas"]["MatrixPair"][];
+            /**
+             * Groups
+             * @description Grupos de 2 ou mais soluções, maiores primeiro.
+             */
+            groups: string[][];
+            /** Notice */
+            notice: string;
+        };
         /**
          * SimilarityMetrics
          * @description As métricas por trás da similaridade (S27-01, ADR-07), em porcentagem.
@@ -1437,6 +1646,33 @@ export interface components {
             col: number;
             /** Message */
             message: string;
+        };
+        /** ValidateBatchRequest */
+        ValidateBatchRequest: {
+            /**
+             * List Number
+             * @description Lista de exercícios (1 a 6).
+             */
+            list_number: number;
+            /** Question Id */
+            question_id?: string | null;
+            /**
+             * Files
+             * @description Até 20 arquivos por requisição; a página divide a turma em partes.
+             */
+            files: components["schemas"]["BatchFile"][];
+        };
+        /** ValidateBatchResponse */
+        ValidateBatchResponse: {
+            /** Request Id */
+            request_id: string;
+            /** Ruleset Version */
+            ruleset_version: string;
+            /**
+             * Results
+             * @description Um por arquivo, na ordem enviada.
+             */
+            results: components["schemas"]["BatchResult"][];
         };
         /** ValidateRequest */
         ValidateRequest: {
@@ -2838,6 +3074,65 @@ export interface operations {
             };
         };
     };
+    list_panel_api_v1_admin_list_panel_get: {
+        parameters: {
+            query: {
+                list_number: number;
+                semester?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPanelResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: o cargo de quem chama não permite a ação (FR-27). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: lista fora de 1 a 6 ou semestre inválido. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     validate_api_v1_validate_post: {
         parameters: {
             query?: never;
@@ -2906,6 +3201,84 @@ export interface operations {
                 };
             };
             /** @description OVERLOADED (sem vaga para a análise), ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    validate_batch_api_v1_validate_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateBatchResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: corpo acima de 128 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED ou UNKNOWN_QUESTION. Um arquivo recusado não recusa os outros: ele volta com o status rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED ou ANALYZER_UNAVAILABLE: a parte pode ser enviada de novo. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -3044,6 +3417,84 @@ export interface operations {
                 };
             };
             /** @description INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (solução comparada complexa demais). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede. Veja retry_after_s. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    similarity_matrix_api_v1_similarity_class_matrix_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimilarityMatrixRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarityMatrixResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: corpo acima de 128 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: entrada inválida (menos de 2 ou mais de 60 soluções). */
             422: {
                 headers: {
                     [name: string]: unknown;

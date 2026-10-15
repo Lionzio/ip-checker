@@ -25,6 +25,11 @@ import type {
   ValidateRequest,
   ValidateResponse,
   Violation,
+  BatchResult,
+  ListPanel,
+  MatrixPair,
+  SimilarityMatrixResponse,
+  ValidateBatchResponse,
 } from "../types/api";
 import { type ApiClient, ApiError } from "./client";
 
@@ -567,6 +572,91 @@ export function createMockClient({
         metrics: { sequence: similarity, tree_dice: similarity, tree_containment: containment },
         matches: simulatedMatches(codeA, codeB),
       };
+    },
+
+    async compareMatrix(solutions, signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      if (solutions.length < 2 || solutions.length > 60) {
+        throw new ApiError(422, "INVALID_INPUT", "Envie de 2 a 60 soluções.");
+      }
+      const pairs: MatrixPair[] = [];
+      for (let first = 0; first < solutions.length; first += 1) {
+        for (let second = first + 1; second < solutions.length; second += 1) {
+          const a = solutions[first];
+          const b = solutions[second];
+          if (a === undefined || b === undefined) continue;
+          const compared = await client.compare(a.code, b.code, signal);
+          if (compared.similarity === null || compared.band === null) continue;
+          pairs.push({ a: a.label, b: b.label, similarity: compared.similarity, band: compared.band });
+        }
+      }
+      pairs.sort((x, y) => y.similarity - x.similarity);
+      // Grupos simulados: as soluções ligadas por pares a partir de 90% (a faixa "Requer atenção").
+      const parent = new Map(solutions.map((solution) => [solution.label, solution.label]));
+      const root = (label: string): string => {
+        const up = parent.get(label) ?? label;
+        return up === label ? label : root(up);
+      };
+      for (const pair of pairs.filter((item) => item.similarity >= 90)) parent.set(root(pair.b), root(pair.a));
+      const members = new Map<string, string[]>();
+      for (const solution of solutions) members.set(root(solution.label), [...(members.get(root(solution.label)) ?? []), solution.label]);
+      return {
+        request_id: "simulado",
+        solutions: solutions.map((solution) => ({ label: solution.label, status: "compared" as const, syntax_error: null, message: null })),
+        pairs: pairs.slice(0, 200),
+        groups: [...members.values()].filter((group) => group.length > 1),
+        notice: SIMULATED_NOTICE,
+      } satisfies SimilarityMatrixResponse;
+    },
+
+    async validateBatch(request, signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      if (request.files.length > 20) throw new ApiError(422, "INVALID_INPUT", "Até 20 arquivos por parte.");
+      const results: BatchResult[] = [];
+      let version = RULESET_VERSION;
+      for (const file of request.files) {
+        try {
+          const checked = await client.validate(
+            { code: file.code, list_number: request.list_number, question_id: request.question_id ?? null },
+            signal,
+          );
+          version = checked.ruleset_version;
+          const counts: Record<string, number> = {};
+          for (const violation of checked.violations) counts[violation.category] = (counts[violation.category] ?? 0) + 1;
+          results.push({
+            name: file.name,
+            status: checked.status,
+            counts,
+            rule_ids: [...new Set(checked.violations.map((violation) => violation.rule_id))],
+            syntax_error: checked.syntax_error,
+            message: null,
+            gabarito_similarity: checked.gabarito?.similarity ?? null,
+          });
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status >= 500 || error.status === 429) throw error;
+          results.push({ name: file.name, status: "rejected", counts: {}, rule_ids: [], syntax_error: null, message: error.message, gabarito_similarity: null });
+        }
+      }
+      return { request_id: "simulado", ruleset_version: version, results } satisfies ValidateBatchResponse;
+    },
+
+    async listPanel(listNumber, semester, signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      return {
+        semester: semester ?? "2026.2",
+        list_number: listNumber,
+        top_rules: [
+          { rule_id: "R-34", events: 18, occurrences: 25 },
+          { rule_id: "R-11", events: 7, occurrences: 9 },
+          { rule_id: "R-04", events: 5, occurrences: 6 },
+        ],
+        events: 60,
+        syntax_errors: 8,
+        adoption_pct: 62.5,
+      } satisfies ListPanel;
     },
 
     async compareClass(code, solutions, signal) {

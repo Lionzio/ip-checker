@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { BAND_STYLES, PERCENT } from "../bands";
 import { type CodeEditorHandle, CodeEditor, type LineRange } from "../components/CodeEditor";
 import { Button, Card, ErrorText, LineChip, SyntaxErrorBox } from "../components/ui";
@@ -17,6 +17,9 @@ import type {
 } from "../types/api";
 import { INPUT } from "../ui";
 
+/** O todos contra todos (S40-02) é carregado só quando escolhido (NFR-03). */
+const ClassMatrix = lazy(() => import("../components/ClassMatrix").then((module) => ({ default: module.ClassMatrix })));
+
 /**
  * Painel de plágio (S17-03, FR-29; S27-02 e S27-03): duas soluções lado a lado (empilhadas em telas
  * estreitas) com os trechos em comum realçados, ou uma solução contra a turma, em que o que todos
@@ -27,7 +30,7 @@ export const PLAGIARISM_TIMEOUT_MS = 15_000;
 /** Contra a turma, o analisador tem até 10 s. */
 export const CLASS_TIMEOUT_MS = 20_000;
 
-type Mode = "pair" | "class";
+type Mode = "pair" | "class" | "matrix";
 
 interface PlagiarismProps {
   /** As listas dão as questões com gabarito (S32-07). */
@@ -152,6 +155,14 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
     else setClassError(outcome.message);
   }
 
+  // Do todos contra todos (S40-02) para os dois códigos lado a lado, já comparados.
+  function pairFromMatrix(first: string, second: string) {
+    setMode("pair");
+    setCodeA(first);
+    setCodeB(second);
+    void comparePair(first, second);
+  }
+
   function sideBySide(label: string) {
     const code = classResult?.codes.get(label);
     if (code === undefined) return;
@@ -181,6 +192,9 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
         </Button>
         <Button variant={mode === "class" ? "primary" : "secondary"} aria-pressed={mode === "class"} onClick={() => setMode("class")}>
           Contra a turma
+        </Button>
+        <Button variant={mode === "matrix" ? "primary" : "secondary"} aria-pressed={mode === "matrix"} onClick={() => setMode("matrix")}>
+          Todos contra todos
         </Button>
       </div>
 
@@ -268,7 +282,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
             {compared !== null && compared.result.gabarito && <GabaritoPair gabarito={compared.result.gabarito} />}
           </section>
         </form>
-      ) : (
+      ) : mode === "class" ? (
         <form onSubmit={(event) => void submitClass(event)} className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
@@ -326,6 +340,10 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
             {classResult !== null && <ClassResult response={classResult.response} onSideBySide={sideBySide} />}
           </section>
         </form>
+      ) : (
+        <Suspense fallback={<p role="status" className="text-sm">Carregando…</p>}>
+          <ClassMatrix client={client} onUnauthenticated={onUnauthenticated} onSideBySide={pairFromMatrix} />
+        </Suspense>
       )}
     </div>
   );

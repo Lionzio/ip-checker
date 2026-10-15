@@ -64,7 +64,7 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["login"],
-      testIgnore: /(limits|account|feedback|batch|plagiarism-tree|indicators|checker-layout)\.spec\.ts/,
+      testIgnore: /(limits|account|feedback|batch|turma|plagiarism-tree|indicators|checker-layout)\.spec\.ts/,
     },
     {
       // Depois do principal: as contas novas não aparecem nas telas que ele confere.
@@ -88,7 +88,7 @@ export default defineConfig({
       name: "feedback",
       use: { ...devices["Desktop Chrome"], storageState: storageFor("feedback") },
       dependencies: ["contas"],
-      testMatch: /(feedback|batch|plagiarism-tree|indicators|checker-layout)\.spec\.ts/,
+      testMatch: /(feedback|batch|turma|plagiarism-tree|indicators|checker-layout)\.spec\.ts/,
       fullyParallel: false,
     },
     {

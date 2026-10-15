@@ -372,3 +372,84 @@ def _hash(gram: Sequence[str]) -> int:
     # blake2b em vez de hash(): estável entre processos e execuções.
     digest = hashlib.blake2b("\x1f".join(gram).encode("utf-8"), digest_size=8).digest()
     return int.from_bytes(digest, "big")
+
+
+#: Todos contra todos (S40-02): até 60 soluções, ou 1.770 pares, para caber no prazo da análise.
+MAX_MATRIX = 60
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixPair:
+    """Um par de soluções da turma (índices na ordem enviada) e a semelhança pela árvore."""
+
+    first: int
+    second: int
+    percent: float
+    tree: TreeScores
+
+
+@dataclass(frozen=True, slots=True)
+class MatrixResult:
+    """Todos contra todos (S40-02): cada solução preparada, os pares e os grupos parecidos."""
+
+    #: Por solução, na ordem enviada: ``None`` se foi comparada, ou o problema que a impediu.
+    problems: tuple[SyntaxProblem | ClassRejected | None, ...]
+    #: Os pares das soluções válidas, do mais parecido para o menos.
+    pairs: tuple[MatrixPair, ...]
+    #: Grupos de 2 ou mais soluções ligadas por pares a partir de ``group_min``, maiores primeiro.
+    groups: tuple[tuple[int, ...], ...]
+
+
+def compare_all(
+    sources: Sequence[str],
+    *,
+    target: tuple[int, int],
+    group_min: float,
+    limits: Limits = DEFAULT_LIMITS,
+) -> MatrixResult:
+    """Compara cada solução da turma com todas as outras, com o peso pelo IDF da turma inteira.
+
+    Como no "Contra a turma", o que todos escrevem quase não conta. Os grupos são os componentes
+    ligados pelos pares a partir de ``group_min`` (a faixa "Requer atenção"): A parecida com B e B
+    com C ficam no mesmo grupo, mesmo que A e C não passem da faixa.
+    """
+    items: list[Prepared | SyntaxProblem | ClassRejected] = []
+    for source in sources[:MAX_MATRIX]:
+        try:
+            items.append(prepare(source, target=target, limits=limits))
+        except InputError as exc:
+            items.append(ClassRejected(exc.message))
+    valid = [(index, item) for index, item in enumerate(items) if isinstance(item, Prepared)]
+    idf = class_idf([item.tree for _, item in valid])
+    pairs: list[MatrixPair] = []
+    for position, (first, left) in enumerate(valid):
+        for second, right in valid[position + 1 :]:
+            tree = scores(left.tree, right.tree, idf)
+            percent = round(100 * _tree_score(left, right, tree), 1)
+            pairs.append(MatrixPair(first, second, percent, tree))
+    pairs.sort(key=lambda pair: (-pair.percent, pair.first, pair.second))
+    return MatrixResult(
+        problems=tuple(None if isinstance(item, Prepared) else item for item in items),
+        pairs=tuple(pairs),
+        groups=_groups(len(items), [p for p in pairs if p.percent >= group_min]),
+    )
+
+
+def _groups(size: int, linked: Sequence[MatrixPair]) -> tuple[tuple[int, ...], ...]:
+    parent = list(range(size))
+
+    def root(node: int) -> int:
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for pair in linked:
+        first, second = root(pair.first), root(pair.second)
+        if first != second:
+            parent[max(first, second)] = min(first, second)
+    members: dict[int, list[int]] = {}
+    for node in range(size):
+        members.setdefault(root(node), []).append(node)
+    found = [tuple(group) for group in members.values() if len(group) > 1]
+    return tuple(sorted(found, key=lambda group: (-len(group), group[0])))

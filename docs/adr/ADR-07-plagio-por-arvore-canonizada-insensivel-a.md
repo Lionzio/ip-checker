@@ -79,3 +79,25 @@ desfaz um par.
 Os cinco pares novos entram no corpus (`tests/similarity/pares.yaml`), com mínimo de 95% para as
 duas cópias e máximo de 79,9% para as três independentes.
 
+
+## Revisão da S40-02 (15/10/2026): todos contra todos
+
+**Contexto:** o "Contra a turma" (S27-02) compara uma solução com até 100 da turma; para achar quem
+copiou de quem numa lista inteira, o monitor precisava repetir a comparação aluno por aluno.
+
+**Decisão:** o motor ganha o `compare_all`, que compara cada solução com todas as outras, com o mesmo
+multiconjunto, a mesma árvore e o mesmo IDF da turma inteira do "Contra a turma" (o que toda a
+turma escreve quase não conta). Além dos pares, do mais parecido para o menos, ele devolve os
+**grupos**: os componentes ligados por pares a partir de "Requer atenção" (90%), por *union-find*.
+A ligação é transitiva de propósito: se A parece com B e B com C, os três aparecem juntos, mesmo
+que A e C não passem da faixa, porque é assim que uma cópia passa de mão em mão. O grupo só aponta
+o que ler; a decisão continua sendo do monitor, no lado a lado.
+
+**Limites:** de 2 a 60 soluções e 120 KB juntas (1.770 pares); a API devolve os 200 pares mais
+parecidos. Medido em 15/10/2026 na máquina do autor: 60 soluções de 1,2 KB em 0,35 s, dentro dos
+10 s do analisador para a turma, com folga para a 0,1 CPU do piloto. As 100 soluções do NFR-30
+ficam para a S46-03.
+
+**Teste:** uma turma sintética de 30 soluções, com dois grupos de cópias disfarçadas (nomes
+trocados, ordem das entradas, `elif` reescrito) e o resto independente; os dois grupos são achados,
+e nenhuma solução independente entra neles (`tests/test_similarity_matrix.py`).

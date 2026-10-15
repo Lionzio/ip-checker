@@ -18,12 +18,18 @@ import type {
   SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
+  ListPanel,
+  SimilarityMatrixResponse,
+  ValidateBatchRequest,
+  ValidateBatchResponse,
 } from "../types/api";
 
 /** Verificação do código: o cliente HTTP real (S9-02) ou o simulado do modo demonstração. */
 export interface ValidationClient {
   listLists(signal?: AbortSignal): Promise<ListInfo[]>;
   validate(request: ValidateRequest, signal?: AbortSignal): Promise<ValidateResponse>;
+  /** Uma parte da turma, até 20 arquivos (S40-01); a página divide a turma em partes. */
+  validateBatch(request: ValidateBatchRequest, signal?: AbortSignal): Promise<ValidateBatchResponse>;
 }
 
 /** Sessão da equipe (Sprint 13): o cookie é HttpOnly, então a página só pergunta quem está logado. */
@@ -67,6 +73,8 @@ export interface AdminClient {
   reactivate(id: string, role: Role): Promise<void>;
   /** Registro das ações (Sprint 23, REC-06), da mais recente: só desenvolvedor e professores. */
   managementLog(signal?: AbortSignal): Promise<ManagementLogEntry[]>;
+  /** O painel de uma lista (S40-03): regras mais violadas, só com dados anônimos. */
+  listPanel(listNumber: number, semester?: string | null, signal?: AbortSignal): Promise<ListPanel>;
 }
 
 /** Painel de plágio (Sprint 17): compara duas soluções no analisador isolado. */
@@ -75,6 +83,8 @@ export interface PlagiarismClient {
   compare(codeA: string, codeB: string, signal?: AbortSignal, questionId?: string | null): Promise<SimilarityResponse>;
   /** Uma solução contra até 100 da turma (Sprint 27): o que todos escrevem quase não conta. */
   compareClass(code: string, solutions: ClassSolution[], signal?: AbortSignal): Promise<SimilarityClassResponse>;
+  /** Todos contra todos (S40-02): os pares mais parecidos e os grupos de soluções ligadas. */
+  compareMatrix(solutions: ClassSolution[], signal?: AbortSignal): Promise<SimilarityMatrixResponse>;
 }
 
 /**

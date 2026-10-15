@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 import { AppFooter } from "./components/AppFooter";
 import { AppHeader } from "./components/AppHeader";
@@ -21,6 +21,9 @@ import { Verify } from "./pages/Verify";
 import type { ApiClient } from "./services/client";
 import { SessionProvider } from "./session";
 import { useSession } from "./sessionContext";
+
+/** A Turma (S40-01) é carregada só quando aberta, para não pesar no primeiro carregamento (NFR-03). */
+const ClassBatch = lazy(() => import("./pages/ClassBatch").then((module) => ({ default: module.ClassBatch })));
 
 interface AppProps {
   client: ApiClient;
@@ -149,6 +152,18 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               element={
                 state.status === "signed-in" ? (
                   <Plagiarism client={client} onUnauthenticated={expireToLogin} />
+                ) : (
+                  <Navigate to="/entrar" replace />
+                )
+              }
+            />
+            <Route
+              path="/turma"
+              element={
+                state.status === "signed-in" ? (
+                  <Suspense fallback={<p role="status" className="py-4 text-sm">Carregando…</p>}>
+                    <ClassBatch client={client} onUnauthenticated={expireToLogin} />
+                  </Suspense>
                 ) : (
                   <Navigate to="/entrar" replace />
                 )

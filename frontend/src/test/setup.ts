@@ -3,8 +3,9 @@ import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 
 // A espera padrão de 1 s dos findBy estourava com a máquina carregada, na CI local, sem nenhum
-// defeito no código (Sprint 37): 3 s dão folga sem esconder uma tela que não aparece.
-configure({ asyncUtilTimeout: 3000 });
+// defeito no código (Sprint 37). Na Sprint 40, com a máquina carregada, até 3 s estouraram ao
+// esperar as listas: 5 s dão folga sem esconder uma tela que não aparece (o teste ainda falha).
+configure({ asyncUtilTimeout: 5000 });
 
 afterEach(() => {
   cleanup();

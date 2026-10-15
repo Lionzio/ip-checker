@@ -120,6 +120,31 @@ def months_before(moment: datetime, months: int) -> datetime:
 
 
 @dataclass(frozen=True, slots=True)
+class RuleCount:
+    """Uma regra violada numa lista do período (S40-03): só contagens anônimas da telemetria."""
+
+    rule_id: str
+    #: Em quantas verificações a regra apareceu e quantas vezes no total.
+    events: int
+    occurrences: int
+
+
+@dataclass(frozen=True, slots=True)
+class ListPanel:
+    """O painel de uma lista do período (S40-03, US-16): nada de aluno nem de conta."""
+
+    semester: str
+    list_number: int
+    #: As regras mais violadas, das mais frequentes para as menos, até 15.
+    top_rules: tuple[RuleCount, ...]
+    #: Verificações da lista no período e quantas tiveram erro de sintaxe.
+    events: int
+    syntax_errors: int
+    #: Porcentagem da equipe ativa que já usou a lista (critério 2 da P-09); ``None`` sem dados.
+    adoption_pct: float | None
+
+
+@dataclass(frozen=True, slots=True)
 class ManagementRecord:
     """Uma ação de gerenciamento (REC-06): quem fez o quê sobre quem, e quando.
 

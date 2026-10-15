@@ -23,6 +23,15 @@ export type ClassSolution = Schemas["ClassSolution"];
 export type SimilarityClassResponse = Schemas["SimilarityClassResponse"];
 export type SimilarityClassItem = Schemas["SimilarityClassItem"];
 export type Violation = Schemas["Violation"];
+/** A turma inteira (Sprint 40). */
+export type ValidateBatchRequest = Schemas["ValidateBatchRequest"];
+export type ValidateBatchResponse = Schemas["ValidateBatchResponse"];
+export type BatchResult = Schemas["BatchResult"];
+export type BatchFile = Schemas["BatchFile"];
+export type SimilarityMatrixResponse = Schemas["SimilarityMatrixResponse"];
+export type MatrixPair = Schemas["MatrixPair"];
+export type MatrixSolution = Schemas["MatrixSolution"];
+export type ListPanel = Schemas["ListPanelResponse"];
 /** Indícios de uso de IA, só para a equipe (Sprint 29, ADR-08). */
 export type Indicators = Schemas["Indicators"];
 export type Indicator = Schemas["Indicator"];

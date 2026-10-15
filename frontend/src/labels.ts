@@ -26,6 +26,7 @@ export const BUSY_TITLES: Partial<Record<ApiErrorCode, string>> = {
 export const NAV_LABELS = {
   checker: "Verificar",
   plagiarism: "Plágio",
+  batch: "Turma",
   admin: "Gerenciar",
   profile: "Perfil",
   signOut: "Sair",
@@ -36,6 +37,7 @@ export const PAGE_TITLES = {
   landing: "Acesso restrito",
   checker: "Verificação",
   plagiarism: "Plágio",
+  batch: "Turma inteira",
   admin: "Gerenciamento",
   profile: "Perfil",
   login: "Entrar",

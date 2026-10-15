@@ -136,7 +136,7 @@ describe("Menu da conta (S37-04)", () => {
     renderAt("/", true);
     const nav = await screen.findByRole("navigation", { name: "Principal" });
 
-    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual(["Verificar", "Plágio", "Gerenciar"]);
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual(["Verificar", "Plágio", "Turma", "Gerenciar"]);
     expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
   });
 });

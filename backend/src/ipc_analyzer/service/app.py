@@ -40,9 +40,11 @@ from ipc_analyzer.engine.parse import SyntaxProblem, require_runtime
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
 from ipc_analyzer.engine.similarity import (
     MAX_CLASS,
+    MAX_MATRIX,
     ClassMatch,
     ClassRejected,
     InvalidSide,
+    MatrixResult,
     Similarity,
 )
 from ipc_analyzer.engine.similarity_tree import TreeScores
@@ -326,6 +328,58 @@ class ClassResponse(BaseModel):
         return cls(status="compared", syntax_error=None, results=items)
 
 
+class MatrixRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    codes: list[str] = Field(min_length=2, max_length=MAX_MATRIX)
+    #: A partir de quanto um par liga duas soluções num grupo (a faixa "Requer atenção", S40-02).
+    group_min: float = Field(ge=0, le=100)
+
+
+class MatrixSolutionOut(BaseModel):
+    status: Literal["compared", "syntax_error", "rejected"]
+    syntax_error: SyntaxErrorOut | None = None
+    message: str | None = None
+
+
+class MatrixPairOut(BaseModel):
+    first: int
+    second: int
+    percent: float
+
+
+#: Os pares que voltam à API: os mais parecidos, que é o que a tela mostra (S40-02).
+MAX_MATRIX_PAIRS = 300
+
+
+class MatrixResponse(BaseModel):
+    """Todos contra todos (S40-02): cada solução, os pares mais parecidos e os grupos."""
+
+    solutions: list[MatrixSolutionOut]
+    pairs: list[MatrixPairOut]
+    groups: list[list[int]]
+
+    @classmethod
+    def from_result(cls, result: MatrixResult) -> MatrixResponse:
+        solutions = []
+        for problem in result.problems:
+            if problem is None:
+                solutions.append(MatrixSolutionOut(status="compared"))
+            elif isinstance(problem, ClassRejected):
+                solutions.append(MatrixSolutionOut(status="rejected", message=problem.message))
+            else:
+                where = SyntaxErrorOut(line=problem.line, col=problem.col, message=problem.message)
+                solutions.append(MatrixSolutionOut(status="syntax_error", syntax_error=where))
+        return cls(
+            solutions=solutions,
+            pairs=[
+                MatrixPairOut(first=pair.first, second=pair.second, percent=pair.percent)
+                for pair in result.pairs[:MAX_MATRIX_PAIRS]
+            ],
+            groups=[list(group) for group in result.groups],
+        )
+
+
 class FeedbackItemOut(BaseModel):
     kind: Literal["uso", "falta"]
     label: str
@@ -588,6 +642,19 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         response = ClassResponse.from_result(result)
         request.state.outcome = response.status
         return response
+
+    @app.post("/internal/similarity/matrix")
+    async def similarity_matrix(
+        body: MatrixRequest,
+        request: Request,
+        pool: Annotated[AnalyzerPool, Depends(_pool)],
+    ) -> MatrixResponse:
+        request.state.payload_bytes = sum(
+            len(code.encode("utf-8", errors="surrogatepass")) for code in body.codes
+        )
+        result = await pool.compare_all(body.codes, body.group_min, deadline=_deadline(request))
+        request.state.outcome = "compared"
+        return MatrixResponse.from_result(result)
 
     @app.get("/internal/ruleset/manifest")
     async def manifest(

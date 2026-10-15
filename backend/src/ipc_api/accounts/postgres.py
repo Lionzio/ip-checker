@@ -21,11 +21,13 @@ from ipc_api.accounts.models import (
     AccountConflict,
     DeveloperSeed,
     HousekeepingCounts,
+    ListPanel,
     ManagementRecord,
     NewAccount,
     NewGoogleAccount,
     QuotaExceeded,
     Role,
+    RuleCount,
     SessionRecord,
     SignupMethod,
     Status,
@@ -602,6 +604,40 @@ class PostgresAccountStore:
                 account_id,
             )
         return None
+
+    async def list_panel(self, semester: str, list_number: int) -> ListPanel:
+        # Só as views v_* (ipc_reader, migração 0007): contagens, sem código, conta nem IP.
+        async with self._op(), self._pool.acquire() as connection:
+            rules = await connection.fetch(
+                "SELECT rule_id, sum(events)::int AS events, sum(occurrences)::int AS occurrences "
+                "FROM telemetry.v_top_rules_by_list WHERE semester = $1 AND list_number = $2 "
+                "GROUP BY rule_id ORDER BY events DESC, occurrences DESC, rule_id LIMIT 15",
+                semester,
+                list_number,
+            )
+            syntax = await connection.fetchrow(
+                "SELECT coalesce(sum(events), 0)::int AS events, "
+                "coalesce(sum(syntax_errors), 0)::int AS syntax_errors "
+                "FROM telemetry.v_syntax_error_rate WHERE semester = $1 AND list_number = $2",
+                semester,
+                list_number,
+            )
+            adoption = await connection.fetchval(
+                "SELECT adoption_pct FROM telemetry.v_team_adoption_by_list "
+                "WHERE semester = $1 AND list_number = $2",
+                semester,
+                list_number,
+            )
+        return ListPanel(
+            semester=semester,
+            list_number=list_number,
+            top_rules=tuple(
+                RuleCount(row["rule_id"], row["events"], row["occurrences"]) for row in rules
+            ),
+            events=syntax["events"] if syntax else 0,
+            syntax_errors=syntax["syntax_errors"] if syntax else 0,
+            adoption_pct=float(adoption) if adoption is not None else None,
+        )
 
     async def management_log(self, limit: int, now: datetime) -> list[ManagementRecord]:
         async with self._op(), self._pool.acquire() as connection, connection.transaction():

@@ -459,3 +459,44 @@ def test_a_lone_carriage_return_in_the_class_is_not_a_server_error(real_api: Tes
 
     assert response.status_code == 200
     assert response.json()["results"][0]["similarity"] == 100.0
+
+
+def test_all_against_all_groups_the_copies_and_labels_every_pair(real_api: TestClient) -> None:
+    """S40-02: pela API e o analisador de verdade, a cópia renomeada forma um grupo."""
+    copy = (
+        ORIGINAL.replace("nota", "media").replace("frequencia", "presenca")
+        .replace("situacao", "resultado")
+    )  # fmt: skip
+    other = "n = int(input())\nif n % 2 == 0:\n    print('par')\nelse:\n    print('ímpar')\n"
+    solutions = [
+        {"label": "Ana", "code": ORIGINAL},
+        {"label": "Bruno", "code": other},
+        {"label": "Carla", "code": copy},
+        {"label": "Davi", "code": "if x\n"},
+    ]
+
+    response = real_api.post("/api/v1/similarity/class-matrix", json={"solutions": solutions})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [item["status"] for item in body["solutions"]] == [
+        "compared",
+        "compared",
+        "compared",
+        "syntax_error",
+    ]
+    assert body["groups"] == [["Ana", "Carla"]]
+    first = body["pairs"][0]
+    assert {first["a"], first["b"]} == {"Ana", "Carla"}
+    assert first["band"]["label"] == "Plágio"
+    assert len(body["pairs"]) == 3
+    assert body["notice"] == NOTICE
+
+
+def test_all_against_all_needs_two_to_sixty_solutions(real_api: TestClient) -> None:
+    one = [{"label": "A", "code": "x = 1\n"}]
+    many = [{"label": str(n), "code": f"x = {n}\n"} for n in range(61)]
+
+    for solutions in (one, many):
+        response = real_api.post("/api/v1/similarity/class-matrix", json={"solutions": solutions})
+        assert response.status_code == 422
