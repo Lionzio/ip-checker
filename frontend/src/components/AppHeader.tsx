@@ -62,6 +62,11 @@ export function AppHeader({ account, onSignOut }: AppHeaderProps) {
                     {NAV_LABELS.plagiarism}
                   </NavLink>
                 </li>
+                <li>
+                  <NavLink to="/turma" className={navClass}>
+                    {NAV_LABELS.batch}
+                  </NavLink>
+                </li>
                 {account.can_manage && (
                   <li>
                     <NavLink to="/gerenciar" className={navClass}>

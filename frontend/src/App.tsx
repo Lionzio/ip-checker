@@ -11,6 +11,7 @@ import { Checker } from "./pages/Checker";
 import { GoogleComplete } from "./pages/GoogleComplete";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
+import { ClassBatch } from "./pages/ClassBatch";
 import { Plagiarism } from "./pages/Plagiarism";
 import { Privacy } from "./pages/Privacy";
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -149,6 +150,16 @@ function Shell({ client, demoMode }: Required<AppProps>) {
               element={
                 state.status === "signed-in" ? (
                   <Plagiarism client={client} onUnauthenticated={expireToLogin} />
+                ) : (
+                  <Navigate to="/entrar" replace />
+                )
+              }
+            />
+            <Route
+              path="/turma"
+              element={
+                state.status === "signed-in" ? (
+                  <ClassBatch client={client} onUnauthenticated={expireToLogin} />
                 ) : (
                   <Navigate to="/entrar" replace />
                 )

@@ -22,6 +22,9 @@ import type {
   SimilarityResponse,
   ValidateRequest,
   ValidateResponse,
+  ListPanel,
+  SimilarityMatrixResponse,
+  ValidateBatchResponse,
 } from "../types/api";
 import { type ApiClient, ApiError } from "./client";
 
@@ -141,6 +144,12 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
         signal,
       );
     },
+    compareMatrix(solutions, signal) {
+      return call<SimilarityMatrixResponse>("/api/v1/similarity/class-matrix", json("POST", { solutions }), signal);
+    },
+    validateBatch(request, signal) {
+      return call<ValidateBatchResponse>("/api/v1/validate/batch", json("POST", request), signal);
+    },
     compareClass(code, solutions, signal) {
       return call<SimilarityClassResponse>(
         "/api/v1/similarity/batch",
@@ -180,6 +189,11 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     },
     async reactivate(id, role) {
       await call<null>(`/api/v1/admin/members/${encodeURIComponent(id)}/reactivate`, json("POST", { role }));
+    },
+    listPanel(listNumber, semester, signal) {
+      const query = new URLSearchParams({ list_number: String(listNumber) });
+      if (semester) query.set("semester", semester);
+      return call<ListPanel>(`/api/v1/admin/list-panel?${query.toString()}`, { method: "GET" }, signal);
     },
     async managementLog(signal) {
       const body = await call<{ items: ManagementLogEntry[] }>("/api/v1/admin/log", { method: "GET" }, signal);
