@@ -20,8 +20,9 @@ from .engine_benchmark import (
     LARGE_RUNS,
     MAX_CHECKED_BYTES,
     RUNS,
+    Measure,
+    confirmed_regressions,
     measure,
-    regressions,
     too_slow,
 )
 
@@ -77,17 +78,20 @@ INPUTS: dict[str, tuple[int, str]] = {
 
 def test_the_engine_stays_within_the_budget_and_the_baseline() -> None:
     ruleset = load_ruleset(RULESETS)
-    measures = {
-        name: measure(
+    big = INPUTS["grande_50kb"][1]
+
+    def measure_input(name: str) -> Measure:
+        if name == "plagio_50kb":
+            return measure(
+                lambda: compare_sources(big, big, target=ruleset.target_version), LARGE_RUNS
+            )
+        lst, code = INPUTS[name]
+        return measure(
             partial(analyze_source, code, list_number=lst, ruleset=ruleset),
             LARGE_RUNS if len(code.encode()) > MAX_CHECKED_BYTES else RUNS,
         )
-        for name, (lst, code) in INPUTS.items()
-    }
-    big = INPUTS["grande_50kb"][1]
-    measures["plagio_50kb"] = measure(
-        lambda: compare_sources(big, big, target=ruleset.target_version), LARGE_RUNS
-    )
+
+    measures = {name: measure_input(name) for name in (*INPUTS, "plagio_50kb")}
     for name, value in measures.items():
         print(f"{name}: P95 {value.p95_ms:.2f} ms, razão {value.ratio:.2f}")
 
@@ -108,10 +112,9 @@ def test_the_engine_stays_within_the_budget_and_the_baseline() -> None:
         for name, (_, code) in INPUTS.items()
         if len(code.encode()) <= MAX_CHECKED_BYTES
     }
-    problems = too_slow(p95s) + regressions(
-        baseline,
-        {name: value.ratio for name, value in measures.items()},
-        reference_ms={name: value.reference_ms for name, value in measures.items()},
+    # Uma entrada acima da tolerância é medida de novo (S40-04); o log mostra cada nova medida.
+    problems = too_slow(p95s) + confirmed_regressions(
+        baseline, measures, measure_input, report=print
     )
 
     assert problems == [], "\n".join(problems)

@@ -1,9 +1,9 @@
 {
-  "grande_50kb": 17.673,
-  "lista1_condicionais": 0.027,
-  "lista2_laco": 0.037,
-  "lista4_funcoes": 0.07,
-  "lista6_recursao": 0.035,
-  "plagio_50kb": 42.527,
-  "proibicoes_variadas": 0.019
+  "grande_50kb": 18.161,
+  "lista1_condicionais": 0.039,
+  "lista2_laco": 0.05,
+  "lista4_funcoes": 0.082,
+  "lista6_recursao": 0.048,
+  "plagio_50kb": 42.964,
+  "proibicoes_variadas": 0.033
 }

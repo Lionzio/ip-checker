@@ -50,6 +50,24 @@ evidência do PR é o `scripts/ci-local.sh --e2e`.
   `v_syntax_error_rate` e `v_team_adoption_by_list`). Para isso, a migração `0007` dá ao usuário
   da API o papel `ipc_reader`, que só lê essas views; nenhuma tabela nova é exposta, e nenhum
   aluno, conta, código ou nome aparece no painel.
+- **15/10/2026, S40-04 (Benchmark estável sob carga, incluída a pedido do autor):** a CI local da
+  sprint reprovou em 4 rodadas seguidas, com o mesmo código, por três ruídos diferentes: o benchmark
+  do motor (`plagio_50kb` com razão de 47 a 52, máximo 51, duas vezes), o teste do limite por IP
+  (duas vezes) e os prazos do Vitest (uma vez). O motor não ficou mais lento: com a máquina ociosa,
+  a razão fica em 40 a 42, abaixo da linha de base (42,5). A medida é que estava errada: a
+  calibração (10 execuções de 10 ms) era feita toda antes da ação (10 execuções de 500 ms), e as
+  duas pegavam momentos diferentes da carga do notebook (o processador híbrido do i7-13620H, com
+  4 núcleos de eficiência 2 vezes mais lentos, e outros programas abertos). Agora a razão é
+  **pareada**: cada amostra mede uma calibração, a ação e outra calibração, e divide a ação pela
+  média das duas; a carga que muda no meio da rodada deixa de distorcer. E uma entrada acima da
+  tolerância é **medida de novo** até 2 vezes, só contando como regressão se passar nas três (a
+  carga só deixa o motor mais lento, nunca mais rápido). A tolerância de 20% e o piso de 0,5 ms
+  (S36-10) não mudaram. A linha de base foi regravada na escala nova: `plagio_50kb` de 42,5 para
+  43,0 e `grande_50kb` de 17,7 para 18,2; as entradas pequenas subiram mais (de 0,019 a 0,033 na
+  `proibicoes_variadas`), porque as calibrações em volta esvaziam o cache de uma ação de 0,5 ms,
+  mas continuam abaixo do piso. A etapa passou de 50 para 65 s. Ensaio de 15/10/2026 com o motor de verdade: com 16 processos ocupando todos os núcleos, 3 rodadas passaram com razão de 43,2 a 43,7 sem nenhuma nova medida (antes, a mesma carga dava de 47 a 52); presa aos núcleos de eficiência, 48,4 (passou); uma regressão de mentira de 30% no `compare_sources` reprovou nas três medidas, ociosa (54,7 / 54,2 / 57,2) e com carga (58,3 / 58,3 / 57,3).
+  O Vitest ganhou 5 s de espera nos `findBy` (era 3 s), e o 429 enganoso do limite por IP, que
+  aparece quando o banco demora a resolver a sessão, ficou registrado para a Sprint 39 (S39-06).
 - **Deploy:** a release `sprint-40` traz a migração `0007`, que precisa ser aplicada antes do Manual
   Deploy do Render (runbook, "Sem GitHub Actions"); depois, a Vercel, o exercício de alerta e o
   sintético.
