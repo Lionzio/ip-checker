@@ -20,6 +20,7 @@ from ipc_api.schemas import (
     AnalyzerFeedbackInput,
     AnalyzerHealth,
     AnalyzerManifest,
+    AnalyzerMatrix,
     AnalyzerResult,
     AnalyzerSimilarity,
 )
@@ -214,6 +215,29 @@ class AnalyzerClient:
         if status == 200:
             result = _parse(AnalyzerClass, body)
             if result.status == "compared" and len(result.results) != len(others):
+                raise AnalyzerUnavailable("o analyzer respondeu sobre outra turma")
+            return result
+        if status in (413, 422):
+            error = _parse(AnalyzerErrorResponse, body).error
+            raise AnalyzerRejected(status, error.code, error.message)
+        raise AnalyzerUnavailable(f"status inesperado do analyzer: {status}")
+
+    async def similarity_matrix(
+        self, codes: list[str], group_min: float, request_id: str | None = None
+    ) -> AnalyzerMatrix:
+        """Todos contra todos (S40-02), com o prazo do "Contra a turma"."""
+        status, body = await self._request(
+            "POST",
+            "/internal/similarity/matrix",
+            {"codes": codes, "group_min": group_min},
+            request_id,
+            timeout_s=CLASS_TIMEOUT_S,
+        )
+        if status == 200:
+            result = _parse(AnalyzerMatrix, body)
+            indexes = [i for p in result.pairs for i in (p.first, p.second)]
+            indexes += [i for group in result.groups for i in group]
+            if len(result.solutions) != len(codes) or any(i >= len(codes) for i in indexes):
                 raise AnalyzerUnavailable("o analyzer respondeu sobre outra turma")
             return result
         if status in (413, 422):

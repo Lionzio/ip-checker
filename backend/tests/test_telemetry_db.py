@@ -72,7 +72,9 @@ def sample(outcome: str, rules: list[str], list_number: int = 1) -> TelemetryEve
     )
 
 
-async def test_the_api_user_writes_and_purges_but_cannot_read(admin: Any, api_url: str) -> None:
+async def test_the_api_user_writes_and_purges_and_reads_only_the_views(
+    admin: Any, api_url: str
+) -> None:
     sink = await PostgresTelemetrySink.connect(api_url)
     try:
         await sink.write(
@@ -92,12 +94,19 @@ async def test_the_api_user_writes_and_purges_but_cannot_read(admin: Any, api_ur
     try:
         for statement in (
             "SELECT count(*) FROM telemetry.validation_event",
-            "SELECT * FROM telemetry.v_top_rules_by_list",
+            "SELECT count(*) FROM telemetry.validation_event_rule",
             "DELETE FROM telemetry.validation_event",
             "UPDATE telemetry.validation_event SET list_number = 2",
         ):
             with pytest.raises(asyncpg.InsufficientPrivilegeError):
                 await api.execute(statement)
+        # Desde a 0007 (S40-03), as views anônimas, para o painel por lista do Gerenciar.
+        for statement in (
+            "SELECT count(*) FROM telemetry.v_top_rules_by_list",
+            "SELECT count(*) FROM telemetry.v_syntax_error_rate",
+            "SELECT count(*) FROM telemetry.v_team_adoption_by_list",
+        ):
+            await api.execute(statement)
     finally:
         await api.close()
 
@@ -196,3 +205,36 @@ async def test_the_schema_refuses_out_of_range_values(admin: Any, column: str, v
             "VALUES ($1, $2, $3, $4, 'valid', $5, $6)",
             *row.values(),
         )
+
+
+async def test_the_list_panel_reads_the_views_with_the_api_user(admin: Any, api_url: str) -> None:
+    """S40-03: o painel por lista pelo banco de verdade, com o usuário da API."""
+    from ipc_api.accounts.postgres import PostgresAccountStore
+
+    sink = await PostgresTelemetrySink.connect(api_url)
+    try:
+        await sink.write(
+            [
+                sample("invalid", ["R-34", "R-35", "R-34"]),
+                sample("invalid", ["R-34"]),
+                sample("syntax_error", []),
+                sample("invalid", ["R-46"], list_number=2),
+            ]
+        )
+    finally:
+        await sink.close()
+
+    store = await PostgresAccountStore.connect(api_url)
+    try:
+        panel = await store.list_panel("2026.2", 1)
+        empty = await store.list_panel("2026.2", 6)
+    finally:
+        await store.close()
+
+    assert [(rule.rule_id, rule.events, rule.occurrences) for rule in panel.top_rules] == [
+        ("R-34", 2, 3),
+        ("R-35", 1, 1),
+    ]
+    assert (panel.events, panel.syntax_errors) == (3, 1)
+    assert empty.top_rules == ()
+    assert empty.events == 0

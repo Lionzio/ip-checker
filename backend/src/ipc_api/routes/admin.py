@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from ipc_api.accounts.models import (
     ROLE_LABELS,
@@ -31,17 +31,21 @@ from ipc_api.auth.policy import (
     removal_status,
     roles_for,
 )
+from ipc_api.deps import get_telemetry
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.routes.auth import FORBIDDEN_ORIGIN, UNAVAILABLE
 from ipc_api.schemas import (
+    ListPanelResponse,
     ManagedAccount,
     ManagementLogEntry,
     ManagementLogResponse,
     MembersResponse,
+    PanelRule,
     RequestsResponse,
     RoleChoice,
 )
+from ipc_api.telemetry import Telemetry, semester_of
 
 
 def require_manager(account: Annotated[Account, Depends(require_active_account)]) -> Account:
@@ -251,3 +255,52 @@ async def management_log(
     except StoreUnavailable as exc:
         raise database_unavailable(exc) from None
     return ManagementLogResponse(items=[log_entry(record) for record in records])
+
+
+@router.get(
+    "/list-panel",
+    summary="Regras mais violadas numa lista do período, só com dados anônimos (S40-03)",
+    description=(
+        "Para professores, monitores-chefes e o desenvolvedor: as contagens das views da "
+        "telemetria (FR-17), sem código, conta, nome nem IP. Sem semestre, vale o período ativo."
+    ),
+    responses=error_docs(
+        {**READ_ERRORS, 422: "INVALID_INPUT: lista fora de 1 a 6 ou semestre inválido."}
+    ),
+)
+async def list_panel(
+    actor: Manager,
+    service: Service,
+    response: Response,
+    telemetry: Annotated[Telemetry, Depends(get_telemetry)],
+    list_number: Annotated[int, Query(ge=1, le=6)],
+    semester: Annotated[str | None, Query(pattern=r"^\d{4}\.[12]$")] = None,
+) -> ListPanelResponse:
+    response.headers["Cache-Control"] = "no-store"
+    period = semester or (
+        semester_of(telemetry.ruleset_version) if telemetry.ruleset_version else None
+    )
+    if period is None:
+        return ListPanelResponse(
+            semester="",
+            list_number=list_number,
+            top_rules=[],
+            events=0,
+            syntax_errors=0,
+            adoption_pct=None,
+        )
+    try:
+        panel = await service.store.list_panel(period, list_number)
+    except StoreUnavailable as exc:
+        raise database_unavailable(exc) from None
+    return ListPanelResponse(
+        semester=panel.semester,
+        list_number=list_number,
+        top_rules=[
+            PanelRule(rule_id=rule.rule_id, events=rule.events, occurrences=rule.occurrences)
+            for rule in panel.top_rules
+        ],
+        events=panel.events,
+        syntax_errors=panel.syntax_errors,
+        adoption_pct=panel.adoption_pct,
+    )

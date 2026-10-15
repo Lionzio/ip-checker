@@ -365,6 +365,10 @@ LIMITED_ROUTES = frozenset(
         ("POST", "/api/v1/similarity"),
         # Contra a turma (S27-02): uma requisição, até 101 análises num worker só.
         ("POST", "/api/v1/similarity/batch"),
+        # Todos contra todos (S40-02): até 60 soluções e 1.770 pares num worker só.
+        ("POST", "/api/v1/similarity/class-matrix"),
+        # Correção em lote (S40-01): até 20 análises por requisição, cada uma pela admissão.
+        ("POST", "/api/v1/validate/batch"),
         # Feedback (S18-02): além deste limite, uma cota diária por conta e um teto do servidor.
         ("POST", "/api/v1/feedback"),
         ("POST", "/api/v1/auth/login"),

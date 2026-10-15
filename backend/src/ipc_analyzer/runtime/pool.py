@@ -36,7 +36,9 @@ from ipc_analyzer.engine.similarity import (
     ClassMatch,
     ClassRejected,
     InvalidSide,
+    MatrixResult,
     Similarity,
+    compare_all,
     compare_class,
     compare_sources,
 )
@@ -151,6 +153,12 @@ def _compare_class_in_worker(
     if _RULESET is None:
         raise RuntimeError("worker sem ruleset carregado")
     return compare_class(code, others, target=_RULESET.target_version)
+
+
+def _compare_all_in_worker(codes: list[str], group_min: float) -> MatrixResult:
+    if _RULESET is None:
+        raise RuntimeError("worker sem ruleset carregado")
+    return compare_all(codes, target=_RULESET.target_version, group_min=group_min)
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +281,18 @@ class AnalyzerPool:
             _compare_class_in_worker,
             code,
             others,
+            deadline=deadline,
+            timeout_s=self.config.class_timeout_s,
+        )
+
+    async def compare_all(
+        self, codes: list[str], group_min: float, *, deadline: float | None = None
+    ) -> MatrixResult:
+        """Todos contra todos (S40-02), num worker só, com o prazo do "Contra a turma"."""
+        return await self.run(
+            _compare_all_in_worker,
+            codes,
+            group_min,
             deadline=deadline,
             timeout_s=self.config.class_timeout_s,
         )

@@ -29,12 +29,17 @@ from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     AnalyzerResult,
+    BatchResult,
+    Category,
     GabaritoComparison,
     Indicators,
+    ValidateBatchRequest,
+    ValidateBatchResponse,
     ValidateRequest,
     ValidateResponse,
 )
 from ipc_api.settings import ApiSettings
+from ipc_api.similarity import displayed
 from ipc_api.telemetry import Outcome, Telemetry, TelemetryEvent, semester_of
 from ipc_api.validation import check_code
 
@@ -207,3 +212,117 @@ def _record_refusal(telemetry: Telemetry, list_number: int, outcome: Outcome) ->
             ruleset_version=telemetry.ruleset_version, list_number=list_number, outcome=outcome
         )
     )
+
+
+@router.post(
+    "/validate/batch",
+    summary="Confere até 20 arquivos de uma vez, para corrigir a turma inteira (S40-01)",
+    responses=error_docs(
+        {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            403: "ORIGIN_MISMATCH: a requisição veio de outro site.",
+            413: "PAYLOAD_TOO_LARGE: corpo acima de 128 KB.",
+            422: (
+                "INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED ou "
+                "UNKNOWN_QUESTION. Um arquivo recusado não recusa os outros: ele volta com o "
+                "status rejected."
+            ),
+            429: "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede.",
+            503: "OVERLOADED ou ANALYZER_UNAVAILABLE: a parte pode ser enviada de novo.",
+        }
+    ),
+)
+async def validate_batch(
+    body: ValidateBatchRequest,
+    request: Request,
+    response: Response,
+    analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+    admission: Annotated[Admission, Depends(get_admission)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
+    request_id: Annotated[str, Depends(get_request_id)],
+    telemetry: Annotated[Telemetry, Depends(get_telemetry)],
+    adoption: Annotated[Adoption, Depends(get_adoption)],
+    account: Annotated[Account, Depends(require_active_account)],
+    gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
+) -> ValidateBatchResponse:
+    """A turma inteira em partes (S40-01): cada arquivo passa pelos mesmos limites da verificação
+    e pela admissão, um de cada vez, e entra na telemetria anônima; nada é guardado."""
+    response.headers["Cache-Control"] = "no-store"
+    counted = not account.check_account
+    request.state.list_number = body.list_number
+    if body.list_number not in settings.enabled_lists:
+        raise ApiError(
+            422,
+            ErrorCode.LIST_NOT_ENABLED,
+            f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
+        )
+    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    registered = check is not None and check.registered
+    gabarito = (
+        gabaritos.get(check.period, body.question_id)
+        if check is not None and body.question_id is not None
+        else None
+    )
+    results: list[BatchResult] = []
+    version = telemetry.ruleset_version or ""
+    for file in body.files:
+        try:
+            check_code(file.code)
+        except ApiError as exc:
+            results.append(_refused(file.name, exc.message))
+            continue
+        try:
+            async with admission.slot():
+                started = time.perf_counter()
+                result = await analyzer.analyze(
+                    file.code,
+                    body.list_number,
+                    request_id=request_id,
+                    question_id=body.question_id if registered else None,
+                    indicators=False,
+                    gabarito=gabarito,
+                )
+                analysis_ms = round((time.perf_counter() - started) * 1000)
+        except Overloaded:
+            raise overloaded() from None
+        except AnalyzerRejected as exc:
+            results.append(_refused(file.name, exc.message))
+            continue
+        except AnalyzerUnavailable as exc:
+            logger.warning("analyzer indisponível: %s", exc)
+            raise analyzer_unavailable() from None
+        version = result.ruleset_version
+        if counted:
+            telemetry.record(
+                TelemetryEvent.from_result(
+                    ruleset_version=result.ruleset_version,
+                    list_number=result.list_number,
+                    question_id=body.question_id,
+                    outcome=result.status,
+                    rule_ids=[violation.rule_id for violation in result.violations],
+                    analysis_ms=analysis_ms,
+                )
+            )
+        counts: dict[Category, int] = {}
+        for violation in result.violations:
+            counts[violation.category] = counts.get(violation.category, 0) + 1
+        results.append(
+            BatchResult(
+                name=file.name,
+                status=result.status,
+                counts=counts,
+                rule_ids=list(dict.fromkeys(v.rule_id for v in result.violations)),
+                syntax_error=result.syntax_error,
+                gabarito_similarity=(
+                    displayed(result.gabarito.percent) if result.gabarito is not None else None
+                ),
+            )
+        )
+    request.state.outcome = "batch"
+    if counted and version:
+        adoption.record(account.id, semester_of(version), body.list_number)
+    return ValidateBatchResponse(request_id=request_id, ruleset_version=version, results=results)
+
+
+def _refused(name: str, message: str) -> BatchResult:
+    return BatchResult(name=name, status="rejected", counts={}, rule_ids=[], message=message)

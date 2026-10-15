@@ -94,6 +94,7 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
     assert await migrate_down(admin, migrations, "0000") == [
+        "0007",
         "0006",
         "0005",
         "0004",
@@ -102,7 +103,15 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
         "0001",
     ]
     assert not await _schema_exists(admin)
-    assert await migrate_up(admin, migrations) == ["0001", "0002", "0003", "0004", "0005", "0006"]
+    assert await migrate_up(admin, migrations) == [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+    ]
     assert await _schema_exists(admin)
 
 
@@ -116,7 +125,7 @@ def test_cli_up_and_status(
     assert migrate.main(["status"]) == 0
     assert (
         capsys.readouterr().out.strip()
-        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006; pendentes: nenhuma"
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
@@ -288,10 +297,10 @@ async def test_migrations_applied_before_the_checksum_get_one(admin: Any) -> Non
 @pytest.mark.anyio
 @requires_database
 async def test_versions_newer_than_the_folder_are_ignored(admin: Any, tmp_path: Path) -> None:
-    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0006, e a
+    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0007, e a
     # pasta antiga não. As migrações só acrescentam, então a versão anterior sobe normalmente.
     folder = _copy_migrations(tmp_path)
-    for path in folder.glob("0006_*"):
+    for path in folder.glob("0007_*"):
         path.unlink()
 
     assert await migrate_up(admin, discover(folder)) == []

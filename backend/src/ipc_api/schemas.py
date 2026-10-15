@@ -46,6 +46,66 @@ class ValidateRequest(_Strict):
     )
 
 
+class BatchFile(_Strict):
+    name: Annotated[str, StringConstraints(min_length=1, max_length=120)] = Field(
+        description="O nome do arquivo, que identifica o aluno na tabela (nada é guardado)."
+    )
+    code: str = Field(description="O código do arquivo. Nunca é executado nem guardado.")
+
+
+#: Arquivos por requisição do lote (S40-01): 20 de até 50 KB passam da barreira de 128 KB, então
+#: a página manda partes menores; o limite garante que uma requisição não segure a admissão.
+MAX_BATCH_FILES = 20
+
+
+class ValidateBatchRequest(_Strict):
+    list_number: ListNumber = Field(description="Lista de exercícios (1 a 6).")
+    question_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,32}$")] | None = None
+    files: list[BatchFile] = Field(
+        min_length=1,
+        max_length=MAX_BATCH_FILES,
+        description="Até 20 arquivos por requisição; a página divide a turma em partes.",
+    )
+
+
+class BatchResult(_Strict):
+    name: str
+    status: Literal["valid", "invalid", "syntax_error", "rejected"]
+    #: Violações por categoria; vazio quando o código é válido ou não foi analisado.
+    counts: dict[Category, int]
+    rule_ids: list[str] = Field(description="As regras violadas, sem repetição, em ordem.")
+    syntax_error: SyntaxErrorInfo | None = None
+    message: str | None = Field(default=None, description="Por que o arquivo foi recusado.")
+    gabarito_similarity: Percent | None = Field(
+        default=None, description="Semelhança com o gabarito da questão, quando houver."
+    )
+
+
+class ValidateBatchResponse(_Strict):
+    request_id: str
+    ruleset_version: str
+    results: list[BatchResult] = Field(description="Um por arquivo, na ordem enviada.")
+
+
+class PanelRule(_Strict):
+    rule_id: str
+    events: int = Field(description="Em quantas verificações a regra apareceu.")
+    occurrences: int = Field(description="Quantas vezes, no total, somando as verificações.")
+
+
+class ListPanelResponse(_Strict):
+    """O painel de uma lista do período (S40-03, US-16): só contagens anônimas da telemetria."""
+
+    semester: str
+    list_number: ListNumber
+    top_rules: list[PanelRule] = Field(description="As 15 regras mais violadas na lista.")
+    events: int = Field(description="Verificações da lista no período.")
+    syntax_errors: int = Field(description="Quantas delas tiveram erro de sintaxe.")
+    adoption_pct: float | None = Field(
+        description="Porcentagem da equipe ativa que já usou a lista (P-09, critério 2)."
+    )
+
+
 class FeedbackRequest(_Strict):
     code: str = Field(description="Código do aluno. Nunca é executado.")
     list_number: ListNumber
@@ -229,6 +289,39 @@ class SimilarityClassResponse(_Strict):
     results: list[SimilarityClassItem] = Field(
         description="Da mais parecida para a menos; as recusadas e com erro de sintaxe no fim."
     )
+    notice: str
+
+
+class SimilarityMatrixRequest(_Strict):
+    solutions: list[ClassSolution] = Field(
+        min_length=2,
+        max_length=60,
+        description="De 2 a 60 soluções da turma, somando até 128 KB (S40-02).",
+    )
+
+
+class MatrixSolution(_Strict):
+    label: str
+    status: Literal["compared", "syntax_error", "rejected"]
+    syntax_error: SyntaxErrorInfo | None = None
+    message: str | None = None
+
+
+class MatrixPair(_Strict):
+    a: str = Field(description="O rótulo da primeira solução do par.")
+    b: str = Field(description="O rótulo da segunda solução do par.")
+    similarity: Percent
+    band: SimilarityBand
+
+
+class SimilarityMatrixResponse(_Strict):
+    """Todos contra todos (S40-02): os pares mais parecidos primeiro e os grupos de soluções
+    ligadas por pares a partir da faixa "Requer atenção"."""
+
+    request_id: str
+    solutions: list[MatrixSolution] = Field(description="Na ordem enviada.")
+    pairs: list[MatrixPair] = Field(description="Até 200 pares, do mais parecido para o menos.")
+    groups: list[list[str]] = Field(description="Grupos de 2 ou mais soluções, maiores primeiro.")
     notice: str
 
 
@@ -713,6 +806,24 @@ class AnalyzerClass(_Strict):
     status: Literal["compared", "syntax_error"]
     syntax_error: SyntaxErrorInfo | None
     results: list[AnalyzerClassItem] = Field(max_length=100)
+
+
+class AnalyzerMatrixSolution(_Strict):
+    status: Literal["compared", "syntax_error", "rejected"]
+    syntax_error: SyntaxErrorInfo | None = None
+    message: Annotated[str, StringConstraints(max_length=500)] | None = None
+
+
+class AnalyzerMatrixPair(_Strict):
+    first: Annotated[int, Field(ge=0)]
+    second: Annotated[int, Field(ge=0)]
+    percent: Percent
+
+
+class AnalyzerMatrix(_Strict):
+    solutions: list[AnalyzerMatrixSolution] = Field(max_length=60)
+    pairs: list[AnalyzerMatrixPair] = Field(max_length=300)
+    groups: list[list[Annotated[int, Field(ge=0)]]] = Field(max_length=30)
 
 
 class AnalyzerResult(_Strict):
