@@ -33,7 +33,7 @@ test("três alunos seguidos, em até 4 ações cada, sem o nome do anterior no f
     const text = page.getByLabel("Texto do feedback");
     await expect(text).toHaveValue(new RegExp(`^Olá, ${student.name},`));
     for (const previous of seen) await expect(text).not.toHaveValue(new RegExp(previous));
-    await expect(page.getByRole("button", { name: "Copiar" })).toBeFocused();
+    await expect(page.getByRole("button", { name: "Copiar", exact: true })).toBeFocused();
     // 4. Próximo aluno: código, nome e resultado limpos, a lista fica, e o foco volta ao editor.
     await page.getByRole("button", { name: "Próximo aluno" }).click();
     await expect(editor).toHaveValue("");
