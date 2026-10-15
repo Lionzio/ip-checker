@@ -22,6 +22,11 @@ mudaram.
   `ReadError` ou `WriteError`), tenta de novo uma vez, numa conexão nova e dentro do mesmo prazo.
   Repetir é seguro, porque nenhuma rota do analisador muda estado. Uma conexão recusada (o
   analisador fora do ar) continua dando 503 na hora, sem nova tentativa.
+- **15/10/2026, depois do deploy da `sprint-38.1`** (Render às 13:04; a página não mudou): 10
+  chamadas ao `/health/service` com pausas de 6 a 7 s, mais que o keep-alive do analisador, deram
+  200. O exercício de alerta (#123 e #124) teve o primeiro 503 às 13:16:33, só por `latencia`,
+  sem a fase de `erros` que aparecia depois da carga; o e-mail de queda chegou às 13:17 e o de
+  volta às 13:28 (runbook).
 
 ## Sprint 38 — Explicar cada regra e exportar o resultado
 
