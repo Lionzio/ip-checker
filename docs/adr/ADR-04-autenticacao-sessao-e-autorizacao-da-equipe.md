@@ -27,3 +27,15 @@
 **Consequências positivas:** nenhum dado sai sem conta ativa; remover alguém tem efeito imediato; as permissões são testáveis como tabela.
 
 **Consequências negativas:** a `api` passa a guardar mais segredos (ameaça 12) e a depender do banco para atender, então o `/ready` também confere o banco; o *rewrite* acrescenta um salto e muda o IP que a API enxerga (P-15).
+
+## Revisão da Sprint 40 (15/10/2026): lote, todos contra todos e painel por lista
+
+- **`POST /api/v1/validate/batch` e `POST /api/v1/similarity/class-matrix`:** qualquer conta ativa,
+  como o `/validate` e o `/similarity/batch`. Cada requisição conta 1 no limite de 30 por minuto da
+  conta: o que protege o servidor no lote é a admissão, pela qual cada arquivo passa, e os limites
+  de tamanho. A barreira de 128 KiB por requisição (Caddy e API) não mudou; a página manda a turma
+  em partes de até 20 arquivos, abaixo de 110 KB, e espera quando o servidor pede (429 ou 503 com
+  `Retry-After`).
+- **`GET /api/v1/admin/list-panel`:** só monitor-chefe, professor e desenvolvedor, como o resto do
+  Gerenciar. A rota lê só as views anônimas da telemetria; para isso, o usuário da API recebe o
+  papel `ipc_reader` (migração `0007`), que lê as views `v_*` e nenhuma tabela.

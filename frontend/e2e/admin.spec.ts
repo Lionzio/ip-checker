@@ -114,3 +114,17 @@ test("o desenvolvedor aparece em dourado, sem botões, como Monitor e desenvolve
   await expect(developer.getByRole("button")).toHaveCount(0);
   await expect(developer.getByText("Monitor e desenvolvedor", { exact: true })).toHaveClass(/amber/);
 });
+
+test("o painel por lista mostra só contagens anônimas (S40-03)", async ({ page }) => {
+  await page.goto("/gerenciar");
+
+  const panel = page.getByRole("region", { name: "Painel por lista" });
+  await panel.getByLabel("Lista do painel").selectOption("1");
+  await expect(panel).toContainText(/verificaç(ão|ões)/);
+  const answer = await pageFetch(page, "/api/v1/admin/list-panel?list_number=1");
+  expect(answer.status).toBe(200);
+  expect(Object.keys(answer.body as object).sort()).toEqual(
+    ["adoption_pct", "events", "list_number", "semester", "syntax_errors", "top_rules"].sort(),
+  );
+  await expect(panel).not.toContainText(process.env.E2E_NAME ?? "");
+});

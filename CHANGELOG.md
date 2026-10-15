@@ -8,6 +8,52 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 40 — A correção da turma inteira
+
+A Sprint 40 (S40-01 a S40-03; US-16, US-31 e US-33) começou em 15/10/2026, antes da 39, por pedido
+do autor. A missão é que o monitor receba as soluções de uma lista (do Dikastis ou de uma pasta) e
+veja, numa tabela, o status de cada aluno e os grupos de soluções parecidas. As personas são o
+monitor em correção em lote e o professor que acompanha a lista. Sem a cota do Actions (P-19), a
+evidência do PR é o `scripts/ci-local.sh --e2e`.
+
+- **15/10/2026, S40-01 (Turma inteira):** a tela nova **Turma** (`/turma`) recebe vários `.py` ou um
+  `.zip` (até 100 arquivos, 50 KB cada, 2 MB no total e 4 MB de `.zip`), escolhidos ou arrastados.
+  O `.zip` é aberto no navegador, sem biblioteca nova: o diretório central é lido, pastas,
+  `__MACOSX` e arquivos ocultos ficam de fora, e a descompressão (`DecompressionStream`) para assim
+  que passa do tamanho declarado, o que barra a *zip bomb*. A barreira de 128 KiB por requisição
+  (Caddy e API) **não mudou**: a página manda os arquivos em partes de até 20 e abaixo de 110 KB
+  para a rota nova `POST /api/v1/validate/batch`. A lista e a questão são conferidas uma vez; cada
+  arquivo passa pelos mesmos limites do `/validate` e pela admissão, e um arquivo recusado vira
+  uma linha "Recusada", sem derrubar a parte. Se o serviço estiver sobrecarregado (429 ou 503 com
+  `Retry-After`), a tela espera o tempo pedido e continua de onde parou, até 5 vezes por parte, e
+  pode ser cancelada. A rota conta 1 no limite de 30 por minuto da conta, como o
+  `/similarity/batch`; o que protege o servidor é a admissão por arquivo. O resultado tem uma
+  linha por aluno (o nome do arquivo), com o status, as violações por categoria, as regras e a
+  semelhança com o gabarito, e vira um CSV (`;`, com BOM, para o Excel) **sem o código**. Nada é
+  guardado.
+- **15/10/2026, S40-02 (Todos contra todos):** o Plágio ganhou o modo **Todos contra todos**: de 2 a
+  60 soluções no formato do "Contra a turma" (`=== nome`), até 120 KB juntas. O motor
+  (`compare_all`) usa o mesmo IDF da turma inteira e devolve os pares do mais parecido para o
+  menos (a API manda os 200 primeiros) e os **grupos**: as soluções ligadas por pares a partir de
+  "Requer atenção" (90%), de modo que A parecida com B e B com C ficam juntas. A tela mostra os
+  grupos, os pares a partir de 80% (com "Mostrar todos os pares") e leva qualquer par ao "Dois
+  códigos" para o lado a lado. Na turma sintética de 30 soluções (dois grupos de cópias
+  disfarçadas e o resto independente), os dois grupos são achados e nada mais. Medido em
+  15/10/2026 na máquina do autor: 30 soluções em 0,14 s e 60 soluções de 1,2 KB em 0,35 s; o
+  analisador tem 10 s para a turma. O limite de 60 cabe com folga no piloto (0,1 CPU); as 100
+  soluções do NFR-30 ficam para a S46-03.
+- **15/10/2026, S40-03 (Painel por lista):** o Gerenciar ganhou o **Painel por lista**: para a lista
+  escolhida, no período ativo, as 15 regras mais violadas (em quantas verificações e quantas
+  ocorrências), quantas verificações houve, quantas com erro de sintaxe e quanto da equipe já usou
+  a lista. Vem da rota nova `GET /api/v1/admin/list-panel` (só monitor-chefe, professor e
+  desenvolvedor), que lê **só** as views anônimas da telemetria (`v_top_rules_by_list`,
+  `v_syntax_error_rate` e `v_team_adoption_by_list`). Para isso, a migração `0007` dá ao usuário
+  da API o papel `ipc_reader`, que só lê essas views; nenhuma tabela nova é exposta, e nenhum
+  aluno, conta, código ou nome aparece no painel.
+- **Deploy:** a release `sprint-40` traz a migração `0007`, que precisa ser aplicada antes do Manual
+  Deploy do Render (runbook, "Sem GitHub Actions"); depois, a Vercel, o exercício de alerta e o
+  sintético.
+
 ## Sprint 38.1 — Conexões com o analisador que ele mesmo fechou
 
 - **15/10/2026:** depois do sintético da `sprint-38`, o `/health/slo` do piloto ficou em 503 por
