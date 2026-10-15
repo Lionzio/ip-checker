@@ -8,6 +8,21 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 38.1 — Conexões com o analisador que ele mesmo fechou
+
+- **15/10/2026:** depois do sintético da `sprint-38`, o `/health/slo` do piloto ficou em 503 por
+  `erros` de 12:35:53 a cerca de 12:41, sem nenhuma verificação com falha: duas chamadas ao
+  `/health/service` (12:35:00 e 12:35:55) receberam 503 `ANALYZER_UNAVAILABLE`, e a API registrou
+  `RemoteProtocolError` e `ReadError` ao falar com o analisador. A causa: o cliente da API
+  guardava a conexão parada por 5 s, o mesmo tempo depois do qual o `uvicorn` do analisador a
+  fecha, e às vezes a reaproveitava no instante em que ela era fechada. Com pouco tráfego, dois
+  erros desses passam de 1% e disparam o alerta; é a explicação mais provável para o 503 da
+  madrugada de 15/10, que não teve deploy nem reinício. O cliente passa a descartar a conexão
+  parada depois de 2 s e, se a conexão ainda assim falhar desse jeito (`RemoteProtocolError`,
+  `ReadError` ou `WriteError`), tenta de novo uma vez, numa conexão nova e dentro do mesmo prazo.
+  Repetir é seguro, porque nenhuma rota do analisador muda estado. Uma conexão recusada (o
+  analisador fora do ar) continua dando 503 na hora, sem nova tentativa.
+
 ## Sprint 38 — Explicar cada regra e exportar o resultado
 
 A Sprint 38 (S38-01 a S38-05; US-02, US-08, US-10, US-12, US-22, US-32 e US-33) começou em
@@ -61,6 +76,8 @@ feedback e o professor que mantém as regras. Sem a cota do Actions (P-19), a ev
   antes da revisão dos textos pela Q-31, que segue pendente. O exercício de alerta (#118 e #120)
   teve o primeiro 503 às 12:14:11, o e-mail de queda às 12:15 (NFR-15: até 5 min) e o de volta
   às 12:30 (runbook).
+- **15/10/2026, sintético da `sprint-38`:** rodado pelo autor; pelo `/health/slo`, a verificação
+  levou 20 ms no servidor (limite de 300 ms).
 
 ## Sprint 37 — Verificação mais clara
 

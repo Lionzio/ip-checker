@@ -32,6 +32,13 @@ CLASS_TIMEOUT_S = 12.0
 MANIFEST_TTL_S = 60.0
 #: O analyzer descarta o pedido quando este tempo acaba (S25-04).
 BUDGET_HEADER = "X-IPC-Budget-Ms"
+#: O uvicorn do analyzer fecha a conexão parada depois de 5 s (``timeout_keep_alive``). Com a
+#: mesma validade no cliente, uma conexão podia ser reaproveitada no instante em que o analyzer a
+#: fechava, e a verificação de saúde falhava com RemoteProtocolError ou ReadError (sprint-38.1).
+KEEPALIVE_EXPIRY_S = 2.0
+#: Falhas de uma conexão que o analyzer fechou: tentar de novo, numa conexão nova, é seguro,
+#: porque nenhuma rota do analyzer muda estado.
+_STALE_CONNECTION = (httpx2.RemoteProtocolError, httpx2.ReadError, httpx2.WriteError)
 
 
 class AnalyzerUnavailable(Exception):  # noqa: N818 - é um estado, não um erro de programação
@@ -67,6 +74,7 @@ class AnalyzerClient:
         self._http = httpx2.AsyncClient(
             base_url=base_url,
             timeout=httpx2.Timeout(timeout_s),
+            limits=httpx2.Limits(keepalive_expiry=KEEPALIVE_EXPIRY_S),
             transport=transport,
             follow_redirects=False,
             # Proxies do ambiente nunca valem para a rede interna.
@@ -93,23 +101,30 @@ class AnalyzerClient:
             headers["X-Request-Id"] = request_id
         try:
             # O prazo vale para a chamada inteira, não para cada leitura: depois dele, a API
-            # desiste, e o analyzer, que recebeu o mesmo prazo, também.
-            async with (
-                asyncio.timeout(timeout),
-                self._http.stream(method, path, json=payload, headers=headers) as response,
-            ):
-                body = bytearray()
-                async for chunk in response.aiter_bytes():
-                    body += chunk
-                    if len(body) > MAX_RESPONSE_BYTES:
-                        raise AnalyzerUnavailable("resposta do analyzer acima de 256 KB")
-                return response.status_code, bytes(body)
+            # desiste, e o analyzer, que recebeu o mesmo prazo, também. A segunda tentativa, só
+            # para uma conexão que o analyzer fechou, cabe no mesmo prazo (sprint-38.1).
+            async with asyncio.timeout(timeout):
+                try:
+                    return await self._send(method, path, payload, headers)
+                except _STALE_CONNECTION:
+                    return await self._send(method, path, payload, headers)
         except (httpx2.TimeoutException, TimeoutError):
             raise AnalyzerUnavailable("o analyzer não respondeu a tempo") from None
         except httpx2.HTTPError as exc:
             raise AnalyzerUnavailable(
                 f"falha ao falar com o analyzer: {type(exc).__name__}"
             ) from None
+
+    async def _send(
+        self, method: str, path: str, payload: Any, headers: dict[str, str]
+    ) -> tuple[int, bytes]:
+        async with self._http.stream(method, path, json=payload, headers=headers) as response:
+            body = bytearray()
+            async for chunk in response.aiter_bytes():
+                body += chunk
+                if len(body) > MAX_RESPONSE_BYTES:
+                    raise AnalyzerUnavailable("resposta do analyzer acima de 256 KB")
+            return response.status_code, bytes(body)
 
     async def analyze(
         self,
