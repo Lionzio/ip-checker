@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { batchCsv, studentOf } from "../classBatch";
 import { ApiError } from "../services/client";
@@ -25,6 +25,11 @@ async function ready(client = createMockClient({ latencyMs: 0, signedIn: true })
 
 const pick = (user: ReturnType<typeof userEvent.setup>, files: File[]) =>
   user.upload(screen.getByLabelText("Arquivos da turma (.py ou .zip)"), files);
+
+// A Turma é carregada sob demanda (App.tsx): o módulo vem antes, para o primeiro teste não pagar a importação.
+beforeAll(async () => {
+  await import("./ClassBatch");
+});
 
 beforeEach(() => {
   window.localStorage.clear();

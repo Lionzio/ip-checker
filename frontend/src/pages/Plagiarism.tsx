@@ -1,6 +1,5 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { BAND_STYLES, PERCENT } from "../bands";
-import { ClassMatrix } from "../components/ClassMatrix";
 import { type CodeEditorHandle, CodeEditor, type LineRange } from "../components/CodeEditor";
 import { Button, Card, ErrorText, LineChip, SyntaxErrorBox } from "../components/ui";
 import { useApiCall } from "../hooks/useApiCall";
@@ -17,6 +16,9 @@ import type {
   SimilarityResponse,
 } from "../types/api";
 import { INPUT } from "../ui";
+
+/** O todos contra todos (S40-02) é carregado só quando escolhido (NFR-03). */
+const ClassMatrix = lazy(() => import("../components/ClassMatrix").then((module) => ({ default: module.ClassMatrix })));
 
 /**
  * Painel de plágio (S17-03, FR-29; S27-02 e S27-03): duas soluções lado a lado (empilhadas em telas
@@ -339,7 +341,9 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
           </section>
         </form>
       ) : (
-        <ClassMatrix client={client} onUnauthenticated={onUnauthenticated} onSideBySide={pairFromMatrix} />
+        <Suspense fallback={<p role="status" className="text-sm">Carregando…</p>}>
+          <ClassMatrix client={client} onUnauthenticated={onUnauthenticated} onSideBySide={pairFromMatrix} />
+        </Suspense>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { App } from "../App";
 import { createMockClient } from "../services/mockClient";
 
@@ -16,8 +16,14 @@ async function matrixMode() {
     </MemoryRouter>,
   );
   await user.click(await screen.findByRole("button", { name: "Todos contra todos" }));
+  await screen.findByLabelText("Soluções da turma para todos contra todos");
   return user;
 }
+
+// O todos contra todos é carregado sob demanda (Plagiarism.tsx): o módulo vem antes.
+beforeAll(async () => {
+  await import("../components/ClassMatrix");
+});
 
 describe("Todos contra todos (S40-02)", () => {
   it("compara a turma, mostra os grupos e os pares, e leva um par para o lado a lado", async () => {
