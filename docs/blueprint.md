@@ -1741,6 +1741,9 @@ feedback sem IA seja bom o bastante para dispensar o "Aprimorar com IA" na maior
 **Riscos:** os textos de explicação precisam de revisão de quem conhece o documento de permissões; sem
 ela, a task fica aguardando, e o resto da sprint segue.
 
+**Situação (15/10/2026):** engenharia concluída na release `sprint-38`: S38-01 a S38-05, num PR só. Decisões da sprint (detalhes no `CHANGELOG.md`): os campos do ruleset se chamam `explicacao` e `alternativa`, obrigatórios também nas exigências e na R-04, e a R-01 tem textos fixos no motor; o feedback sem IA usa as alternativas enquanto couberem no NFR-26; o "Aprimorar com IA" continua analisando, porque precisa do código sem comentários; o ganho do S38-05 ficou dentro do ruído (4%), e a linha de base não foi regravada. Aguardando: a revisão dos 71 pares de textos pelo autor ou pela chefia (Q-31), antes do deploy.
+
+
 #### Sprint 39 — Qualidade interna, operação e documentação
 
 **Objetivo:** reduzir o custo de manter o projeto: arquivos menores, testes mais rápidos e completos,
