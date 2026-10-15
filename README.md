@@ -194,7 +194,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 38 | Explicar cada regra e exportar: porquê e alternativa em cada violação, feedback sem IA mais completo, exportar e carregar `.py`, feedback sem nova análise | Concluída em 15/10/2026 (release `sprint-38`, rulesets `2026.2.7` e `2027.1.2`): S38-01 a S38-05; os textos de explicação aguardam a revisão do autor (Q-31) |
 | 39 | Qualidade interna, operação e documentação: arquivos menores, testes das páginas, CI mais rápida, backup agendado, restauração ensaiada, documentação reorganizada | Planejada |
 | 40 | A correção da turma inteira: correção em lote por upload com CSV, plágio todos contra todos, painel por lista | Planejada |
-| 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12) |
+| 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12); a última da fila (P-24) |
 | 42 | Indícios de IA ligados no piloto: calibração, evidência em cada indício, primeiro para a chefia e depois para todos | Proposta; critérios aprovados (Q-35) |
 | 43 | Período na página (antes de Lista e Questão), o ativo e os 5 anteriores carregados, encerramento com simulação | Proposta |
 | 44 | Feedback com a linha e o motivo de cada violação; o padrão do monitor em `estilo.yaml` | Proposta |
@@ -211,6 +211,7 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 
 | ID | Decisão |
 |---|---|
+| P-24 | A Sprint 41 (servidor do CIn) fica em último: depende da validação com a equipe, a coordenação e a direção, e o piloto de 2027.1 roda no Render e na Vercel (15/10/2026) |
 | Proposta de 12/10/2026 | Sprints 42 a 48 a partir da revisão das seis frentes, com os indícios de IA no piloto primeiro e a entrada com o Google no fim |
 | Decisões de 12/10/2026 | Q-26 a Q-36 decididas: dos alunos, só o nome e o resultado resumido de cada verificação, sem código nem feedback; soluções anteriores a 2023 e formulário da pesquisa descartados; gerador de referências por IA aprovado; integração com outros projetos depois. depois a Q-33 (recursão só na Lista 6), a Q-35 (critérios dos indícios de IA) e a Q-36 (satisfação medida com os feedbacks coletados pelo autor) |
 | Plano de 11/10/2026 | Até o fim do piloto, melhorar o que existe (Sprints 36 a 40); a Fase 2 vira a Sprint 41 |
