@@ -92,7 +92,7 @@ test("o texto é editável e o botão Copiar o copia", async ({ page, context })
 
   await field.press("Control+End");
   await field.pressSequentially(" Até a próxima!");
-  await panel.getByRole("button", { name: "Copiar" }).click();
+  await panel.getByRole("button", { name: "Copiar", exact: true }).click();
 
   await expect(panel.getByRole("status")).toHaveText("Copiado.");
   const copied = await page.evaluate(() => navigator.clipboard.readText());

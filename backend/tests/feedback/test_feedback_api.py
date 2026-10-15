@@ -463,3 +463,73 @@ def test_the_answer_says_whether_the_page_can_enhance(
             headers=cookie_header(open_session(store, member(store))),
         ).json()
     assert body["can_enhance"] is False
+
+
+def test_generating_again_reuses_the_analysis_without_keeping_the_code(
+    analyzer: TestClient,
+) -> None:
+    """S38-04: o segundo "Gerar" do mesmo código não chama o analisador, e o cache não guarda
+    o código, o nome do aluno nem o texto; o "Aprimorar" sempre analisa (o código limpo)."""
+    calls: list[str] = []
+    inner = _bridge(analyzer)
+
+    def counting(request: httpx2.Request) -> httpx2.Response:
+        calls.append(request.url.path)
+        return inner.handle_request(request)
+
+    store = MemoryAccountStore()
+    app, _ = make_app(SETTINGS, store=store, analyzer_transport=httpx2.MockTransport(counting))
+    with TestClient(app, base_url=BASE_URL) as api:
+        headers = cookie_header(open_session(store, member(store)))
+
+        def generate(annotation: str | None = None, *, enhance: bool = False) -> dict[str, Any]:
+            response = api.post(
+                "/api/v1/feedback",
+                json={
+                    "code": INVALID,
+                    "list_number": 1,
+                    "student_name": STUDENT,
+                    "annotation": annotation,
+                    "enhance": enhance,
+                },
+                headers=headers,
+            )
+            assert response.status_code == 200, response.text
+            return response.json()  # type: ignore[no-any-return]
+
+        first = generate()
+        analyses = [path for path in calls if "feedback" in path]
+        second = generate("Releia o enunciado")
+
+        assert [path for path in calls if "feedback" in path] == analyses
+        assert second["status"] == first["status"] == "invalid"
+        assert "Releia o enunciado" in second["text"]
+        cache = api.app.state.feedback.results  # type: ignore[attr-defined]
+        stored = repr(cache._entries)
+        assert "range(x)" not in stored
+        assert STUDENT not in stored
+        assert "Olá" not in stored
+
+        generate(enhance=True)
+        assert len([path for path in calls if "feedback" in path]) == len(analyses) + 1
+
+
+def test_the_cache_expires_and_drops_the_oldest() -> None:
+    from ipc_api.feedback.cache import CachedResult, FeedbackResultCache, result_key
+
+    now = [0.0]
+    cache = FeedbackResultCache(ttl_s=600, max_entries=2, monotonic=lambda: now[0])
+    keys = [result_key(f"x = {n}\n", 1, None) for n in range(3)]
+    result = CachedResult("valid", ())
+    for key in keys:
+        cache.put(key, result)
+
+    assert cache.get(keys[0]) is None
+    assert cache.get(keys[2]) == result
+    now[0] = 601
+    assert cache.get(keys[2]) is None
+    assert (
+        result_key("x = 1\n", 1, None)
+        != result_key("x = 1\n", 2, None)
+        != result_key("x = 1\n", 1, "L1-Q1")
+    )

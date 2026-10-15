@@ -140,6 +140,11 @@ Para uma turma inteira, o caminho mais curto é:
 5. Aperte **Alt+N** (ou clique em **Próximo aluno**): o código, o nome, a anotação e o resultado
    são limpos, a lista e a questão ficam, e o foco volta ao editor.
 
+Para trazer a solução de um arquivo, use **Carregar .py**, ao lado de Colar e Limpar, ou arraste
+o arquivo para o editor (só `.py` em UTF-8, até 50 KB). Depois de verificar, **Copiar o relatório**
+e **Baixar .txt** levam o resultado em texto, com o porquê e o que usar em cada regra e sem o
+código.
+
 A ajuda **Atalhos do teclado**, abaixo dos botões, lista todos os atalhos. Dentro de um campo de
 texto, o Ctrl+Shift+C fica com o campo.
 

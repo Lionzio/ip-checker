@@ -33,6 +33,8 @@ class FeedbackItem:
     #: "uso": uma construção proibida que aparece; "falta": uma exigência da lista (R-02) ausente.
     kind: Literal["uso", "falta"]
     label: str
+    #: O que usar no lugar, do ruleset (S38-02): o feedback sem IA explica cada item com ela.
+    alternative: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,9 +66,10 @@ def feedback_input(
         requirement = requirements.get(violation.rule_id)
         if violation.category is Category.EXIGENCIA and requirement is not None:
             labels = dict.fromkeys(describe(fact) for fact in requirement.require_any)
-            items[FeedbackItem("falta", " ou ".join(labels))] = None
+            items[FeedbackItem("falta", " ou ".join(labels), violation.alternative)] = None
         else:
-            items[FeedbackItem("uso", describe(violation.construct))] = None
+            label = describe(violation.construct)
+            items[FeedbackItem("uso", label, violation.alternative)] = None
     code = strip_comments(strip_docstrings(check_source(source, limits)))
     return FeedbackInput(result.status, tuple(items), code, None)
 

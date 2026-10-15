@@ -31,6 +31,9 @@ class Violation:
     construct: str
     allowed_from_list: int | None
     message: str
+    #: Por que a construção não vale e o que usar no lugar (S38-01), do ruleset.
+    explanation: str = ""
+    alternative: str = ""
 
 
 @dataclass(frozen=True, slots=True)

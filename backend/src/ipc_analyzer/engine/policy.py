@@ -41,6 +41,15 @@ from ipc_analyzer.engine.ruleset import (
 #: A regra específica da questão (catálogo R-01), em nome da qual a questão proíbe.
 QUESTION_RULE = "R-01"
 QUESTION_DENY_MESSAGE = "'{construct}' é proibido nesta questão ({question_id}), pelo enunciado."
+#: A R-01 vem do enunciado, e não do documento de permissões: os textos dela ficam aqui (S38-01).
+QUESTION_DENY_EXPLANATION = (
+    "O enunciado desta questão proíbe a construção, e o que a questão define vale sobre as "
+    "permissões gerais da lista."
+)
+QUESTION_DENY_ALTERNATIVE = (
+    "Releia o enunciado e resolva com o que ele e a lista permitem; a mensagem diz o que a questão "
+    "proíbe."
+)
 
 #: Uma exigência fala da solução inteira, e não de um trecho: aponta para o início do código.
 REQUIREMENT_POSITION = (1, 1, 1, 1)
@@ -52,6 +61,9 @@ def _violation(
     category: Category,
     template: str,
     allowed_from_list: int | None = None,
+    *,
+    explanation: str = "",
+    alternative: str = "",
 ) -> Violation:
     message = template.format(
         allowed_from_list="" if allowed_from_list is None else allowed_from_list,
@@ -67,6 +79,8 @@ def _violation(
         construct=fact.name,
         allowed_from_list=allowed_from_list,
         message=message,
+        explanation=explanation,
+        alternative=alternative,
     )
 
 
@@ -93,6 +107,8 @@ def judge(
                 QUESTION_RULE,
                 Category.PROIBIDO_NA_QUESTAO,
                 template.replace("{question_id}", question.id),
+                explanation=QUESTION_DENY_EXPLANATION,
+                alternative=QUESTION_DENY_ALTERNATIVE,
             )
         if any(holds(condition, fact) for condition in question.allowed.get(fact.name, ())):
             return None
@@ -100,7 +116,14 @@ def judge(
 
     for match in matches:
         if match.rule.effect is Effect.DENY and holds(match.condition, fact):
-            return _violation(fact, match.rule.id, Category.ANULACAO, match.rule.message)
+            return _violation(
+                fact,
+                match.rule.id,
+                Category.ANULACAO,
+                match.rule.message,
+                explanation=match.rule.explicacao,
+                alternative=match.rule.alternativa,
+            )
 
     allows = [match for match in matches if match.rule.effect is Effect.ALLOW]
     current = [match for match in allows if _in_range(match.rule, list_number)]
@@ -109,7 +132,14 @@ def judge(
     if current:
         failed: RuleMatch = current[0]
         template = (failed.condition.message if failed.condition else None) or failed.rule.message
-        return _violation(fact, failed.rule.id, Category.NAO_CONSTA, template)
+        return _violation(
+            fact,
+            failed.rule.id,
+            Category.NAO_CONSTA,
+            template,
+            explanation=failed.rule.explicacao,
+            alternative=failed.rule.alternativa,
+        )
 
     later = [
         match
@@ -124,10 +154,19 @@ def judge(
             Category.FORA_DA_LISTA,
             first.rule.message,
             allowed_from_list=first.rule.since_list,
+            explanation=first.rule.explicacao,
+            alternative=first.rule.alternativa,
         )
 
     default_deny = ruleset.default_deny
-    return _violation(fact, default_deny.id, Category.NAO_CONSTA, default_deny.message or "")
+    return _violation(
+        fact,
+        default_deny.id,
+        Category.NAO_CONSTA,
+        default_deny.message or "",
+        explanation=default_deny.explicacao or "",
+        alternative=default_deny.alternativa or "",
+    )
 
 
 def unmet_requirements(
@@ -154,6 +193,8 @@ def _requirement_violation(requirement: Requirement) -> Violation:
         construct=f"requirement:{requirement.id}",
         allowed_from_list=None,
         message=requirement.message,
+        explanation=requirement.explicacao,
+        alternative=requirement.alternativa,
     )
 
 

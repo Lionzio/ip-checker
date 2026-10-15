@@ -25,6 +25,7 @@ from ipc_api.errors import (
     database_unavailable,
     overloaded,
 )
+from ipc_api.feedback.cache import CachedItem, CachedResult, result_key
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
 from ipc_api.gabaritos import Gabaritos
@@ -108,33 +109,49 @@ async def feedback(
     # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista, como na verificação.
     check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
     question_id = body.question_id if check is not None and check.registered else None
-    try:
-        async with admission.slot():
-            data = await analyzer.feedback_input(
-                body.code, body.list_number, request_id=request_id, question_id=question_id
-            )
-    except Overloaded:
-        raise overloaded() from None
-    except AnalyzerRejected as exc:
-        raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
-    except AnalyzerUnavailable as exc:
-        logger.warning("analyzer indisponível: %s", exc)
-        raise analyzer_unavailable() from None
+    # S38-04: "Gerar" de novo (outro nome, outra anotação) reaproveita a análise anterior, que
+    # fica em memória sem o código. O "Aprimorar com IA" precisa do código sem comentários, que só
+    # o analisador isolado prepara, então ele sempre analisa (e renova o resultado guardado).
+    key = result_key(body.code, body.list_number, question_id)
+    cached = None if body.enhance else service.results.get(key)
+    code_for_ai = ""
+    if cached is None:
+        try:
+            async with admission.slot():
+                data = await analyzer.feedback_input(
+                    body.code, body.list_number, request_id=request_id, question_id=question_id
+                )
+        except Overloaded:
+            raise overloaded() from None
+        except AnalyzerRejected as exc:
+            raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
+        except AnalyzerUnavailable as exc:
+            logger.warning("analyzer indisponível: %s", exc)
+            raise analyzer_unavailable() from None
 
-    if data.status == "syntax_error" or data.syntax_error is not None:
-        problem = data.syntax_error
-        where = f" (linha {problem.line}, coluna {problem.col})" if problem is not None else ""
-        # Q-18 c: com erro de sintaxe, as permissões não foram verificadas, então não há feedback.
-        raise ApiError(
-            422,
-            ErrorCode.INVALID_INPUT,
-            f"O código tem um erro de sintaxe{where}: as permissões não foram verificadas, "
-            "então não há feedback. Corrija o código e verifique de novo.",
+        if data.status == "syntax_error" or data.syntax_error is not None:
+            problem = data.syntax_error
+            where = f" (linha {problem.line}, coluna {problem.col})" if problem is not None else ""
+            # Q-18 c: com erro de sintaxe, as permissões não foram verificadas; não há feedback.
+            raise ApiError(
+                422,
+                ErrorCode.INVALID_INPUT,
+                f"O código tem um erro de sintaxe{where}: as permissões não foram verificadas, "
+                "então não há feedback. Corrija o código e verifique de novo.",
+            )
+        cached = CachedResult(
+            status=data.status,
+            items=tuple(CachedItem(i.kind, i.label, i.alternative) for i in data.items),
         )
+        service.results.put(key, cached)
+        code_for_ai = data.code
     role = account.role
     assert role is not None  # noqa: S101 - conta ativa sempre tem cargo (CHECK no banco)
     evaluator = Evaluator(name=account.name, role=role.value, treatment=account.treatment.value)
-    items = [Item(kind=item.kind, label=item.label) for item in data.items]
+    items = [
+        Item(kind=item.kind, label=item.label, alternative=item.alternative)
+        for item in cached.items
+    ]
     # Q-16 (opção A): o texto sem IA é o padrão e não gasta cota.
     result = service.write(student=student, annotation=annotation, evaluator=evaluator, items=items)
     notice: str | None = None
@@ -152,7 +169,7 @@ async def feedback(
                 annotation=annotation,
                 evaluator=evaluator,
                 items=items,
-                code=data.code,
+                code=code_for_ai,
             )
             if enhanced is None:
                 notice = NO_ANSWER
@@ -161,7 +178,7 @@ async def feedback(
     request.state.outcome = result.source
     return FeedbackResponse(
         request_id=request_id,
-        status=data.status,
+        status=cached.status,
         text=result.text,
         source=result.source,
         provider=result.provider,

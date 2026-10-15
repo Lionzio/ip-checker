@@ -21,6 +21,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // Com a espera dos findBy em 3 s (setup.ts, S38), um teste com várias esperas passava do
+    // limite padrão de 5 s com a máquina carregada; 15 s cobrem isso sem esconder um travamento.
+    testTimeout: 15_000,
     // Os testes ponta a ponta (e2e/) rodam com o Playwright, contra o compose.
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
   },

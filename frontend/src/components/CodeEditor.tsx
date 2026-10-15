@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type Ref, useImperativeHandle, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, type Ref, useImperativeHandle, useRef, useState } from "react";
 import { lineBlock } from "../editorLines";
 import { Button } from "./ui";
 
@@ -37,6 +37,8 @@ interface CodeEditorProps {
   onScrollTop?: (top: number) => void;
   /** O id de uma descrição a mais, além da dica do editor (as soluções da turma, S37-04). */
   describedBy?: string;
+  /** Ações a mais ao lado de Colar e Limpar (o Carregar .py da verificação, S38-03). */
+  toolbar?: ReactNode;
   ref?: Ref<CodeEditorHandle>;
 }
 
@@ -70,6 +72,7 @@ export function CodeEditor({
   current = null,
   onScrollTop,
   describedBy,
+  toolbar,
   ref,
 }: CodeEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -241,6 +244,7 @@ export function CodeEditor({
         <Button variant="link" onClick={clear} disabled={readOnly || value === ""}>
           Limpar
         </Button>
+        {toolbar}
         <span id={hintId} className="text-slate-600 dark:text-slate-300">
           Tab insere 4 espaços ou indenta as linhas selecionadas; Shift+Tab desindenta. Esc e depois Tab sai do editor.
           {onSubmitShortcut ? " Ctrl+Enter verifica." : ""}

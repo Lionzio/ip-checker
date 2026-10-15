@@ -2,7 +2,7 @@ import { type Ref, useEffect, useId, useState } from "react";
 import type { ValidationState } from "../hooks/useValidateCode";
 import { BUSY_TITLES, CATEGORY_LABELS, NOTICE_TEXTS } from "../labels";
 import { announcement, categoryCounts, groupViolations, type RuleGroup, snippetLines } from "../report";
-import type { Category, ValidateResponse } from "../types/api";
+import type { Category, ValidateResponse, Violation } from "../types/api";
 import { Button, Card, Chip, Disclosure, LineChip, SyntaxErrorBox } from "./ui";
 
 /** Até este número de regras, os cartões nascem abertos; acima, fechados (S37-01). */
@@ -85,6 +85,27 @@ function Snippet({ code, first, last }: { code: string | undefined; first: numbe
   );
 }
 
+/** O porquê e a alternativa da regra (S38-01), do ruleset; um analisador antigo não manda nada. */
+function RuleHelp({ first }: { first: Violation | undefined }) {
+  if (first === undefined || (first.explanation === "" && first.alternative === "")) return null;
+  return (
+    <dl className="mt-2 grid gap-1 text-sm text-slate-700 dark:text-slate-200">
+      {first.explanation !== "" && (
+        <div>
+          <dt className="inline font-semibold">Por quê: </dt>
+          <dd className="inline">{first.explanation}</dd>
+        </div>
+      )}
+      {first.alternative !== "" && (
+        <div>
+          <dt className="inline font-semibold">O que usar: </dt>
+          <dd className="inline">{first.alternative}</dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
 /**
  * Um cartão por regra (S37-01): a categoria, a regra e a mensagem sempre à vista; as linhas e o
  * trecho abrem e fecham. Uma exigência (R-02, R-68) fala da solução inteira e não tem o que abrir.
@@ -122,7 +143,10 @@ function RuleCard({
   return (
     <Card as="li" padding="xs" className={`border-l-4 ${CARD_BORDERS[group.category]}`}>
       {whole ? (
-        <p className="text-sm leading-6">{header}</p>
+        <>
+          <p className="text-sm leading-6">{header}</p>
+          <RuleHelp first={first} />
+        </>
       ) : (
         <Disclosure open={open} aria-controls={bodyId} onClick={onToggle}>
           {header}
@@ -130,6 +154,7 @@ function RuleCard({
       )}
       {!whole && open && (
         <div id={bodyId}>
+          <RuleHelp first={first} />
           <div className="mt-2 flex flex-wrap gap-1">
             {group.occurrences.map((item) => {
               const where = `Linha ${item.line}, coluna ${item.col}`;

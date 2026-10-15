@@ -4492,6 +4492,18 @@
             "maxLength": 1000,
             "minLength": 1,
             "title": "Message"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Explanation",
+            "default": ""
+          },
+          "alternative": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Alternative",
+            "default": ""
           }
         },
         "additionalProperties": false,

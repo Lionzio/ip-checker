@@ -109,6 +109,8 @@ class ViolationOut(BaseModel):
     construct_name: str = Field(serialization_alias="construct")
     allowed_from_list: int | None
     message: str
+    explanation: str
+    alternative: str
 
 
 class SyntaxErrorOut(BaseModel):
@@ -179,6 +181,8 @@ class AnalyzeResponse(BaseModel):
                     construct_name=v.construct,
                     allowed_from_list=v.allowed_from_list,
                     message=v.message,
+                    explanation=v.explanation,
+                    alternative=v.alternative,
                 )
                 for v in result.violations
             ],
@@ -325,6 +329,7 @@ class ClassResponse(BaseModel):
 class FeedbackItemOut(BaseModel):
     kind: Literal["uso", "falta"]
     label: str
+    alternative: str
 
 
 class FeedbackInputResponse(BaseModel):
@@ -341,7 +346,10 @@ class FeedbackInputResponse(BaseModel):
         problem = data.syntax_error
         return cls(
             status=data.status,
-            items=[FeedbackItemOut(kind=item.kind, label=item.label) for item in data.items],
+            items=[
+                FeedbackItemOut(kind=item.kind, label=item.label, alternative=item.alternative)
+                for item in data.items
+            ],
             code=data.code,
             syntax_error=(
                 SyntaxErrorOut(line=problem.line, col=problem.col, message=problem.message)

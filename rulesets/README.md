@@ -31,6 +31,8 @@ privado separado (Q-14).
 | `until_list` | não | Última lista em que a regra vale (ex.: o `zip` condicional da R-37 vai até a Lista 4). |
 | `match` | sim | Fatos da AST que a regra cobre, no formato `<tipo>:<nome>` (ver `docs/mapping-R-xx.md`). Um item pode ter condição (ver abaixo). |
 | `message` | sim | Texto mostrado ao aluno. Pode usar `{allowed_from_list}` e `{construct}`. Chaves literais são escritas duplicadas: `{{a, b}}`. |
+| `explicacao` | sim | Por que a construção é proibida ou ainda não vale (S38-01). Sai do documento de permissões, sem criar regra; aparece no cartão da violação como "Por quê". Também obrigatória nas exigências e na R-04. |
+| `alternativa` | sim | O que usar no lugar (S38-01); aparece como "O que usar" e entra no feedback sem IA. Quem revisa os dois textos é um monitor-chefe, um professor ou o desenvolvedor (Q-31). |
 | `source` | sim | Página e seção do documento de permissões, começando por `Permissões, p.` |
 
 Tudo que nenhuma regra `allow` cobre é proibido (R-04, *default deny*).

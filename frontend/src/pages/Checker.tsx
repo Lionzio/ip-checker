@@ -1,8 +1,10 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type DragEvent, type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { type CodeEditorHandle, CodeEditor } from "../components/CodeEditor";
 import { FeedbackPanel, type FeedbackPanelHandle } from "../components/FeedbackPanel";
 import { GabaritoPanel } from "../components/GabaritoPanel";
 import { IndicatorsPanel } from "../components/IndicatorsPanel";
+import { LoadPyFile } from "../components/LoadPyFile";
+import { ReportExport } from "../components/ReportExport";
 import { ListSelector } from "../components/ListSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { ResultPanel } from "../components/ResultPanel";
@@ -13,6 +15,7 @@ import { NARROW, useMediaQuery } from "../hooks/useMediaQuery";
 import { useValidateCode } from "../hooks/useValidateCode";
 import { PAGE_TITLES } from "../labels";
 import { ApiError, type FeedbackClient, type ValidationClient } from "../services/client";
+import { readPythonFile } from "../pyFile";
 import { questionOptions } from "../questions";
 import type { ListInfo, ValidateRequest } from "../types/api";
 import { panelId, tabId } from "../ui";
@@ -63,6 +66,8 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const narrow = useMediaQuery(NARROW);
   const [tab, setTab] = useState<Tab>("resultado");
   const [helpOpen, setHelpOpen] = useState(false);
+  // O resultado do Carregar .py (S38-03): o nome do arquivo carregado ou o motivo da recusa.
+  const [fileNotice, setFileNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const editorRef = useRef<CodeEditorHandle>(null);
   const feedbackRef = useRef<FeedbackPanelHandle>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -168,6 +173,35 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
     editorRef.current?.selectLines(first, last);
   }
 
+  const listTitle = (number: number) => {
+    const title = lists.find((list) => list.number === number)?.title;
+    return title === undefined ? "" : `: ${title}`;
+  };
+
+  function loaded(text: string, name: string) {
+    setCode(text);
+    setFileNotice({ ok: true, text: `"${name}" carregado no editor.` });
+    editorRef.current?.focus();
+  }
+
+  function refused(message: string) {
+    setFileNotice({ ok: false, text: message });
+  }
+
+  // Arrastar um .py para o editor também carrega (S38-03).
+  function dragOver(event: DragEvent<HTMLFormElement>) {
+    if (!loading && event.dataTransfer.types.includes("Files")) event.preventDefault();
+  }
+
+  async function drop(event: DragEvent<HTMLFormElement>) {
+    const file = event.dataTransfer.files[0];
+    if (loading || file === undefined) return;
+    event.preventDefault();
+    const result = await readPythonFile(file);
+    if (result.ok) loaded(result.text, result.name);
+    else refused(result.message);
+  }
+
   function backToCode() {
     editorRef.current?.focus();
     formRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
@@ -197,6 +231,8 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
         <form
           ref={formRef}
           onSubmit={submit}
+          onDragOver={dragOver}
+          onDrop={(event) => void drop(event)}
           className="flex min-w-0 scroll-mt-4 flex-col gap-4 lg:sticky lg:top-4 lg:-mx-0.5 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:px-0.5"
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -225,7 +261,16 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
             readOnly={loading}
             onSubmitShortcut={verify}
             marked={marked}
+            toolbar={<LoadPyFile onLoad={loaded} onError={refused} disabled={loading} />}
           />
+          {fileNotice !== null &&
+            (fileNotice.ok ? (
+              <p role="status" className="text-sm text-slate-700 dark:text-slate-300">
+                {fileNotice.text}
+              </p>
+            ) : (
+              <ErrorText>{fileNotice.text}</ErrorText>
+            ))}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" disabled={!canVerify}>
               {loading ? "Verificando…" : "Verificar"}
@@ -271,6 +316,14 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
                 onSelectLines={selectLines}
                 headingRef={headingRef}
               />
+              {success && verified !== null && (
+                <ReportExport
+                  response={state.response}
+                  list={`Lista ${verified.list_number}${listTitle(verified.list_number)}`}
+                  listNumber={verified.list_number}
+                  questionId={verified.question_id ?? null}
+                />
+              )}
               {gabarito !== null && <GabaritoPanel comparison={gabarito} onSelectLines={selectLines} />}
             </>,
           )}

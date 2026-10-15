@@ -1,6 +1,6 @@
 # Roteiro de testes manuais do IP-Checker
 
-Versão do piloto: release `sprint-37` (14/10/2026), ruleset `2026.2.6` (período 2026.2).
+Versão do piloto: release `sprint-38` (15/10/2026), ruleset `2026.2.7` (período 2026.2).
 Endereço: <https://ip-checker-red-phi.vercel.app>.
 
 Este roteiro é para o desenvolvedor e os monitores testarem, à mão, tudo o que o IP-Checker faz
@@ -1437,6 +1437,22 @@ print(total(eval(input())))
   - O contador mostra só os cartões daquela categoria; **Todas** volta a mostrar todos.
   - Até 5 regras, os cartões vêm abertos; acima disso, fechados. Aberto, o cartão mostra as linhas e o trecho com a linha da violação em destaque e uma linha de contexto de cada lado.
   - No computador, o editor fica parado na tela enquanto o resultado rola.
+- **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
+- **Observações:**
+
+### VI-01c. Por quê e o que usar; carregar e exportar (Sprint 38)
+
+- **Objetivo:** Cada regra explica a violação; o código vem de um arquivo e o resultado sai em texto.
+- **Passos:**
+  1. Salve o código do V-14 num arquivo `teste.py` e use **Carregar .py** (ou arraste o arquivo para o editor).
+  2. Verifique na Lista 1 e abra um cartão.
+  3. Clique em **Copiar o relatório** e cole num bloco de notas; depois, **Baixar .txt**.
+  4. Tente carregar um arquivo que não é `.py` ou maior que 50 KB.
+- **Esperado:**
+  - O editor recebe o código, com o aviso "teste.py carregado no editor".
+  - Cada cartão mostra **Por quê** e **O que usar**, coerentes com o documento de permissões.
+  - O relatório tem a lista, a questão, as regras, as linhas, o porquê e o que usar, e não tem o código.
+  - O arquivo errado é recusado com o motivo, e o editor não muda.
 - **Resultado:** ☐ OK ☐ Falhou ☐ Não testado
 - **Observações:**
 

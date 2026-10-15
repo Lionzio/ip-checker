@@ -245,6 +245,10 @@ class Violation(_Strict):
     )
     allowed_from_list: ListNumber | None
     message: Message
+    #: Por que a construção não vale e o que usar no lugar, do ruleset (S38-01). Vazios só com um
+    #: analisador anterior à Sprint 38.
+    explanation: Annotated[str, StringConstraints(max_length=1000)] = ""
+    alternative: Annotated[str, StringConstraints(max_length=1000)] = ""
 
 
 class SyntaxErrorInfo(_Strict):
@@ -630,6 +634,8 @@ class RoleChoice(_Strict):
 class AnalyzerFeedbackItem(_Strict):
     kind: Literal["uso", "falta"]
     label: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    #: O que usar no lugar (S38-02); vazio com um analisador anterior à Sprint 38.
+    alternative: Annotated[str, StringConstraints(max_length=1000)] = ""
 
 
 class AnalyzerFeedbackInput(_Strict):

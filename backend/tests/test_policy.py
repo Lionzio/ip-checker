@@ -145,6 +145,8 @@ def zip_ruleset(
                 }
             ],
             "message": "zip() só a partir da Lista {allowed_from_list}.",
+            "explicacao": "zip() tem regras próprias.",
+            "alternativa": "Use zip() no for.",
             "source": "Permissões, p.2",
         },
         {
@@ -154,6 +156,8 @@ def zip_ruleset(
             "since_list": 5,
             "match": ["builtin:zip"],
             "message": "zip() livre só a partir da Lista {allowed_from_list}.",
+            "explicacao": "zip() tem regras próprias.",
+            "alternativa": "Use zip() no for.",
             "source": "Permissões, p.3",
         },
     ]
@@ -253,3 +257,22 @@ def test_requirements_only_apply_to_their_list(base_ruleset: CompiledRuleset) ->
     assert [r.id for r in base_ruleset.requirements_for(4)] == ["R-02"]
     assert [r.id for r in base_ruleset.requirements_for(5)] == ["R-02"]
     assert [r.id for r in base_ruleset.requirements_for(6)] == ["R-68"]
+
+
+def test_every_violation_brings_the_explanation_and_the_alternative(
+    base_ruleset: CompiledRuleset,
+) -> None:
+    """S38-01: cada categoria de violação traz o porquê e o que usar no lugar, do ruleset."""
+    code = "import math\nfor i in range(3):\n    x = {i: 1}\nprint(eval('1'))\n"
+    result = analyze_source(code, list_number=1, ruleset=base_ruleset)
+    violations = result.violations
+
+    assert {v.category for v in violations} >= {
+        Category.EXIGENCIA,
+        Category.ANULACAO,
+        Category.FORA_DA_LISTA,
+        Category.NAO_CONSTA,
+    }
+    for violation in violations:
+        assert violation.explanation, violation.rule_id
+        assert violation.alternative, violation.rule_id
