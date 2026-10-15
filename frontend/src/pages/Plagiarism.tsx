@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { BAND_STYLES, PERCENT } from "../bands";
+import { ClassMatrix } from "../components/ClassMatrix";
 import { type CodeEditorHandle, CodeEditor, type LineRange } from "../components/CodeEditor";
 import { Button, Card, ErrorText, LineChip, SyntaxErrorBox } from "../components/ui";
 import { useApiCall } from "../hooks/useApiCall";
@@ -27,7 +28,7 @@ export const PLAGIARISM_TIMEOUT_MS = 15_000;
 /** Contra a turma, o analisador tem até 10 s. */
 export const CLASS_TIMEOUT_MS = 20_000;
 
-type Mode = "pair" | "class";
+type Mode = "pair" | "class" | "matrix";
 
 interface PlagiarismProps {
   /** As listas dão as questões com gabarito (S32-07). */
@@ -152,6 +153,14 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
     else setClassError(outcome.message);
   }
 
+  // Do todos contra todos (S40-02) para os dois códigos lado a lado, já comparados.
+  function pairFromMatrix(first: string, second: string) {
+    setMode("pair");
+    setCodeA(first);
+    setCodeB(second);
+    void comparePair(first, second);
+  }
+
   function sideBySide(label: string) {
     const code = classResult?.codes.get(label);
     if (code === undefined) return;
@@ -181,6 +190,9 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
         </Button>
         <Button variant={mode === "class" ? "primary" : "secondary"} aria-pressed={mode === "class"} onClick={() => setMode("class")}>
           Contra a turma
+        </Button>
+        <Button variant={mode === "matrix" ? "primary" : "secondary"} aria-pressed={mode === "matrix"} onClick={() => setMode("matrix")}>
+          Todos contra todos
         </Button>
       </div>
 
@@ -268,7 +280,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
             {compared !== null && compared.result.gabarito && <GabaritoPair gabarito={compared.result.gabarito} />}
           </section>
         </form>
-      ) : (
+      ) : mode === "class" ? (
         <form onSubmit={(event) => void submitClass(event)} className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
@@ -326,6 +338,8 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
             {classResult !== null && <ClassResult response={classResult.response} onSideBySide={sideBySide} />}
           </section>
         </form>
+      ) : (
+        <ClassMatrix client={client} onUnauthenticated={onUnauthenticated} onSideBySide={pairFromMatrix} />
       )}
     </div>
   );
