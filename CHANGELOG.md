@@ -56,6 +56,11 @@ feedback e o professor que mantém as regras. Sem a cota do Actions (P-19), a ev
   código só ASCII (631 contra 658 ms) e igual com acentos. A conversão de colunas não era o
   gargalo da extração; a linha de base do benchmark não foi regravada, porque o ganho fica dentro
   do ruído da máquina. Onde está o custo de verdade fica para a Sprint 39 (qualidade interna).
+- **15/10/2026, depois do deploy da `sprint-38`:** Render (Manual Deploy, `/ready` com `319ab17` e
+  as regras `2026.2.7`) e Vercel (`/version.json` com `319ab17`) publicados a pedido do autor,
+  antes da revisão dos textos pela Q-31, que segue pendente. O exercício de alerta (#118 e #120)
+  teve o primeiro 503 às 12:14:11, o e-mail de queda às 12:15 (NFR-15: até 5 min) e o de volta
+  às 12:30 (runbook).
 
 ## Sprint 37 — Verificação mais clara
 
