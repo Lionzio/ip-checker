@@ -774,7 +774,7 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (renumerada para 41 em 11/10/2026). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
 - **Fase 1f — Polimento (Sprints 36–40), criada em 11/10/2026:** até o fim do piloto, melhorar o que existe: os defeitos e os documentos da equipe (36), a tela de verificação (37), a explicação de cada regra e a exportação (38), a qualidade interna, a operação e a documentação (39) e a correção da turma inteira (40). As tasks estão em 7.15.
 - **Fase 1g — Indícios, período, feedback, plágio, acompanhamento e Google (Sprints 42–48), proposta de 12/10/2026:** a partir da revisão das seis frentes ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): os indícios de IA ligados no piloto (42, a pedido do autor), o período na página e a retenção por encerramento (43), o feedback rastreável e o padrão do monitor (44), o "Aprimorar com IA" com validação e crítica (45), o plágio calibrado (46), os grupos de acompanhamento dos alunos (47) e a entrada com o Google no piloto (48, no fim da fila). As decisões sobre dados de alunos (Q-26 a Q-29) foram tomadas em 12/10/2026, e a 47 só vai ao piloto com o aviso de privacidade aprovado pela coordenação. As tasks estão em 7.16.
-- **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto.
+- **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto. Desde 15/10/2026 (P-24), é a última da fila: a entrada no servidor do CIn depende da apresentação e da validação com monitores, monitores-chefe, professores, coordenadores e diretores, e o piloto de 2027.1 deve rodar no Render e na Vercel.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
 
@@ -820,7 +820,7 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 38 (sob comando do autor) | Explicar cada regra e exportar | US-02, US-08, US-10, US-12, US-22, US-32, US-33 | Porquê e alternativa em cada violação; feedback sem IA mais completo; exportar e carregar `.py`; feedback sem nova análise | Revisão dos textos por quem conhece o documento |
 | 39 (sob comando do autor) | Qualidade interna, operação e documentação | US-14, US-15, US-20, US-35 | Arquivos menores; testes das páginas; CI mais rápida; backup agendado e restauração ensaiada; documentação reorganizada | Refatorar sem mudar comportamento |
 | 40 (sob comando do autor) | A correção da turma inteira | US-16, US-31, US-33 | Correção em lote por upload com CSV; plágio todos contra todos com grupos; painel por lista | Carga concentrada no plano gratuito |
-| 41 (após 2027.1) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida e a Q-12 respondida |
+| 41 (a última da fila, P-24) | Fase 2 (bloqueada) | US-20, US-23 | GHCR por digest, deploy *pull-based* no CIn e staging | Só com a P-09 atingida, a Q-12 respondida e a validação com a equipe, a coordenação e a direção (P-24) |
 | 42 (sob comando do autor) | Indícios de IA ligados no piloto | US-34 | Calibração na meta; evidência e confiança em cada indício; ligação primeiro para a chefia e depois para todos; guia e registro de casos | Leitura do painel como prova; base humana pequena (os gabaritos da equipe) |
 | 43 (sob comando do autor) | Período na página e retenção por encerramento | US-37, US-39, US-40 | Período antes de Lista e Questão; o ativo e os 5 anteriores carregados; `retire-period` com simulação | `ruleset_version` por período nos painéis |
 | 44 (sob comando do autor) | Feedback rastreável e o padrão do monitor | US-32, US-41, US-42 | Cada violação com linha e motivo no feedback sem IA; `estilo.yaml` revisado por PR | Texto mais longo para o Dikastis |
@@ -1855,6 +1855,8 @@ tabela, o status de cada aluno e os grupos de soluções parecidas.
 
 #### Sprint 41 — Fase 2: imagens no GHCR, deploy pelo servidor do CIn e staging (bloqueada)
 
+**Prioridade (P-24, 15/10/2026):** a última da fila, depois de todas as outras sprints. A entrada no servidor do CIn depende da apresentação e da validação com monitores, monitores-chefe, professores, coordenadores e diretores; o piloto de 2027.1 deve rodar no Render e na Vercel, e a transição vem depois.
+
 Era a Sprint 36 do plano de 07/10/2026, renumerada em 11/10/2026 (as tasks S36-01 a S36-04 passaram a S41-01 a S41-04).
 
 **Objetivo:** preparar a Fase 2 da ADR-03, só se a P-09 for atingida e a Q-12 for respondida pelo suporte de TI do CIn: imagens publicadas no GHCR por digest, deploy *pull-based* no servidor do CIn e um ambiente de staging.
@@ -1901,7 +1903,7 @@ Q-29, decididas em 12/10/2026), e só vai ao piloto com o aviso de privacidade a
 coordenação. A 48, a entrada com o Google no piloto, fica no fim da fila (decisão de 12/10/2026).
 
 **Ordem sugerida, intercalada com o plano de polimento (7.15):** 36 → 37 → 38 → **42** → **43** → **44** →
-39 → 40 → **46** → **45** → **47** → **48**, com a 41 (Fase 2) quando a P-09 e a Q-12 permitirem.
+39 → 40 → **46** → **45** → **47** → **48**, e a 41 (Fase 2) por último, depois de todas (P-24, 15/10/2026), quando a P-09, a Q-12 e a validação com a coordenação e a direção permitirem.
 A 42 começa assim que houver o corpus de calibração ou a resposta da Q-35 e pode correr em
 paralelo com as outras, porque toca poucos arquivos. A 43 vem antes da 39 para que a refatoração de `Checker.tsx` e `Plagiarism.tsx` já inclua o
 seletor de período; a 44 depende da S38-01 e da S38-02; a 46 depende da S40-02.
