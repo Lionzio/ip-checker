@@ -41,6 +41,21 @@ feedback e o professor que mantém as regras. Sem a cota do Actions (P-19), a ev
   Tudo acontece no navegador: nada vai ao servidor nem é guardado. Nos testes da página, a espera
   dos `findBy` passou de 1 s para 3 s (`setup.ts`), a causa das falhas por tempo na CI local da
   Sprint 37.
+- **15/10/2026, S38-04:** o feedback deixa de reanalisar o código a cada "Gerar". A API guarda
+  em memória, por 10 minutos e até 512 resultados (o mais antigo sai primeiro), só o resultado da
+  análise (o status e os itens com os nomes e as alternativas), pela chave do SHA-256 do código,
+  da lista e da questão; o código, o nome do aluno, a anotação e o texto nunca entram. Gerar de
+  novo com outro nome ou outra anotação não chama o analisador nem ocupa a admissão. O "Aprimorar
+  com IA" continua analisando, porque precisa do código sem comentários, que só o analisador
+  isolado prepara (decisão da sprint; o resultado guardado é renovado). O cache é de um processo e
+  some num reinício ou num deploy.
+- **15/10/2026, S38-05:** o `SourceMap.column` não decodifica mais a linha a cada fato: uma linha
+  só ASCII usa o byte como coluna, e as outras ganham, uma vez, a tabela do byte para o caractere.
+  Um teste confere, byte a byte, que as colunas são as mesmas de antes, com caracteres de 1 a 4
+  bytes. Medida na entrada de 50 KB, intercalando a versão antiga e a nova: 4% mais rápida em
+  código só ASCII (631 contra 658 ms) e igual com acentos. A conversão de colunas não era o
+  gargalo da extração; a linha de base do benchmark não foi regravada, porque o ganho fica dentro
+  do ruído da máquina. Onde está o custo de verdade fica para a Sprint 39 (qualidade interna).
 
 ## Sprint 37 — Verificação mais clara
 

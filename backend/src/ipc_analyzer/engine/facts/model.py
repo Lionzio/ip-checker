@@ -31,20 +31,38 @@ class Fact:
 
 
 class SourceMap:
-    """Converte colunas da AST (bytes UTF-8, a partir de 0) em caracteres (a partir de 1)."""
+    """Converte colunas da AST (bytes UTF-8, a partir de 0) em caracteres (a partir de 1).
+
+    Desde a S38-05, a conversão não decodifica a linha a cada fato: uma linha só ASCII tem bytes e
+    caracteres iguais, e as outras ganham, uma vez, a tabela do byte para o caractere. Um byte no
+    meio de um caractere conta como o começo dele, como o ``decode(errors="ignore")`` de antes.
+    """
 
     def __init__(self, source: str) -> None:
         self._lines = split_lines(source)
-        self._encoded: dict[int, bytes] = {}
+        #: Por linha: ``None`` se a linha é só ASCII; senão, o caractere de cada byte, mais o fim.
+        self._tables: dict[int, list[int] | None] = {}
+
+    def _table(self, line: int) -> list[int] | None:
+        if line in self._tables:
+            return self._tables[line]
+        text = self._lines[line - 1]
+        table: list[int] | None = None
+        if not text.isascii():
+            table = []
+            for index, char in enumerate(text):
+                table.extend([index] * len(char.encode("utf-8", "surrogatepass")))
+            table.append(len(text))
+        self._tables[line] = table
+        return table
 
     def column(self, line: int, byte_offset: int) -> int:
         if not 1 <= line <= len(self._lines):
             return byte_offset + 1
-        encoded = self._encoded.get(line)
-        if encoded is None:
-            encoded = self._lines[line - 1].encode("utf-8")
-            self._encoded[line] = encoded
-        return len(encoded[:byte_offset].decode("utf-8", errors="ignore")) + 1
+        table = self._table(line)
+        if table is None:
+            return min(byte_offset, len(self._lines[line - 1])) + 1
+        return table[min(max(byte_offset, 0), len(table) - 1)] + 1
 
     def fact(
         self,

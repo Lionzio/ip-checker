@@ -27,6 +27,7 @@ from uuid import UUID
 
 from ipc_api.accounts.store import AccountStore, MemoryAccountStore
 from ipc_api.errors import ApiError, ErrorCode
+from ipc_api.feedback.cache import FeedbackResultCache
 from ipc_api.feedback.compose import (
     Evaluator,
     Item,
@@ -96,6 +97,8 @@ class FeedbackService:
         self._monotonic = monotonic
         #: Até quando cada IA fica fora da cadeia depois de um 429 (cota do plano gratuito).
         self._paused: dict[Slot, float] = {}
+        #: O resultado da análise, sem o código, para não reanalisar a cada pedido (S38-04).
+        self.results = FeedbackResultCache(monotonic=monotonic)
 
     @property
     def ai_enabled(self) -> bool:
