@@ -74,6 +74,8 @@ de cada PR é o `scripts/ci-local.sh --e2e`. As capturas de antes e depois saem 
   teclado" abaixo dos botões que lista também Ctrl+Enter, Tab, Shift+Tab e Esc. O guia da equipe
   ganhou o menu da conta, o tema, o rascunho e os atalhos.
 - **14/10/2026, depois do deploy da `sprint-37`:** a página foi publicada na Vercel às 15:28 (`/version.json` com `0ce3d71`); o Render não mudou. O exercício de alerta (#113 e #114) teve o primeiro 503 às 15:37:54, o e-mail de queda às 15:41 (cerca de 3 min; NFR-15: até 5 min) e o de volta às 15:56 (horário de Brasília; runbook). Depois da carga, o motivo do 503 passou de `latencia` a `erros` por alguns minutos: respostas 5xx da carga ficaram na janela de 5 min e, com o tráfego caindo, passaram de 1%.
+- **15/10/2026, sintético da `sprint-37`:** `scripts/sintetico-local.sh`, rodado pelo autor, entrou
+  pela página e verificou em 42,1 ms no servidor (limite de 300 ms).
 
 ## Sprint 36.1 — Prazo da análise no piloto com a medição depois do deploy
 
