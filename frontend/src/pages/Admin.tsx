@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ListPanel } from "../components/ListPanel";
 import { RoleBadge } from "../components/RoleBadge";
 import { Button, Card } from "../components/ui";
 import type { AdminClient } from "../services/client";
@@ -196,6 +197,7 @@ export function Admin({ client, canViewLog = false, onUnauthenticated }: AdminPr
           >
             <AccountTable kind="removed" accounts={lists.members.removed.filter((a) => matches(a, true))} busyId={busyId} handlers={handlers} />
           </Section>
+          <ListPanel client={client} onUnauthenticated={onUnauthenticated} />
           {lists.log !== null && (
             <Section title="Registro de ações" empty="Nenhuma ação registrada nos últimos 12 meses." count={lists.log.length}>
               <p className="text-sm text-slate-600 dark:text-slate-300">
