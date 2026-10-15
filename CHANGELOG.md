@@ -32,6 +32,15 @@ feedback e o professor que mantém as regras. Sem a cota do Actions (P-19), a ev
   alternativas que couberem, e o resto fica com a dica geral de antes. A abertura, a frase
   obrigatória e o `[ALUNO]` não mudaram. Um teste passa todas as alternativas reais pela validação
   nos três tratamentos.
+- **15/10/2026, S38-03:** "Carregar .py", ao lado de Colar e Limpar, e arrastar o arquivo para o
+  editor: só `.py` em UTF-8 de até 50 KB (o limite da API), com o BOM e as quebras de linha do
+  Windows tratados; um arquivo grande, em outro encoding ou que não é texto é recusado com o
+  motivo, sem mexer no editor. O resultado ganhou "Copiar o relatório" e "Baixar .txt"
+  (`ip-checker-lista-1.txt` ou `ip-checker-L3-Q9.txt`), com a lista, a questão, a versão das
+  regras e, por regra, a categoria, a mensagem, as linhas, o porquê e o que usar, sem o código.
+  Tudo acontece no navegador: nada vai ao servidor nem é guardado. Nos testes da página, a espera
+  dos `findBy` passou de 1 s para 3 s (`setup.ts`), a causa das falhas por tempo na CI local da
+  Sprint 37.
 
 ## Sprint 37 — Verificação mais clara
 

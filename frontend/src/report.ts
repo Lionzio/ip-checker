@@ -1,7 +1,7 @@
 /** O relatório da verificação (S26-03): agrupar, ordenar e resumir as violações. */
 import type { ValidationState } from "./hooks/useValidateCode";
-import { BUSY_TITLES, CATEGORY_COUNTS } from "./labels";
-import type { Category, Violation } from "./types/api";
+import { BUSY_TITLES, CATEGORY_COUNTS, CATEGORY_LABELS } from "./labels";
+import type { Category, ValidateResponse, Violation } from "./types/api";
 
 /** Da mais grave para a mais leve: é a ordem do relatório e do resumo. */
 export const SEVERITY: Category[] = ["ANULACAO", "PROIBIDO_NA_QUESTAO", "EXIGENCIA", "FORA_DA_LISTA", "NAO_CONSTA"];
@@ -103,3 +103,58 @@ export function announcement(state: ValidationState): string {
   }
 }
 
+
+interface ReportContext {
+  /** "Lista 1: Comandos condicionais". */
+  list: string;
+  /** "L3-Q9", ou nada quando valeram só as permissões da lista. */
+  questionId: string | null;
+}
+
+/**
+ * O relatório em texto (S38-03): a lista, a questão, a versão das regras e, por regra, a
+ * categoria, a mensagem, as linhas, o porquê e o que usar. Nunca leva o código: é o que o monitor
+ * cola numa anotação ou guarda num .txt.
+ */
+export function reportText(response: ValidateResponse, context: ReportContext): string {
+  const lines = [
+    "IP-Checker: resultado da verificação",
+    `${context.list} · ${context.questionId === null ? "sem questão (valem as permissões da lista)" : `questão ${context.questionId}`}`,
+    `Regras ${response.ruleset_version}`,
+    "",
+  ];
+  if (response.status === "syntax_error" && response.syntax_error !== null) {
+    const { line, col, message } = response.syntax_error;
+    lines.push(`Erro de sintaxe na linha ${line}, coluna ${col}: ${message}`);
+    lines.push("As permissões só são verificadas depois que a sintaxe estiver correta.");
+    return lines.join("\n") + "\n";
+  }
+  if (response.status === "valid") {
+    lines.push("Nenhuma violação encontrada.");
+    return lines.join("\n") + "\n";
+  }
+  const count = response.violations.length;
+  lines.push(`${count === 1 ? "1 violação" : `${count} violações`}: ${summarize(response.violations)}.`);
+  for (const group of groupViolations(response.violations)) {
+    const first = group.occurrences[0];
+    lines.push("");
+    lines.push(`[${CATEGORY_LABELS[group.category]}] ${group.ruleId}: ${group.message}`);
+    if (group.category === "EXIGENCIA") {
+      lines.push("  Onde: a solução inteira");
+    } else {
+      const where = group.occurrences.map((item) => `${item.line} (coluna ${item.col})`).join(", ");
+      lines.push(`  ${group.occurrences.length === 1 ? "Linha" : "Linhas"}: ${where}`);
+    }
+    if (first !== undefined && first.explanation !== "") lines.push(`  Por quê: ${first.explanation}`);
+    if (first !== undefined && first.alternative !== "") lines.push(`  O que usar: ${first.alternative}`);
+  }
+  if (response.truncated) {
+    lines.push("", `Mostrando as ${count} primeiras violações.`);
+  }
+  return lines.join("\n") + "\n";
+}
+
+/** O nome do .txt: "ip-checker-lista-1.txt" ou "ip-checker-L3-Q9.txt". */
+export function reportFileName(listNumber: number, questionId: string | null): string {
+  return `ip-checker-${questionId ?? `lista-${listNumber}`}.txt`;
+}
