@@ -18,7 +18,8 @@
 # - Três faixas rodam em paralelo: A (lint, tipos e pytest do backend), B (as auditorias) e C (o
 #   frontend). Depois, a faixa silenciosa, sozinha na máquina: benchmark, testes de tempo,
 #   Lighthouse e segurança, que medem tempo ou memória. Por fim, o e2e.
-# - O Semgrep varre só os arquivos alterados desde o último verde (as regras são de arquivo único);
+# - O Semgrep varre só os arquivos alterados desde o último verde (as regras são de arquivo único),
+#   sobre uma cópia dentro do contêiner, e não sobre a pasta montada (lenta no Docker do Windows);
 #   pip-audit e npm audit só rodam com lock novo ou verde com mais de 7 dias; o gitleaks varre do
 #   último commit auditado em diante. Com --completo, tudo é varrido.
 #
@@ -219,11 +220,27 @@ lane_b() {
       mapfile -t targets <<< "$changed_files"
       echo "semgrep: ${#targets[@]} arquivo(s) alterado(s) desde o último verde"
     fi
-    if step "Auditoria: Semgrep (varredura)" env MSYS_NO_PATHCONV=1 docker run --rm \
-        -v "$repo_mount:/src:ro" -w /src \
+    # A varredura roda sobre uma cópia dos arquivos dentro do contêiner (um tar pelo git), e não
+    # sobre a pasta montada: no Docker do Windows, ler centenas de arquivos pelo bind mount leva
+    # minutos (225 s na medida de 16/10/2026); pelo tar, 4 s.
+    semgrep_scan() {
+      local list status
+      list=$(mktemp)
+      if [ "${targets[0]}" = "." ]; then
+        # shellcheck disable=SC2086
+        git ls-files -z --cached --others --exclude-standard -- $in_semgrep > "$list"
+      else
+        printf '%s\0' "${targets[@]}" > "$list"
+      fi
+      printf '%s\0' .semgrepignore .semgrep/ip-checker.yml >> "$list"
+      tar --null -T "$list" -cf - | env MSYS_NO_PATHCONV=1 docker run --rm -i -w /src \
         semgrep/semgrep@sha256:32e459968daabe7ab86968184a29109b9564aa00392401156f9788452b42786b \
-        semgrep scan --config .semgrep/ip-checker.yml --error --metrics=off --disable-version-check \
-        --quiet "${targets[@]}"; then
+        sh -c 'tar -xf - && semgrep scan --config .semgrep/ip-checker.yml --error --metrics=off --disable-version-check --quiet .'
+      status=$?
+      rm -f "$list"
+      return $status
+    }
+    if step "Auditoria: Semgrep (varredura)" semgrep_scan; then
       # shellcheck disable=SC2086
       $passos record "Auditoria: Semgrep (varredura)" "$($passos hash -- $in_semgrep $common .semgrep/ip-checker.yml)" \
         "$sha$dirty" --manifest -- $in_semgrep $common .semgrep/ip-checker.yml
