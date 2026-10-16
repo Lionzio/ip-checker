@@ -68,9 +68,11 @@ evidência do PR é o `scripts/ci-local.sh --e2e`.
   mas continuam abaixo do piso. A etapa passou de 50 para 65 s. Ensaio de 15/10/2026 com o motor de verdade: com 16 processos ocupando todos os núcleos, 3 rodadas passaram com razão de 43,2 a 43,7 sem nenhuma nova medida (antes, a mesma carga dava de 47 a 52); presa aos núcleos de eficiência, 48,4 (passou); uma regressão de mentira de 30% no `compare_sources` reprovou nas três medidas, ociosa (54,7 / 54,2 / 57,2) e com carga (58,3 / 58,3 / 57,3).
   O Vitest ganhou 5 s de espera nos `findBy` (era 3 s), e o 429 enganoso do limite por IP, que
   aparece quando o banco demora a resolver a sessão, ficou registrado para a Sprint 39 (S39-06).
-- **Deploy:** a release `sprint-40` traz a migração `0007`, que precisa ser aplicada antes do Manual
-  Deploy do Render (runbook, "Sem GitHub Actions"); depois, a Vercel, o exercício de alerta e o
-  sintético.
+- **Deploy (15/10/2026):** a migração `0007` foi aplicada pelo autor pelo runbook "Sem GitHub
+  Actions" (connection string de admin só no terminal); Render por Manual Deploy às 20:30 (`/ready`
+  em `b10cb1d` às 20:31) e Vercel por Create Deployment (`/version.json` em `b10cb1d` às 20:33;
+  `/turma` no ar). Exercício de alerta (#127 e #128): 503 só por `latencia`, e-mail de queda às
+  20:44 e de volta às 21:00 (runbook). O sintético fica para o autor rodar.
 
 ## Sprint 38.1 — Conexões com o analisador que ele mesmo fechou
 
