@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import shutil
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -101,13 +101,22 @@ def test_an_invalid_period_in_the_window_stops_the_start(rulesets: Path) -> None
 
 @pytest.mark.timing
 def test_loading_the_window_takes_at_most_two_seconds_more_than_one_period(rulesets: Path) -> None:
-    """Premissa validada pelo autor em 12/10/2026: a subida até +2 s em relação a um período."""
-    started = time.perf_counter()
-    load_ruleset(rulesets / ACTIVE / "base.yaml")
-    one = time.perf_counter() - started
-    started = time.perf_counter()
-    load_rulesets(rulesets)
-    window = time.perf_counter() - started
+    """Premissa validada pelo autor em 12/10/2026: a subida até +2 s em relação a um período.
+
+    O melhor de três medições (S49): o custo é o da carga em si; o ruído de carga da máquina (a
+    rodada da CI que acabou de terminar, o antivírus) não é.
+    """
+
+    def best(load: Callable[[], object]) -> float:
+        times = []
+        for _ in range(3):
+            started = time.perf_counter()
+            load()
+            times.append(time.perf_counter() - started)
+        return min(times)
+
+    one = best(lambda: load_ruleset(rulesets / ACTIVE / "base.yaml"))
+    window = best(lambda: load_rulesets(rulesets))
 
     assert window - one < 2.0, f"um período {one:.2f} s, a janela {window:.2f} s"
 

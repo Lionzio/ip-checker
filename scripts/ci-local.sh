@@ -303,6 +303,9 @@ results+=("| Faixas A, B e C em paralelo (caminho crítico) | — | $((SECONDS -
 # --- Faixa silenciosa (S49-02): sozinha na máquina, porque mede tempo ou memória --------------
 echo
 echo "=== Faixa silenciosa: tempo, cobertura, benchmark, Lighthouse e segurança"
+# Os processos das faixas (node, uv, contêineres das auditorias) ainda estão terminando: alguns
+# segundos de folga antes de medir tempo.
+sleep 5
 step_fp "Backend: pytest de tempo (timing; cobertura >= 90%)" "$in_backend" \
   bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider -m timing --cov-append"
 step_fp "Backend: cobertura por pasta (motor >= 90%, resto >= 80%)" "$in_backend" bash -c \
