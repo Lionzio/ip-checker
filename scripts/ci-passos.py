@@ -280,6 +280,12 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_forget)
 
     args = parser.parse_args(argv)
+    # No Windows, o Python escreve "\r\n" até num pipe; o bash guardaria o "\r" no hash e nos
+    # alvos do Semgrep. Só "\n", e os argumentos vindos do bash sem o "\r" de um registro antigo.
+    sys.stdout.reconfigure(newline="\n")
+    for name in ("passo", "hash", "sha"):
+        if hasattr(args, name):
+            setattr(args, name, str(getattr(args, name)).strip())
     try:
         return int(args.func(args))
     except subprocess.CalledProcessError as exc:
