@@ -178,19 +178,26 @@ lane_b() {
     git clone -q --no-local --branch "$(git branch --show-current)" . "$history_clone"
     history_mount=$(cd "$history_clone" && (pwd -W 2>/dev/null || pwd))
   fi
-  # S49-03: do último commit auditado em diante, quando ele é ancestral do HEAD; senão, tudo.
+  # S49-03: do último commit auditado em diante, quando ele é ancestral do HEAD; já auditado até o
+  # HEAD, nada a fazer; senão (histórico reescrito ou sem registro), tudo.
   last=$($passos check "Auditoria: gitleaks (último commit)" sempre 2>/dev/null | cut -d' ' -f1)
-  if ! $completo && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
-     && [ "$(git rev-parse "$last")" != "$(git rev-parse HEAD)" ]; then
-    log_opts=(--log-opts="$last..HEAD")
-    echo "gitleaks: do commit $last em diante"
-  fi
-  if step "Auditoria: segredos no histórico (gitleaks)" env MSYS_NO_PATHCONV=1 docker run --rm \
-      -v "$history_mount:/repo:ro" \
-      zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
-      git /repo --redact --no-banner --log-level warn --exit-code 1 \
-      --gitleaks-ignore-path /repo/.gitleaksignore "${log_opts[@]}"; then
-    $passos record "Auditoria: gitleaks (último commit)" sempre "$(git rev-parse HEAD)" -- .gitleaksignore
+  if ! $completo && [ -n "$last" ] && [ "$(git rev-parse "$last" 2>/dev/null)" = "$(git rev-parse HEAD)" ]; then
+    echo
+    echo "=== Auditoria: segredos no histórico (gitleaks): pulado, já auditado até $last"
+    results+=("| Auditoria: segredos no histórico (gitleaks) | pulado: já auditado até \`$last\` | — |")
+    skipped=$((skipped + 1))
+  else
+    if ! $completo && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null; then
+      log_opts=(--log-opts="$last..HEAD")
+      echo "gitleaks: do commit $last em diante"
+    fi
+    if step "Auditoria: segredos no histórico (gitleaks)" env MSYS_NO_PATHCONV=1 docker run --rm \
+        -v "$history_mount:/repo:ro" \
+        zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 \
+        git /repo --redact --no-banner --log-level warn --exit-code 1 \
+        --gitleaks-ignore-path /repo/.gitleaksignore "${log_opts[@]}"; then
+      $passos record "Auditoria: gitleaks (último commit)" sempre "$(git rev-parse HEAD)" -- .gitleaksignore
+    fi
   fi
   step_fp "Auditoria: Semgrep (testes das regras)" ".semgrep" env MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$repo_mount:/src:ro" -w /src \
