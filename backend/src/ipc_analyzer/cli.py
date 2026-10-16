@@ -20,6 +20,12 @@ períodos anteriores a 2023, organizadas como os gabaritos (``<período>/lista-<
 Mostra quantas soluções caem em cada faixa e, para as de faixa alta, só o caminho e os tipos de
 indício, nunca o código. Sai com 1 se a faixa alta passar do limite (meta da ADR-08: 5%).
 
+Desde a S42-02, com a base da Q-35 (``ai_calibration.py``): ``--gabaritos`` (alarmes falsos: nenhum
+na faixa alta) e ``--geradas`` (soluções novas geradas por IA: pelo menos metade em média ou alta)::
+
+    uv run ipc-rules calibrate ../rulesets/2026.2 --gabaritos ../../ip-checker-gabaritos \
+        --geradas ../../calibracao
+
 ``calibrate-gabarito`` (S33-07) mede o alerta de possível vazamento do gabarito (ADR-11) em soluções
 humanas independentes: a distribuição nas faixas do FR-29 e os alarmes falsos::
 
@@ -66,6 +72,7 @@ from typing import Any
 
 import yaml
 
+from ipc_analyzer.ai_calibration import calibrate_q35
 from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.guards import InputError
 from ipc_analyzer.engine.indicators import Level
@@ -133,7 +140,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     calibrate.add_argument("path", type=Path, help=_PATH_HELP)
     calibrate.add_argument(
-        "solutions", type=Path, help="pasta com <período>/lista-<n>/<arquivo>.py"
+        "solutions",
+        type=Path,
+        nargs="?",
+        help="soluções humanas antigas, em <período>/lista-<n>/<arquivo>.py (opcional)",
+    )
+    calibrate.add_argument(
+        "--gabaritos", type=Path, help="os gabaritos da equipe: alarmes falsos (Q-35, S42-02)"
+    )
+    calibrate.add_argument(
+        "--geradas",
+        type=Path,
+        help="soluções novas geradas por IA, diferentes das referências: acertos (Q-35)",
+    )
+    calibrate.add_argument(
+        "--min-acerto",
+        type=float,
+        default=50.0,
+        help="porcentagem mínima das geradas em média ou alta (padrão: 50, a meta da Q-35)",
     )
     calibrate.add_argument(
         "--max-alto",
@@ -233,7 +257,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "compile":
         return _compile(args.path, args.saida)
     if args.command == "calibrate":
-        return _calibrate(args.path, args.solutions, args.max_alto)
+        return _calibrate(
+            args.path, args.solutions, args.max_alto, args.gabaritos, args.geradas, args.min_acerto
+        )
     if args.command == "calibrate-gabarito":
         return _calibrate_gabarito(
             args.path,
@@ -331,7 +357,21 @@ def run_golden(ruleset: CompiledRuleset, folder: Path) -> list[str]:
 _LIST_DIR = re.compile(r"^lista-([1-6])$")
 
 
-def _calibrate(path: Path, solutions: Path, max_high: float) -> int:
+def _calibrate(
+    path: Path,
+    solutions: Path | None,
+    max_high: float,
+    gabaritos: Path | None = None,
+    generated: Path | None = None,
+    min_hits: float = 50.0,
+) -> int:
+    if solutions is None and gabaritos is None and generated is None:
+        _error("diga o que medir: as soluções humanas, --gabaritos ou --geradas", path)
+        return 2
+    for folder in (gabaritos, generated):
+        if folder is not None and not folder.is_dir():
+            _error(f"{folder.as_posix()} não é uma pasta", folder)
+            return 2
     base = path
     try:
         base = resolve_ruleset_path(path)
@@ -339,6 +379,19 @@ def _calibrate(path: Path, solutions: Path, max_high: float) -> int:
     except RulesetError as exc:
         _error(str(exc), base)
         return 1
+    status = 0
+    if gabaritos is not None or generated is not None:
+        lines, ok = calibrate_q35(
+            ruleset, gabaritos=gabaritos, generated=generated, min_hits=min_hits
+        )
+        print("\n".join(lines))
+        status = 0 if ok else 1
+    if solutions is None:
+        return status
+    return max(status, _calibrate_humans(ruleset, solutions, max_high))
+
+
+def _calibrate_humans(ruleset: CompiledRuleset, solutions: Path, max_high: float) -> int:
     files = sorted(
         (file, int(match.group(1)))
         for file in solutions.rglob("*.py")

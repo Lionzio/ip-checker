@@ -53,7 +53,7 @@ from ipc_analyzer.engine.indicators_words import (
 )
 from ipc_analyzer.engine.models import Violation
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem
-from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, Reference
+from ipc_analyzer.engine.ruleset import QUESTION_ID, Category, CompiledRuleset, Reference
 from ipc_analyzer.engine.similarity import Prepared, compare_prepared, prepare
 
 Signal = Literal["multiplas_violacoes", "referencia_ia", "gabarito", "estilo"]
@@ -153,7 +153,7 @@ def compute_indicators(
     """Os indícios de uma submissão já analisada; ``None`` quando não há nenhum."""
     items = [
         *_violation_signals(violations, list_number),
-        *_reference_signal(parsed.source, ruleset, question_id, limits),
+        *_reference_signal(parsed.source, ruleset, question_id, list_number, limits),
         *_gabarito_signal(gabarito, question_id),
         *_style_signals(parsed),
     ]
@@ -322,10 +322,17 @@ def _prepared_references(
 
 
 def _reference_signal(
-    source: str, ruleset: CompiledRuleset, question_id: str | None, limits: Limits
+    source: str,
+    ruleset: CompiledRuleset,
+    question_id: str | None,
+    list_number: int,
+    limits: Limits,
 ) -> list[Indicator]:
     if question_id is None or question_id not in ruleset.references:
         return []
+    match = QUESTION_ID.fullmatch(question_id)
+    if match is None or int(match.group(1)) != list_number:
+        return []  # a referência é de outra lista
     references = _prepared_references(ruleset, question_id, limits)
     if not references:
         return []

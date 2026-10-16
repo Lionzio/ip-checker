@@ -348,7 +348,8 @@ def test_references_load_with_the_ruleset_and_change_its_fingerprint(tmp_path: P
 @pytest.mark.parametrize(
     ("files", "message"),
     [
-        ({"L9-Q9/a.py": REFERENCE}, "não está cadastrada"),
+        ({"L9-Q9/a.py": REFERENCE}, "não é uma questão da numeração oficial"),
+        ({"outra/a.py": REFERENCE}, "não é uma questão da numeração oficial"),
         ({"L3-Q1/a.py": "if x\n"}, "referência inválida"),
         ({"L3-Q1/a.py": "x" * 60_000}, "referência inválida"),
         (
@@ -488,3 +489,30 @@ def test_no_message_of_the_engine_is_a_verdict(ruleset: CompiledRuleset) -> None
     for text in texts:
         assert not VERDICTS.search(text), text
     assert "não são prova" in NOTICE
+
+
+# --- S42-04: referências de uma questão sem regras cadastradas ----------------------------------
+
+
+def test_a_question_with_only_a_gabarito_gets_references_too(tmp_path: Path) -> None:
+    # L3-Q2 não tem regras em questions/ (só gabarito): a referência carrega e vale pelo
+    # reference_question, enquanto as regras continuam as da lista.
+    ruleset = ruleset_with_references(tmp_path, {"L3-Q2/gemini-1.py": REFERENCE})
+    assert "L3-Q2" not in ruleset.questions
+
+    result = analyze_source(
+        RENAMED, list_number=3, ruleset=ruleset, with_indicators=True, reference_question="L3-Q2"
+    )
+
+    assert result.indicators is not None
+    assert kinds(result.indicators)["referencia"][0] is Level.ALTO
+
+
+def test_a_reference_of_another_list_is_ignored(tmp_path: Path) -> None:
+    ruleset = ruleset_with_references(tmp_path, {"L4-Q2/gemini-1.py": REFERENCE})
+
+    result = analyze_source(
+        RENAMED, list_number=3, ruleset=ruleset, with_indicators=True, reference_question="L4-Q2"
+    )
+
+    assert result.indicators is None or "referencia" not in kinds(result.indicators)

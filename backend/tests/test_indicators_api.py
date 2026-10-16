@@ -25,11 +25,11 @@ from ipc_analyzer.service.app import create_app
 from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api.accounts.models import Role
 from ipc_api.schemas import FeedbackResponse, ValidateResponse
-from ipc_api.settings import ApiSettings
+from ipc_api.settings import AiIndicators, ApiSettings
 from ipc_api.telemetry import TelemetryEvent
 from test_api import HEALTH, INVALID, MANIFEST, SETTINGS, FakeAnalyzer, make_client, reply, validate
 
-INDICATORS = {
+INDICATORS: dict[str, Any] = {
     "level": "alto",
     "items": [
         {
@@ -191,7 +191,9 @@ LEADERSHIP = {Role.DESENVOLVEDOR, Role.PROFESSOR, Role.MONITOR_CHEFE}
 
 @pytest.mark.parametrize("mode", ["0", "chefia", "1"])
 @pytest.mark.parametrize("role", list(Role), ids=lambda role: role.value)
-def test_each_role_sees_the_indicators_only_when_turned_on_for_it(mode: str, role: Role) -> None:
+def test_each_role_sees_the_indicators_only_when_turned_on_for_it(
+    mode: AiIndicators, role: Role
+) -> None:
     analyzer = Recording({**INVALID, "indicators": INDICATORS})
     app, store = make_app(
         replace(SETTINGS, ai_indicators=mode), analyzer_transport=httpx2.MockTransport(analyzer)

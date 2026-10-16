@@ -115,6 +115,7 @@ def _analyze_in_worker(
     with_indicators: bool = False,
     gabarito: str | None = None,
     period: str | None = None,
+    reference_question: str | None = None,
 ) -> AnalysisResult:
     return analyze_source(
         source,
@@ -123,6 +124,7 @@ def _analyze_in_worker(
         question_id=question_id,
         with_indicators=with_indicators,
         gabarito=gabarito,
+        reference_question=reference_question,
     )
 
 
@@ -242,6 +244,7 @@ class AnalyzerPool:
         indicators: bool = False,
         gabarito: str | None = None,
         period: str | None = None,
+        reference_question: str | None = None,
     ) -> AnalysisResult:
         return await self.run(
             _analyze_in_worker,
@@ -251,6 +254,7 @@ class AnalyzerPool:
             indicators,
             gabarito,
             period,
+            reference_question,
             deadline=deadline,
         )
 

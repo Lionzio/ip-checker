@@ -131,6 +131,10 @@ async def validate(
                 request_id=request_id,
                 question_id=body.question_id if registered else None,
                 indicators=with_indicators,
+                # As referências de IA valem também para a questão só com gabarito (S42-04).
+                reference_question=(
+                    body.question_id if with_indicators and check is not None else None
+                ),
                 gabarito=gabarito,
                 period=requested(view),
             )

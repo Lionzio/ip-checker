@@ -134,6 +134,7 @@ class AnalyzerClient:
         request_id: str | None = None,
         question_id: str | None = None,
         indicators: bool = False,
+        reference_question: str | None = None,
         gabarito: str | None = None,
         period: str | None = None,
     ) -> AnalyzerResult:
@@ -142,6 +143,7 @@ class AnalyzerClient:
             "list_number": list_number,
             "question_id": question_id,
             "indicators": indicators,
+            **({"reference_question": reference_question} if reference_question else {}),
         }
         if gabarito is not None:
             # O gabarito vai só ao analyzer, pela rede interna (ADR-11), e nunca volta.

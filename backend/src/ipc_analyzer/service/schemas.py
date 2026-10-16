@@ -39,6 +39,8 @@ class AnalyzeRequest(BaseModel):
     gabarito: str | None = None
     #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
     period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
+    #: A questão das referências de IA (S42-04), mesmo sem regras cadastradas (só com gabarito).
+    reference_question: str | None = Field(default=None, pattern=r"^L[1-6]-Q[1-9]\d?$")
 
 
 class EvidenceOut(BaseModel):
