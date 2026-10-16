@@ -31,7 +31,7 @@ fi
 
 # O DPAPI só abre para este usuário, nesta máquina; o valor vai direto para a variável, sem eco.
 PILOT_DATABASE_ADMIN_URL=$(powershell -NoProfile -Command \
-  "\$s = Get-Content -Raw '$(cygpath -w "$secret_file")' | ConvertTo-SecureString; [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s))" \
+  "\$s = (Get-Content -Raw '$(cygpath -w "$secret_file")').Trim() | ConvertTo-SecureString; [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s))" \
   | tr -d '\r\n')
 if [[ ! "$PILOT_DATABASE_ADMIN_URL" =~ ^postgres(ql)?:// ]]; then
   say "falhou: a connection string guardada não abriu (outro usuário ou arquivo trocado?)"

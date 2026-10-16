@@ -386,6 +386,7 @@ O ensaio de restauração é feito uma vez por semestre (NFR-20) e anotado aqui:
 | Data | Quem | Backup de | Resultado |
 |---|---|---|---|
 | 08/10/2026 | Claude (agente), pelo autor | `ipc-piloto-2026-10-08` (run 37753358195) | Hash conferido, migrações e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 9 s, sem contar o acesso à chave privada (NFR-20: até 30 min) |
+| 16/10/2026 | Claude (agente), pelo autor (S39-04) | `ipc-piloto-2026-10-11` (backup local) | Com `scripts/restaurar-ensaio.sh`: hash conferido, migrações (até a `0007`) e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 7 s, sem contar o acesso à chave privada |
 
 ## Sem GitHub Actions (cota esgotada)
 
