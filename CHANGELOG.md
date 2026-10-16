@@ -72,7 +72,10 @@ evidência do PR é o `scripts/ci-local.sh --e2e`.
   Actions" (connection string de admin só no terminal); Render por Manual Deploy às 20:30 (`/ready`
   em `b10cb1d` às 20:31) e Vercel por Create Deployment (`/version.json` em `b10cb1d` às 20:33;
   `/turma` no ar). Exercício de alerta (#127 e #128): 503 só por `latencia`, e-mail de queda às
-  20:44 e de volta às 21:00 (runbook). O sintético fica para o autor rodar.
+  20:44 e de volta às 21:00 (runbook).
+- **16/10/2026, sintético da `sprint-40`:** rodado pelo autor por volta das 05:20; pelo
+  `/health/slo`, uma verificação na janela, P95 de 28 ms no servidor (limite de 300 ms) e 0% de
+  erros.
 
 ## Sprint 38.1 — Conexões com o analisador que ele mesmo fechou
 
