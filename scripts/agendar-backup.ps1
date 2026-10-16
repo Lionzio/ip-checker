@@ -1,4 +1,4 @@
-# Cria a tarefa "IP-Checker backup" no Agendador de Tarefas do Windows (S39-04): todo domingo ao
+﻿# Cria a tarefa "IP-Checker backup" no Agendador de Tarefas do Windows (S39-04): todo domingo ao
 # meio-dia, ou no primeiro momento depois disso em que o computador estiver ligado e você logado,
 # roda scripts/backup-agendado.sh pelo Git Bash. Antes, guarde a connection string com
 # scripts/guardar-segredo-backup.ps1. Rode uma vez, no PowerShell, na raiz do repositório:

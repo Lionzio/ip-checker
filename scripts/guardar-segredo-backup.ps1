@@ -1,4 +1,4 @@
-# Guarda a connection string do Supabase para o backup agendado (S39-04), cifrada com o DPAPI do
+﻿# Guarda a connection string do Supabase para o backup agendado (S39-04), cifrada com o DPAPI do
 # Windows: só este usuário, nesta máquina, consegue abri-la. Rode uma vez, no PowerShell, na raiz do
 # repositório:
 #
