@@ -156,6 +156,9 @@ def test_new_period_copies_the_rules_with_a_new_period_and_no_questions(
     rulesets: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     source = active_period(rulesets)
+    (rulesets / source / "questions" / "LEIA-ME.md").write_text(
+        f"# Questões de {source}\n\nCadastrada a L2-Q3.\n", encoding="utf-8"
+    )
     (rulesets / source / "questions" / "L2-Q3.yaml").write_text(
         "question_id: L2-Q3\nlist: 2\ntitle: Pares\nsource: enunciado\n"
         "allow_facts: ['builtin:zip']\n",
@@ -173,6 +176,11 @@ def test_new_period_copies_the_rules_with_a_new_period_and_no_questions(
     # A numeração das questões reinicia a cada período (P-07).
     assert created.questions == {}
     assert (rulesets / "2027.1" / "questions").is_dir()
+    # O LEIA-ME do período novo não lista as questões do de origem (S43-05).
+    readme = (rulesets / "2027.1" / "questions" / "LEIA-ME.md").read_text(encoding="utf-8")
+    assert "ipc-rules validate ../rulesets/2027.1" in readme
+    assert "L2-Q3" not in readme
+    assert source not in readme
     assert (rulesets / "2027.1" / "referencias").is_dir()
     assert active_period(rulesets) == source, "criar um período não o ativa"
     out = capsys.readouterr().out

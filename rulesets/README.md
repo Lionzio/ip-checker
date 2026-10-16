@@ -9,6 +9,8 @@ lê e valida estes arquivos: mudar uma regra nunca exige mudar código (ADR-02, 
 rulesets/
 ├── ATIVO                 uma linha só, o período ativo (ex.: 2026.2): trocar de período é mudar
 │                         essa linha (S31-09); o analisador, a CI e o ipc-rules leem daqui
+├── encerrados/           períodos que saíram da janela (ipc-rules retire-period, ADR-12):
+│                         ficam no repositório, mas o analisador não os carrega
 └── <período>/            ex.: 2026.2 — a numeração das questões reinicia a cada período (P-07)
     ├── base.yaml         regras das listas, traduzidas do documento de permissões
     ├── questions/        regras de cada questão (R-01), uma por arquivo: L<lista>-Q<número>.yaml
@@ -115,6 +117,43 @@ fatos, as mensagens e as referências entre regras):
 `uv run ipc-rules compile ../rulesets --saida ruleset.json` grava o ruleset do período ativo em
 JSON, com o `ruleset_sha256` que o analisador publica no manifesto: o mesmo valor nos dois
 confere que o deploy carregou exatamente os arquivos do repositório.
+
+## Vários períodos e encerramento (ADR-12, Sprint 43)
+
+O analisador carrega o período do `ATIVO` e até 5 anteriores presentes aqui: a janela de 6. Os
+posteriores ao ativo (em preparação, como o 2027.1 enquanto o ativo é o 2026.2) e os de
+`encerrados/` ficam de fora. Na página, o seletor **Período** mostra a janela, com o ativo já
+escolhido, e só aparece quando há mais de um período nela. Num período anterior, valem todas as
+listas dele; no ativo, só as de `IPC_ENABLED_LISTS`. A API recusa um período fora da janela com 422
+`UNKNOWN_PERIOD`.
+
+### Encerrar um período
+
+Quando o período mais antigo sai da janela (o sétimo, contando do ativo), ele deixa de ser carregado
+sozinho. Encerrá-lo só arruma a pasta, para que ninguém pense que ele ainda vale. De `backend/`,
+veja primeiro o que sairia:
+
+```bash
+uv run ipc-rules retire-period 2023.2 --dry-run
+```
+
+Depois rode sem o `--dry-run`, confira o `git status` e abra um PR, revisado por professor ou
+monitor-chefe:
+
+```bash
+uv run ipc-rules retire-period 2023.2
+```
+
+O comando move `rulesets/2023.2/` para `rulesets/encerrados/2023.2/` e não faz commit. Ele recusa o
+período ativo, os 5 anteriores, os posteriores ao ativo, um período que não existe e um que já está
+em `encerrados/` (nunca sobrescreve). Nada se perde: a pasta continua no repositório, e o Git
+guarda o histórico. As referências de IA (`referencias/`) do período encerrado continuam servindo
+para calibrar os indícios.
+
+**Gabaritos de um período encerrado:** no repositório privado, a pasta do período pode ir para
+`encerrados/<período>/` no mesmo PR de lá. A API não carrega esses gabaritos (o índice só lê
+`<período>/lista-<n>/`), e o job "Gabaritos" da CI continua a conferi-los com as regras do período,
+que ele procura também em `rulesets/encerrados/`.
 
 ## Gabaritos de períodos anteriores (Q-14, Sprint 20)
 

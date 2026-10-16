@@ -94,8 +94,25 @@ from ipc_analyzer.ruleset_schema import SCHEMA_DIR, compiled, write_schemas
 
 #: Onde ficam os rulesets quando o comando roda de ``backend/``, como na CI e no ``RULES.md``.
 DEFAULT_ROOT = Path("../rulesets")
-#: O texto de ajuda das questões, copiado para o período novo com o período trocado.
+#: O texto de ajuda das questões de um período novo. Não é copiado do período de origem, que lista
+#: as questões dele: a numeração reinicia a cada período (P-07, S43-05).
 QUESTIONS_README = "LEIA-ME.md"
+QUESTIONS_README_TEXT = """\
+# Regras por questão do período {period} (R-01)
+
+Cada arquivo `L<lista>-Q<número>.yaml` desta pasta guarda o que o enunciado de uma questão permite
+ou proíbe explicitamente. As regras da questão prevalecem sobre as da lista (C-02), e a questão
+aparece no seletor da página assim que o ruleset é publicado.
+
+A numeração das questões reinicia a cada período (P-07), e por isso esta pasta começa vazia. O
+passo a passo do cadastro, com um exemplo comentado, está em [`RULES.md`](../../../RULES.md), na
+raiz do repositório. Antes de abrir o PR, rode:
+
+```bash
+cd backend
+uv run ipc-rules validate ../rulesets/{period}
+```
+"""
 _PATH_HELP = "a raiz rulesets/ (período ativo), a pasta de um período ou o base.yaml dela"
 
 
@@ -406,15 +423,9 @@ def _new_period(root: Path, period: str, source: str | None) -> int:
     (target / REFERENCES_DIR).mkdir()
     (target / REFERENCES_DIR / ".gitkeep").write_bytes(b"")
     (target / BASE_FILE).write_text(text, encoding="utf-8", newline="\n")
-    readme = origin / QUESTIONS_DIR / QUESTIONS_README
-    if readme.is_file():
-        (target / QUESTIONS_DIR / QUESTIONS_README).write_text(
-            readme.read_text(encoding="utf-8").replace(source, period),
-            encoding="utf-8",
-            newline="\n",
-        )
-    else:
-        (target / QUESTIONS_DIR / ".gitkeep").write_bytes(b"")
+    (target / QUESTIONS_DIR / QUESTIONS_README).write_text(
+        QUESTIONS_README_TEXT.format(period=period), encoding="utf-8", newline="\n"
+    )
     try:
         ruleset = load_ruleset(target / BASE_FILE)
     except RulesetError as exc:
