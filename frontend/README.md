@@ -51,6 +51,63 @@ npm run gen:api
 A CI falha se o arquivo gerado estiver diferente do OpenAPI. Como os tipos vêm do contrato, uma
 mudança na API que a página não acompanhou quebra a compilação.
 
+## Desempenho (NFR-03) e os degraus do FCP
+
+Duas etapas da CI cuidam do carregamento (S35-02): `scripts/js-budget.mjs` soma o JS inicial com
+gzip (limite de 350 KB) e o Lighthouse CI (`lighthouserc.json`, lhci 0.15.1, preset móvel padrão)
+reprova com o FCP acima de 1.650 ms (Q-25), com o `dist/` servido com gzip pelo
+`scripts/serve-dist.mjs`. Os KB dos scripts são de 1.024 bytes; o Vite mostra kB de 1.000 bytes
+(107,84 kB no build são 104,3 KB no `js-budget.mjs`).
+
+O FCP do Lighthouse não cresce de forma contínua com o JS. O Lantern, a simulação de rede do
+Lighthouse (4G lento: 150 ms de ida e volta, 1,6 Mbit/s), baixa cada arquivo em idas e voltas
+inteiras da janela de congestionamento do TCP, que chega no máximo a 21 segmentos de 1.460 bytes
+(30.660 bytes, 29,9 KB). Enquanto o index cabe no mesmo número de janelas, mais bytes não mudam o
+FCP; quando passa do limite de uma, o FCP pula ~150 ms de uma vez. Na S39-01, 0,3 KB a mais levaram o
+FCP de 1.505 para 1.656 ms. Degraus medidos em 16/10/2026 (tamanho do index com gzip, como no
+`js-budget.mjs`; o Lighthouse conta ~0,2 KB a mais, dos cabeçalhos da resposta):
+
+| Degrau | Último tamanho sem o pulo | FCP antes → depois (mediana) |
+|---|---|---|
+| 1 | 112,4 KB (115.089 bytes) | ~1.510 → ~1.670 ms (passa da meta) |
+| 2 | 142,3 KB (145.745 bytes) | ~1.670 → ~1.810 ms |
+| 3 | 172,3 KB (176.401 bytes) | ~1.810 → ~1.960 ms |
+| 4 | 202,2 KB (207.057 bytes) | ~1.960 → ~2.110 ms |
+| 5 | 232,1 KB (237.713 bytes) | ~2.110 → ~2.260 ms |
+| 6 | 262,1 KB (268.369 bytes) | ~2.260 → ~2.410 ms |
+| 7 | 292,0 KB (299.025 bytes) | ~2.410 → ~2.560 ms |
+| 8 | 322,0 KB (329.745 bytes) | ~2.560 → ~2.710 ms |
+
+O pulo vem até 64 bytes depois do tamanho da tabela, e os degraus se repetem a cada 30.656 bytes,
+uma janela inteira. O de baixo, que não dá para medir acrescentando bytes, deve ficar perto de
+82,5 KB. Os valores absolutos do FCP variam algumas dezenas de ms com a carga da máquina (a parte
+de CPU da simulação vem do tempo medido, multiplicado por 4), e uma rodada sozinha às vezes sai ~80
+ms acima; a posição dos degraus, que é de rede, não muda.
+
+Só o primeiro degrau importa para a meta: depois dele, o FCP já passa de 1.650 ms. Por isso o
+`js-budget.mjs` mostra a folga até o próximo degrau e avisa, sem reprovar, quando ela fica abaixo
+de 2 KB; no `scripts/ci-local.sh`, a folga entra no resumo do PR. Com o aviso, antes de somar JS ao
+carregamento inicial, carregue algo sob demanda (`lazy`, como o Plágio, o Gerenciar, o Perfil e a
+Turma) ou aceite que o FCP vai pular.
+
+Os degraus dependem também do que é baixado junto com o index (o HTML, o CSS e o `theme.js`) e da
+configuração do Lighthouse; foram medidos com o CSS de 6,9 KB com gzip. Remeça depois de o CSS ou o
+HTML crescerem bastante, de trocar a versão do lhci ou de a página ganhar outro script ou
+`modulepreload` inicial, e atualize o `DEGRAUS` do `js-budget.mjs`. O `scripts/fcp-degraus.mjs`
+acrescenta um comentário de bytes aleatórios ao index do `dist/` (o tamanho transferido muda, o que
+a página executa não), roda o Lighthouse com a configuração da CI a cada tamanho (uma rodada) e,
+onde o FCP pula, confirma e refina o pulo até 64 bytes com a mediana de 3 rodadas, como a CI. Até
+350 KB, leva perto de uma hora, e a máquina precisa estar livre (a porta 4173 é a mesma do
+Lighthouse da CI local):
+
+```bash
+npm run build && node scripts/fcp-degraus.mjs
+```
+
+Os argumentos opcionais são o início, o fim e o passo da varredura, em KB (`node
+scripts/fcp-degraus.mjs 104 150 2`). O `dist/` volta ao original no fim; rode o build de novo se
+a medição for interrompida de outro jeito que não o Ctrl+C.
+
 ## Estados da verificação (FR-20)
 
 | Resposta | O que a página mostra |

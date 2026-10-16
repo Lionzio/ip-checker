@@ -61,6 +61,15 @@ cada PR é o `scripts/ci-local.sh --e2e`.
   `latencia`, e-mail de queda às 09:37 e de volta às 09:52 (runbook). O autor guardou o segredo do
   backup agendado; falta registrar a tarefa. Sintético rodado pelo autor: pelo `/health/slo`, às
   09:56, uma verificação na janela, P95 de 18 ms no servidor (limite de 300 ms) e 0% de erros.
+- **16/10/2026, depois do deploy, degraus do FCP (#141):** medindo o Lighthouse móvel com o index
+  crescido de 4 em 4 KB por um comentário de bytes aleatórios (`frontend/scripts/fcp-degraus.mjs`),
+  o FCP fica parado e pula ~150 ms a cada 30.656 bytes com gzip, a janela máxima do TCP do Lantern
+  no 4G lento (21 segmentos de 1.460 bytes). O primeiro degrau fica logo acima de 112,4 KB (115.089
+  bytes), e já passa da meta de 1.650 ms; os outros, em 142,3, 172,3, 202,2, 232,1, 262,1, 292,0 e
+  322,0 KB. Com o JS inicial em 104,3 KB, a folga é de 8,1 KB. A etapa "Frontend: JS inicial com
+  gzip (NFR-03)" passou a mostrar a folga até o próximo degrau e a avisar, sem reprovar, abaixo de 2
+  KB; no `ci-local.sh`, a folga entra no resumo do PR. A meta de 1.650 ms não mudou. O método e a
+  tabela estão no `frontend/README.md`.
 
 ## Sprint 40 — A correção da turma inteira
 

@@ -289,9 +289,9 @@ jobs:
         run: npm test
       - name: Build de produção
         run: npm run build
-      - name: JS inicial com gzip <= 350 KB (S35-02, NFR-03)
+      - name: JS inicial com gzip <= 350 KB e folga até o degrau do FCP (S35-02, NFR-03)
         run: node scripts/js-budget.mjs
-      - name: Lighthouse, perfil móvel (FCP < 1,5 s; S35-02, NFR-03)
+      - name: Lighthouse, perfil móvel (FCP <= 1,65 s; Q-25, NFR-03)
         run: npx --yes @lhci/cli@0.15.1 autorun --config=lighthouserc.json
       - name: Build do piloto (Vercel, com o rewrite de /api/* e os cabeçalhos de segurança)
         env:
