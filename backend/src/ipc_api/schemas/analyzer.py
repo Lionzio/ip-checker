@@ -162,12 +162,24 @@ class AnalyzerErrorResponse(_Strict):
     error: AnalyzerErrorDetail
 
 
+class AnalyzerPeriod(_Strict):
+    """Um período carregado no analisador (S43-01)."""
+
+    period: Annotated[str, StringConstraints(pattern=r"^\d{4}\.[12]$")]
+    active: bool
+    ruleset_version: RulesetVersion
+    ruleset_sha256: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+    lists: list[ListInfo] = Field(max_length=6)
+
+
 class AnalyzerManifest(_Strict):
     ruleset_version: RulesetVersion
     ruleset_sha256: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
     period: Annotated[str, StringConstraints(pattern=r"^\d{4}\.[12]$")]
     target_python: str
     lists: list[ListInfo] = Field(max_length=6)
+    #: Todos os períodos carregados, o ativo e até 5 anteriores (S43-01; ADR-12, Q-34).
+    periods: list[AnalyzerPeriod] = Field(default_factory=list, max_length=6)
 
 
 class AnalyzerHealth(_Strict):

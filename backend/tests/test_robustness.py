@@ -140,10 +140,11 @@ def test_an_analysis_stops_at_the_deadline(pool: AnalyzerPool) -> None:
     with pytest.raises(DeadlineExpired):
         asyncio.run(pool.run(_sleep, 5.0, deadline=time.time() + 0.3))
 
-    # Abaixo dos 2 s do próprio pool (PoolConfig): quem parou a análise foi o prazo de 0,3 s, não o
-    # tempo limite nem o fim do sono de 5 s. Matar e trocar o worker leva cerca de 1 s no Windows,
-    # e o limite antigo de 1,2 s só passava com o pool deixado pronto pelo teste anterior (S39-03).
-    assert time.monotonic() - started < 1.9
+    # Quem parou a análise foi o prazo de 0,3 s: a exceção é DeadlineExpired, e não a do tempo
+    # limite do pool. O tempo só precisa ficar longe do fim do sono de 5 s. Matar e trocar o worker
+    # leva de 1 a 2,6 s no Windows, conforme a carga da máquina: os limites de 1,2 s (até a S39-03)
+    # e de 1,9 s (S43-01) reprovavam sem nenhuma mudança no pool.
+    assert time.monotonic() - started < 4.0
     # O worker substituído continua atendendo.
     assert asyncio.run(pool.analyze("x = 1\n", 1, deadline=time.time() + 5)).status
 

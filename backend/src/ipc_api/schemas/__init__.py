@@ -55,6 +55,7 @@ from .analyzer import (
     AnalyzerMatrix,
     AnalyzerMatrixPair,
     AnalyzerMatrixSolution,
+    AnalyzerPeriod,
     AnalyzerResult,
     AnalyzerSimilarity,
 )
@@ -142,6 +143,7 @@ __all__ = [
     "AnalyzerMatrix",
     "AnalyzerMatrixPair",
     "AnalyzerMatrixSolution",
+    "AnalyzerPeriod",
     "AnalyzerResult",
     "AnalyzerSimilarity",
     "AuthOptions",
