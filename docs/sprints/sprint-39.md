@@ -61,3 +61,5 @@ backup automático e restauração ensaiada, e a documentação reorganizada par
 - **Depois:** sintético, exercício de alerta e o roteiro de testes manuais na parte do plágio e do gerenciamento.
 
 **Riscos:** refatorar sem mudar comportamento exige os testes primeiro (S39-03), por isso eles vêm antes.
+
+**Situação (16/10/2026):** engenharia concluída na release `sprint-39`, num PR por task (#131 a #136), com a S39-06 primeiro. Decisões da sprint (detalhes no `CHANGELOG.md`): os testes das páginas que o `App.test.tsx` já cobria não foram duplicados, e a cobertura passou a ser cobrada por página; os testes que medem o relógio ganharam o marcador `timing` e rodam em série com os do banco; os `sleep` dos analisadores simulados ficaram, porque simulam a análise lenta que os testes de admissão precisam; o Plágio, o Gerenciar e o Perfil passaram a carregar sob demanda depois de o FCP pular 150 ms com 0,3 KB a mais de JS; ficam acima de 500 linhas `accounts/postgres.py`, `engine/similarity_tree.py` e `accounts/store.py`, e o `components/ResultPanel.tsx` (424). Aguardando: o autor gravar o segredo do backup e registrar a tarefa agendada, e o deploy.

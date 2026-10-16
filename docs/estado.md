@@ -19,7 +19,7 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 
 | O quê | Situação |
 |---|---|
-| Sprint 39 | Qualidade interna, operação e documentação, em 16/10/2026 |
+| Sprint 39 | Concluída em 16/10/2026 (release `sprint-39`); o deploy espera o pedido do autor |
 | Fila depois dela | 43 (período na página), 42 (indícios de IA), 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24) |
 
 ## Esperando alguém
