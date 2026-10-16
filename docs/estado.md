@@ -13,7 +13,7 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Listas habilitadas | 1 a 6 de 2026.2 (`IPC_ENABLED_LISTS` no `render.yaml`) |
 | Período ativo | 2026.2; o 2027.1 existe, inativo, como cópia (P-22); com a `sprint-43`, o analisador carrega o ativo e até 5 anteriores (ADR-12) |
 | Indícios de IA | Desligados no piloto (`IPC_AI_INDICATORS=0`); desde a `sprint-42`, a variável aceita `chefia`, que liga só depois da meta de acertos |
-| CI e deploy | Sem cota do GitHub Actions até 01/11/2026 (P-19): CI local, release com `--ci-local` e deploy pelo painel |
+| CI e deploy | Sem cota do GitHub Actions até 01/11/2026 (P-19): CI local incremental (ADR-20, Sprint 49: completa em 9,9 min (595 s), sem mudanças de código em 21 s), release com `--ci-local` e deploy pelo painel |
 
 ## Em andamento
 
@@ -22,7 +22,8 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Sprint 39 | Concluída e no piloto em 16/10/2026 |
 | Sprint 43 | Concluída e no piloto em 16/10/2026 (release `sprint-43`); faltam o exercício de alerta e o sintético |
 | Sprint 42 | Parte 1 na release `sprint-42` (16/10/2026); a parte 2 (referências, meta de acertos e `chefia`) espera os enunciados e as chaves das IAs |
-| Fila depois dela | 49 (CI incremental) → 50 (catálogo do Dikastis) → 42.1 → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
+| Sprint 49 | Concluída em 16/10/2026 (release `sprint-49`, só scripts e CI; sem deploy) |
+| Fila depois dela | 50 (catálogo do Dikastis) → 42.1 → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
 
 ## Esperando alguém
 

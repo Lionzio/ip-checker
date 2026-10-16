@@ -447,7 +447,12 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
 
 - **Antes de cada merge,** rode a CI nesta máquina e cole o resumo no PR:
   `scripts/ci-local.sh` (com `--e2e` para o smoke também; `--rapido` só para iterar). O merge
-  segue a regra de sempre, com o resumo local no lugar da CI verde.
+  segue a regra de sempre, com o resumo local no lugar da CI verde. Desde a Sprint 49 (ADR-20) a
+  rodada é **incremental**: um passo cujas entradas não mudaram desde um verde registrado é pulado,
+  e o resumo diz "pulado: igual ao verde de `<sha>`"; três faixas rodam em paralelo e a faixa
+  silenciosa (benchmark, testes de tempo, Lighthouse e segurança) roda sozinha depois.
+  `--completo` força todos os passos. Os verdes ficam em `.git/ci-local-passos.json`; para
+  esquecê-los, `python scripts/ci-passos.py forget` (tudo) ou `forget "<passo>"`.
 - **Canário:** `scripts/canario-local.sh` faz o "Canário mensal" desta máquina (S35-04).
 - **Sintético e carga:** `scripts/sintetico-local.sh` faz o "Sintético diário" e
   `scripts/carga-piloto.sh` faz a "Carga no piloto" (exercício de alerta), desta máquina.
@@ -457,9 +462,10 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
   e salva só o arquivo criptografado em `~/Desktop/IP-Checker/backups/piloto`. Guarde uma cópia
   fora do computador.
 - **Release:** `scripts/release.sh NN --ci-local` (decisão do autor de 09/10/2026) aceita, no lugar
-  da CI do Actions, uma rodada completa e sem falha do `scripts/ci-local.sh --e2e` na mesma árvore
-  da ponta da `develop`; rode a CI local de novo na `develop` atualizada se o último PR não foi o
-  último commit testado. A `main` e a tag avançam, e o deploy é à mão, como abaixo.
+  da CI do Actions, uma rodada sem falha do `scripts/ci-local.sh --e2e` na mesma árvore da ponta
+  da `develop` ou, desde a Sprint 49 (Q-42), a cobertura por passos: todos os passos com verde
+  para as entradas atuais dessa árvore (o gitleaks até esse commit). Se faltar um, ele diz qual:
+  rode a CI local na `develop` atualizada, que só roda o que mudou. A `main` e a tag avançam, e o deploy é à mão, como abaixo.
 - **Deploy:** evite até a cota voltar. Se precisar (correção urgente ou release com `--ci-local`),
   siga a ordem do pipeline à mão: as migrações com `uv run python -m ipc_api.db.migrate up --login-role ipc_api` (a connection
   string de admin em `IPC_DATABASE_ADMIN_URL`, digitada só no terminal), depois o Render

@@ -2,7 +2,7 @@
 
 **Título:** Como a CI local (e, depois, a do Actions) pula o que não precisa rodar sem enfraquecer a prova de cada PR e de cada release.
 
-**Status:** Proposto em 16/10/2026 ([`plano-dikastis.md`](../plano-dikastis.md), seção 3), aprovado pelo autor no mesmo dia (Q-42); Sprint 49.
+**Status:** Aceito em 16/10/2026 (Q-42); implementado na Sprint 49 no mesmo dia. Proposto em 16/10/2026 ([`plano-dikastis.md`](../plano-dikastis.md), seção 3). **Medida (16/10/2026, máquina do autor):** a rodada completa, que levava de 13 a 15 min em série, leva 9,9 min (595 s) com as faixas; uma rodada sem mudanças de código leva 21 s, com os passos pulados por entradas iguais a um verde. Uma mudança no plano: a release aceita a cobertura por passos sem exigir a rodada `--completo`, porque um passo pulado teve verde para exatamente o mesmo conteúdo, e os passos sensíveis ao tempo rodam sempre sozinhos, na faixa silenciosa; `--completo` fica para quando se quer medir tudo de novo.
 
 **Contexto:** A rodada completa do `scripts/ci-local.sh --e2e` leva de 13 a 15 minutos e roda inteira a cada PR, mesmo quando só um `.md` mudou. Medida em 16/10/2026 (`970bec6`, sem outra carga): segurança 200 s, Semgrep 127 s, e2e 109 s, benchmark 66 s, pytest 103 s, Lighthouse 52 s, pip-audit 44 s, o resto cerca de 100 s. Tudo em série. Os passos mais caros conferem coisas que mudam raramente (a imagem do piloto, as dependências, o desempenho do motor), e o Semgrep varre o repositório inteiro montado no Docker do Windows, que é lento para muitos arquivos. A cota do GitHub Actions (2.000 min por mês, esgotada em 08/10/2026) volta em 01/11/2026 e precisa durar o mês.
 
