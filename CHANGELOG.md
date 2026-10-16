@@ -55,8 +55,11 @@ cada PR é o `scripts/ci-local.sh --e2e`.
   e uma seção por ID. Novos: `glossario.md`, `estado.md`, `faq-mantenedor.md`, `rotinas.md` e
   `contas.md`. O índice de sintomas do runbook ganhou três sintomas, e um teste confere os links
   relativos de todos os `.md`.
-- **Deploy:** a release `sprint-39` muda a API (o limitador e os módulos) e a página (as telas sob
-  demanda), sem migração: Render (Manual Deploy) e Vercel, depois o exercício de alerta e o sintético.
+- **Deploy (16/10/2026):** sem migração; Render por Manual Deploy (`/ready` em `c5cd0c1` às 09:23)
+  e Vercel por Create Deployment (`/version.json` em `c5cd0c1` às 09:24; Plágio, Gerenciar, Perfil e
+  Turma respondendo, com o JS inicial novo). Exercício de alerta (#137 e #138): 503 só por
+  `latencia`, e-mail de queda às 09:37 e de volta às 09:52 (runbook). O autor guardou o segredo do
+  backup agendado; falta registrar a tarefa. O sintético fica para o autor rodar.
 
 ## Sprint 40 — A correção da turma inteira
 
