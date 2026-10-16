@@ -8,6 +8,56 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 39 — Qualidade interna, operação e documentação
+
+A Sprint 39 (S39-01 a S39-06; US-14, US-15, US-20 e US-35) começou em 16/10/2026, depois da 40. A
+missão é que o próximo monitor-mantenedor assuma o projeto sem depender do autor. As personas são o
+monitor-mantenedor, o monitor logado num pico do banco e o desenvolvedor que revisa. A S39-06 veio
+primeiro: era a última falha intermitente da CI local. Sem a cota do Actions (P-19), a evidência de
+cada PR é o `scripts/ci-local.sh --e2e`.
+
+- **16/10/2026, S39-06 (#131):** com o banco lento, a sessão não resolvia (`StoreBusy`), a
+  requisição ficava sem conta e o limitador a contava como anônima pelo IP: o monitor logado recebia
+  429 "Você fez muitas requisições" no lugar do 503 `OVERLOADED`, e todos atrás do mesmo IP dividiam
+  30 por minuto até a janela esvaziar. Agora essa requisição conta só no limite do IP, e a rota
+  responde 503 com `Retry-After`; o teto do IP continua (teste novo). Os testes de borda deixaram de
+  depender da virada do minuto e do pool do banco. Ensaio: a etapa de segurança passou 3 vezes
+  seguidas com 16 processos ocupando a máquina.
+- **16/10/2026, S39-03 (#132):** a cobertura das páginas passou a ser cobrada por arquivo (80% das
+  instruções, linhas e funções, 75% dos ramos) na etapa do Vitest. Login, Register, Verify, Landing,
+  ForgotPassword e ResetPassword já estavam cobertos pelo `App.test.tsx`; os buracos eram a Turma
+  (71%) e os erros do Perfil, que ganharam testes. Páginas: 93% das instruções e 86% dos ramos. No
+  backend, o `pytest-xdist`: os testes sem banco e sem relógio rodam com 4 processos e os do
+  PostgreSQL (marcador `db`) e os de tempo (marcador `timing`) em série, somando a cobertura. Na CI
+  local, as duas etapas somam cerca de 90 s, contra 146 a 210 s antes (−40% ou mais). O teste do
+  prazo do pool só passava com o worker deixado pronto pelo teste anterior, e foi corrigido.
+- **16/10/2026, S39-01 (#133):** `Plagiarism.tsx` (527 → 101 linhas), `Admin.tsx` (421 → 201) e
+  `Checker.tsx` (359 → 277) em arquivos menores, sem mudança de comportamento; nenhuma página passa
+  de 300 linhas. A refatoração somou 0,3 KB ao JS inicial e o FCP do Lighthouse móvel pulou de 1.505
+  para 1.656 ms, estável: medindo builds parciais, a causa era o tamanho total, no limite de uma
+  janela do TCP da simulação de rede (cruzá-lo custa uma ida e volta, ~150 ms). O Plágio, o
+  Gerenciar e o Perfil passaram a carregar sob demanda, como a Turma: o JS inicial caiu para 107,8
+  KB e o FCP voltou a 1.506 ms.
+- **16/10/2026, S39-02 (#134):** `engine/ruleset.py` (773) virou o pacote `engine/ruleset/`
+  (`schema`, `compile` e `load`); `engine/indicators.py` (706 → 488), com as listas de palavras e as
+  perguntas em módulos próprios; `service/app.py` (698 → 308), com os modelos em `service/schemas.py`;
+  e `ipc_api/schemas.py` (873) virou o pacote `ipc_api/schemas/`. Os `__init__` reexportam tudo, e
+  o `docs/openapi.json` gerado ficou idêntico. Ficam acima de 500 linhas: `accounts/postgres.py`,
+  `engine/similarity_tree.py` e `accounts/store.py`.
+- **16/10/2026, S39-04 (#135):** o backup agendado no Agendador de Tarefas do Windows (domingo ao
+  meio-dia), com a connection string guardada pelo DPAPI do usuário, e o ensaio de restauração em
+  script (`scripts/restaurar-ensaio.sh`). Ensaio de 16/10/2026 no backup de 11/10: linhas iguais nas
+  9 tabelas, em 7 s. O teste com um segredo de mentira achou e corrigiu um defeito que impediria o
+  backup agendado de abrir o segredo. Gravar o segredo e registrar a tarefa ficam com o autor.
+- **16/10/2026, S39-05 (#136):** o blueprint caiu de 2.443 para 985 linhas: o detalhe de cada
+  sprint foi para `docs/sprints/` (da 36 em diante) e `docs/historico/sprints-01-35.md`, e a seção
+  7.2 nova mapeia as seções antigas. O `decisoes.md` ganhou uma tabela-resumo escrita à mão (71 IDs)
+  e uma seção por ID. Novos: `glossario.md`, `estado.md`, `faq-mantenedor.md`, `rotinas.md` e
+  `contas.md`. O índice de sintomas do runbook ganhou três sintomas, e um teste confere os links
+  relativos de todos os `.md`.
+- **Deploy:** a release `sprint-39` muda a API (o limitador e os módulos) e a página (as telas sob
+  demanda), sem migração: Render (Manual Deploy) e Vercel, depois o exercício de alerta e o sintético.
+
 ## Sprint 40 — A correção da turma inteira
 
 A Sprint 40 (S40-01 a S40-03; US-16, US-31 e US-33) começou em 15/10/2026, antes da 39, por pedido
