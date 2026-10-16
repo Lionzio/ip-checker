@@ -6,6 +6,15 @@
 
 **Revisão (12/10/2026):** o autor descartou as soluções anteriores a 2023 que a calibração usaria (S33-02) e pediu os indícios ligados no piloto (Sprint 42). O autor aprovou no mesmo dia os critérios e a nova base de calibração (Q-35, `docs/indicios-de-ia.md`): a repetição da mesma proibição vai no máximo à faixa média, entram dois marcadores sem faixa (texto dentro do `input()` e validação de entrada não pedida), e a calibração usa os gabaritos da equipe e soluções novas geradas por IA. O painel continua desligado no piloto até a Sprint 42.
 
+**Sprint 42 (16/10/2026):** os critérios da Q-35 entraram no motor (S42-03), com a evidência (regra
+ou marcador, linhas e trecho) e a confiança, separada da faixa, em cada indício; o painel liga por
+cargo, `IPC_AI_INDICATORS` = `0`, `chefia` ou `1` (S42-05); as referências de IA valem também para
+as questões só com gabarito, e há um gerador a partir só do enunciado (S42-04); `ipc-rules
+calibrate` mede a base da Q-35 (S42-02). **Calibração, alarmes falsos (16/10/2026):** nos 28
+gabaritos de 2026.2 (Listas 1 a 4), 28 na faixa "nenhum" e 0 na alta, meta cumprida. **Acertos:**
+esperam as soluções geradas por IA (os enunciados e as chaves das IAs, com o autor). O piloto segue
+em `0` até as duas metas.
+
 **Contexto:** O uso frequente de proibições já é o principal indício que a equipe usa (P-13). Detectores genéricos de texto gerado por IA não servem para código de alunos de introdução: o código é curto, convergente (muitas soluções corretas são quase iguais) e parecido com o que um modelo escreve; esses detectores têm muitos falsos positivos, penalizam quem escreve bem ou estudou fora, e a própria OpenAI retirou o seu classificador em 2023 por baixa precisão. Não há marca d'água nas respostas dos assistentes que a equipe possa conferir.
 
 **Decisão (proposta):**

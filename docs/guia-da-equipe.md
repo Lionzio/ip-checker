@@ -295,27 +295,58 @@ Um grupo é um motivo para ler, não uma conclusão.
 ## Indícios de uso de IA
 
 A política dos indícios ([`indicios-de-ia.md`](indicios-de-ia.md)) foi aprovada em 09/10/2026
-(Q-21). Mesmo assim, o painel segue **desligado no piloto** (`IPC_AI_INDICATORS=0`) até a calibração
-com os critérios aprovados em 12/10/2026 (Q-35), na Sprint 42. Hoje ele só funciona no ambiente
-local.
+(Q-21), e os critérios, em 12/10/2026 (Q-35). O painel liga **por cargo** (Sprint 42): primeiro só
+para a chefia (desenvolvedor, professores e monitores-chefes) durante uma lista, depois para toda a
+equipe. Quem vê o painel é decidido no servidor; se você não o vê, ele não está ligado para o seu
+cargo.
 
-Quando estão ligados no servidor, a verificação mostra, abaixo do resultado, o painel **Indícios de
-uso de IA**. Ele aparece só quando há algum indício, e só para a equipe: nada dele vai para o
-feedback do aluno.
+Quando está ligado para você, a verificação mostra, abaixo do resultado, o painel **Indícios de uso
+de IA**. Ele aparece só quando há algum indício, e só para a equipe: nada dele vai para o feedback
+do aluno, para a telemetria nem para os registros do servidor.
 
-Cada indício vem com o motivo, as linhas (clique numa linha para selecioná-la no editor) e uma faixa:
+### Como ler o painel
+
+Cada indício traz:
+
+- **o motivo**, em português, com as construções envolvidas;
+- **a evidência**: a regra do documento de permissões (por exemplo, "Regras R-11, R-12") ou o
+  marcador, a primeira linha e o trecho do código daquela linha; clique numa linha para
+  selecioná-la no editor;
+- **a faixa** (baixa, média ou alta): quanto o sinal pesa. A faixa do painel é a maior delas;
+- **a confiança** (baixa, média ou alta): quão certo é o sinal. Um `pass` encontrado é certo, mesmo
+  pesando pouco; um nome em inglês é incerto, porque muita gente escreve assim.
+
+Os sinais:
 
 - **Múltiplas violações**: proibições gerais diferentes no mesmo código (`break`, `continue` e
-  `pass` juntos), a mesma proibição repetida, construções de listas bem posteriores (um dicionário
-  numa solução da Lista 3) e construções que o documento de permissões não cita;
+  `pass` juntos), a mesma proibição repetida (no máximo faixa média: repetir um hábito não indica
+  IA), construções de listas bem posteriores (um dicionário numa solução da Lista 3) e construções
+  que o documento de permissões não cita;
 - **Semelhança com solução de IA**: quando a questão tem soluções de referência geradas por IA, a
   mais parecida, pelo mesmo motor do painel de plágio;
-- **Marcadores de estilo**: docstrings, anotações de tipo, `if __name__ == "__main__"`, nomes e
-  comentários em inglês. São fatos, sem faixa.
+- **Semelhança com o gabarito**: a solução pode ter vindo de um gabarito que circula ou de uma IA
+  que chegou à mesma solução;
+- **Marcadores de estilo**, sem faixa: docstrings, anotações de tipo, `if __name__ == "__main__"`,
+  nomes e comentários em inglês, texto dentro do `input()` (como `input("Digite um número: ")`) e
+  validação da entrada que o enunciado não pede. São fatos: alguns alunos escrevem assim por conta
+  própria.
+
+### Como conduzir a conversa
 
 **Indício não é prova.** O painel serve para decidir com quem conversar; a confirmação é sempre a
-conversa, em que o aluno explica ou modifica o próprio código. As **perguntas para a conversa** no
-fim do painel ajudam a começar. Registre o caso no registro da monitoria, sem nome nem matrícula.
+conversa, em que o aluno explica ou modifica o próprio código.
+
+1. Chame o aluno com respeito e sem acusação: "queria entender como você pensou esta solução".
+2. Use as **perguntas para a conversa**, no fim do painel, como ponto de partida: elas citam as
+   linhas e as construções que o painel achou.
+3. Peça uma pequena mudança no programa (outra entrada, outro formato de saída) e veja se o aluno
+   a faz e explica.
+4. A decisão sobre a nota segue as regras da disciplina, pela equipe, depois da conversa.
+5. Registre o caso no [registro de casos](registro-de-casos.md), sem nome nem matrícula.
+
+**Nunca:** dar nota pela faixa, mencionar o painel como prova, mostrar o painel ao aluno como
+acusação, ou deixar de conversar porque a faixa é alta. Uma faixa alta sem a conversa não justifica
+nenhuma ação.
 
 ## Gerenciar a equipe
 
