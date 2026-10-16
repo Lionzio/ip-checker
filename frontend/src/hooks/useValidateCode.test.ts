@@ -18,7 +18,12 @@ const RESPONSE: ValidateResponse = {
 };
 
 function clientWith(validate: ValidationClient["validate"]): ValidationClient {
-  return { listLists: () => Promise.resolve([]), validate, validateBatch: () => Promise.reject(new Error("sem lote")) };
+  return {
+    listLists: () => Promise.resolve([]),
+    listPeriods: () => Promise.resolve([]),
+    validate,
+    validateBatch: () => Promise.reject(new Error("sem lote")),
+  };
 }
 
 /** Uma requisição que só termina quando é cancelada. */

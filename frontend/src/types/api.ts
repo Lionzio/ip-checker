@@ -9,6 +9,8 @@ import type { components } from "./openapi";
 type Schemas = components["schemas"];
 
 export type ValidateRequest = Schemas["ValidateRequest"];
+/** Um período carregado: o ativo e até 5 anteriores (S43-02). */
+export type PeriodInfo = Schemas["PeriodInfo"];
 export type ValidateResponse = Schemas["ValidateResponse"];
 /** Feedback para o aluno (Sprints 18 e 19). */
 export type FeedbackRequest = Schemas["FeedbackRequest"];

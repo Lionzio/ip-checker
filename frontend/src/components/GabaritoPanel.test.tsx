@@ -185,7 +185,7 @@ describe("Plágio com o gabarito (S32-07, ADR-11, item 5)", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Possível vazamento do gabarito");
     expect(screen.getByText("Código A com o gabarito:")).toBeInTheDocument();
-    expect(compare).toHaveBeenCalledWith("x = 1", "y = 1", expect.anything(), "L1-Q1");
+    expect(compare).toHaveBeenCalledWith("x = 1", "y = 1", expect.anything(), "L1-Q1", null);
   });
 
   it("sem questões com gabarito, o seletor nem aparece", async () => {

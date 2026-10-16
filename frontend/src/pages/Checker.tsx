@@ -6,6 +6,7 @@ import { IndicatorsPanel } from "../components/IndicatorsPanel";
 import { LoadPyFile } from "../components/LoadPyFile";
 import { ReportExport } from "../components/ReportExport";
 import { ListSelector } from "../components/ListSelector";
+import { PeriodSelector } from "../components/PeriodSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { ResultPanel } from "../components/ResultPanel";
 import { ShortcutsHelp } from "../components/ShortcutsHelp";
@@ -15,6 +16,7 @@ import { useDraft } from "../draftContext";
 import { useCheckerShortcuts } from "../hooks/useCheckerShortcuts";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLists } from "../hooks/useLists";
+import { usePeriods } from "../hooks/usePeriods";
 import { NARROW, useMediaQuery } from "../hooks/useMediaQuery";
 import { useValidateCode } from "../hooks/useValidateCode";
 import { PAGE_TITLES } from "../labels";
@@ -41,9 +43,11 @@ const TABS = "verificacao";
  */
 export function Checker({ client, onUnauthenticated }: CheckerProps) {
   useDocumentTitle(PAGE_TITLES.checker);
-  const { draft, setCode, setList, setQuestion, setFeedback, nextStudent } = useDraft();
-  const { code, listNumber, questionId } = draft;
-  const { lists, error: listsError, retry: retryLists } = useLists(client, onUnauthenticated);
+  const { draft, setCode, setPeriod, setList, setQuestion, setFeedback, nextStudent } = useDraft();
+  const { code, period, listNumber, questionId } = draft;
+  // O período (S43-03): com um só carregado, o seletor nem aparece, e vale o ativo.
+  const periods = usePeriods(client, onUnauthenticated);
+  const { lists, error: listsError, retry: retryLists } = useLists(client, onUnauthenticated, period);
   const { state, validate, retry, reset, cancel } = useValidateCode(client);
   // O pedido enviado: é o que o resultado descreve, mesmo que o editor mude depois.
   const [verified, setVerified] = useState<ValidateRequest | null>(null);
@@ -82,7 +86,11 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
   const selected = questionId === null ? undefined : questions?.find((question) => question.id === questionId);
   const canVerify = listNumber !== null && code.trim() !== "" && !loading;
   const stale =
-    verified !== null && (verified.code !== code || verified.list_number !== listNumber || verified.question_id !== questionId);
+    verified !== null &&
+    (verified.code !== code ||
+      verified.list_number !== listNumber ||
+      verified.question_id !== questionId ||
+      (verified.period ?? null) !== period);
 
   const success = state.kind === "success";
   const indicators = success && state.response.indicators ? state.response.indicators : null;
@@ -96,7 +104,7 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
 
   function verify() {
     if (!canVerify || listNumber === null) return;
-    const request = { code, list_number: listNumber, question_id: questionId };
+    const request = { code, list_number: listNumber, question_id: questionId, period };
     setVerified(request);
     setMarked(null);
     setTab("resultado");
@@ -169,7 +177,8 @@ export function Checker({ client, onUnauthenticated }: CheckerProps) {
           onDrop={(event) => void drop(event)}
           className="flex min-w-0 scroll-mt-4 flex-col gap-4 lg:sticky lg:top-4 lg:-mx-0.5 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:px-0.5"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={periods.length > 1 ? "grid gap-4 sm:grid-cols-3" : "grid gap-4 sm:grid-cols-2"}>
+            <PeriodSelector periods={periods} value={period} onChange={setPeriod} disabled={loading} />
             <ListSelector lists={lists} value={listNumber} onChange={setList} disabled={loading} />
             <QuestionSelector questions={questions} value={questionId} onChange={setQuestion} disabled={loading} />
           </div>

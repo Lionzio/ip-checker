@@ -14,6 +14,8 @@ export interface FeedbackForm {
 
 export interface Draft {
   code: string;
+  /** O período das regras (S43-03); `null` é o ativo. */
+  period: string | null;
   listNumber: number | null;
   questionId: string | null;
   feedback: FeedbackForm;
@@ -22,11 +24,13 @@ export interface Draft {
 export interface DraftValue {
   draft: Draft;
   setCode(code: string): void;
+  /** Trocar de período limpa a lista e a questão: elas são de um período só (S43-03). */
+  setPeriod(period: string | null): void;
   /** Trocar de lista volta para "sem questão": as questões são de uma lista só. */
   setList(listNumber: number | null): void;
   setQuestion(questionId: string | null): void;
   setFeedback(feedback: FeedbackForm): void;
-  /** Próximo aluno: limpa o código, o nome e a anotação; a lista e a questão ficam. */
+  /** Próximo aluno: limpa o código, o nome e a anotação; o período, a lista e a questão ficam. */
   nextStudent(): void;
   /** Sair: apaga tudo, menos a lista lembrada. */
   clear(): void;
@@ -65,7 +69,7 @@ export function rememberList(listNumber: number | null) {
 
 export const DRAFT_KEY = "ipc:rascunho";
 
-type StoredDraft = Pick<Draft, "code" | "questionId" | "feedback">;
+type StoredDraft = Pick<Draft, "code" | "period" | "questionId" | "feedback">;
 
 /** O rascunho desta aba, se houver (S37-05): o código, a questão, o nome e a anotação. */
 export function restoreDraft(): Partial<StoredDraft> {
@@ -74,10 +78,11 @@ export function restoreDraft(): Partial<StoredDraft> {
     if (raw === null) return {};
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return {};
-    const { code, questionId, feedback } = parsed as Record<string, unknown>;
+    const { code, period, questionId, feedback } = parsed as Record<string, unknown>;
     const form = typeof feedback === "object" && feedback !== null ? (feedback as Record<string, unknown>) : {};
     return {
       code: typeof code === "string" ? code : "",
+      period: typeof period === "string" && /^\d{4}\.[12]$/.test(period) ? period : null,
       questionId: typeof questionId === "string" ? questionId : null,
       feedback: {
         student: typeof form.student === "string" ? form.student : "",
@@ -92,10 +97,10 @@ export function restoreDraft(): Partial<StoredDraft> {
 /** Guarda o rascunho nesta aba; vazio, apaga (é o que o Sair faz). */
 export function storeDraft(draft: Draft) {
   try {
-    const empty = draft.code === "" && draft.questionId === null && draft.feedback.student === "" && draft.feedback.annotation === "";
+    const empty = draft.code === "" && draft.period === null && draft.questionId === null && draft.feedback.student === "" && draft.feedback.annotation === "";
     if (empty) window.sessionStorage.removeItem(DRAFT_KEY);
     else {
-      const stored: StoredDraft = { code: draft.code, questionId: draft.questionId, feedback: draft.feedback };
+      const stored: StoredDraft = { code: draft.code, period: draft.period, questionId: draft.questionId, feedback: draft.feedback };
       window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(stored));
     }
   } catch {

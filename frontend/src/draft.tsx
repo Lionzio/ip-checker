@@ -18,6 +18,7 @@ import {
 export function DraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<Draft>(() => ({
     code: "",
+    period: null,
     listNumber: rememberedList(),
     questionId: null,
     feedback: EMPTY_FEEDBACK,
@@ -29,6 +30,10 @@ export function DraftProvider({ children }: { children: ReactNode }) {
   }, [draft]);
 
   const setCode = useCallback((code: string) => setDraft((current) => ({ ...current, code })), []);
+  const setPeriod = useCallback(
+    (period: string | null) => setDraft((current) => ({ ...current, period, listNumber: null, questionId: null })),
+    [],
+  );
   const setList = useCallback((listNumber: number | null) => {
     rememberList(listNumber);
     setDraft((current) => ({ ...current, listNumber, questionId: null }));
@@ -49,6 +54,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
     () =>
       setDraft((current) => ({
         code: "",
+        period: null,
         listNumber: current.listNumber,
         questionId: null,
         feedback: EMPTY_FEEDBACK,
@@ -57,8 +63,8 @@ export function DraftProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ draft, setCode, setList, setQuestion, setFeedback, nextStudent, clear }),
-    [draft, setCode, setList, setQuestion, setFeedback, nextStudent, clear],
+    () => ({ draft, setCode, setPeriod, setList, setQuestion, setFeedback, nextStudent, clear }),
+    [draft, setCode, setPeriod, setList, setQuestion, setFeedback, nextStudent, clear],
   );
   return <DraftContext.Provider value={value}>{children}</DraftContext.Provider>;
 }

@@ -2,10 +2,12 @@ import { type DragEvent, useEffect, useRef, useState } from "react";
 import { BATCH_COLUMNS, BATCH_STATUS, batchCsv, studentOf, summary } from "../classBatch";
 import { type ClassFile, chunks, MAX_FILES, readClassFiles } from "../classFiles";
 import { ListSelector } from "../components/ListSelector";
+import { PeriodSelector } from "../components/PeriodSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { Button, Card, ErrorText } from "../components/ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useLists } from "../hooks/useLists";
+import { usePeriods } from "../hooks/usePeriods";
 import { PAGE_TITLES } from "../labels";
 import { questionOptions } from "../questions";
 import { ApiError, type ValidationClient } from "../services/client";
@@ -36,7 +38,9 @@ const STATUS_STYLES: Record<BatchResult["status"], string> = {
  */
 export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
   useDocumentTitle(PAGE_TITLES.batch);
-  const { lists, error: listsError } = useLists(client, onUnauthenticated);
+  const periods = usePeriods(client, onUnauthenticated);
+  const [period, setPeriod] = useState<string | null>(null);
+  const { lists, error: listsError } = useLists(client, onUnauthenticated, period);
   const [listNumber, setListNumber] = useState<number | null>(null);
   const [questionId, setQuestionId] = useState<string | null>(null);
   const [files, setFiles] = useState<ClassFile[]>([]);
@@ -88,7 +92,7 @@ export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
     if (listNumber === null || files.length === 0) return;
     const controller = new AbortController();
     controllerRef.current = controller;
-    const label = `Lista ${listNumber}${currentList ? `: ${currentList.title}` : ""}`;
+    const label = `Lista ${listNumber}${currentList ? `: ${currentList.title}` : ""}${period ? ` (${period})` : ""}`;
     setResults([]);
     setError(null);
     setChecked({ list: label, questionId });
@@ -99,7 +103,7 @@ export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
         for (let attempt = 0; ; attempt += 1) {
           try {
             const response = await client.validateBatch(
-              { list_number: listNumber, question_id: questionId, files: part },
+              { list_number: listNumber, question_id: questionId, period, files: part },
               controller.signal,
             );
             collected.push(...response.results);
@@ -160,7 +164,17 @@ export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
           2 MB no total), conferidos de uma vez. O nome do arquivo identifica o aluno. Nada é guardado.
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={periods.length > 1 ? "grid gap-4 sm:grid-cols-3" : "grid gap-4 sm:grid-cols-2"}>
+        <PeriodSelector
+          periods={periods}
+          value={period}
+          onChange={(value) => {
+            setPeriod(value);
+            setListNumber(null);
+            setQuestionId(null);
+          }}
+          disabled={running}
+        />
         <ListSelector
           lists={lists}
           value={listNumber}

@@ -788,6 +788,13 @@ export function createMockClient({
       return ENABLED_LISTS;
     },
 
+    // Um período só no modo demonstração, como o piloto de hoje: o seletor de período não aparece.
+    async listPeriods(signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      return [{ period: RULESET_VERSION.split(".").slice(0, 2).join("."), active: true, ruleset_version: RULESET_VERSION }];
+    },
+
     async validate(request: ValidateRequest, signal) {
       const lento = /#\s*simular:\s*lento\b/.test(request.code);
       await wait(lento ? 15_000 : latencyMs, signal);

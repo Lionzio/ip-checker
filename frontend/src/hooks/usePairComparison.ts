@@ -25,6 +25,8 @@ export function usePairComparison(client: PlagiarismClient, onUnauthenticated: (
   const [current, setCurrent] = useState<number | null>(null);
   const [sync, setSync] = useState(true);
   const [questionId, setQuestionId] = useState<string | null>(null);
+  // O período da questão (S43-03): o gabarito é o do período; `null` é o ativo.
+  const [period, setPeriodState] = useState<string | null>(null);
   const call = useApiCall(PLAGIARISM_TIMEOUT_MS, onUnauthenticated);
   const editorA = useRef<CodeEditorHandle>(null);
   const editorB = useRef<CodeEditorHandle>(null);
@@ -38,7 +40,7 @@ export function usePairComparison(client: PlagiarismClient, onUnauthenticated: (
     setError(null);
     setCompared(null);
     setCurrent(null);
-    const outcome = await call.run((signal) => client.compare(first, second, signal, questionId));
+    const outcome = await call.run((signal) => client.compare(first, second, signal, questionId, period));
     if (outcome === null) return;
     if (outcome.ok) setCompared({ codeA: first, codeB: second, result: outcome.value });
     else setError(outcome.message);
@@ -104,6 +106,12 @@ export function usePairComparison(client: PlagiarismClient, onUnauthenticated: (
     setSync,
     questionId,
     setQuestionId,
+    period,
+    /** Trocar de período volta para "sem questão": as questões são de um período só. */
+    setPeriod(value: string | null) {
+      setPeriodState(value);
+      setQuestionId(null);
+    },
     loading: call.loading,
     cancel: call.cancel,
     editorA,

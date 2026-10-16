@@ -23,6 +23,7 @@ import type {
   ValidateRequest,
   ValidateResponse,
   ListPanel,
+  PeriodInfo,
   SimilarityMatrixResponse,
   ValidateBatchResponse,
 } from "../types/api";
@@ -81,8 +82,12 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
   }
 
   return {
-    listLists(signal) {
-      return call<ListInfo[]>("/api/v1/lists", { method: "GET" }, signal);
+    listLists(signal, period) {
+      const query = period ? `?period=${encodeURIComponent(period)}` : "";
+      return call<ListInfo[]>(`/api/v1/lists${query}`, { method: "GET" }, signal);
+    },
+    listPeriods(signal) {
+      return call<PeriodInfo[]>("/api/v1/periods", { method: "GET" }, signal);
     },
     validate(request: ValidateRequest, signal) {
       return call<ValidateResponse>(
@@ -137,10 +142,15 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     feedback(request, signal) {
       return call<FeedbackResponse>("/api/v1/feedback", json("POST", request), signal);
     },
-    compare(codeA, codeB, signal, questionId) {
+    compare(codeA, codeB, signal, questionId, period) {
       return call<SimilarityResponse>(
         "/api/v1/similarity",
-        json("POST", { code_a: codeA, code_b: codeB, ...(questionId ? { question_id: questionId } : {}) }),
+        json("POST", {
+          code_a: codeA,
+          code_b: codeB,
+          ...(questionId ? { question_id: questionId } : {}),
+          ...(period ? { period } : {}),
+        }),
         signal,
       );
     },
