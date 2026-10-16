@@ -18,10 +18,12 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from api_support import authed_client, make_app, member
 from conftest import BASE_RULESET, REPO_ROOT
 from ipc_analyzer.runtime.pool import PoolConfig
 from ipc_analyzer.service.app import create_app
 from ipc_analyzer.service.settings import AnalyzerSettings
+from ipc_api.accounts.models import Role
 from ipc_api.schemas import FeedbackResponse, ValidateResponse
 from ipc_api.settings import ApiSettings
 from ipc_api.telemetry import TelemetryEvent
@@ -80,7 +82,7 @@ def test_off_by_default_nothing_is_asked_or_shown() -> None:
 def test_when_on_the_team_sees_the_indicators_with_the_notice() -> None:
     analyzer = Recording({**INVALID, "indicators": INDICATORS})
 
-    with make_client(analyzer, replace(SETTINGS, ai_indicators=True)) as client:
+    with make_client(analyzer, replace(SETTINGS, ai_indicators="1")) as client:
         response = validate(client)
         options = client.get("/api/v1/auth/options").json()
 
@@ -96,7 +98,7 @@ def test_when_on_the_team_sees_the_indicators_with_the_notice() -> None:
 def test_when_on_without_indicators_nothing_is_shown() -> None:
     analyzer = Recording({**INVALID, "indicators": None})
 
-    with make_client(analyzer, replace(SETTINGS, ai_indicators=True)) as client:
+    with make_client(analyzer, replace(SETTINGS, ai_indicators="1")) as client:
         response = validate(client)
 
     assert response.json()["indicators"] is None
@@ -106,7 +108,7 @@ def test_an_untrustworthy_indicator_makes_the_analyzer_unavailable() -> None:
     broken = {**INDICATORS, "level": "certeza"}
     analyzer = Recording({**INVALID, "indicators": broken})
 
-    with make_client(analyzer, replace(SETTINGS, ai_indicators=True)) as client:
+    with make_client(analyzer, replace(SETTINGS, ai_indicators="1")) as client:
         response = validate(client)
 
     assert response.status_code == 503
@@ -161,7 +163,7 @@ def test_the_pilot_keeps_them_off_until_the_policy_is_approved() -> None:
     env = {item["key"]: item.get("value") for item in blueprint["services"][0]["envVars"]}
 
     assert env["IPC_AI_INDICATORS"] == "0"
-    assert ApiSettings().ai_indicators is False
+    assert ApiSettings().ai_indicators == "0"
 
 
 def test_the_evidence_never_reaches_the_logs_or_the_telemetry(
@@ -173,10 +175,46 @@ def test_the_evidence_never_reaches_the_logs_or_the_telemetry(
     analyzer = Recording({**INVALID, "indicators": {**INDICATORS, "items": [item]}})
     caplog.set_level("DEBUG")
 
-    with make_client(analyzer, replace(SETTINGS, ai_indicators=True)) as client:
+    with make_client(analyzer, replace(SETTINGS, ai_indicators="1")) as client:
         response = validate(client)
 
     assert response.json()["indicators"]["items"][0]["evidence"]["excerpt"] == f"# {canary}"
     assert canary not in caplog.text
     fields = {field.name for field in dataclasses.fields(TelemetryEvent)}
     assert not fields & {"indicators", "evidence", "excerpt", "reason"}
+
+
+# --- S42-05: a ligação por cargo -----------------------------------------------------------------
+
+LEADERSHIP = {Role.DESENVOLVEDOR, Role.PROFESSOR, Role.MONITOR_CHEFE}
+
+
+@pytest.mark.parametrize("mode", ["0", "chefia", "1"])
+@pytest.mark.parametrize("role", list(Role), ids=lambda role: role.value)
+def test_each_role_sees_the_indicators_only_when_turned_on_for_it(mode: str, role: Role) -> None:
+    analyzer = Recording({**INVALID, "indicators": INDICATORS})
+    app, store = make_app(
+        replace(SETTINGS, ai_indicators=mode), analyzer_transport=httpx2.MockTransport(analyzer)
+    )
+    expected = mode == "1" or (mode == "chefia" and role in LEADERSHIP)
+
+    with authed_client(app, store, member(store, role=role)) as client:
+        response = validate(client)
+        me = client.get("/api/v1/auth/me").json()
+        options = client.get("/api/v1/auth/options").json()
+
+    assert analyzer.bodies[0]["indicators"] is expected
+    assert (response.json()["indicators"] is not None) is expected
+    assert me["ai_indicators"] is expected
+    assert options["ai_indicators"] is (mode != "0")
+
+
+@pytest.mark.parametrize("value", ["", "2", "Chefia", "sim", "true"])
+def test_an_invalid_value_stops_the_api(value: str) -> None:
+    with pytest.raises(ValueError, match="IPC_AI_INDICATORS inválida"):
+        ApiSettings.from_env({"IPC_AI_INDICATORS": value})
+
+
+@pytest.mark.parametrize("value", ["0", "chefia", "1"])
+def test_the_three_values_are_accepted(value: str) -> None:
+    assert ApiSettings.from_env({"IPC_AI_INDICATORS": value}).ai_indicators == value

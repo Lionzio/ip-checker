@@ -54,6 +54,8 @@ export const DEMO_ACCOUNT: Account = {
   has_password: true,
   can_manage: false,
   can_view_log: false,
+  // O simulado mostra o painel de indícios, como o compose (IPC_AI_INDICATORS=1).
+  ai_indicators: true,
 };
 /** Uma conta que gerencia a equipe, para os testes da tela de gerenciamento (Sprint 15). */
 export const DEMO_MANAGER: Account = {

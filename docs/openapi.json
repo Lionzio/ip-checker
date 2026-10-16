@@ -2549,6 +2549,12 @@
             "type": "boolean",
             "title": "Can View Log",
             "description": "Verdadeiro para quem vê o registro das ações de gerenciamento: desenvolvedor e professores (REC-06)."
+          },
+          "ai_indicators": {
+            "type": "boolean",
+            "title": "Ai Indicators",
+            "description": "Esta conta vê os indícios de uso de IA na verificação (S42-05): com IPC_AI_INDICATORS=chefia, só desenvolvedor, professores e monitores-chefes.",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -2582,7 +2588,7 @@
           "ai_indicators": {
             "type": "boolean",
             "title": "Ai Indicators",
-            "description": "Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29)."
+            "description": "Os indícios de uso de IA estão ligados neste servidor para alguém (ADR-08, S29): para a chefia ou para toda a equipe. Quem os vê está em ai_indicators da conta."
           }
         },
         "additionalProperties": false,

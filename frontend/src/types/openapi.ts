@@ -674,6 +674,12 @@ export interface components {
              * @description Verdadeiro para quem vê o registro das ações de gerenciamento: desenvolvedor e professores (REC-06).
              */
             can_view_log: boolean;
+            /**
+             * Ai Indicators
+             * @description Esta conta vê os indícios de uso de IA na verificação (S42-05): com IPC_AI_INDICATORS=chefia, só desenvolvedor, professores e monitores-chefes.
+             * @default false
+             */
+            ai_indicators: boolean;
         };
         /** AuthOptions */
         AuthOptions: {
@@ -689,7 +695,7 @@ export interface components {
             feedback_ai: boolean;
             /**
              * Ai Indicators
-             * @description Os indícios de uso de IA estão ligados neste servidor (ADR-08, S29).
+             * @description Os indícios de uso de IA estão ligados neste servidor para alguém (ADR-08, S29): para a chefia ou para toda a equipe. Quem os vê está em ai_indicators da conta.
              */
             ai_indicators: boolean;
         };

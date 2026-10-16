@@ -27,6 +27,9 @@ test("break, continue e pass juntos mostram o indício alto, com as linhas e as 
   await expect(panel(page).getByText("Faixa alta", { exact: true })).toBeVisible();
   await expect(panel(page)).toContainText("'break', 'continue' e 'pass'");
   await expect(panel(page).getByRole("note")).toContainText("não são prova");
+  // S42-03: a evidência (as regras, a linha e o trecho) e a confiança, do motor de verdade.
+  await expect(panel(page)).toContainText("Regras R-11, R-12, linha 3:");
+  await expect(panel(page)).toContainText("confiança alta");
   await expect(panel(page).getByRole("heading", { name: "Perguntas para a conversa com o aluno" })).toBeVisible();
 
   await panel(page).getByRole("button", { name: "Linha 5: selecionar no editor" }).click();

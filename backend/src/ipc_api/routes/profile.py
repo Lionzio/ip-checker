@@ -11,10 +11,12 @@ from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.deps import get_accounts, get_authenticator, require_active_account
 from ipc_api.auth.middleware import session_token
 from ipc_api.auth.sessions import Authenticator, token_hash, valid_token
+from ipc_api.deps import get_settings
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.routes.auth import FORBIDDEN_ORIGIN, UNAVAILABLE, account_response
 from ipc_api.schemas import AccountResponse, PasswordChange, ProfileUpdate
+from ipc_api.settings import ApiSettings
 
 router = APIRouter(
     prefix="/api/v1/profile", tags=["perfil"], dependencies=[Depends(require_active_account)]
@@ -41,6 +43,7 @@ async def update_profile(
     response: Response,
     account: Annotated[Account, Depends(require_active_account)],
     accounts: Annotated[AccountService, Depends(get_accounts)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> AccountResponse:
     response.headers["Cache-Control"] = "no-store"
     try:
@@ -52,7 +55,7 @@ async def update_profile(
         )
     except StoreUnavailable as exc:
         raise database_unavailable(exc) from None
-    return account_response(updated)
+    return account_response(updated, settings.ai_indicators)
 
 
 @router.post(
