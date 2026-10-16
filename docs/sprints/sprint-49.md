@@ -51,3 +51,16 @@ Do plano de 16/10/2026 ([`plano-dikastis.md`](../plano-dikastis.md), seção 3);
 - Um passo pulado por engano: só com verde registrado para as entradas atuais, e a release roda `--completo`.
 - O paralelismo reintroduz o ruído de tempo que as Sprints 39 e 40 corrigiram: benchmark, `timing`, Lighthouse e segurança ficam na faixa silenciosa, sozinhos na máquina.
 - O Docker Desktop do Windows com três faixas ao mesmo tempo: a faixa B (auditorias em contêiner) é a única com Docker na fase paralela; a segurança e o e2e vêm depois.
+
+**Situação (16/10/2026):** concluída na release `sprint-49` (#148), no mesmo dia do plano. S49-01 a
+S49-06 num PR só; a S49-07 são estes registros. Medidas na máquina do autor, sobre o mesmo commit:
+a rodada completa (`--completo`, tudo rodando, com o cache das imagens quente) levou
+9,9 min (595 s), contra 13 a 15 min em série; uma rodada em seguida, sem mudança de código, levou
+21 s, com os passos pulados por entradas iguais a um verde; e uma mudança só no backend leva
+cerca de 8 min. Decisões (detalhes no `CHANGELOG.md`): a release aceita a cobertura por
+passos sem exigir `--completo` (um passo pulado teve verde para o mesmo conteúdo; os sensíveis ao
+tempo rodam sempre sozinhos); os testes `timing` saíram da etapa em série para a faixa silenciosa;
+o gitleaks é incremental por commit, e não por impressão digital; o cache do buildx no Actions
+(S49-06) ficou para quando a cota voltar, com a medição dos minutos por PR. Sem deploy: nada muda no
+Render nem na Vercel.
+

@@ -8,6 +8,54 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 49 — CI incremental e mais rápida
+
+A Sprint 49 (S49-01 a S49-07; US-14 e US-57; ADR-20, Q-42) começou e terminou em 16/10/2026, a
+primeira da Fase 1h, porque todas as sprints seguintes pagam o custo da CI. A missão é que um PR
+espere minutos, e não um quarto de hora, pela CI local, sem enfraquecer a prova. As personas são o
+desenvolvedor que abre vários PRs por dia e o monitor-mantenedor que roda a CI numa máquina
+compartilhada. Só scripts e CI: nada muda no Render nem na Vercel.
+
+- **16/10/2026, S49-01 a S49-06 (#148):**
+  - **Impressão digital das entradas (S49-01):** `scripts/ci-passos.py` calcula, para cada passo,
+    o hash dos blobs dos arquivos de que ele depende (rastreados e não ignorados, mais o próprio
+    script da CI) e guarda os verdes em `.git/ci-local-passos.json`, com uma trava por arquivo
+    porque as faixas gravam ao mesmo tempo. Um passo com verde para o hash atual é pulado: o resumo
+    diz "pulado: igual ao verde de `<sha>`". `--completo` força tudo; `forget` esquece.
+  - **Faixas (S49-02):** A (lint, tipos, fronteiras, ruleset, pytest em paralelo e com banco, links
+    da documentação, gabaritos), B (gitleaks, Semgrep, pip-audit, npm audit) e C (frontend) rodam em
+    paralelo; depois a faixa silenciosa, sozinha: testes `timing` (com a soma da cobertura e os
+    90%), cobertura por pasta, benchmark, Lighthouse e segurança; por fim o e2e.
+  - **Auditoria só sobre o que mudou (S49-03):** o Semgrep varre só os arquivos cujo blob mudou
+    desde o último verde (as regras são de arquivo único; a rodada completa varre tudo); pip-audit e
+    npm audit só com lock novo ou verde com mais de 7 dias; o gitleaks varre do último commit
+    auditado em diante, quando ele é ancestral do HEAD. A varredura do Semgrep passou a rodar
+    sobre um tar dos arquivos dentro do contêiner, e não sobre a pasta montada: no Docker do
+    Windows, a varredura inteira caiu de 225 s para 6 s.
+  - **Caches (S49-04):** `npm ci` só com lock novo; o compose do e2e reaproveita as imagens do
+    BuildKit.
+  - **Release por passos (S49-05):** `scripts/release.sh --ci-local` aceita, além do registro da
+    árvore inteira, a cobertura por passos (`ci-passos.py verify`) na árvore da ponta da `develop`,
+    com o gitleaks auditado até esse commit.
+  - **Actions (S49-06):** o job `changes` diz quais caminhos mudaram; `backend`, `frontend` e
+    `security` só rodam quando os caminhos deles mudaram, e o benchmark só quando o motor, o
+    benchmark, as dependências ou o ruleset mudaram. Vale a partir de 01/11/2026.
+  - **Medida (S49-07), máquina do autor, mesmo commit:** rodada completa em 9,9 min (595 s) (antes,
+    13 a 15 min em série); sem mudança de código, 21 s, com 28 passos pulados; uma mudança só no
+    backend, cerca de 8 min (a faixa A, os testes de tempo, a segurança e o e2e). Das 6 rodadas
+    do dia, duas acharam defeitos reais da própria sprint: o `` que o Python escreve no
+    Windows entrava nos hashes e nos alvos do Semgrep, e o teste de tempo da janela de períodos
+    (Sprint 43) reprovava por ruído logo depois das faixas (agora é o melhor de três medições).
+
+| Decisão | Por quê |
+|---|---|
+| Impressão digital por blob, e não por caminho alterado em relação à base | Independe da base e do rebase; um passo só é pulado quando teve verde para exatamente o mesmo conteúdo |
+| O próprio `ci-local.sh` e o `ci-passos.py` entram nas entradas de todo passo | Mudar a CI invalida todos os verdes |
+| Testes `timing` na faixa silenciosa | Medem o relógio; na S39-03 e na S40-04 o ruído de carga os derrubou |
+| A release aceita a cobertura por passos sem `--completo` | Um passo pulado teve verde para o mesmo conteúdo; os sensíveis ao tempo rodam sempre sozinhos |
+| gitleaks incremental por commit, não por impressão digital | Ele lê o histórico, não a árvore; o último commit auditado é o marco certo |
+| Cache do buildx no Actions adiado | Sem cota até 01/11, não há como medir; entra com a primeira rodada |
+
 ## Sprint 42 — Indícios de IA com evidência e ligação por cargo
 
 A Sprint 42 (S42-02 a S42-07; US-34; ADR-08 e Q-35) começou em 16/10/2026, depois da 43. A missão é

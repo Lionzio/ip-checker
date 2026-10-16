@@ -57,9 +57,35 @@ repository=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 if $ci_local; then
   tree=$(git rev-parse "$develop^{tree}")
   record="$(git rev-parse --git-common-dir)/ci-local-verde"
-  grep -q "^$tree " "$record" 2>/dev/null \
-    || fail "nenhuma rodada verde do scripts/ci-local.sh --e2e na árvore da develop em ${develop:0:7}."
-  echo "CI local verde na árvore ${tree:0:12}: $(grep "^$tree " "$record" | tail -1 | cut -d' ' -f2-)"
+  if grep -q "^$tree " "$record" 2>/dev/null; then
+    echo "CI local verde na árvore ${tree:0:12}: $(grep "^$tree " "$record" | tail -1 | cut -d' ' -f2-)"
+  else
+    # S49-05 (ADR-20): sem a rodada inteira nesta árvore, vale a cobertura por passos: cada passo
+    # da CI local com um verde registrado para as entradas atuais, calculadas nesta árvore de
+    # trabalho, que precisa ser a da ponta da develop; e o gitleaks auditado até esse commit.
+    [ "$(git rev-parse 'HEAD^{tree}')" = "$tree" ] \
+      || fail "nenhuma rodada verde do scripts/ci-local.sh --e2e na árvore da develop em ${develop:0:7}, e esta árvore de trabalho não é a dela (faça checkout da develop atualizada)."
+    passos=(
+      "Backend: ruff" "Backend: formatação" "Backend: mypy" "Backend: fronteiras" "Ruleset e golden"
+      "Backend: pytest em paralelo (sem banco e sem tempo)" "Backend: pytest em série (banco)"
+      "Documentação: links" "Gabaritos (zero violação)"
+      "Auditoria: Semgrep (testes das regras)" "Auditoria: Semgrep (varredura)"
+      "Auditoria: dependências Python (pip-audit)" "Auditoria: dependências npm (npm audit)"
+      "Frontend: tipos do OpenAPI em dia" "Frontend: ESLint" "Frontend: TypeScript"
+      "Frontend: Vitest (cobertura das páginas >= 80%)" "Frontend: build"
+      "Frontend: JS inicial com gzip (NFR-03)" "Frontend: build do piloto"
+      "Backend: pytest de tempo (timing; cobertura >= 90%)"
+      "Backend: cobertura por pasta (motor >= 90%, resto >= 80%)" "Backend: benchmark do motor (NFR-02)"
+      "Frontend: Lighthouse, perfil móvel (NFR-03)" "Segurança (isolamento e imagem do piloto)"
+      "e2e: compose (porta 28280) e Playwright"
+    )
+    python scripts/ci-passos.py verify "${passos[@]}" \
+      || fail "a CI local não cobre a develop em ${develop:0:7}: rode scripts/ci-local.sh --e2e (passos acima sem verde)."
+    audited=$(python scripts/ci-passos.py check "Auditoria: gitleaks (último commit)" sempre | cut -d' ' -f1)
+    [ -n "$audited" ] && [ "$(git rev-parse "$audited")" = "$develop" ] \
+      || fail "o gitleaks não auditou a develop em ${develop:0:7}: rode scripts/ci-local.sh --e2e."
+    echo "CI local verde por passos na árvore ${tree:0:12} (ADR-20): todos os passos com verde para as entradas atuais."
+  fi
 else
   green=$(gh api "repos/$repository/actions/runs?head_sha=$develop&branch=develop&event=push&status=success" \
     -q '[.workflow_runs[] | select(.name == "CI")] | length')
