@@ -35,10 +35,11 @@ class CachedResult:
     items: tuple[CachedItem, ...]
 
 
-def result_key(code: str, list_number: int, question_id: str | None) -> str:
-    """O SHA-256 do código com a lista e a questão: a chave não deixa recuperar o código."""
+def result_key(code: str, list_number: int, question_id: str | None, period: str = "") -> str:
+    """O SHA-256 do código com o período, a lista e a questão: a chave não deixa recuperar o
+    código, e a mesma solução em períodos diferentes não divide o resultado (S43-02)."""
     digest = hashlib.sha256()
-    digest.update(f"{list_number}\x00{question_id or ''}\x00".encode())
+    digest.update(f"{period}\x00{list_number}\x00{question_id or ''}\x00".encode())
     digest.update(code.encode("utf-8", "surrogatepass"))
     return digest.hexdigest()
 

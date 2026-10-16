@@ -87,6 +87,11 @@ class TelemetryEvent:
         )
 
 
+def _version_key(ruleset_version: str) -> tuple[int, ...]:
+    """2026.2.10 depois de 2026.2.9: a comparação é por número, não por texto."""
+    return tuple(int(part) for part in ruleset_version.split(".") if part.isdigit())
+
+
 def semester_of(ruleset_version: str) -> str:
     """``2026.2.1`` -> ``2026.2``: o período vem da versão do ruleset."""
     return ".".join(ruleset_version.split(".")[:2])
@@ -138,7 +143,12 @@ class Telemetry:
 
     def record(self, event: TelemetryEvent) -> None:
         """Põe o evento na fila sem esperar; se ela estiver cheia, o evento é descartado."""
-        self.ruleset_version = event.ruleset_version
+        # A versão atual (o semestre padrão do painel por lista e das recusas) só avança: uma
+        # verificação de um período anterior (S43-02) não a faz voltar.
+        if self.ruleset_version is None or _version_key(event.ruleset_version) > _version_key(
+            self.ruleset_version
+        ):
+            self.ruleset_version = event.ruleset_version
         if self._queue is None:
             return
         try:

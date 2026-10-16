@@ -14,6 +14,8 @@ Status = Literal["valid", "invalid", "syntax_error"]
 Notice = Literal["QUESTION_RULES_NOT_APPLIED", "QUESTION_RULES_NOT_REGISTERED"]
 QuestionId = Annotated[str, StringConstraints(pattern=r"^L[1-6]-Q[1-9]\d?$")]
 ListNumber = Annotated[int, Field(ge=1, le=6)]
+#: Um período letivo, como 2026.2 (S43-02).
+PeriodId = Annotated[str, StringConstraints(pattern=r"^\d{4}\.[12]$")]
 Position = Annotated[int, Field(ge=1, le=1_000_000)]
 Message = Annotated[str, StringConstraints(min_length=1, max_length=1_000)]
 RulesetVersion = Annotated[str, StringConstraints(pattern=r"^\d{4}\.[12]\.\d+$")]

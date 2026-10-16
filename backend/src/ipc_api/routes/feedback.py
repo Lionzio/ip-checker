@@ -29,6 +29,7 @@ from ipc_api.feedback.cache import CachedItem, CachedResult, result_key
 from ipc_api.feedback.compose import Evaluator, Item
 from ipc_api.feedback.service import FeedbackService
 from ipc_api.gabaritos import Gabaritos
+from ipc_api.periods import require_list, resolve_period
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import FeedbackRequest, FeedbackResponse
@@ -70,7 +71,7 @@ def _clean(text: str, field: str, *, lines: bool) -> str:
             413: "PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB.",
             422: (
                 "INVALID_INPUT (entrada inválida ou código com erro de sintaxe), "
-                "LIST_NOT_ENABLED ou ANALYSIS_LIMIT."
+                "LIST_NOT_ENABLED, UNKNOWN_QUESTION, UNKNOWN_PERIOD ou ANALYSIS_LIMIT."
             ),
             429: (
                 "RATE_LIMITED: muitas requisições em 1 minuto ou a cota de feedbacks do dia. "
@@ -100,26 +101,26 @@ async def feedback(
         raise ApiError(422, ErrorCode.INVALID_INPUT, "Informe o nome do aluno.")
     annotation = _clean(body.annotation, "A anotação", lines=True) if body.annotation else None
     check_code(body.code)
-    if body.list_number not in settings.enabled_lists:
-        raise ApiError(
-            422,
-            ErrorCode.LIST_NOT_ENABLED,
-            f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
-        )
+    view = await resolve_period(analyzer, body.period)
+    require_list(view, body.list_number, settings)
     # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista, como na verificação.
-    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    check = check_question(view, body.list_number, body.question_id, gabaritos)
     question_id = body.question_id if check is not None and check.registered else None
     # S38-04: "Gerar" de novo (outro nome, outra anotação) reaproveita a análise anterior, que
     # fica em memória sem o código. O "Aprimorar com IA" precisa do código sem comentários, que só
     # o analisador isolado prepara, então ele sempre analisa (e renova o resultado guardado).
-    key = result_key(body.code, body.list_number, question_id)
+    key = result_key(body.code, body.list_number, question_id, view.period)
     cached = None if body.enhance else service.results.get(key)
     code_for_ai = ""
     if cached is None:
         try:
             async with admission.slot():
                 data = await analyzer.feedback_input(
-                    body.code, body.list_number, request_id=request_id, question_id=question_id
+                    body.code,
+                    body.list_number,
+                    request_id=request_id,
+                    question_id=question_id,
+                    period=None if view.active else view.period,
                 )
         except Overloaded:
             raise overloaded() from None

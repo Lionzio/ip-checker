@@ -25,6 +25,7 @@ from ipc_api.deps import (
 )
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.gabaritos import Gabaritos
+from ipc_api.periods import require_list, resolve_period
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
@@ -65,8 +66,8 @@ router = APIRouter(
             413: "PAYLOAD_TOO_LARGE: código acima de 51.200 bytes ou corpo acima de 128 KB.",
             422: (
                 "INVALID_INPUT (entrada inválida), LIST_NOT_ENABLED (lista não liberada), "
-                "UNKNOWN_QUESTION (questão não cadastrada) ou ANALYSIS_LIMIT (código complexo "
-                "demais)."
+                "UNKNOWN_QUESTION (questão não cadastrada), UNKNOWN_PERIOD (período não "
+                "carregado) ou ANALYSIS_LIMIT (código complexo demais)."
             ),
             429: (
                 "RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. "
@@ -98,20 +99,16 @@ async def validate(
     # As verificações da conta de verificação do deploy não contam no uso (S28-02).
     counted = not account.check_account
     request.state.list_number = body.list_number
-    enabled = body.list_number in settings.enabled_lists
     try:
         check_code(body.code)
     except ApiError:
-        if enabled and counted:
+        if body.list_number in settings.enabled_lists and counted:
             _record_refusal(telemetry, body.list_number, "rejected")
         raise
-    if not enabled:
-        raise ApiError(
-            422,
-            ErrorCode.LIST_NOT_ENABLED,
-            f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
-        )
-    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    # O período das regras (S43-02): o ativo, ou um anterior para a lista atrasada (US-39).
+    view = await resolve_period(analyzer, body.period)
+    require_list(view, body.list_number, settings)
+    check = check_question(view, body.list_number, body.question_id, gabaritos)
     # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista.
     registered = check is not None and check.registered
     gabarito = (
@@ -131,6 +128,7 @@ async def validate(
                 question_id=body.question_id if registered else None,
                 indicators=settings.ai_indicators,
                 gabarito=gabarito,
+                period=None if view.active else view.period,
             )
             analysis_ms = round((time.perf_counter() - started) * 1000)
     except Overloaded:
@@ -138,7 +136,8 @@ async def validate(
     except AnalyzerRejected as exc:
         limit = exc.code == ErrorCode.ANALYSIS_LIMIT
         if counted:
-            _record_refusal(telemetry, body.list_number, "analysis_limit" if limit else "rejected")
+            outcome: Outcome = "analysis_limit" if limit else "rejected"
+            _record_refusal(telemetry, body.list_number, outcome, view.ruleset_version)
         raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
@@ -203,13 +202,17 @@ def _gabarito(
     )
 
 
-def _record_refusal(telemetry: Telemetry, list_number: int, outcome: Outcome) -> None:
-    """Código recusado antes ou durante a análise; sem versão do ruleset conhecida, não conta."""
-    if telemetry.ruleset_version is None:
+def _record_refusal(
+    telemetry: Telemetry, list_number: int, outcome: Outcome, version: str | None = None
+) -> None:
+    """Código recusado antes ou durante a análise, na versão do período pedido (S43-02) ou, antes
+    de saber o período, na do ativo; sem versão conhecida, não conta."""
+    version = version or telemetry.ruleset_version
+    if version is None:
         return
     telemetry.record(
         TelemetryEvent.from_result(
-            ruleset_version=telemetry.ruleset_version, list_number=list_number, outcome=outcome
+            ruleset_version=version, list_number=list_number, outcome=outcome
         )
     )
 
@@ -223,9 +226,9 @@ def _record_refusal(telemetry: Telemetry, list_number: int, outcome: Outcome) ->
             403: "ORIGIN_MISMATCH: a requisição veio de outro site.",
             413: "PAYLOAD_TOO_LARGE: corpo acima de 128 KB.",
             422: (
-                "INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED ou "
-                "UNKNOWN_QUESTION. Um arquivo recusado não recusa os outros: ele volta com o "
-                "status rejected."
+                "INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED, "
+                "UNKNOWN_QUESTION ou UNKNOWN_PERIOD. Um arquivo recusado não recusa os outros: "
+                "ele volta com o status rejected."
             ),
             429: "RATE_LIMITED: muitas requisições da mesma conta ou da mesma rede.",
             503: "OVERLOADED ou ANALYZER_UNAVAILABLE: a parte pode ser enviada de novo.",
@@ -250,13 +253,9 @@ async def validate_batch(
     response.headers["Cache-Control"] = "no-store"
     counted = not account.check_account
     request.state.list_number = body.list_number
-    if body.list_number not in settings.enabled_lists:
-        raise ApiError(
-            422,
-            ErrorCode.LIST_NOT_ENABLED,
-            f"A Lista {body.list_number} ainda não está habilitada no IP-Checker.",
-        )
-    check = await check_question(analyzer, body.list_number, body.question_id, gabaritos)
+    view = await resolve_period(analyzer, body.period)
+    require_list(view, body.list_number, settings)
+    check = check_question(view, body.list_number, body.question_id, gabaritos)
     registered = check is not None and check.registered
     gabarito = (
         gabaritos.get(check.period, body.question_id)
@@ -264,7 +263,7 @@ async def validate_batch(
         else None
     )
     results: list[BatchResult] = []
-    version = telemetry.ruleset_version or ""
+    version = view.ruleset_version
     for file in body.files:
         try:
             check_code(file.code)
@@ -281,6 +280,7 @@ async def validate_batch(
                     question_id=body.question_id if registered else None,
                     indicators=False,
                     gabarito=gabarito,
+                    period=None if view.active else view.period,
                 )
                 analysis_ms = round((time.perf_counter() - started) * 1000)
         except Overloaded:
