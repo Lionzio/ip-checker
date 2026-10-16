@@ -49,8 +49,6 @@ router = APIRouter()
 #: Rotas da equipe: exigem uma sessão de conta ativa (FR-22).
 protected = APIRouter(dependencies=[Depends(require_active_account)])
 
-UNAVAILABLE = error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não respondeu."})
-
 
 @protected.get(
     "/api/v1/lists",
@@ -99,7 +97,15 @@ async def lists(
     "/api/v1/periods",
     tags=["listas"],
     summary="Os períodos carregados: o ativo e até 5 anteriores (S43-02)",
-    responses=UNAVAILABLE,
+    responses=error_docs(
+        {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            503: (
+                "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE "
+                "(o banco de contas não respondeu)."
+            ),
+        }
+    ),
 )
 async def periods(
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],

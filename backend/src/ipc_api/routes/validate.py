@@ -25,7 +25,7 @@ from ipc_api.deps import (
 )
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.gabaritos import Gabaritos
-from ipc_api.periods import require_list, resolve_period
+from ipc_api.periods import requested, resolve_request
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
@@ -106,8 +106,9 @@ async def validate(
             _record_refusal(telemetry, body.list_number, "rejected")
         raise
     # O período das regras (S43-02): o ativo, ou um anterior para a lista atrasada (US-39).
-    view = await resolve_period(analyzer, body.period)
-    require_list(view, body.list_number, settings)
+    view = await resolve_request(
+        analyzer, settings, body.list_number, body.period, body.question_id
+    )
     check = check_question(view, body.list_number, body.question_id, gabaritos)
     # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista.
     registered = check is not None and check.registered
@@ -128,7 +129,7 @@ async def validate(
                 question_id=body.question_id if registered else None,
                 indicators=settings.ai_indicators,
                 gabarito=gabarito,
-                period=None if view.active else view.period,
+                period=requested(view),
             )
             analysis_ms = round((time.perf_counter() - started) * 1000)
     except Overloaded:
@@ -137,7 +138,9 @@ async def validate(
         limit = exc.code == ErrorCode.ANALYSIS_LIMIT
         if counted:
             outcome: Outcome = "analysis_limit" if limit else "rejected"
-            _record_refusal(telemetry, body.list_number, outcome, view.ruleset_version)
+            _record_refusal(
+                telemetry, body.list_number, outcome, view.ruleset_version if view else None
+            )
         raise ApiError(exc.status, ErrorCode(exc.code), exc.message) from None
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
@@ -253,8 +256,9 @@ async def validate_batch(
     response.headers["Cache-Control"] = "no-store"
     counted = not account.check_account
     request.state.list_number = body.list_number
-    view = await resolve_period(analyzer, body.period)
-    require_list(view, body.list_number, settings)
+    view = await resolve_request(
+        analyzer, settings, body.list_number, body.period, body.question_id
+    )
     check = check_question(view, body.list_number, body.question_id, gabaritos)
     registered = check is not None and check.registered
     gabarito = (
@@ -263,7 +267,7 @@ async def validate_batch(
         else None
     )
     results: list[BatchResult] = []
-    version = view.ruleset_version
+    version = view.ruleset_version if view else telemetry.ruleset_version or ""
     for file in body.files:
         try:
             check_code(file.code)
@@ -280,7 +284,7 @@ async def validate_batch(
                     question_id=body.question_id if registered else None,
                     indicators=False,
                     gabarito=gabarito,
-                    period=None if view.active else view.period,
+                    period=requested(view),
                 )
                 analysis_ms = round((time.perf_counter() - started) * 1000)
         except Overloaded:

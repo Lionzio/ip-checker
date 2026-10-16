@@ -3727,7 +3727,16 @@ export interface operations {
                     "application/json": components["schemas"]["PeriodInfo"][];
                 };
             };
-            /** @description ANALYZER_UNAVAILABLE: o analisador não respondeu. */
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
             503: {
                 headers: {
                     [name: string]: unknown;

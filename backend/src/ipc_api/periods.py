@@ -64,17 +64,47 @@ async def resolve_period(analyzer: AnalyzerClient, period: str | None) -> Period
     return pick_period(manifest, period)
 
 
+async def resolve_request(
+    analyzer: AnalyzerClient,
+    settings: ApiSettings,
+    list_number: int,
+    period: str | None,
+    question_id: str | None,
+) -> PeriodView | None:
+    """O período de um pedido, já com a lista conferida. Sem período, a lista é conferida com
+    ``IPC_ENABLED_LISTS`` antes de qualquer chamada, e o manifesto só é lido para conferir a
+    questão, como antes da S43-02: sem período e sem questão, ``None`` (o ativo), sem custo."""
+    if period is None:
+        _require_enabled(list_number, settings)
+        if question_id is None:
+            return None
+    view = await resolve_period(analyzer, period)
+    require_list(view, list_number, settings)
+    return view
+
+
+def requested(view: PeriodView | None) -> str | None:
+    """O ``period`` que vai ao analisador: ``None`` no ativo, que ele usa por padrão."""
+    return None if view is None or view.active else view.period
+
+
 def require_list(view: PeriodView, list_number: int, settings: ApiSettings) -> None:
     """No período ativo, só as listas habilitadas (``IPC_ENABLED_LISTS``); num anterior, todas as
     listas dele, que já foram corrigidas (a lista atrasada, US-39)."""
-    allowed = (
-        list_number in settings.enabled_lists
-        if view.active
-        else any(item.number == list_number for item in view.lists)
+    if view.active:
+        _require_enabled(list_number, settings)
+    elif not any(item.number == list_number for item in view.lists):
+        _not_enabled(list_number)
+
+
+def _require_enabled(list_number: int, settings: ApiSettings) -> None:
+    if list_number not in settings.enabled_lists:
+        _not_enabled(list_number)
+
+
+def _not_enabled(list_number: int) -> None:
+    raise ApiError(
+        422,
+        ErrorCode.LIST_NOT_ENABLED,
+        f"A Lista {list_number} ainda não está habilitada no IP-Checker.",
     )
-    if not allowed:
-        raise ApiError(
-            422,
-            ErrorCode.LIST_NOT_ENABLED,
-            f"A Lista {list_number} ainda não está habilitada no IP-Checker.",
-        )

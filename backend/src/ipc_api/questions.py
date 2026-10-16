@@ -24,14 +24,14 @@ class QuestionCheck:
 
 
 def check_question(
-    view: PeriodView,
+    view: PeriodView | None,
     list_number: int,
     question_id: str | None,
     gabaritos: Gabaritos | None = None,
 ) -> QuestionCheck | None:
     """Recusa com 422 ``UNKNOWN_QUESTION`` uma questão inexistente no período ou de outra lista;
     ``None`` sem questão. Com ``gabaritos``, aceita também uma questão que só tem gabarito."""
-    if question_id is None:
+    if question_id is None or view is None:
         return None
     owner = next(
         (item.number for item in view.lists for q in item.questions if q.id == question_id),

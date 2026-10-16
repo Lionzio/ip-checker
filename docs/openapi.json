@@ -2351,8 +2351,18 @@
               }
             }
           },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "503": {
-            "description": "ANALYZER_UNAVAILABLE: o analisador não respondeu.",
+            "description": "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu).",
             "content": {
               "application/json": {
                 "schema": {
