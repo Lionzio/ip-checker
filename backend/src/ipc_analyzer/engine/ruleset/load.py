@@ -25,7 +25,7 @@ from .compile import (
     compile_question,
     compile_ruleset,
 )
-from .schema import Question, Ruleset
+from .schema import QUESTION_ID, Question, Ruleset
 
 #: Arquivo do ruleset de um período, em ``rulesets/<período>/``.
 BASE_FILE = "base.yaml"
@@ -182,17 +182,19 @@ def window_periods(root: Path, active: str, window: int = WINDOW) -> list[str]:
 def _load_references(
     folder: Path, compiled: CompiledRuleset, digest: hashlib._Hash
 ) -> Mapping[str, tuple[Reference, ...]]:
-    """Lê ``referencias/<questão>/*.py``: cada subpasta é uma questão cadastrada, e cada arquivo
-    precisa ser Python válido dentro dos mesmos limites de uma submissão (S29-02)."""
+    """Lê ``referencias/<questão>/*.py``: cada subpasta é uma questão da numeração oficial
+    (``L3-Q2``), com ou sem regras em ``questions/`` (S42-04: as questões que só têm gabarito também
+    ganham referências), e cada arquivo precisa ser Python válido dentro dos mesmos limites de uma
+    submissão (S29-02)."""
     if not folder.is_dir():
         return MappingProxyType({})
     found: dict[str, tuple[Reference, ...]] = {}
     for question_folder in sorted(path for path in folder.iterdir() if path.is_dir()):
         question_id = question_folder.name
-        if question_id not in compiled.questions:
+        if not QUESTION_ID.fullmatch(question_id):
             raise RulesetError(
-                f"referências inválidas: {question_folder}\n  - a questão {question_id} não está "
-                f"cadastrada em {QUESTIONS_DIR}/"
+                f"referências inválidas: {question_folder}\n  - {question_id} não é uma questão "
+                "da numeração oficial (use L<lista>-Q<número>, como L3-Q2)"
             )
         files = sorted(question_folder.glob("*.py"))
         if len(files) > MAX_REFERENCES_PER_QUESTION:

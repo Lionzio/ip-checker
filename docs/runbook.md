@@ -18,6 +18,8 @@ S28-03). Cada seção começa pelo sintoma. A configuração das contas está em
 | A página avisa "Os gabaritos não estão disponíveis neste servidor agora" | Segredos, "Credencial dos gabaritos" (**Gabaritos indisponíveis**) |
 | O "Aprimorar com IA" devolve o texto sem IA, com um aviso | Segredos, "IAs do Aprimorar com IA" (**Cota esgotada**: todas as IAs da cadeia sem cota) |
 | O sintético ou o canário falhou | Sintético diário (S34-02) ou Canário mensal (S35-04) |
+| A coordenação pede para desligar o painel de indícios, ou ele mostrou algo indevido | Indícios de uso de IA, "Desligar os indícios" |
+| Começou um período novo (ou chegaram gabaritos novos) | Indícios de uso de IA, "Recalibrar a cada período" |
 
 ## Voltar para a versão anterior (rollback)
 
@@ -187,6 +189,39 @@ O `/health/service` e o `/ready` respondem 503. No Render, o log mostra o motivo
   Médio (blueprint, 5.4); registre a decisão.
 - **Ruleset inválido:** o analisador não sobe com um ruleset ou uma questão inválida (FR-15). Isso
   não deveria passar da CI (`ipc-rules validate`); faça o rollback e corrija por PR.
+
+## Indícios de uso de IA (S42-05 e S42-07)
+
+O painel liga por cargo pela variável `IPC_AI_INDICATORS` da API: `0` (desligado), `chefia`
+(desenvolvedor, professores e monitores-chefes) ou `1` (toda a equipe). Um valor fora desses
+derruba a API na subida, de propósito: um erro de digitação não pode ligar o painel para todos. A
+política está em [`indicios-de-ia.md`](indicios-de-ia.md).
+
+### Desligar os indícios
+
+Quando a coordenação pedir, ou se o painel mostrar algo indevido: no Render, **ip-checker-api >
+Environment**, troque `IPC_AI_INDICATORS` para `0` e salve. O Render reinicia o serviço com a
+variável nova, sem deploy de código, em cerca de um minuto. Confira com uma conta da chefia: a
+verificação volta sem o painel, e `GET /api/v1/auth/options` mostra `ai_indicators: false`.
+
+Depois, um PR com o mesmo valor no `render.yaml`, para o próximo Blueprint não religar o painel. O
+valor do `render.yaml` é conferido por `backend/tests/test_indicators_api.py`.
+
+### Recalibrar a cada período
+
+A cada período novo, ou quando chegarem gabaritos novos (P-21), meça de novo as faixas com a base da
+Q-35, de `backend/`:
+
+```bash
+uv run ipc-rules calibrate ../rulesets/2026.2 --gabaritos ../../ip-checker-gabaritos --geradas ../../calibracao
+```
+
+A meta é nenhum gabarito na faixa alta e pelo menos metade das soluções geradas por IA na média ou
+na alta. As soluções geradas ficam fora do repositório (`Desktop\IP-Checker\calibracao`) e saem do
+`python -m ipc_api.referencias ... --para-calibracao` (veja `indicios-de-ia.md`). Se uma meta
+falhar, ajuste as faixas em `backend/src/ipc_analyzer/engine/indicators.py` por PR e registre a
+distribuição nova na ADR-08. Use também os casos descartados do
+[registro de casos](registro-de-casos.md).
 
 ## Segredos
 

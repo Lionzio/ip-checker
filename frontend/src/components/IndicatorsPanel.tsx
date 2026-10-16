@@ -3,7 +3,8 @@ import { Card, LineChip } from "./ui";
 
 /**
  * Painel de indícios de uso de IA (S29-03; ADR-08, US-34): só para a equipe, abaixo do resultado.
- * Cada indício vem com o motivo e as linhas; o texto diz que não é prova e sugere perguntas para a
+ * Cada indício vem com o motivo, a evidência (a regra ou o marcador, as linhas e um trecho do código,
+ * S42-03) e a confiança, separada da faixa; o texto diz que não é prova e sugere perguntas para a
  * conversa com o aluno, que é a única confirmação. Sem indício, o painel nem aparece. Nada daqui
  * vai para o feedback do aluno.
  */
@@ -31,6 +32,33 @@ const SIGNAL_LABELS: Record<Indicator["signal"], string> = {
   gabarito: "Semelhança com o gabarito",
   estilo: "Estilo",
 };
+
+/** A confiança diz quão certo é o sinal; a faixa, quanto ele pesa (S42-03). */
+const CONFIDENCE_LABELS: Record<Indicator["confidence"], string> = {
+  baixa: "confiança baixa",
+  media: "confiança média",
+  alta: "confiança alta",
+};
+
+/** A regra do documento de permissões (R-xx) ou o marcador que ancora o indício. */
+function ruleLabel(rule: string): string {
+  return rule.startsWith("R-") ? (rule.includes(",") ? `Regras ${rule}` : `Regra ${rule}`) : "Marcador";
+}
+
+function Evidence({ item }: { item: Indicator }) {
+  if (!item.evidence.excerpt) return null;
+  return (
+    <p className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2 text-sm text-slate-600 dark:text-slate-300">
+      <span>
+        {ruleLabel(item.evidence.rule)}
+        {item.lines.length > 0 && `, linha ${item.lines[0]}`}:
+      </span>
+      <code className="max-w-full overflow-x-auto rounded bg-slate-100 px-1 font-mono break-all whitespace-pre-wrap text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+        {item.evidence.excerpt}
+      </code>
+    </p>
+  );
+}
 
 /** Linhas mostradas como botões; o resto aparece contado. */
 const SHOWN_LINES = 8;
@@ -82,8 +110,10 @@ export function IndicatorsPanel({ indicators, onSelectLines }: IndicatorsPanelPr
               <p className="text-sm font-medium">
                 {SIGNAL_LABELS[item.signal]}
                 {item.level !== null && ` · ${LEVEL_LABELS[item.level].toLowerCase()}`}
+                {` · ${CONFIDENCE_LABELS[item.confidence]}`}
               </p>
               <p className="mt-1">{item.reason}</p>
+              <Evidence item={item} />
               <Lines lines={item.lines} onSelectLines={onSelectLines} />
             </li>
           ))}
@@ -99,7 +129,10 @@ export function IndicatorsPanel({ indicators, onSelectLines }: IndicatorsPanelPr
           <ul className="mt-2 space-y-2">
             {style.map((item) => (
               <li key={item.kind} className="rounded-md bg-slate-50 p-3 dark:bg-slate-800/60">
-                <p>{item.reason}</p>
+                <p>
+                  {item.reason} <span className="text-sm text-slate-600 dark:text-slate-300">({CONFIDENCE_LABELS[item.confidence]})</span>
+                </p>
+                <Evidence item={item} />
                 <Lines lines={item.lines} onSelectLines={onSelectLines} />
               </li>
             ))}

@@ -26,12 +26,15 @@ def analyze_source(
     limits: Limits = DEFAULT_LIMITS,
     with_indicators: bool = False,
     gabarito: str | None = None,
+    reference_question: str | None = None,
 ) -> AnalysisResult:
     """Analisa o código para a lista indicada e, se houver, para a questão (R-01).
 
     Com ``with_indicators``, calcula também os indícios de uso de IA (ADR-08, S29-01), a partir das
     violações e da mesma árvore, sem guardar nada. Com ``gabarito``, compara o código com o
     gabarito oficial da questão (ADR-11), e a semelhança entra também nos indícios.
+    ``reference_question`` é a questão das referências de IA (S42-04), que pode não ter regras
+    cadastradas (uma questão só com gabarito); sem ela, vale ``question_id``.
 
     Levanta ``InvalidInputError``, ``UnknownQuestionError``, ``PayloadTooLargeError`` ou
     ``AnalysisLimitError`` quando a entrada é recusada (FR-04, NFR-08).
@@ -63,7 +66,7 @@ def analyze_source(
             violations,
             list_number=list_number,
             ruleset=ruleset,
-            question_id=question_id,
+            question_id=reference_question or question_id,
             limits=limits,
             gabarito=comparison,
         )

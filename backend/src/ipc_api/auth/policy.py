@@ -76,6 +76,20 @@ def can_view_log(actor: Account) -> bool:
     return actor.status is Status.ATIVO and actor.role in (Role.DESENVOLVEDOR, Role.PROFESSOR)
 
 
+#: Quem vê os indícios de uso de IA com ``IPC_AI_INDICATORS=chefia`` (S42-05, Q-35): a chefia,
+#: durante a primeira lista, antes de toda a equipe.
+INDICATORS_LEADERSHIP = frozenset({Role.DESENVOLVEDOR, Role.PROFESSOR, Role.MONITOR_CHEFE})
+
+
+def sees_indicators(actor: Account, mode: str) -> bool:
+    """Os indícios na verificação: ninguém com ``0``, a chefia com ``chefia``, todos com ``1``."""
+    if actor.status is not Status.ATIVO or actor.role is None:
+        return False
+    if mode == "1":
+        return True
+    return mode == "chefia" and actor.role in INDICATORS_LEADERSHIP
+
+
 def state_allows(action: Action, target: Account) -> bool:
     """A conta está no status de onde a ação parte (senão, 409: outra pessoa já agiu)."""
     return target.status in _FROM_STATUS[action]

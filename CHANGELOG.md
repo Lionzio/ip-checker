@@ -8,6 +8,51 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 42 — Indícios de IA com evidência e ligação por cargo
+
+A Sprint 42 (S42-02 a S42-07; US-34; ADR-08 e Q-35) começou em 16/10/2026, depois da 43. A missão é
+que o monitor decida com quem conversar a partir de evidências ancoradas no documento de permissões
+(a regra, as linhas e o trecho), nunca de um número, e que o painel não possa ser lido como prova.
+As personas são o membro da equipe que conversa com o aluno, a coordenação, dona da política, e o
+monitor-mantenedor que calibra. Esta release leva o código e os documentos; o piloto continua com
+o painel desligado (`IPC_AI_INDICATORS=0`) até a meta de acertos da calibração, que espera os
+enunciados e as chaves das IAs (decisão do autor de 16/10/2026). A geração, a meta de acertos e a
+ligação para a chefia saem numa `sprint-42.1`.
+
+- **16/10/2026, S42-03, S42-05, S42-04, S42-02 e S42-07 (#145):**
+  - **Evidência e confiança (S42-03):** cada indício traz a regra (`R-xx`) ou o marcador, as
+    linhas, um trecho de até 120 caracteres do código verificado e a confiança (baixa, média ou
+    alta), separada da faixa. Pelos critérios da Q-35, a repetição da mesma proibição vai no máximo
+    à faixa média, e há dois marcadores novos, sem faixa: texto dentro do `input()` e validação da
+    entrada (`try` com `ValueError` em volta do `input()`, ou `isdigit()` num `if`). Um teste de
+    vocabulário, no pytest e no Vitest, impede textos como "usou IA", "veredito" ou "plagiou", e um
+    canário mostra que o trecho nunca chega aos logs nem à telemetria.
+  - **Ligação por cargo (S42-05):** `IPC_AI_INDICATORS` aceita `0`, `chefia` (desenvolvedor,
+    professores e monitores-chefes) e `1`; outro valor derruba a API na subida. A verificação só
+    pede o cálculo para quem vê, e a conta (`/auth/me`) traz `ai_indicators`. Testes: a matriz
+    cargo × valor e, no piloto, a conta de verificação com `PILOT_AI_INDICATORS`.
+  - **Gerador de referências (S42-04):** `python -m ipc_api.referencias`, só a partir do enunciado
+    (um arquivo por questão, fora do repositório), pede soluções a cada IA da cadeia do "Aprimorar
+    com IA" e grava `referencias/<questão>/<ia>-<n>.py` com cabeçalho; com `--para-calibracao`,
+    soluções novas fora do repositório. Retoma de onde parou depois de um 429. As referências passam
+    a valer também para as questões só com gabarito (25 das 28 de 2026.2), sem regras cadastradas.
+  - **Calibração (S42-02):** `ipc-rules calibrate --gabaritos --geradas`, com as metas da Q-35.
+    Primeira medição, 16/10/2026: nos 28 gabaritos de 2026.2, 0 na faixa alta (meta cumprida).
+  - **Documentos (S42-07):** guia da equipe (como ler o painel e conduzir a conversa), o novo
+    `docs/registro-de-casos.md`, o runbook ("Desligar os indícios" e "Recalibrar a cada período"),
+    a política e a ADR-08.
+
+| Decisão | Por quê |
+|---|---|
+| Confiança separada da faixa | A faixa diz quanto o sinal pesa; a confiança, quão certo ele é |
+| Quem não vê recebe `indicators` nulo, como hoje, e não o campo ausente (mudança do plano) | O contrato não muda e a página já trata o nulo; a opção da conta (`ai_indicators`) diz quem vê |
+| Valor inválido de `IPC_AI_INDICATORS` derruba a API na subida | Um erro de digitação no Render não pode ligar o painel para todos |
+| O gerador fica na API, não no `ipc-rules` | O analisador é isolado e não chama a rede (fronteiras do `lint-imports`) |
+| O gerador não confere a sintaxe com `compile` | Nada no projeto compila nem executa código (ADR-01, regra do Semgrep); o `ipc-rules validate` e a calibração conferem |
+| Referências também para questões só com gabarito | Das 28 questões de 2026.2, só 3 têm regras cadastradas, e o sinal 5 só precisa da questão |
+| Referências e base de calibração são conjuntos diferentes | Calibrar o sinal 5 com as próprias referências daria 100% de acerto por construção |
+| Release com o piloto em `0` | A política pede as duas metas antes de ligar para a chefia (decisão do autor de 16/10/2026) |
+
 ## Sprint 43 — Período na página e retenção por encerramento
 
 A Sprint 43 (S43-01 a S43-05; US-37, US-39 e US-40; ADR-12) começou e terminou em 16/10/2026,

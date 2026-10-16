@@ -56,7 +56,9 @@ monitoria, com só estas colunas, sem nome nem matrícula de aluno:
 | Lista | Tipo (proibição, plágio ou uso de IA) | Quantidade | Observação (opcional, sem dados de aluno) |
 |---|---|---|---|
 
-**Planilha (S31-06):** descartada pelo autor em 12/10/2026.
+**Planilha (S31-06):** descartada pelo autor em 12/10/2026. Para os casos de uso de IA, o
+[registro de casos](registro-de-casos.md) (S42-07) a substitui, com a faixa, os tipos de indício e a
+conclusão da conversa.
 
 Como contexto, a telemetria mostra as regras mais apontadas por lista (`v_top_rules_by_list`) e o
 volume por semana (`v_weekly_volume`).

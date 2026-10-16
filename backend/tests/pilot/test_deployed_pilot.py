@@ -29,8 +29,10 @@ RELEASE = os.environ.get("PILOT_RELEASE")
 #: Conta ativa só para as verificações do piloto (secrets PILOT_CHECK_LOGIN e PILOT_CHECK_PASSWORD).
 LOGIN = os.environ.get("PILOT_LOGIN", "")
 PASSWORD = os.environ.get("PILOT_PASSWORD", "")
-#: Os indícios de uso de IA só ligam no piloto com a política aprovada pela coordenação (S29-04).
-AI_INDICATORS = os.environ.get("PILOT_AI_INDICATORS", "0") == "1"
+#: O valor de IPC_AI_INDICATORS no piloto (S42-05): 0, chefia (só desenvolvedor, professores e
+#: monitores-chefes) ou 1 (toda a equipe). A política pede a chefia primeiro (S29-04, Q-35).
+AI_INDICATORS = os.environ.get("PILOT_AI_INDICATORS", "0")
+LEADERSHIP = {"desenvolvedor", "professor", "monitor_chefe"}
 
 pytestmark = pytest.mark.skipif(
     not (API and WEB), reason="defina PILOT_API_URL e PILOT_WEB_URL para conferir o piloto"
@@ -112,7 +114,7 @@ def test_ai_indicators_are_on_only_when_expected(http: httpx2.Client) -> None:
     # ADR-08: o painel de indícios não liga no piloto sem a política combinada (S29-04).
     response = http.get(f"{WEB}/api/v1/auth/options")
 
-    assert response.json()["ai_indicators"] is AI_INDICATORS
+    assert response.json()["ai_indicators"] is (AI_INDICATORS != "0")
 
 
 def test_without_a_session_the_api_gives_nothing(http: httpx2.Client) -> None:
@@ -175,6 +177,39 @@ def test_login_validation_and_logout_through_the_page() -> None:
             client.post(f"{WEB}/api/v1/auth/logout", content=b"", headers=page).status_code == 204
         )
         assert client.get(f"{WEB}/api/v1/auth/me").status_code == 401
+
+
+@pytest.mark.skipif(
+    not (LOGIN and PASSWORD),
+    reason="defina PILOT_LOGIN e PILOT_PASSWORD (conta ativa de verificação)",
+)
+def test_the_indicators_follow_the_role_of_the_check_account() -> None:
+    # S42-05: com chefia, a conta de verificação (da chefia) recebe os indícios com a evidência;
+    # um monitor, não. O feedback nunca os leva (o contrato não tem o campo).
+    suspicious = (
+        "for i in range(5):\n    if i == 1:\n        break\n"
+        "    if i == 2:\n        continue\n    pass\n"
+    )
+    with httpx2.Client(timeout=30, follow_redirects=False) as client:
+        page = {"Origin": _origin(WEB)}
+        login = client.post(
+            f"{WEB}/api/v1/auth/login", json={"login": LOGIN, "password": PASSWORD}, headers=page
+        )
+        assert login.status_code == 200, login.text
+        role = login.json()["role"]
+        expected = AI_INDICATORS == "1" or (AI_INDICATORS == "chefia" and role in LEADERSHIP)
+        assert login.json()["ai_indicators"] is expected
+
+        response = client.post(
+            f"{WEB}/api/v1/validate", json={"code": suspicious, "list_number": 2}, headers=page
+        )
+        assert response.status_code == 200
+        indicators = response.json()["indicators"]
+        assert (indicators is not None) is expected
+        if indicators is not None:
+            assert all(item["evidence"]["rule"] for item in indicators["items"])
+            assert "não são prova" in indicators["notice"]
+        client.post(f"{WEB}/api/v1/auth/logout", content=b"", headers=page)
 
 
 @pytest.mark.skipif(

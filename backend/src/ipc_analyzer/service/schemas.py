@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ipc_analyzer.engine.feedback import FeedbackInput
 from ipc_analyzer.engine.gabarito import GabaritoComparison
-from ipc_analyzer.engine.indicators import Indicators, LevelName, Signal
+from ipc_analyzer.engine.indicators import Confidence, Indicators, LevelName, Signal
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem
 from ipc_analyzer.engine.similarity import (
@@ -39,14 +39,25 @@ class AnalyzeRequest(BaseModel):
     gabarito: str | None = None
     #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
     period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
+    #: A questão das referências de IA (S42-04), mesmo sem regras cadastradas (só com gabarito).
+    reference_question: str | None = Field(default=None, pattern=r"^L[1-6]-Q[1-9]\d?$")
+
+
+class EvidenceOut(BaseModel):
+    """A âncora de um indício (S42-03): a regra ou o marcador e um trecho do código verificado."""
+
+    rule: str
+    excerpt: str
 
 
 class IndicatorOut(BaseModel):
     signal: Signal
     kind: str
     level: LevelName | None
+    confidence: Confidence
     reason: str
     lines: list[int]
+    evidence: EvidenceOut
 
 
 class IndicatorsOut(BaseModel):
@@ -65,8 +76,10 @@ class IndicatorsOut(BaseModel):
                     signal=item.signal,
                     kind=item.kind,
                     level=None if item.level is None else item.level.label,
+                    confidence=item.confidence,
                     reason=item.reason,
                     lines=list(item.lines),
+                    evidence=EvidenceOut(rule=item.rule, excerpt=item.excerpt),
                 )
                 for item in indicators.items
             ],

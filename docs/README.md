@@ -19,6 +19,7 @@ Sprints 1 a 35 em [`historico/`](historico/sprints-01-35.md).
 | [`marco-2.md`](marco-2.md) | Equipe e coordenação | A pauta do Marco 2: os casos do mapeamento e as decisões da coordenação |
 | [`ensaio-cadastro.md`](ensaio-cadastro.md) | Monitores | O ensaio do cadastro de uma questão (S31-13) |
 | [`indicios-de-ia.md`](indicios-de-ia.md) | Equipe e coordenação | A política dos indícios de uso de IA (ADR-08), as faixas, a calibração e como ligar no piloto |
+| [`registro-de-casos.md`](registro-de-casos.md) | Chefia e coordenação | Os casos conversados a partir do painel de indícios, sem dados de aluno (S42-07) |
 
 ## Para manter
 

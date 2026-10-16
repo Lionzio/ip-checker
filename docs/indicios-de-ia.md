@@ -1,8 +1,9 @@
 # Indícios de uso de IA: política e calibração
 
-Política da S29-04 (ADR-08, Q-21), **aprovada em 09/10/2026** (opção A de 7.13.1 do blueprint). Até a
-calibração ficar na meta (S33-03), o painel fica **desligado no piloto** (`IPC_AI_INDICATORS=0` no
-`render.yaml`, conferido por um teste e pelo pipeline de deploy) e só funciona no ambiente local.
+Política da S29-04 (ADR-08, Q-21), **aprovada em 09/10/2026** (opção A de 7.13.1 do blueprint),
+com os critérios da Q-35 (12/10/2026) implementados na Sprint 42. No piloto, o painel liga por cargo
+(`IPC_AI_INDICATORS`: `0`, `chefia` ou `1`), primeiro para a chefia, só com as metas da calibração
+cumpridas ("Como ligar no piloto", abaixo). Até lá, fica em `0` (conferido por um teste).
 
 ## Missão
 
@@ -116,14 +117,60 @@ histórico do aluno, que a Q-27 tornou impossível.
 - **Ligação:** primeiro só para a chefia (desenvolvedor, professores e monitores-chefes) durante
   uma lista; depois, para toda a equipe.
 
+## Evidência e confiança (S42-03)
+
+Desde a Sprint 42, cada indício traz a evidência (a regra do documento de permissões ou o marcador,
+as linhas e um trecho de até 120 caracteres do código verificado) e a confiança (baixa, média ou
+alta), separada da faixa: a faixa diz quanto o sinal pesa; a confiança, quão certo ele é. As
+violações e os marcadores encontrados no código têm confiança alta; a validação da entrada, média;
+os nomes e comentários em inglês, baixa; a semelhança com uma referência ou com o gabarito, alta a
+partir de 95% e média abaixo. Um teste confere que nenhum texto do motor ou da página afirma uso de
+IA nem é veredito.
+
+## Referências e calibração na prática (S42-04 e S42-02)
+
+**Gerar as referências:** os enunciados ficam fora do repositório, um arquivo por questão
+(`L1-Q2.md`), e as chaves das IAs num arquivo também fora do repositório, `chaves-ia.env`
+(`IPC_LLM_CHAIN` e as variáveis de cada IA, as mesmas do "Aprimorar com IA" no Render; o modelo
+está em `Desktop\IP-Checker\chaves-ia.env.exemplo`), preenchido por quem mantém o projeto. Não
+use o `deploy/.env`: lá, as mesmas variáveis ligariam a IA de verdade no compose e no e2e. De
+`backend/`:
+
+```bash
+uv run python -m ipc_api.referencias ../rulesets/2026.2 --enunciados ../../enunciados/2026.2 --env-file ../../chaves-ia.env
+```
+
+O comando pede 2 soluções a cada IA da cadeia, só a partir do enunciado, e grava em
+`rulesets/<período>/referencias/<questão>/<ia>-<n>.py`, com um cabeçalho (IA, modelo e data).
+Desde a S42-04, uma questão só com gabarito, sem regras cadastradas, também ganha referências. Um
+arquivo que já existe é pulado: com a cota das IAs gratuitas esgotada, rode de novo mais tarde. As
+referências entram por PR, revisado por quem cadastra a questão.
+
+**Gerar a base de calibração:** o mesmo comando, com `--para-calibracao ../../calibracao --por-ia 3`,
+grava soluções **novas**, diferentes das referências, fora do repositório.
+
+**Medir:** `ipc-rules calibrate` com `--gabaritos` e `--geradas` (runbook, "Recalibrar a cada
+período").
+
+**Medições:**
+
+| Data | Base | Resultado |
+|---|---|---|
+| 16/10/2026 | 28 gabaritos de 2026.2 (Listas 1 a 4) | Alarmes falsos: 28 na faixa "nenhum", 0 na alta (meta cumprida); 2 com o marcador de validação da entrada, sem peso |
+| — | Soluções geradas por IA | Espera os enunciados e as chaves das IAs |
+
 ## Como ligar no piloto
 
-Só depois de a coordenação aprovar esta política e de a calibração ficar dentro da meta:
+Pela variável `IPC_AI_INDICATORS` (S42-05), em dois passos, sempre por PR no `render.yaml`, sozinho
+no PR (sem migração junto, P-18):
 
-1. Um PR troca `IPC_AI_INDICATORS` para `"1"` no `render.yaml` e ajusta o teste que confere o valor
-   (`backend/tests/test_indicators_api.py`), com o registro da aprovação no PR.
-2. No GitHub, a variável `PILOT_AI_INDICATORS` passa a `1`, para a verificação do piloto esperar os
-   indícios ligados.
-3. No Render, **Blueprint > Sync** (ou a variável em **Environment**), e o "Deploy do piloto".
+1. **Chefia:** `IPC_AI_INDICATORS: chefia`, com as duas metas da calibração cumpridas. Liga o painel
+   só para o desenvolvedor, os professores e os monitores-chefes durante uma lista inteira, com cada
+   conversa no [registro de casos](registro-de-casos.md). A verificação do piloto
+   (`backend/tests/pilot`) confere, com `PILOT_AI_INDICATORS=chefia`, que a conta de verificação
+   recebe os indícios conforme o cargo.
+2. **Toda a equipe:** `IPC_AI_INDICATORS: "1"`, só depois dessa lista e da revisão das faixas com o
+   registro de casos, com o comando do autor.
 
-Para desligar, o caminho inverso; a variável no Render vale na hora, sem deploy novo do código.
+Para desligar, a variável `0` no Render vale sem deploy novo do código (runbook, "Desligar os
+indícios").

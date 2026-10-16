@@ -221,6 +221,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             indicators=body.indicators,
             gabarito=body.gabarito,
             period=ruleset.ruleset.period,
+            reference_question=body.reference_question if body.indicators else None,
         )
         request.state.outcome = result.status
         request.state.violations = len(result.violations)

@@ -13,6 +13,7 @@ const ACCOUNT: Account = {
   has_password: true,
   can_manage: true,
   can_view_log: true,
+  ai_indicators: false,
 };
 
 const RESPONSE: ValidateResponse = {

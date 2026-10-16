@@ -54,6 +54,8 @@ export const DEMO_ACCOUNT: Account = {
   has_password: true,
   can_manage: false,
   can_view_log: false,
+  // O simulado mostra o painel de indícios, como o compose (IPC_AI_INDICATORS=1).
+  ai_indicators: true,
 };
 /** Uma conta que gerencia a equipe, para os testes da tela de gerenciamento (Sprint 15). */
 export const DEMO_MANAGER: Account = {
@@ -261,6 +263,9 @@ export function simulatedIndicators(code: string): Indicators | null {
   const names = [...found.keys()].map((word) => `'${word}'`);
   const lines = [...found.values()].flat().sort((first, second) => first - second);
   const [firstWord, firstLines] = [...found.entries()][0] ?? ["break", [1]];
+  // break e continue são a R-11; pass, a R-12 (as proibições gerais do documento de permissões).
+  const rules = [...new Set([...found.keys()].map((word) => (word === "pass" ? "R-12" : "R-11")))].sort();
+  const excerpt = (code.split("\n")[(lines[0] ?? 1) - 1] ?? "").trim().slice(0, 120);
   return {
     level,
     items: [
@@ -268,8 +273,10 @@ export function simulatedIndicators(code: string): Indicators | null {
         signal: "multiplas_violacoes",
         kind: "variedade",
         level,
+        confidence: "alta",
         reason: `${found.size} proibições gerais diferentes no mesmo código: ${names.slice(0, -1).join(", ")} e ${names.at(-1)}. Cada uma anula a questão, e juntas são raras numa solução escrita para a lista.`,
         lines,
+        evidence: { rule: rules.join(", "), excerpt },
       },
     ],
     questions: [

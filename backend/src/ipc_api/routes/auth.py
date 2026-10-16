@@ -10,8 +10,9 @@ from ipc_api.accounts.models import ROLE_LABELS, Account, StoreUnavailable, Trea
 from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.deps import get_accounts, get_authenticator, require_active_account
 from ipc_api.auth.middleware import session_token
-from ipc_api.auth.policy import can_manage, can_view_log
+from ipc_api.auth.policy import can_manage, can_view_log, sees_indicators
 from ipc_api.auth.sessions import Authenticator, SessionConfig
+from ipc_api.deps import get_settings
 from ipc_api.errors import database_unavailable
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
@@ -26,6 +27,7 @@ from ipc_api.schemas import (
     VerifyRequest,
     VerifyResponse,
 )
+from ipc_api.settings import ApiSettings
 
 router = APIRouter(prefix="/api/v1/auth", tags=["autenticação"])
 
@@ -33,7 +35,7 @@ FORBIDDEN_ORIGIN = "ORIGIN_MISMATCH: a requisição veio de outro site."
 UNAVAILABLE = "DATABASE_UNAVAILABLE: o banco de contas não respondeu. Veja retry_after_s."
 
 
-def account_response(account: Account) -> AccountResponse:
+def account_response(account: Account, ai_indicators: str = "0") -> AccountResponse:
     # Uma conta ativa sempre tem cargo (CHECK no banco).
     role = account.role
     assert role is not None  # noqa: S101 - invariante garantida pelo esquema
@@ -47,6 +49,7 @@ def account_response(account: Account) -> AccountResponse:
         has_password=account.password_hash is not None,
         can_manage=can_manage(account),
         can_view_log=can_view_log(account),
+        ai_indicators=sees_indicators(account, ai_indicators),
     )
 
 
@@ -97,7 +100,7 @@ async def login(
     except StoreUnavailable as exc:
         raise database_unavailable(exc) from None
     set_session_cookie(response, authenticator.config, token)
-    return account_response(account)
+    return account_response(account, request.app.state.settings.ai_indicators)
 
 
 @router.get("/options", summary="Formas de entrar disponíveis neste servidor")
@@ -106,7 +109,7 @@ async def options(request: Request, response: Response) -> AuthOptions:
     return AuthOptions(
         google=request.app.state.google.oidc.config.enabled,
         feedback_ai=request.app.state.feedback.ai_enabled,
-        ai_indicators=request.app.state.settings.ai_indicators,
+        ai_indicators=request.app.state.settings.ai_indicators != "0",
     )
 
 
@@ -140,10 +143,12 @@ async def logout(
     ),
 )
 async def me(
-    response: Response, account: Annotated[Account, Depends(require_active_account)]
+    response: Response,
+    account: Annotated[Account, Depends(require_active_account)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> AccountResponse:
     _no_store(response)
-    return account_response(account)
+    return account_response(account, settings.ai_indicators)
 
 
 @router.post(

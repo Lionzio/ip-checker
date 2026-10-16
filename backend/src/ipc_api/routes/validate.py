@@ -13,6 +13,7 @@ from ipc_api.accounts.models import Account
 from ipc_api.admission import Admission, Overloaded
 from ipc_api.adoption import Adoption
 from ipc_api.auth.deps import require_active_account
+from ipc_api.auth.policy import sees_indicators
 from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerUnavailable
 from ipc_api.deps import (
     get_admission,
@@ -98,6 +99,8 @@ async def validate(
     response.headers["Cache-Control"] = "no-store"
     # As verificações da conta de verificação do deploy não contam no uso (S28-02).
     counted = not account.check_account
+    # Os indícios só para os cargos ligados (S42-05): os outros nem pedem o cálculo.
+    with_indicators = sees_indicators(account, settings.ai_indicators)
     request.state.list_number = body.list_number
     try:
         check_code(body.code)
@@ -127,7 +130,11 @@ async def validate(
                 body.list_number,
                 request_id=request_id,
                 question_id=body.question_id if registered else None,
-                indicators=settings.ai_indicators,
+                indicators=with_indicators,
+                # As referências de IA valem também para a questão só com gabarito (S42-04).
+                reference_question=(
+                    body.question_id if with_indicators and check is not None else None
+                ),
                 gabarito=gabarito,
                 period=requested(view),
             )
@@ -183,7 +190,7 @@ async def validate(
         # Só para a equipe (ADR-08): nunca entram no feedback, na telemetria nem no log.
         indicators=(
             Indicators(**result.indicators.model_dump(), notice=INDICATORS_NOTICE)
-            if settings.ai_indicators and result.indicators is not None
+            if with_indicators and result.indicators is not None
             else None
         ),
         gabarito=_gabarito(body.question_id, gabarito, gabaritos, result),

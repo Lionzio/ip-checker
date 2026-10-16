@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Literal
 from urllib.parse import urlsplit
 
 from ipc_api.accounts.models import email_domain_allowed, normalize_email
@@ -56,6 +57,22 @@ def parse_emails(value: str) -> tuple[str, ...]:
     return emails
 
 
+AiIndicators = Literal["0", "chefia", "1"]
+
+
+def _ai_indicators_from_env(env: Mapping[str, str]) -> AiIndicators:
+    """Um valor fora de ``0``, ``chefia`` e ``1`` derruba a API na subida (S42-05): um erro de
+    digitação no Render não pode ligar o painel para toda a equipe."""
+    value = env.get("IPC_AI_INDICATORS", "0").strip()
+    if value == "0":
+        return "0"
+    if value == "chefia":
+        return "chefia"
+    if value == "1":
+        return "1"
+    raise ValueError(f"IPC_AI_INDICATORS inválida: {value!r}. Use 0, chefia ou 1.")
+
+
 @dataclass(frozen=True, slots=True)
 class DeveloperSettings:
     """A conta criada por *seed* na subida da API (P-14, S13-01)."""
@@ -93,9 +110,10 @@ class ApiSettings:
     cors_origins: tuple[str, ...] = ()
     #: Cabeçalho HSTS nas respostas (piloto: a API é servida em HTTPS pelo Render).
     hsts: bool = False
-    #: Indícios de uso de IA na verificação (ADR-08, S29). Desligados por padrão: no piloto, só
-    #: depois de a coordenação aprovar a política (S29-04, docs/indicios-de-ia.md).
-    ai_indicators: bool = False
+    #: Indícios de uso de IA na verificação (ADR-08, S29; S42-05): ``0`` desliga, ``chefia`` liga
+    #: só para o desenvolvedor, os professores e os monitores-chefes, e ``1`` para toda a equipe.
+    #: Desligados por padrão; a política pede a chefia primeiro (docs/indicios-de-ia.md).
+    ai_indicators: AiIndicators = "0"
     #: Versão implantada (commit), mostrada em /ready para o pipeline saber que o deploy entrou.
     release: str | None = None
     #: Segredo que o middleware da página manda em ``/api/*`` (S30-03, ``ipc_api.edge_gate``).
@@ -174,7 +192,7 @@ class ApiSettings:
             admission=_admission_from_env(env),
             cors_origins=parse_origins(env.get("IPC_CORS_ORIGINS", "")),
             hsts=env.get("IPC_HSTS", "0") == "1",
-            ai_indicators=env.get("IPC_AI_INDICATORS", "0") == "1",
+            ai_indicators=_ai_indicators_from_env(env),
             # O Render informa o commit implantado em RENDER_GIT_COMMIT.
             release=env.get("IPC_RELEASE") or env.get("RENDER_GIT_COMMIT") or None,
             database_url=env.get("IPC_DATABASE_URL") or None,
