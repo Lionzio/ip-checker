@@ -37,6 +37,8 @@ class AnalyzeRequest(BaseModel):
     indicators: bool = False
     #: O gabarito oficial da questão (ADR-11), vindo da memória da API; nunca volta na resposta.
     gabarito: str | None = None
+    #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
+    period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
 
 
 class IndicatorOut(BaseModel):
@@ -175,6 +177,8 @@ class SimilarityRequest(BaseModel):
     second: str
     #: O gabarito da questão (ADR-11): cada código é comparado também com ele.
     gabarito: str | None = None
+    #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
+    period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
 
 
 class MetricsOut(BaseModel):
@@ -397,14 +401,26 @@ class ListOut(BaseModel):
     questions: list[QuestionOut] = []
 
 
+class PeriodOut(BaseModel):
+    """Um período carregado (S43-01): a versão, as listas e as questões dele."""
+
+    period: str
+    active: bool
+    ruleset_version: str
+    ruleset_sha256: str
+    lists: list[ListOut]
+
+
 class ManifestResponse(BaseModel):
-    """O que a API precisa saber do ruleset ativo sem carregá-lo (ela nunca lê regras)."""
+    """O que a API precisa saber dos rulesets sem carregá-los (ela nunca lê regras). Os campos de
+    cima são os do período ativo, como antes; ``periods`` traz todos os carregados (S43-01)."""
 
     ruleset_version: str
     ruleset_sha256: str
     period: str
     target_python: str
     lists: list[ListOut]
+    periods: list[PeriodOut]
 
 
 class HealthResponse(BaseModel):

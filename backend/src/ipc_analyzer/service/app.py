@@ -32,7 +32,12 @@ from ipc_analyzer.engine.guards import (
     thousands,
 )
 from ipc_analyzer.engine.parse import require_runtime
-from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.engine.ruleset import (
+    CompiledRuleset,
+    LoadedRulesets,
+    UnknownPeriod,
+    load_rulesets,
+)
 from ipc_analyzer.logging import configure_logging
 from ipc_analyzer.runtime.pool import AnalyzerPool, DeadlineExpired
 from ipc_analyzer.service.access_log import AccessLogMiddleware
@@ -47,6 +52,7 @@ from ipc_analyzer.service.schemas import (
     ManifestResponse,
     MatrixRequest,
     MatrixResponse,
+    PeriodOut,
     QuestionOut,
     SimilarityRequest,
     SimilarityResponse,
@@ -95,9 +101,23 @@ def _pool(request: Request) -> AnalyzerPool:
     return pool
 
 
-def _ruleset(request: Request) -> CompiledRuleset:
-    ruleset: CompiledRuleset = request.app.state.ruleset
-    return ruleset
+def _rulesets(request: Request) -> LoadedRulesets:
+    rulesets: LoadedRulesets = request.app.state.rulesets
+    return rulesets
+
+
+def _lists(ruleset: CompiledRuleset) -> list[ListOut]:
+    data = ruleset.ruleset
+    return [
+        ListOut(
+            number=n,
+            title=title,
+            questions=[
+                QuestionOut(id=q.id, title=q.question.title) for q in ruleset.questions_for(n)
+            ],
+        )
+        for n, title in sorted(data.lists.items())
+    ]
 
 
 def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
@@ -108,14 +128,16 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config = settings or AnalyzerSettings.from_env()
         # Fail-fast (FR-15, NFR-21): ruleset inválido ou Python errado impedem o serviço de subir.
-        ruleset = load_ruleset(config.ruleset_path)
-        require_runtime(ruleset.target_version)
+        # O ativo e os anteriores da janela (S43-01); um inválido, de qualquer período, também.
+        rulesets = load_rulesets(config.ruleset_path)
+        for ruleset in rulesets.periods.values():
+            require_runtime(ruleset.target_version)
         pool = AnalyzerPool(config.ruleset_path, config.pool)
         try:
             # Aquecimento: confirma que os workers carregam o ruleset e analisam antes de aceitar
             # requisições.
             await pool.analyze("x = 1\n", 1)
-            app.state.ruleset = ruleset
+            app.state.rulesets = rulesets
             app.state.pool = pool
             yield
         finally:
@@ -145,6 +167,16 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             "Requisição inválida: envie code, list_number (1 a 6) e, se houver, question_id.",
         )
 
+    @app.exception_handler(UnknownPeriod)
+    async def unknown_period(request: Request, exc: UnknownPeriod) -> JSONResponse:
+        request.state.outcome = "UNKNOWN_PERIOD"
+        loaded = ", ".join(exc.loaded)
+        return _error(
+            422,
+            "UNKNOWN_PERIOD",
+            f"O período {exc.period} não está carregado (carregados: {loaded}).",
+        )
+
     @app.exception_handler(DeadlineExpired)
     async def deadline_expired(request: Request, _exc: DeadlineExpired) -> JSONResponse:
         # A API já desistiu: ninguém lê esta resposta, mas o log mostra a fila vencida.
@@ -165,8 +197,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         body: AnalyzeRequest,
         request: Request,
         pool: Annotated[AnalyzerPool, Depends(_pool)],
-        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
+        rulesets: Annotated[LoadedRulesets, Depends(_rulesets)],
     ) -> AnalyzeResponse:
+        ruleset = rulesets.get(body.period)
         # Recusa cedo um texto que não cabe no limite, sem enviá-lo a um worker.
         size = len(body.code.encode("utf-8", errors="surrogatepass"))
         request.state.payload_bytes = size
@@ -187,6 +220,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             deadline=_deadline(request),
             indicators=body.indicators,
             gabarito=body.gabarito,
+            period=ruleset.ruleset.period,
         )
         request.state.outcome = result.status
         request.state.violations = len(result.violations)
@@ -197,8 +231,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         body: AnalyzeRequest,
         request: Request,
         pool: Annotated[AnalyzerPool, Depends(_pool)],
-        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
+        rulesets: Annotated[LoadedRulesets, Depends(_rulesets)],
     ) -> FeedbackInputResponse:
+        ruleset = rulesets.get(body.period)
         size = len(body.code.encode("utf-8", errors="surrogatepass"))
         request.state.payload_bytes = size
         request.state.list_number = body.list_number
@@ -209,7 +244,11 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             )
         resolve_question(ruleset, body.list_number, body.question_id)
         data = await pool.feedback_input(
-            body.code, body.list_number, body.question_id, deadline=_deadline(request)
+            body.code,
+            body.list_number,
+            body.question_id,
+            deadline=_deadline(request),
+            period=ruleset.ruleset.period,
         )
         request.state.outcome = data.status
         return FeedbackInputResponse.from_input(data)
@@ -219,7 +258,9 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
         body: SimilarityRequest,
         request: Request,
         pool: Annotated[AnalyzerPool, Depends(_pool)],
+        rulesets: Annotated[LoadedRulesets, Depends(_rulesets)],
     ) -> SimilarityResponse:
+        period = rulesets.get(body.period).ruleset.period
         sizes = [
             len(code.encode("utf-8", errors="surrogatepass")) for code in (body.first, body.second)
         ]
@@ -232,7 +273,11 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 )
         _check_gabarito(body.gabarito)
         result, gabarito = await pool.compare(
-            body.first, body.second, deadline=_deadline(request), gabarito=body.gabarito
+            body.first,
+            body.second,
+            deadline=_deadline(request),
+            gabarito=body.gabarito,
+            period=period,
         )
         response = SimilarityResponse.from_result(result, gabarito)
         request.state.outcome = response.status
@@ -268,32 +313,34 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
 
     @app.get("/internal/ruleset/manifest")
     async def manifest(
-        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
+        rulesets: Annotated[LoadedRulesets, Depends(_rulesets)],
     ) -> ManifestResponse:
+        ruleset = rulesets.active_ruleset
         data = ruleset.ruleset
         return ManifestResponse(
             ruleset_version=data.ruleset_version,
             ruleset_sha256=ruleset.sha256,
             period=data.period,
             target_python=data.target_python,
-            lists=[
-                ListOut(
-                    number=n,
-                    title=title,
-                    questions=[
-                        QuestionOut(id=q.id, title=q.question.title)
-                        for q in ruleset.questions_for(n)
-                    ],
+            lists=_lists(ruleset),
+            periods=[
+                PeriodOut(
+                    period=period,
+                    active=period == rulesets.active,
+                    ruleset_version=item.version,
+                    ruleset_sha256=item.sha256,
+                    lists=_lists(item),
                 )
-                for n, title in sorted(data.lists.items())
+                for period, item in rulesets.periods.items()
             ],
         )
 
     @app.get("/internal/health", response_model=None)
     async def health(
         pool: Annotated[AnalyzerPool, Depends(_pool)],
-        ruleset: Annotated[CompiledRuleset, Depends(_ruleset)],
+        rulesets: Annotated[LoadedRulesets, Depends(_rulesets)],
     ) -> JSONResponse:
+        ruleset = rulesets.active_ruleset
         if not pool.active:
             return _error(503, "ANALYZER_UNAVAILABLE", "O pool de workers não está ativo.")
         body = HealthResponse(

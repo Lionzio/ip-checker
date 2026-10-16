@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 
@@ -33,6 +33,10 @@ BASE_FILE = "base.yaml"
 #: mudar só essa linha: o analisador, o ``ipc-rules`` e a CI apontam para a raiz (S31-09).
 ACTIVE_FILE = "ATIVO"
 PERIOD = re.compile(r"\d{4}\.[12]")
+#: Quantos períodos o analisador carrega: o ativo e os 5 anteriores, 3 anos (ADR-12, Q-34).
+WINDOW = 6
+#: Pasta, na raiz ``rulesets/``, dos períodos encerrados (S43-04): nunca carregados.
+RETIRED_DIR = "encerrados"
 #: Pasta das regras por questão, ao lado do ``base.yaml`` (R-01, P-07).
 QUESTIONS_DIR = "questions"
 #: Pasta das soluções de referência geradas por IA, uma subpasta por questão (S29-02).
@@ -108,6 +112,65 @@ def load_ruleset(path: Path) -> CompiledRuleset:
     compiled = compile_ruleset(ruleset, raw, questions)
     references = _load_references(path.parent / REFERENCES_DIR, compiled, digest)
     return replace(compiled, sha256=digest.hexdigest(), references=references)
+
+
+class UnknownPeriod(Exception):  # noqa: N818 - é um estado, não um erro de programação
+    """O período pedido não está entre os carregados (encerrado, futuro ou inexistente)."""
+
+    def __init__(self, period: str, loaded: tuple[str, ...]) -> None:
+        super().__init__(period)
+        self.period = period
+        self.loaded = loaded
+
+
+@dataclass(frozen=True, slots=True)
+class LoadedRulesets:
+    """Os rulesets carregados (S43-01): o ativo e os anteriores da janela, do mais novo ao mais
+    antigo. Sem período no pedido, vale o ativo, como antes."""
+
+    active: str
+    periods: Mapping[str, CompiledRuleset]
+
+    def get(self, period: str | None = None) -> CompiledRuleset:
+        """O ruleset do período; ``None`` é o ativo. Fora da janela, ``UnknownPeriod``."""
+        ruleset = self.periods.get(self.active if period is None else period)
+        if ruleset is None:
+            raise UnknownPeriod(period or self.active, tuple(self.periods))
+        return ruleset
+
+    @property
+    def active_ruleset(self) -> CompiledRuleset:
+        return self.periods[self.active]
+
+
+def load_rulesets(path: Path, window: int = WINDOW) -> LoadedRulesets:
+    """Carrega o período ativo e os até ``window - 1`` anteriores presentes em ``rulesets/``.
+
+    ``path`` é a raiz ``rulesets/`` (com o ``ATIVO``) ou, como em ``load_ruleset``, o ``base.yaml``
+    ou a pasta de um período só: aí vem só ele. Os períodos posteriores ao ativo (em preparação,
+    como o 2027.1 antes da troca) e a pasta ``encerrados/`` ficam de fora. Qualquer período
+    inválido impede a subida (fail-fast, FR-15), como antes com o ativo.
+    """
+    if not (path.is_dir() and (path / ACTIVE_FILE).exists()):
+        single = load_ruleset(path)
+        return LoadedRulesets(
+            single.ruleset.period, MappingProxyType({single.ruleset.period: single})
+        )
+    active = active_period(path)
+    names = sorted(
+        (
+            entry.name
+            for entry in path.iterdir()
+            if entry.is_dir()
+            and entry.name != RETIRED_DIR
+            and PERIOD.fullmatch(entry.name)
+            and entry.name <= active
+            and (entry / BASE_FILE).is_file()
+        ),
+        reverse=True,
+    )[:window]
+    periods = {name: load_ruleset(path / name / BASE_FILE) for name in names}
+    return LoadedRulesets(active, MappingProxyType(periods))
 
 
 def _load_references(

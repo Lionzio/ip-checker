@@ -31,7 +31,7 @@ from ipc_analyzer.engine.gabarito import GabaritoComparison, compare_with_gabari
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem
-from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset
+from ipc_analyzer.engine.ruleset import CompiledRuleset, LoadedRulesets, load_rulesets
 from ipc_analyzer.engine.similarity import (
     ClassMatch,
     ClassRejected,
@@ -70,19 +70,27 @@ class PoolConfig:
 # Código que roda dentro do worker.
 # ---------------------------------------------------------------------------
 
-_RULESET: CompiledRuleset | None = None
+_RULESETS: LoadedRulesets | None = None
+
+
+def _ruleset(period: str | None = None) -> CompiledRuleset:
+    """No worker: o ruleset do período pedido (``None`` é o ativo; S43-01)."""
+    if _RULESETS is None:
+        raise RuntimeError("worker sem ruleset carregado")
+    return _RULESETS.get(period)
 
 
 def _init_worker(ruleset_path: str, limits: ResourceLimits, sandbox: SandboxMode) -> None:
-    """Carrega o ruleset e só então se fecha: limites de recursos e, por fim, o seccomp.
+    """Carrega os rulesets e só então se fecha: limites de recursos e, por fim, o seccomp.
 
     A ordem importa: depois dos limites, abrir arquivos falha; depois do seccomp, criar
     sockets e executar programas falha; por fim, nenhum processo novo nasce (o seccomp precisa
     de um subprocesso para achar a libseccomp). Com ``SandboxMode.REQUIRED``, um sistema que não
     permite o filtro impede o worker de nascer, e o serviço não fica pronto.
     """
-    global _RULESET
-    _RULESET = load_ruleset(Path(ruleset_path))
+    global _RULESETS
+    # O ativo e os anteriores da janela (S43-01): um pedido de outro período não recarrega nada.
+    _RULESETS = load_rulesets(Path(ruleset_path))
     if not apply_limits(limits):
         logger.warning("limites de recursos indisponíveis neste sistema; use Linux em produção")
     if not enforce(sandbox) and sandbox is SandboxMode.OPTIONAL:
@@ -106,42 +114,41 @@ def _analyze_in_worker(
     question_id: str | None,
     with_indicators: bool = False,
     gabarito: str | None = None,
+    period: str | None = None,
 ) -> AnalysisResult:
-    if _RULESET is None:
-        raise RuntimeError("worker sem ruleset carregado")
     return analyze_source(
         source,
         list_number=list_number,
-        ruleset=_RULESET,
+        ruleset=_ruleset(period),
         question_id=question_id,
         with_indicators=with_indicators,
         gabarito=gabarito,
     )
 
 
-def _feedback_in_worker(source: str, list_number: int, question_id: str | None) -> FeedbackInput:
-    if _RULESET is None:
-        raise RuntimeError("worker sem ruleset carregado")
+def _feedback_in_worker(
+    source: str, list_number: int, question_id: str | None, period: str | None = None
+) -> FeedbackInput:
     return feedback_input(
-        source, list_number=list_number, ruleset=_RULESET, question_id=question_id
+        source, list_number=list_number, ruleset=_ruleset(period), question_id=question_id
     )
 
 
 def _compare_in_worker(
-    first: str, second: str, gabarito: str | None = None
+    first: str, second: str, gabarito: str | None = None, period: str | None = None
 ) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
-    """Os dois códigos entre si e, com o gabarito, cada um com ele (ADR-11, item 5)."""
-    if _RULESET is None:
-        raise RuntimeError("worker sem ruleset carregado")
-    result = compare_sources(first, second, target=_RULESET.target_version)
+    """Os dois códigos entre si e, com o gabarito, cada um com ele (ADR-11, item 5); os fatos
+    estruturais da comparação com o gabarito são os do período do gabarito (S43-01)."""
+    ruleset = _ruleset(period)
+    result = compare_sources(first, second, target=ruleset.target_version)
     if gabarito is None or isinstance(result, InvalidSide):
         return result, ()
     return result, tuple(
         compare_with_gabarito(
             code,
             gabarito,
-            target=_RULESET.target_version,
-            structural=_RULESET.structural_facts,
+            target=ruleset.target_version,
+            structural=ruleset.structural_facts,
         )
         for code in (first, second)
     )
@@ -150,15 +157,12 @@ def _compare_in_worker(
 def _compare_class_in_worker(
     code: str, others: list[str]
 ) -> SyntaxProblem | list[ClassMatch | SyntaxProblem | ClassRejected]:
-    if _RULESET is None:
-        raise RuntimeError("worker sem ruleset carregado")
-    return compare_class(code, others, target=_RULESET.target_version)
+    # Entre alunos, só a versão do Python importa, a mesma em todos os períodos: vale o ativo.
+    return compare_class(code, others, target=_ruleset().target_version)
 
 
 def _compare_all_in_worker(codes: list[str], group_min: float) -> MatrixResult:
-    if _RULESET is None:
-        raise RuntimeError("worker sem ruleset carregado")
-    return compare_all(codes, target=_RULESET.target_version, group_min=group_min)
+    return compare_all(codes, target=_ruleset().target_version, group_min=group_min)
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +241,7 @@ class AnalyzerPool:
         deadline: float | None = None,
         indicators: bool = False,
         gabarito: str | None = None,
+        period: str | None = None,
     ) -> AnalysisResult:
         return await self.run(
             _analyze_in_worker,
@@ -245,6 +250,7 @@ class AnalyzerPool:
             question_id,
             indicators,
             gabarito,
+            period,
             deadline=deadline,
         )
 
@@ -255,10 +261,11 @@ class AnalyzerPool:
         question_id: str | None = None,
         *,
         deadline: float | None = None,
+        period: str | None = None,
     ) -> FeedbackInput:
         """Feedback (S18-02): o resultado com os nomes legíveis e o código sem comentários."""
         return await self.run(
-            _feedback_in_worker, source, list_number, question_id, deadline=deadline
+            _feedback_in_worker, source, list_number, question_id, period, deadline=deadline
         )
 
     async def compare(
@@ -268,10 +275,13 @@ class AnalyzerPool:
         *,
         deadline: float | None = None,
         gabarito: str | None = None,
+        period: str | None = None,
     ) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
         """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento; com o
         gabarito (ADR-11), cada um também é comparado com ele."""
-        return await self.run(_compare_in_worker, first, second, gabarito, deadline=deadline)
+        return await self.run(
+            _compare_in_worker, first, second, gabarito, period, deadline=deadline
+        )
 
     async def compare_class(
         self, code: str, others: list[str], *, deadline: float | None = None
