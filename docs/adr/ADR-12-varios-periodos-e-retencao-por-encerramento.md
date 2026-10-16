@@ -4,7 +4,7 @@
 
 **Status:** Proposto em 12/10/2026 (revisão das seis frentes, [`revisao-seis-frentes.md`](../revisao-seis-frentes.md)); Sprint 43, que só começa com o comando do autor. Revisa a decisão 3 da ADR-10.
 
-**Contexto:** O analisador carrega um período só, o do arquivo `rulesets/ATIVO` (`engine/ruleset.py`, `active_period` e `load_ruleset`), uma vez na subida. A API não devolve o período em `/api/v1/lists` nem o aceita em `/api/v1/validate`, e só aceita questões do período ativo (P-07). A página não tem seletor de período, embora o FR-32 e a US-37 o citem. As listas são fixas (1 a 6); o que muda por período são os títulos, as regras e as questões. Os gabaritos já ficam em memória indexados por período e questão (`gabaritos.py`). O autor quer um painel "Período" e que turmas com mais de 3 anos (6 períodos) deixem de ocupar memória.
+**Contexto:** O analisador carrega um período só, o do arquivo `rulesets/ATIVO` (`engine/ruleset/load.py`, `active_period` e `load_ruleset`), uma vez na subida. A API não devolve o período em `/api/v1/lists` nem o aceita em `/api/v1/validate`, e só aceita questões do período ativo (P-07). A página não tem seletor de período, embora o FR-32 e a US-37 o citem. As listas são fixas (1 a 6); o que muda por período são os títulos, as regras e as questões. Os gabaritos já ficam em memória indexados por período e questão (`gabaritos.py`). O autor quer um painel "Período" e que turmas com mais de 3 anos (6 períodos) deixem de ocupar memória.
 
 **Decisão (proposta):**
 1. **O período vem antes da lista** na página: Período (o ativo já escolhido) → Lista → Questão.

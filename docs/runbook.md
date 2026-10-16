@@ -15,6 +15,9 @@ S28-03). Cada seção começa pelo sintoma. A configuração das contas está em
 | Dados perdidos ou corrompidos no banco | Backup, "Restaurar um backup" |
 | Um segredo vazou ou alguém acessou o que não devia | Segredos e Incidentes de segurança |
 | Os jobs do GitHub Actions não começam ("spending limit") | Sem GitHub Actions (cota esgotada) |
+| A página avisa "Os gabaritos não estão disponíveis neste servidor agora" | Segredos, "Credencial dos gabaritos" (**Gabaritos indisponíveis**) |
+| O "Aprimorar com IA" devolve o texto sem IA, com um aviso | Segredos, "IAs do Aprimorar com IA" (**Cota esgotada**: todas as IAs da cadeia sem cota) |
+| O sintético ou o canário falhou | Sintético diário (S34-02) ou Canário mensal (S35-04) |
 
 ## Voltar para a versão anterior (rollback)
 
