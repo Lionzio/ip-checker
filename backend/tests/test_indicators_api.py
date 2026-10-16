@@ -7,6 +7,7 @@ são prova; nunca no feedback ao aluno.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections.abc import Iterator
 from dataclasses import replace
@@ -23,6 +24,7 @@ from ipc_analyzer.service.app import create_app
 from ipc_analyzer.service.settings import AnalyzerSettings
 from ipc_api.schemas import FeedbackResponse, ValidateResponse
 from ipc_api.settings import ApiSettings
+from ipc_api.telemetry import TelemetryEvent
 from test_api import HEALTH, INVALID, MANIFEST, SETTINGS, FakeAnalyzer, make_client, reply, validate
 
 INDICATORS = {
@@ -32,8 +34,10 @@ INDICATORS = {
             "signal": "multiplas_violacoes",
             "kind": "variedade",
             "level": "alto",
+            "confidence": "alta",
             "reason": "3 proibições gerais diferentes: 'break', 'continue' e 'pass'.",
             "lines": [5, 7, 9],
+            "evidence": {"rule": "R-11, R-12", "excerpt": "break"},
         }
     ],
     "questions": ["O que o 'break' da linha 5 faz?", "Faça uma pequena mudança no programa."],
@@ -142,6 +146,12 @@ def test_the_analyzer_service_computes_them_only_when_asked(real_analyzer: TestC
     assert with_them["indicators"]["level"] == "alto"
     assert [item["kind"] for item in with_them["indicators"]["items"]] == ["variedade"]
     assert with_them["indicators"]["items"][0]["lines"] == [3, 5, 6]
+    # S42-03: a evidência (a regra e o trecho da primeira linha) e a confiança.
+    assert with_them["indicators"]["items"][0]["evidence"] == {
+        "rule": "R-11, R-12",
+        "excerpt": "break",
+    }
+    assert with_them["indicators"]["items"][0]["confidence"] == "alta"
     assert 2 <= len(with_them["indicators"]["questions"]) <= 3
 
 
@@ -152,3 +162,21 @@ def test_the_pilot_keeps_them_off_until_the_policy_is_approved() -> None:
 
     assert env["IPC_AI_INDICATORS"] == "0"
     assert ApiSettings().ai_indicators is False
+
+
+def test_the_evidence_never_reaches_the_logs_or_the_telemetry(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # S42-03: o trecho da evidência é código do aluno; vai só na resposta para a equipe.
+    canary = "CANARIO_EVIDENCIA_42"
+    item = {**INDICATORS["items"][0], "evidence": {"rule": "R-11", "excerpt": f"# {canary}"}}
+    analyzer = Recording({**INVALID, "indicators": {**INDICATORS, "items": [item]}})
+    caplog.set_level("DEBUG")
+
+    with make_client(analyzer, replace(SETTINGS, ai_indicators=True)) as client:
+        response = validate(client)
+
+    assert response.json()["indicators"]["items"][0]["evidence"]["excerpt"] == f"# {canary}"
+    assert canary not in caplog.text
+    fields = {field.name for field in dataclasses.fields(TelemetryEvent)}
+    assert not fields & {"indicators", "evidence", "excerpt", "reason"}

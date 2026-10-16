@@ -51,6 +51,17 @@ class Violation(_Strict):
 IndicatorLevel = Literal["baixo", "medio", "alto"]
 
 
+class IndicatorEvidence(_Strict):
+    """A âncora do indício no documento de permissões e no código (S42-03)."""
+
+    rule: Annotated[str, StringConstraints(pattern=r"^(R-\d{2}(, R-\d{2})*|[a-z_]{1,40})$")] = (
+        Field(description="A regra (R-11, ou várias) ou o marcador, como docstring ou referencia.")
+    )
+    excerpt: Annotated[str, StringConstraints(max_length=120)] = Field(
+        description="Até 120 caracteres da primeira linha do indício, do código verificado."
+    )
+
+
 class Indicator(_Strict):
     signal: Literal["multiplas_violacoes", "referencia_ia", "gabarito", "estilo"] = Field(
         description=(
@@ -65,8 +76,15 @@ class Indicator(_Strict):
     level: IndicatorLevel | None = Field(
         description="Faixa deste indício; vazia nos marcadores de estilo, que não pesam."
     )
+    confidence: Literal["baixa", "media", "alta"] = Field(
+        description=(
+            "Quão certo é o sinal (S42-03), separado da faixa, que diz quanto ele pesa: uma "
+            "violação é certa; um nome em inglês, não."
+        )
+    )
     reason: Message = Field(description="Por que é um indício, com as construções envolvidas.")
     lines: list[Position] = Field(max_length=MAX_VIOLATIONS)
+    evidence: IndicatorEvidence
 
 
 class AnalyzerIndicators(_Strict):

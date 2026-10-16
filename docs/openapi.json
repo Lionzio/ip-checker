@@ -3227,6 +3227,16 @@
             "title": "Level",
             "description": "Faixa deste indício; vazia nos marcadores de estilo, que não pesam."
           },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "baixa",
+              "media",
+              "alta"
+            ],
+            "title": "Confidence",
+            "description": "Quão certo é o sinal (S42-03), separado da faixa, que diz quanto ele pesa: uma violação é certa; um nome em inglês, não."
+          },
           "reason": {
             "type": "string",
             "maxLength": 1000,
@@ -3243,6 +3253,9 @@
             "type": "array",
             "maxItems": 200,
             "title": "Lines"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/IndicatorEvidence"
           }
         },
         "additionalProperties": false,
@@ -3251,10 +3264,36 @@
           "signal",
           "kind",
           "level",
+          "confidence",
           "reason",
-          "lines"
+          "lines",
+          "evidence"
         ],
         "title": "Indicator"
+      },
+      "IndicatorEvidence": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "pattern": "^(R-\\d{2}(, R-\\d{2})*|[a-z_]{1,40})$",
+            "title": "Rule",
+            "description": "A regra (R-11, ou várias) ou o marcador, como docstring ou referencia."
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Excerpt",
+            "description": "Até 120 caracteres da primeira linha do indício, do código verificado."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule",
+          "excerpt"
+        ],
+        "title": "IndicatorEvidence",
+        "description": "A âncora do indício no documento de permissões e no código (S42-03)."
       },
       "Indicators": {
         "properties": {

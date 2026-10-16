@@ -18,8 +18,10 @@ const STYLE_ONLY: Indicators = {
       signal: "estilo",
       kind: "docstring",
       level: null,
+      confidence: "alta",
       reason: "Docstring (texto entre aspas triplas no início da função ou do programa), incomum nas soluções das listas.",
       lines: [2],
+      evidence: { rule: "docstring", excerpt: '"""Calcula a média."""' },
     },
   ],
   questions: ["Pergunta um?", "Pergunta dois?"],
@@ -60,6 +62,10 @@ describe("Painel de indícios de uso de IA (S29-03, US-34)", () => {
     expect(panel).toHaveTextContent("3 proibições gerais diferentes no mesmo código: 'break', 'continue' e 'pass'.");
     expect(within(panel).getByRole("note")).toHaveTextContent("não são prova");
     expect(within(panel).getByRole("note")).toHaveTextContent("não entra no feedback");
+    // S42-03: a evidência (as regras, a linha e o trecho) e a confiança.
+    expect(panel).toHaveTextContent("Regras R-11, R-12, linha 3:");
+    expect(within(panel).getByText("break", { selector: "code" })).toBeInTheDocument();
+    expect(panel).toHaveTextContent("confiança alta");
     const questions = within(panel).getByRole("heading", { name: "Perguntas para a conversa com o aluno" });
     expect(questions.nextElementSibling?.querySelectorAll("li")).toHaveLength(2);
   });
@@ -96,8 +102,19 @@ describe("Painel de indícios de uso de IA (S29-03, US-34)", () => {
     expect(within(panel).getByText("Só marcadores de estilo")).toBeInTheDocument();
     expect(within(panel).getByRole("heading", { name: "Marcadores de estilo" })).toBeInTheDocument();
     expect(within(panel).queryByText(/Faixa (alta|média|baixa)/)).not.toBeInTheDocument();
+    expect(panel).toHaveTextContent("Marcador, linha 2:");
+    expect(panel).toHaveTextContent("(confiança alta)");
     // Sem onde selecionar, as linhas aparecem como texto.
     expect(within(panel).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("nenhum texto do painel afirma uso de IA nem é veredito (S42-03)", async () => {
+    await verify(SUSPICIOUS);
+
+    const panel = await screen.findByRole("region", { name: "Indícios de uso de IA" });
+    const verdicts = /\busou IA\b|\bplagiou\b|\bveredito\b|\bcolou\b|foi gerad[oa] por IA|(?<!não )\b(é|são) prova\b|comprova/i;
+    expect(panel.textContent ?? "").not.toMatch(verdicts);
+    expect(panel).toHaveTextContent("não são prova");
   });
 
   it("o simulado só aponta indício com duas ou mais proibições gerais diferentes", () => {

@@ -54,6 +54,12 @@ def suggested_questions(
             "Por que os nomes ou os comentários estão em inglês? Você pode explicar o que cada um "
             "deles significa no programa?"
         )
+    if "input_com_texto" in kinds or "validacao_de_entrada" in kinds:
+        item = kinds.get("validacao_de_entrada") or kinds["input_com_texto"]
+        questions.append(
+            f"Na linha {item.lines[0]}, o programa mostra um texto ou confere a entrada antes de "
+            "usá-la. O enunciado pede isso? Explique o que essa parte faz."
+        )
     if "docstring" in kinds or "anotacao_de_tipo" in kinds or "main_guard" in kinds:
         questions.append(
             "Algumas partes do código usam recursos que a disciplina não ensina. Você pode "

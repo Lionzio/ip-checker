@@ -6,6 +6,7 @@ construções de listas bem posteriores dão indício com as linhas; uma soluç�
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -14,7 +15,7 @@ import yaml
 
 from conftest import BASE_RULESET
 from ipc_analyzer.engine.analysis import analyze_source
-from ipc_analyzer.engine.indicators import Indicators, Level
+from ipc_analyzer.engine.indicators import NOTICE, Indicators, Level
 from ipc_analyzer.engine.ruleset import (
     MAX_REFERENCES_PER_QUESTION,
     CompiledRuleset,
@@ -86,7 +87,7 @@ def test_two_different_prohibitions_are_medium(ruleset: CompiledRuleset) -> None
     assert kinds(indicators(code, ruleset, 2))["variedade"][0] is Level.MEDIO
 
 
-@pytest.mark.parametrize(("times", "level"), [(2, Level.BAIXO), (3, Level.ALTO)])
+@pytest.mark.parametrize(("times", "level"), [(2, Level.BAIXO), (3, Level.MEDIO), (6, Level.MEDIO)])
 def test_the_same_prohibition_repeated(ruleset: CompiledRuleset, times: int, level: Level) -> None:
     code = "for i in range(3):\n" + "".join(
         f"    if i == {n}:\n        pass\n" for n in range(times)
@@ -367,3 +368,123 @@ def test_comments_after_a_lone_carriage_return_are_read(ruleset: CompiledRuleset
     code = "# média\r" + ENGLISH_STYLE.replace("\n", "\r")
 
     assert kinds(indicators(code, ruleset, 4))["comentarios_em_ingles"] == (None, (4,))
+
+
+# --- S42-03: evidência, confiança e os critérios da Q-35 -----------------------------------------
+
+
+def test_every_indicator_has_its_evidence_and_confidence(ruleset: CompiledRuleset) -> None:
+    found = indicators(BREAK_PASS_CONTINUE + ENGLISH_STYLE, ruleset, 3)
+
+    assert found.items
+    for item in found.items:
+        assert item.rule, item.kind
+        assert item.confidence in ("baixa", "media", "alta")
+        assert 0 < len(item.excerpt) <= 120, item.kind
+    variety = next(item for item in found.items if item.kind == "variedade")
+    assert variety.excerpt == "break"
+    assert all(rule.startswith("R-") for rule in variety.rule.split(", "))
+    english = next(item for item in found.items if item.kind == "identificadores_em_ingles")
+    assert english.confidence == "baixa"
+
+
+def test_a_long_line_is_cut_in_the_excerpt(ruleset: CompiledRuleset) -> None:
+    long_name = "x" * 200
+    code = f"for i in range(3):\n    if i:\n        break\n    {long_name} = 1\n    pass\n"
+    found = indicators(code.replace("        break", f"        break  # {long_name}"), ruleset, 2)
+
+    item = next(item for item in found.items if item.kind == "variedade")
+    assert len(item.excerpt) == 120
+    assert item.excerpt.endswith("…")
+
+
+def test_text_inside_input_is_a_marker(ruleset: CompiledRuleset) -> None:
+    code = 'nome = input("Digite o seu nome: ")\nidade = int(input())\nprint(nome, idade)\n'
+
+    found = indicators(code, ruleset, 1)
+
+    item = next(item for item in found.items if item.kind == "input_com_texto")
+    assert (item.level, item.lines, item.confidence) == (None, (1,), "alta")
+    assert item.excerpt == 'nome = input("Digite o seu nome: ")'
+    assert found.level is None
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "x = input()\nprint(x)\n",
+        'x = input("")\nprint(x)\n',
+    ],
+    ids=["sem-texto", "texto-vazio"],
+)
+def test_input_without_text_is_not_a_marker(ruleset: CompiledRuleset, code: str) -> None:
+    result = analyze_source(code, list_number=1, ruleset=ruleset, with_indicators=True)
+
+    assert result.indicators is None
+
+
+VALIDATION_TRY = """while True:
+    try:
+        n = int(input())
+        break
+    except ValueError:
+        print('Valor inválido')
+print(n * 2)
+"""
+
+VALIDATION_ISDIGIT = """texto = input()
+if not texto.isdigit():
+    print('Digite um número')
+else:
+    print(int(texto) * 2)
+"""
+
+SENTINEL = """soma = 0
+n = int(input())
+while n != 0:
+    soma = soma + n
+    n = int(input())
+print(soma)
+"""
+
+
+@pytest.mark.parametrize(
+    ("code", "line"), [(VALIDATION_TRY, 2), (VALIDATION_ISDIGIT, 2)], ids=["try", "isdigit"]
+)
+def test_input_validation_is_a_marker(ruleset: CompiledRuleset, code: str, line: int) -> None:
+    found = indicators(code, ruleset, 6)
+
+    item = next(item for item in found.items if item.kind == "validacao_de_entrada")
+    assert (item.level, item.lines, item.confidence) == (None, (line,), "media")
+    assert any("enunciado pede isso" in question for question in found.questions)
+
+
+def test_a_sentinel_loop_is_not_validation(ruleset: CompiledRuleset) -> None:
+    # Ler até o 0 é o padrão das listas, não validação da entrada.
+    result = analyze_source(SENTINEL, list_number=3, ruleset=ruleset, with_indicators=True)
+
+    assert result.indicators is None
+
+
+#: Afirmações que o painel nunca faz (Q-35, S42-03): o texto leva a uma conversa, não a um veredito.
+VERDICTS = re.compile(
+    r"\busou ia\b|\bplagiou\b|\bveredito\b|\bcolou\b|\bfoi gerad[oa] por ia\b"
+    r"|(?<!não )\b(é|são) prova\b|\bcomprova",
+    re.IGNORECASE,
+)
+
+
+def test_no_message_of_the_engine_is_a_verdict(ruleset: CompiledRuleset) -> None:
+    texts = [NOTICE]
+    for code, list_number in [
+        (BREAK_PASS_CONTINUE + ENGLISH_STYLE, 3),
+        (VALIDATION_TRY, 6),
+        ('x = input("Digite: ")\nprint(x)\n', 1),
+        ("d = {}\nf = lambda x: x\nprint(d, f)\n", 2),
+    ]:
+        found = indicators(code, ruleset, list_number)
+        texts += [item.reason for item in found.items] + list(found.questions)
+
+    for text in texts:
+        assert not VERDICTS.search(text), text
+    assert "não são prova" in NOTICE

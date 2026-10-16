@@ -964,12 +964,35 @@ export interface components {
              */
             level: ("baixo" | "medio" | "alto") | null;
             /**
+             * Confidence
+             * @description Quão certo é o sinal (S42-03), separado da faixa, que diz quanto ele pesa: uma violação é certa; um nome em inglês, não.
+             * @enum {string}
+             */
+            confidence: "baixa" | "media" | "alta";
+            /**
              * Reason
              * @description Por que é um indício, com as construções envolvidas.
              */
             reason: string;
             /** Lines */
             lines: number[];
+            evidence: components["schemas"]["IndicatorEvidence"];
+        };
+        /**
+         * IndicatorEvidence
+         * @description A âncora do indício no documento de permissões e no código (S42-03).
+         */
+        IndicatorEvidence: {
+            /**
+             * Rule
+             * @description A regra (R-11, ou várias) ou o marcador, como docstring ou referencia.
+             */
+            rule: string;
+            /**
+             * Excerpt
+             * @description Até 120 caracteres da primeira linha do indício, do código verificado.
+             */
+            excerpt: string;
         };
         /**
          * Indicators
