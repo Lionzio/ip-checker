@@ -286,6 +286,8 @@ def create_app(
     app.state.rate_limiter = SlidingWindowLimiter(max_keys=config.rate_limit.max_keys)
     app.state.api_gate = FixedWindowCounter(max_keys=config.rate_limit.max_keys)
     app.state.slo = SloMonitor(config.slo)
+    # O relógio também serve ao aviso de ATIVO defasado do /health/slo (S43-04).
+    app.state.clock = clock
     # O último middleware adicionado é o mais externo: o contexto (identificador, limite de
     # corpo e log) envolve os demais, e assim o 403 e o 429 também aparecem no log. A sessão vem
     # antes do limite de taxa, que conta por conta; o limite geral por IP vem antes da sessão.

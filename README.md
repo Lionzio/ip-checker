@@ -196,7 +196,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 40 | A correção da turma inteira: correção em lote por upload com CSV, plágio todos contra todos, painel por lista | Concluída em 15/10/2026 (release `sprint-40`, antes da 39): S40-01 a S40-04; no piloto desde 15/10/2026 (migração `0007`, Render e Vercel), com o exercício de alerta feito |
 | 41 | Fase 2: GHCR por digest, deploy no servidor do CIn e staging (era a Sprint 36) | Bloqueada (P-09 e Q-12); a última da fila (P-24) |
 | 42 | Indícios de IA ligados no piloto: calibração, evidência em cada indício, primeiro para a chefia e depois para todos | Proposta; critérios aprovados (Q-35) |
-| 43 | Período na página (antes de Lista e Questão), o ativo e os 5 anteriores carregados, encerramento com simulação | Proposta |
+| 43 | Período na página (antes de Lista e Questão), o ativo e os 5 anteriores carregados, encerramento com simulação | Concluída em 16/10/2026 (release `sprint-43`): S43-01 a S43-05 (#142 a #144); espera o deploy |
 | 44 | Feedback com a linha e o motivo de cada violação; o padrão do monitor em `estilo.yaml` | Proposta |
 | 45 | "Aprimorar com IA" que só fala do que o verificador achou, com uma rodada de crítica | Proposta |
 | 46 | Plágio calibrado: precisão e revocação com plágio sintético, peso de base por questão, matriz com trechos | Proposta |

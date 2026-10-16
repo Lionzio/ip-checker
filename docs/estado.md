@@ -11,7 +11,7 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 |---|---|
 | Piloto | Release `sprint-39` (16/10/2026), Render e Vercel; exercício de alerta e sintético feitos |
 | Listas habilitadas | 1 a 6 de 2026.2 (`IPC_ENABLED_LISTS` no `render.yaml`) |
-| Período ativo | 2026.2; o 2027.1 existe, inativo, como cópia (P-22) |
+| Período ativo | 2026.2; o 2027.1 existe, inativo, como cópia (P-22); com a `sprint-43`, o analisador carrega o ativo e até 5 anteriores (ADR-12) |
 | Indícios de IA | Desligados no piloto (`IPC_AI_INDICATORS=0`) até a Sprint 42 |
 | CI e deploy | Sem cota do GitHub Actions até 01/11/2026 (P-19): CI local, release com `--ci-local` e deploy pelo painel |
 
@@ -20,7 +20,8 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | O quê | Situação |
 |---|---|
 | Sprint 39 | Concluída e no piloto em 16/10/2026 |
-| Fila depois dela | 43 (período na página), 42 (indícios de IA), 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24) |
+| Sprint 43 | Concluída em 16/10/2026 (release `sprint-43`); espera o deploy, o exercício de alerta e o sintético |
+| Fila depois dela | 42 (indícios de IA), 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24) |
 
 ## Esperando alguém
 

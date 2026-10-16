@@ -17,6 +17,7 @@ import time
 from collections import deque
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Literal
 
 #: A rota cuja latência o NFR-01 mede.
@@ -25,6 +26,18 @@ LATENCY_PATH = "/api/v1/validate"
 _IGNORED_PATHS = frozenset({"/health", "/ready", "/health/slo"})
 
 Reason = Literal["latencia", "erros"]
+
+#: Dias depois do fim aproximado do semestre do ATIVO (julho ou dezembro) a partir dos quais o
+#: /health/slo avisa que ele parece defasado (S43-04). Só aviso: trocar o período é decisão da
+#: coordenação (S31-09), nunca automática.
+STALE_AFTER_DAYS = 60
+
+
+def active_looks_stale(period: str, today: date) -> bool:
+    """O período ativo (2026.2) já devia ter acabado: 60 dias depois de 31/07 (.1) ou 31/12 (.2)."""
+    year, half = period.split(".")
+    end = date(int(year), 7, 31) if half == "1" else date(int(year), 12, 31)
+    return today > end + timedelta(days=STALE_AFTER_DAYS)
 
 
 @dataclass(frozen=True, slots=True)

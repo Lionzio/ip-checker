@@ -226,3 +226,10 @@ class SloResponse(_Strict):
     reasons: list[Literal["latencia", "erros"]]
     telemetry: SloTelemetry
     housekeeping: SloHousekeeping
+    warnings: list[Literal["ativo_defasado"]] = Field(
+        default_factory=list,
+        description=(
+            "Avisos que não mudam o status: ativo_defasado quando o período ativo parece ter "
+            "acabado há mais de 60 dias (S43-04); trocar o ATIVO é decisão da coordenação."
+        ),
+    )

@@ -96,7 +96,8 @@ a senha, muda de cargo ou é removido da equipe.
 
 ## Verificar uma solução
 
-1. Escolha a lista. A página lembra a última lista neste navegador.
+1. Escolha a lista. A página lembra a última lista neste navegador. Se aparecer o seletor
+   **Período** antes dela, veja "Lista atrasada de outro período", abaixo.
 2. Escolha a questão, se ela tiver regras cadastradas ou um gabarito (veja abaixo). Sem questão,
    valem só as permissões da lista, e o resultado avisa isso. Uma questão marcada "sem regra
    cadastrada (comparação com o gabarito)" usa as permissões da lista e compara com o gabarito.
@@ -112,6 +113,17 @@ que é do código anterior.
 No editor, Tab insere 4 espaços; com várias linhas selecionadas, Tab indenta todas e Shift+Tab
 desindenta. Para sair do editor pelo teclado, aperte Esc e depois Tab (ou Shift+Tab). A
 altura do editor se ajusta pelo canto inferior direito.
+
+### Lista atrasada de outro período
+
+Depois que a coordenação troca o período ativo, o IP-Checker continua com os 5 períodos anteriores
+(Sprint 43). Aparece então o seletor **Período** antes da Lista, com o ativo já escolhido e marcado
+"(ativo)". Para corrigir uma lista entregue com atraso, escolha o período dela: as listas, as
+questões e as regras passam a ser as daquele período, e todas as listas dele ficam disponíveis.
+
+Trocar de período limpa a lista e a questão, porque elas mudam de um período para outro. **Próximo
+aluno** mantém o período, e a aba lembra dele até você fechá-la. O mesmo seletor aparece na
+**Turma** e no **Plágio** (dois códigos). Enquanto houver um período só, o seletor não aparece.
 
 ### Comparação com o gabarito
 
@@ -174,7 +186,8 @@ avisa.
 Quando você já tem os arquivos da turma (baixados do Dikastis ou numa pasta), use **Turma** no
 menu:
 
-1. Escolha a lista e, se quiser, a questão (com ela, entra a semelhança com o gabarito).
+1. Escolha o período (se o seletor aparecer), a lista e, se quiser, a questão (com ela, entra a
+   semelhança com o gabarito).
 2. Clique em **Escolher arquivos** ou arraste para a área tracejada vários `.py` ou um `.zip` (até
    100 arquivos, 50 KB cada e 2 MB no total). O que não é `.py`, os arquivos grandes demais e os que
    passam do limite ficam de fora, e a página diz quais. Dentro do `.zip`, as pastas não importam.

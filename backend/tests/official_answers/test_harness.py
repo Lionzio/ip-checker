@@ -163,3 +163,28 @@ def test_a_gabarito_of_an_earlier_period_uses_the_questions_of_its_period(
         ruleset = periods.for_gabarito(found[name])
         assert ruleset is base_ruleset
         assert unexpected(found[name], ruleset) == ["R-37 linha 3"]
+
+
+def test_a_retired_period_keeps_its_own_rules(
+    tmp_path: Path, base_ruleset: CompiledRuleset
+) -> None:
+    # S43-05: rulesets/encerrados/2023.1/ (o ipc-rules retire-period) e o gabarito tanto na raiz
+    # quanto em encerrados/ do repositório dos gabaritos continuam com as regras de 2023.1.
+    rules = tmp_path / "rulesets"
+    (rules / "encerrados" / "2023.1" / "questions").mkdir(parents=True)
+    text = BASE_RULESET.read_text(encoding="utf-8")
+    old = base_ruleset.ruleset
+    text = text.replace(f'period: "{old.period}"', 'period: "2023.1"', 1)
+    text = text.replace(f'ruleset_version: "{old.ruleset_version}"', 'ruleset_version: "2023.1.0"')
+    (rules / "encerrados" / "2023.1" / "base.yaml").write_text(text, encoding="utf-8")
+    answers = tmp_path / "gabaritos"
+    names = ("2023.1/lista-1/L1-Q1.py", "encerrados/2023.1/lista-1/L1-Q2.py")
+    for name in names:
+        (answers / name).parent.mkdir(parents=True, exist_ok=True)
+        (answers / name).write_text("print(1)\n", encoding="utf-8")
+    found = {g.path: g for g in discover(answers)[0]}
+    periods = PeriodRulesets(rules, base_ruleset)
+
+    for name in names:
+        assert found[name].period == "2023.1"
+        assert periods.for_gabarito(found[name]).ruleset.period == "2023.1"

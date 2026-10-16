@@ -157,10 +157,18 @@ def load_rulesets(path: Path, window: int = WINDOW) -> LoadedRulesets:
             single.ruleset.period, MappingProxyType({single.ruleset.period: single})
         )
     active = active_period(path)
-    names = sorted(
+    names = window_periods(path, active, window)
+    periods = {name: load_ruleset(path / name / BASE_FILE) for name in names}
+    return LoadedRulesets(active, MappingProxyType(periods))
+
+
+def window_periods(root: Path, active: str, window: int = WINDOW) -> list[str]:
+    """Os períodos da janela em ``rulesets/``, do ativo ao mais antigo: os que o analisador
+    carrega e que o ``ipc-rules retire-period`` recusa encerrar (S43-04)."""
+    return sorted(
         (
             entry.name
-            for entry in path.iterdir()
+            for entry in root.iterdir()
             if entry.is_dir()
             and entry.name != RETIRED_DIR
             and PERIOD.fullmatch(entry.name)
@@ -169,8 +177,6 @@ def load_rulesets(path: Path, window: int = WINDOW) -> LoadedRulesets:
         ),
         reverse=True,
     )[:window]
-    periods = {name: load_ruleset(path / name / BASE_FILE) for name in names}
-    return LoadedRulesets(active, MappingProxyType(periods))
 
 
 def _load_references(

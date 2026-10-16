@@ -103,6 +103,13 @@ motivo (`reasons`: `latencia` ou `erros`).
 - **Erros:** os logs do Render mostram o `outcome` de cada requisição (sem código nem IP). Muitos
   `ANALYZER_UNAVAILABLE` ou `DATABASE_UNAVAILABLE` levam às seções abaixo.
 
+**Aviso do período ativo (S43-04):** o corpo também traz `warnings`. O `ativo_defasado` aparece
+quando o período ativo já devia ter acabado há mais de 60 dias (31/07 para os `.1`, 31/12 para os
+`.2`). É só um aviso: o status continua 200, e o UptimeRobot não manda e-mail. Confirme com a
+coordenação se o semestre novo já começou; se sim, troque o `rulesets/ATIVO` por PR (S31-09,
+[`rulesets/README.md`](../rulesets/README.md)), com as listas de `IPC_ENABLED_LISTS` do período
+novo. O período anterior continua disponível no seletor **Período** (ADR-12).
+
 ### Registro dos exercícios de alerta
 
 Desde a Sprint 34 (S34-04), um exercício **a cada release**, depois do deploy, confere que o
