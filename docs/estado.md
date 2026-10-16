@@ -9,7 +9,7 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 
 | O quê | Situação |
 |---|---|
-| Piloto | Release `sprint-39` (16/10/2026), Render e Vercel; exercício de alerta feito, sintético pendente |
+| Piloto | Release `sprint-39` (16/10/2026), Render e Vercel; exercício de alerta e sintético feitos |
 | Listas habilitadas | 1 a 6 de 2026.2 (`IPC_ENABLED_LISTS` no `render.yaml`) |
 | Período ativo | 2026.2; o 2027.1 existe, inativo, como cópia (P-22) |
 | Indícios de IA | Desligados no piloto (`IPC_AI_INDICATORS=0`) até a Sprint 42 |
