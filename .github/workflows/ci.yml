@@ -29,6 +29,12 @@ jobs:
       actions: read
     outputs:
       heavy: ${{ steps.decide.outputs.heavy }}
+      # S49-06 (ADR-20): cada job roda só quando os caminhos de que depende mudaram; na dúvida
+      # (sem base para comparar), todos rodam.
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+      deploy: ${{ steps.decide.outputs.deploy }}
+      engine: ${{ steps.decide.outputs.engine }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -75,12 +81,27 @@ jobs:
               echo "::notice::Só documentação (.md) mudou; os testes não rodam."
             fi
           fi
-          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+          backend=$heavy; frontend=$heavy; deploy=$heavy; engine=$heavy
+          if [ "$heavy" = "true" ] && [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+            grep -qE '^(backend/|rulesets/|scripts/|\.github/)' <<< "$files" || backend=false
+            grep -qE '^(frontend/|docs/openapi\.json|\.github/)' <<< "$files" || frontend=false
+            grep -qE '^(deploy/|backend/|render\.yaml|\.github/)' <<< "$files" || deploy=false
+            grep -qE '^(backend/src/ipc_analyzer/engine/|backend/tests/benchmark/|backend/pyproject\.toml|backend/uv\.lock|rulesets/|\.github/)' <<< "$files" || engine=false
+            echo "::notice::backend=$backend frontend=$frontend deploy=$deploy engine=$engine (pelos caminhos alterados)"
+          fi
+          {
+            echo "heavy=$heavy"
+            echo "backend=$backend"
+            echo "frontend=$frontend"
+            echo "deploy=$deploy"
+            echo "engine=$engine"
+          } >> "$GITHUB_OUTPUT"
 
   backend:
     name: Backend (lint, tipos, testes)
     needs: changes
-    if: needs.changes.outputs.heavy == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -132,6 +153,8 @@ jobs:
           uv run coverage json -q -o coverage.json
           uv run python scripts/coverage_by_folder.py coverage.json
       - name: Benchmark do motor (P95 <= 50 ms e regressão <= 20%; S35-01, NFR-02)
+        # S49-06: só quando o motor, o benchmark, as dependências ou o ruleset mudaram.
+        if: needs.changes.outputs.engine == 'true'
         env:
           IPC_BENCHMARK: "1"
         run: uv run pytest tests/benchmark --no-cov -q -s
@@ -227,7 +250,7 @@ jobs:
   security:
     name: Segurança (isolamento, submissões maliciosas e imagem do piloto)
     needs: changes
-    if: needs.changes.outputs.heavy == 'true'
+    if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -260,7 +283,7 @@ jobs:
   frontend:
     name: Frontend (lint, tipos, testes, build)
     needs: changes
-    if: needs.changes.outputs.heavy == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
