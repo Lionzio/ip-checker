@@ -20,6 +20,7 @@ from ipc_api.clients.analyzer import AnalyzerClient, AnalyzerRejected, AnalyzerU
 from ipc_api.deps import get_admission, get_analyzer, get_gabaritos, get_request_id, get_settings
 from ipc_api.errors import ApiError, ErrorCode, analyzer_unavailable, overloaded
 from ipc_api.gabaritos import Gabaritos
+from ipc_api.periods import resolve_period
 from ipc_api.questions import check_question
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
@@ -65,7 +66,10 @@ def _check(code: str, label: str) -> None:
             401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
             403: "ORIGIN_MISMATCH: a requisição veio de outro site.",
             413: "PAYLOAD_TOO_LARGE: um código acima de 51.200 bytes, ou corpo acima de 128 KB.",
-            422: "INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (código complexo demais).",
+            422: (
+                "INVALID_INPUT (entrada inválida), UNKNOWN_QUESTION, UNKNOWN_PERIOD (período não "
+                "carregado) ou ANALYSIS_LIMIT (código complexo demais)."
+            ),
             429: (
                 "RATE_LIMITED: muitas verificações da mesma conta ou da mesma rede em 1 minuto. "
                 "Veja retry_after_s."
@@ -89,17 +93,25 @@ async def similarity(
     _check(body.code_a, "A")
     _check(body.code_b, "B")
     gabarito: str | None = None
-    if body.question_id is not None:
+    # Sem questão nem período, a comparação não precisa do manifesto.
+    view = (
+        await resolve_period(analyzer, body.period)
+        if body.question_id is not None or body.period is not None
+        else None
+    )
+    if view is not None and body.question_id is not None:
         # A numeração oficial diz a lista (L3-Q2 é da Lista 3, P-07).
-        check = await check_question(
-            analyzer, int(body.question_id[1]), body.question_id, gabaritos
-        )
+        check = check_question(view, int(body.question_id[1]), body.question_id, gabaritos)
         if check is not None:
             gabarito = gabaritos.get(check.period, body.question_id)
     try:
         async with admission.slot():
             result = await analyzer.similarity(
-                body.code_a, body.code_b, request_id=request_id, gabarito=gabarito
+                body.code_a,
+                body.code_b,
+                request_id=request_id,
+                gabarito=gabarito,
+                period=None if view is None or view.active else view.period,
             )
     except Overloaded:
         raise overloaded() from None

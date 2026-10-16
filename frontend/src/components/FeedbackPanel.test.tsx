@@ -69,6 +69,7 @@ describe("Feedback para o aluno (S19-01, FR-30)", () => {
         code: VALID,
         list_number: 1,
         question_id: null,
+        period: null,
         student_name: "Isabella Schultz",
         annotation: "Testar o zero.",
         enhance: false,

@@ -6,14 +6,19 @@ import type { ListInfo } from "../types/api";
  * As listas habilitadas, para o seletor de lista (Verificar e Turma). Um 401 leva para Entrar; outra
  * falha vira a mensagem, e `retry` pede de novo (S39-01: antes, cada página tinha a própria cópia).
  */
-export function useLists(client: Pick<ValidationClient, "listLists">, onUnauthenticated: () => void) {
+export function useLists(
+  client: Pick<ValidationClient, "listLists">,
+  onUnauthenticated: () => void,
+  /** O período (S43-03); `null` é o ativo. */
+  period: string | null = null,
+) {
   const [lists, setLists] = useState<ListInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    client.listLists(controller.signal).then(
+    client.listLists(controller.signal, period).then(
       (loaded) => {
         setLists(loaded);
         setError(null);
@@ -25,7 +30,7 @@ export function useLists(client: Pick<ValidationClient, "listLists">, onUnauthen
       },
     );
     return () => controller.abort();
-  }, [client, onUnauthenticated, attempt]);
+  }, [client, onUnauthenticated, attempt, period]);
 
   return { lists, error, retry: () => setAttempt((value) => value + 1) };
 }

@@ -5,6 +5,7 @@ import { Button } from "../components/ui";
 import { useClassComparison } from "../hooks/useClassComparison";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { usePairComparison } from "../hooks/usePairComparison";
+import { usePeriods } from "../hooks/usePeriods";
 import { PAGE_TITLES } from "../labels";
 import { ApiError, type PlagiarismClient, type ValidationClient } from "../services/client";
 import type { ListInfo } from "../types/api";
@@ -19,7 +20,7 @@ type Mode = "pair" | "class" | "matrix";
 
 interface PlagiarismProps {
   /** As listas dão as questões com gabarito (S32-07). */
-  client: PlagiarismClient & Pick<ValidationClient, "listLists">;
+  client: PlagiarismClient & Pick<ValidationClient, "listLists" | "listPeriods">;
   /** A API respondeu 401: a sessão venceu ou foi encerrada. */
   onUnauthenticated: () => void;
 }
@@ -43,15 +44,16 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
   const [lists, setLists] = useState<ListInfo[]>([]);
   const pair = usePairComparison(client, onUnauthenticated);
   const group = useClassComparison(client, onUnauthenticated);
+  const periods = usePeriods(client, onUnauthenticated);
 
   // As questões com gabarito (ADR-11, item 5): sem elas, o seletor nem aparece.
   useEffect(() => {
     const controller = new AbortController();
-    client.listLists(controller.signal).then(setLists, (error: unknown) => {
+    client.listLists(controller.signal, pair.period).then(setLists, (error: unknown) => {
       if (!controller.signal.aborted && error instanceof ApiError && error.status === 401) onUnauthenticated();
     });
     return () => controller.abort();
-  }, [client, onUnauthenticated]);
+  }, [client, onUnauthenticated, pair.period]);
   const withGabarito = lists.flatMap((list) => (list.gabaritos ?? []).map((id) => ({ id, list: list.number })));
 
   // Dos outros modos para os dois códigos lado a lado, já comparados (S27-03 e S40-02).
@@ -88,7 +90,7 @@ export function Plagiarism({ client, onUnauthenticated }: PlagiarismProps) {
       </div>
 
       {mode === "pair" ? (
-        <PairMode pair={pair} withGabarito={withGabarito} />
+        <PairMode pair={pair} withGabarito={withGabarito} periods={periods} />
       ) : mode === "class" ? (
         <ClassMode group={group} onSideBySide={classSideBySide} />
       ) : (

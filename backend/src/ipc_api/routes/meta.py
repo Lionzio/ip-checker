@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 
 from ipc_api.accounts.models import StoreUnavailable
@@ -27,11 +27,13 @@ from ipc_api.deps import (
 from ipc_api.errors import analyzer_unavailable, database_unavailable
 from ipc_api.gabaritos import Gabaritos
 from ipc_api.housekeeping import Housekeeping
+from ipc_api.periods import loaded_periods, pick_period
 from ipc_api.ratelimit import client_ip
 from ipc_api.routes import error_docs
 from ipc_api.schemas import (
     HealthResponse,
     ListInfo,
+    PeriodInfo,
     ReadyResponse,
     SloHousekeeping,
     SloResponse,
@@ -47,8 +49,6 @@ router = APIRouter()
 #: Rotas da equipe: exigem uma sessão de conta ativa (FR-22).
 protected = APIRouter(dependencies=[Depends(require_active_account)])
 
-UNAVAILABLE = error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não respondeu."})
-
 
 @protected.get(
     "/api/v1/lists",
@@ -57,6 +57,7 @@ UNAVAILABLE = error_docs({503: "ANALYZER_UNAVAILABLE: o analisador não responde
     responses=error_docs(
         {
             401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            422: "UNKNOWN_PERIOD (período não carregado) ou INVALID_INPUT (período mal escrito).",
             503: (
                 "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE "
                 "(o banco de contas não respondeu)."
@@ -68,18 +69,55 @@ async def lists(
     analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
     settings: Annotated[ApiSettings, Depends(get_settings)],
     gabaritos: Annotated[Gabaritos, Depends(get_gabaritos)],
+    period: Annotated[
+        str | None,
+        Query(
+            pattern=r"^\d{4}\.[12]$",
+            description="Período, como 2026.2 (S43-02); sem ele, o período ativo.",
+        ),
+    ] = None,
 ) -> list[ListInfo]:
     try:
         manifest = await analyzer.manifest()
     except AnalyzerUnavailable as exc:
         logger.warning("analyzer indisponível: %s", exc)
         raise analyzer_unavailable() from None
-    # Só os números das questões com gabarito no período ativo (ADR-11), nunca o gabarito.
-    with_gabarito = gabaritos.questions(manifest.period)
+    view = pick_period(manifest, period)
+    # Só os números das questões com gabarito no período (ADR-11), nunca o gabarito.
+    with_gabarito = gabaritos.questions(view.period)
+    # No ativo, só as habilitadas; num anterior, todas as listas dele (a lista atrasada, US-39).
     return [
         item.model_copy(update={"gabaritos": with_gabarito.get(item.number, [])})
-        for item in manifest.lists
-        if item.number in settings.enabled_lists
+        for item in view.lists
+        if not view.active or item.number in settings.enabled_lists
+    ]
+
+
+@protected.get(
+    "/api/v1/periods",
+    tags=["listas"],
+    summary="Os períodos carregados: o ativo e até 5 anteriores (S43-02)",
+    responses=error_docs(
+        {
+            401: "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            503: (
+                "ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE "
+                "(o banco de contas não respondeu)."
+            ),
+        }
+    ),
+)
+async def periods(
+    analyzer: Annotated[AnalyzerClient, Depends(get_analyzer)],
+) -> list[PeriodInfo]:
+    try:
+        manifest = await analyzer.manifest()
+    except AnalyzerUnavailable as exc:
+        logger.warning("analyzer indisponível: %s", exc)
+        raise analyzer_unavailable() from None
+    return [
+        PeriodInfo(period=view.period, active=view.active, ruleset_version=view.ruleset_version)
+        for view in loaded_periods(manifest)
     ]
 
 

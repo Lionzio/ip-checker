@@ -16,6 +16,7 @@ from .common import (
     ListNumber,
     Message,
     Percent,
+    PeriodId,
     Position,
     QuestionId,
     SimilarityBand,
@@ -33,6 +34,10 @@ class ValidateRequest(_Strict):
     list_number: ListNumber = Field(description="Lista de exercícios (1 a 6).")
     question_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,32}$")] | None = Field(
         default=None, description="Questão, como L3-Q2. Sem questão, valem só as regras da lista."
+    )
+    period: PeriodId | None = Field(
+        default=None,
+        description="Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.",
     )
 
 
@@ -55,6 +60,10 @@ class ValidateBatchRequest(_Strict):
         min_length=1,
         max_length=MAX_BATCH_FILES,
         description="Até 20 arquivos por requisição; a página divide a turma em partes.",
+    )
+    period: PeriodId | None = Field(
+        default=None,
+        description="Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.",
     )
 
 
@@ -109,6 +118,10 @@ class FeedbackRequest(_Strict):
         default=None,
         description="Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).",
     )
+    period: PeriodId | None = Field(
+        default=None,
+        description="Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.",
+    )
     enhance: bool = Field(
         default=False,
         description=(
@@ -147,9 +160,13 @@ class SimilarityRequest(_Strict):
     question_id: QuestionId | None = Field(
         default=None,
         description=(
-            "Questão do período ativo (ADR-11): com o gabarito dela, A e B também são comparados "
-            "com ele, e a resposta traz o alerta de possível vazamento."
+            "Questão do período (ADR-11): com o gabarito dela, A e B também são comparados com "
+            "ele, e a resposta traz o alerta de possível vazamento."
         ),
+    )
+    period: PeriodId | None = Field(
+        default=None,
+        description="Período da questão, como 2026.2 (S43-02); sem ele, vale o período ativo.",
     )
 
 

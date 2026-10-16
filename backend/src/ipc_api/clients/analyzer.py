@@ -135,6 +135,7 @@ class AnalyzerClient:
         question_id: str | None = None,
         indicators: bool = False,
         gabarito: str | None = None,
+        period: str | None = None,
     ) -> AnalyzerResult:
         payload: dict[str, Any] = {
             "code": code,
@@ -145,6 +146,9 @@ class AnalyzerClient:
         if gabarito is not None:
             # O gabarito vai só ao analyzer, pela rede interna (ADR-11), e nunca volta.
             payload["gabarito"] = gabarito
+        if period is not None:
+            # Um período anterior ao ativo (S43-02); sem ele, o analyzer usa o ativo.
+            payload["period"] = period
         status, body = await self._request("POST", "/internal/analyze", payload, request_id)
         if status == 200:
             result = _parse(AnalyzerResult, body)
@@ -162,13 +166,16 @@ class AnalyzerClient:
         list_number: int,
         request_id: str | None = None,
         question_id: str | None = None,
+        period: str | None = None,
     ) -> AnalyzerFeedbackInput:
-        status, body = await self._request(
-            "POST",
-            "/internal/feedback-input",
-            {"code": code, "list_number": list_number, "question_id": question_id},
-            request_id,
-        )
+        payload: dict[str, Any] = {
+            "code": code,
+            "list_number": list_number,
+            "question_id": question_id,
+        }
+        if period is not None:
+            payload["period"] = period
+        status, body = await self._request("POST", "/internal/feedback-input", payload, request_id)
         if status == 200:
             return _parse(AnalyzerFeedbackInput, body)
         if status in (413, 422):
@@ -182,10 +189,13 @@ class AnalyzerClient:
         second: str,
         request_id: str | None = None,
         gabarito: str | None = None,
+        period: str | None = None,
     ) -> AnalyzerSimilarity:
         payload: dict[str, Any] = {"first": first, "second": second}
         if gabarito is not None:
             payload["gabarito"] = gabarito
+        if period is not None:
+            payload["period"] = period
         status, body = await self._request("POST", "/internal/similarity", payload, request_id)
         if status == 200:
             result = _parse(AnalyzerSimilarity, body)

@@ -1,6 +1,8 @@
 import type { PairComparison } from "../../hooks/usePairComparison";
+import type { PeriodInfo } from "../../types/api";
 import { INPUT } from "../../ui";
 import { CodeEditor } from "../CodeEditor";
+import { PeriodSelector } from "../PeriodSelector";
 import { Button, ErrorText } from "../ui";
 import { GabaritoPair, PairResult } from "./PairResult";
 
@@ -8,10 +10,12 @@ interface PairModeProps {
   pair: PairComparison;
   /** As questões com gabarito (ADR-11, item 5): sem elas, o seletor nem aparece. */
   withGabarito: { id: string; list: number }[];
+  /** Os períodos carregados (S43-03): com mais de um, o gabarito pode ser de um anterior. */
+  periods: PeriodInfo[];
 }
 
 /** "Dois códigos" (S17-03, FR-29): lado a lado, com os trechos em comum realçados. */
-export function PairMode({ pair, withGabarito }: PairModeProps) {
+export function PairMode({ pair, withGabarito, periods }: PairModeProps) {
   const { chosen, compared, editorA, editorB, sync } = pair;
   const empty = pair.codeA === "" && pair.codeB === "";
   return (
@@ -52,6 +56,11 @@ export function PairMode({ pair, withGabarito }: PairModeProps) {
           />
         </div>
       </div>
+      {periods.length > 1 && (
+        <div className="max-w-md">
+          <PeriodSelector periods={periods} value={pair.period} onChange={pair.setPeriod} disabled={pair.loading} />
+        </div>
+      )}
       {withGabarito.length > 0 && (
         <div className="flex max-w-md min-w-0 flex-col gap-1">
           <label htmlFor="gabarito-questao" className="text-sm font-medium text-slate-700 dark:text-slate-200">

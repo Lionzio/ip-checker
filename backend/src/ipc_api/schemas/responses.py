@@ -137,6 +137,14 @@ class ValidateResponse(_Strict):
     )
 
 
+class PeriodInfo(_Strict):
+    """Um período carregado no IP-Checker (S43-02): o ativo e os até 5 anteriores (ADR-12)."""
+
+    period: str = Field(description="Período, como 2026.2.")
+    active: bool = Field(description="É o período ativo (o padrão quando o pedido não diz).")
+    ruleset_version: str = Field(description="A versão das regras do período.")
+
+
 class QuestionInfo(_Strict):
     id: Annotated[str, StringConstraints(pattern=r"^L[1-6]-Q[1-9]\d?$")] = Field(
         description="Numeração oficial da questão no período (P-07), como L3-Q2."

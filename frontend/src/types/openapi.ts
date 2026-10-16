@@ -541,6 +541,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Os períodos carregados: o ativo e até 5 anteriores (S43-02) */
+        get: operations["periods_api_v1_periods_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -736,7 +753,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "INTERNAL_ERROR";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "UNKNOWN_PERIOD" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "INTERNAL_ERROR";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -773,6 +790,11 @@ export interface components {
              * @description Questão verificada, como L3-Q2; o feedback usa as mesmas regras (R-01).
              */
             question_id?: string | null;
+            /**
+             * Period
+             * @description Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.
+             */
+            period?: string | null;
             /**
              * Enhance
              * @description Aprimorar com IA (Q-16, S32-12): a versão sem IA vai às IAs configuradas, em ordem, para detalhar e exemplificar. Só este pedido gasta a cota diária de feedbacks.
@@ -1224,6 +1246,27 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /**
+         * PeriodInfo
+         * @description Um período carregado no IP-Checker (S43-02): o ativo e os até 5 anteriores (ADR-12).
+         */
+        PeriodInfo: {
+            /**
+             * Period
+             * @description Período, como 2026.2.
+             */
+            period: string;
+            /**
+             * Active
+             * @description É o período ativo (o padrão quando o pedido não diz).
+             */
+            active: boolean;
+            /**
+             * Ruleset Version
+             * @description A versão das regras do período.
+             */
+            ruleset_version: string;
+        };
         /** ProfileUpdate */
         ProfileUpdate: {
             /** Name */
@@ -1500,9 +1543,14 @@ export interface components {
             code_b: string;
             /**
              * Question Id
-             * @description Questão do período ativo (ADR-11): com o gabarito dela, A e B também são comparados com ele, e a resposta traz o alerta de possível vazamento.
+             * @description Questão do período (ADR-11): com o gabarito dela, A e B também são comparados com ele, e a resposta traz o alerta de possível vazamento.
              */
             question_id?: string | null;
+            /**
+             * Period
+             * @description Período da questão, como 2026.2 (S43-02); sem ele, vale o período ativo.
+             */
+            period?: string | null;
         };
         /** SimilarityResponse */
         SimilarityResponse: {
@@ -1661,6 +1709,11 @@ export interface components {
              * @description Até 20 arquivos por requisição; a página divide a turma em partes.
              */
             files: components["schemas"]["BatchFile"][];
+            /**
+             * Period
+             * @description Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.
+             */
+            period?: string | null;
         };
         /** ValidateBatchResponse */
         ValidateBatchResponse: {
@@ -1691,6 +1744,11 @@ export interface components {
              * @description Questão, como L3-Q2. Sem questão, valem só as regras da lista.
              */
             question_id?: string | null;
+            /**
+             * Period
+             * @description Período das regras, como 2026.2 (S43-02); sem ele, vale o período ativo.
+             */
+            period?: string | null;
         };
         /** ValidateResponse */
         ValidateResponse: {
@@ -3182,7 +3240,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description INVALID_INPUT (entrada inválida), LIST_NOT_ENABLED (lista não liberada), UNKNOWN_QUESTION (questão não cadastrada) ou ANALYSIS_LIMIT (código complexo demais). */
+            /** @description INVALID_INPUT (entrada inválida), LIST_NOT_ENABLED (lista não liberada), UNKNOWN_QUESTION (questão não cadastrada), UNKNOWN_PERIOD (período não carregado) ou ANALYSIS_LIMIT (código complexo demais). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3260,7 +3318,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED ou UNKNOWN_QUESTION. Um arquivo recusado não recusa os outros: ele volta com o status rejected. */
+            /** @description INVALID_INPUT (mais de 20 arquivos ou entrada inválida), LIST_NOT_ENABLED, UNKNOWN_QUESTION ou UNKNOWN_PERIOD. Um arquivo recusado não recusa os outros: ele volta com o status rejected. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3338,7 +3396,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description INVALID_INPUT (entrada inválida) ou ANALYSIS_LIMIT (código complexo demais). */
+            /** @description INVALID_INPUT (entrada inválida), UNKNOWN_QUESTION, UNKNOWN_PERIOD (período não carregado) ou ANALYSIS_LIMIT (código complexo demais). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3572,7 +3630,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description INVALID_INPUT (entrada inválida ou código com erro de sintaxe), LIST_NOT_ENABLED ou ANALYSIS_LIMIT. */
+            /** @description INVALID_INPUT (entrada inválida ou código com erro de sintaxe), LIST_NOT_ENABLED, UNKNOWN_QUESTION, UNKNOWN_PERIOD ou ANALYSIS_LIMIT. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3603,7 +3661,10 @@ export interface operations {
     };
     lists_api_v1_lists_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Período, como 2026.2 (S43-02); sem ele, o período ativo. */
+                period?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3617,6 +3678,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListInfo"][];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description UNKNOWN_PERIOD (período não carregado) ou INVALID_INPUT (período mal escrito). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE (o analisador não respondeu) ou DATABASE_UNAVAILABLE (o banco de contas não respondeu). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    periods_api_v1_periods_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeriodInfo"][];
                 };
             };
             /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */

@@ -19,6 +19,7 @@ import type {
   ValidateRequest,
   ValidateResponse,
   ListPanel,
+  PeriodInfo,
   SimilarityMatrixResponse,
   ValidateBatchRequest,
   ValidateBatchResponse,
@@ -26,7 +27,10 @@ import type {
 
 /** Verificação do código: o cliente HTTP real (S9-02) ou o simulado do modo demonstração. */
 export interface ValidationClient {
-  listLists(signal?: AbortSignal): Promise<ListInfo[]>;
+  /** As listas do período (S43-02); sem período, as habilitadas do ativo. */
+  listLists(signal?: AbortSignal, period?: string | null): Promise<ListInfo[]>;
+  /** Os períodos carregados: o ativo e até 5 anteriores (S43-02). */
+  listPeriods(signal?: AbortSignal): Promise<PeriodInfo[]>;
   validate(request: ValidateRequest, signal?: AbortSignal): Promise<ValidateResponse>;
   /** Uma parte da turma, até 20 arquivos (S40-01); a página divide a turma em partes. */
   validateBatch(request: ValidateBatchRequest, signal?: AbortSignal): Promise<ValidateBatchResponse>;
@@ -80,7 +84,13 @@ export interface AdminClient {
 /** Painel de plágio (Sprint 17): compara duas soluções no analisador isolado. */
 export interface PlagiarismClient {
   /** Com a questão (S32-07, ADR-11), A e B também são comparados com o gabarito dela. */
-  compare(codeA: string, codeB: string, signal?: AbortSignal, questionId?: string | null): Promise<SimilarityResponse>;
+  compare(
+    codeA: string,
+    codeB: string,
+    signal?: AbortSignal,
+    questionId?: string | null,
+    period?: string | null,
+  ): Promise<SimilarityResponse>;
   /** Uma solução contra até 100 da turma (Sprint 27): o que todos escrevem quase não conta. */
   compareClass(code: string, solutions: ClassSolution[], signal?: AbortSignal): Promise<SimilarityClassResponse>;
   /** Todos contra todos (S40-02): os pares mais parecidos e os grupos de soluções ligadas. */

@@ -95,6 +95,7 @@ export function FeedbackPanel({
       code: request.code,
       list_number: request.list_number,
       question_id: request.question_id ?? null,
+      period: request.period ?? null,
       student_name: student.trim(),
       annotation: annotation.trim() === "" ? null : annotation,
       enhance,
