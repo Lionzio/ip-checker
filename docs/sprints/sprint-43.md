@@ -46,3 +46,13 @@ o mantenedor encerre períodos antigos sem perder nada do Git.
 
 **Riscos:** as views que agrupam por `ruleset_version` passam a misturar períodos na mesma semana
 (conferir `v_top_rules_by_list`); mais memória no analisador (dezenas de KB por período).
+
+**Situação (16/10/2026):** engenharia concluída na release `sprint-43`, depois da 39: S43-01 (#142),
+S43-02 e S43-03 (#143), S43-04 e S43-05 (#144). Decisões da sprint (detalhes no `CHANGELOG.md`): a
+janela de 6 períodos custa +1,44 s na subida e +0,9 MB por worker com 6 períodos completos, dentro
+do critério de +2 s (se atrapalhar o deploy no plano gratuito, a alternativa é o ativo e 3
+anteriores, decisão do autor); a migração `0008` não foi necessária, porque o período vem da
+`ruleset_version`; sem período nem questão, a verificação não lê o manifesto; o e2e da lista
+atrasada fica para depois da troca do `ATIVO`, porque o compose carrega um período só. No piloto
+nada muda à vista até a troca do `ATIVO` para 2027.1. Aguardando: o deploy (Render e Vercel, sem
+migração), o exercício de alerta e o sintético.

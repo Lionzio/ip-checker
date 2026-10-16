@@ -1668,6 +1668,11 @@ export interface components {
             reasons: ("latencia" | "erros")[];
             telemetry: components["schemas"]["SloTelemetry"];
             housekeeping: components["schemas"]["SloHousekeeping"];
+            /**
+             * Warnings
+             * @description Avisos que não mudam o status: ativo_defasado quando o período ativo parece ter acabado há mais de 60 dias (S43-04); trocar o ATIVO é decisão da coordenação.
+             */
+            warnings?: "ativo_defasado"[];
         };
         /** SloTelemetry */
         SloTelemetry: {

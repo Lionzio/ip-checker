@@ -8,6 +8,50 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 43 — Período na página e retenção por encerramento
+
+A Sprint 43 (S43-01 a S43-05; US-37, US-39 e US-40; ADR-12) começou e terminou em 16/10/2026,
+depois da 39. A missão é que o monitor escolha Período → Lista → Questão, com o ativo já escolhido,
+para corrigir uma lista atrasada com as regras do período dela, e que o mantenedor encerre períodos
+antigos sem perder nada do Git. As personas são o monitor com uma lista atrasada e o
+monitor-mantenedor. No piloto nada muda à vista até a troca do `ATIVO` para 2027.1: com um período
+só carregado, o seletor não aparece.
+
+- **16/10/2026, S43-01 (#142):** o analisador carrega o período do `ATIVO` e até 5 anteriores
+  presentes em `rulesets/` (`load_rulesets`, a janela de 6 pelo nome); os posteriores ao ativo e
+  `rulesets/encerrados/` ficam de fora, e um ruleset inválido em qualquer período da janela impede
+  a subida. O manifesto interno ganhou `periods`. Medida na máquina do autor: com 6 períodos
+  completos, +1,44 s na subida e +0,9 MB por worker (critério: até +2 s). O teste do prazo do pool
+  passou a exigir só ficar longe do fim do sono (< 4 s): a troca do worker no Windows leva de 1 a
+  2,6 s conforme a carga, e o limite de 1,9 s reprovava sem mudança no pool.
+- **16/10/2026, S43-02 e S43-03 (#143):** `period` opcional na verificação (também em lote), no
+  feedback e no plágio entre dois códigos; `GET /api/v1/periods` e `/api/v1/lists?period=`; 422
+  `UNKNOWN_PERIOD` fora da janela. No ativo valem as listas de `IPC_ENABLED_LISTS`; num período
+  anterior, todas as listas dele. Sem período nem questão, a verificação não lê o manifesto (a
+  primeira rodada da CI pegou uma chamada a mais por pedido, corrigida antes do merge). Na página, o
+  seletor **Período** antes de Lista e Questão no Verificar, na Turma e no "Dois códigos"; trocar
+  de período limpa lista e questão, "Próximo aluno" o mantém e o rascunho da aba o guarda. JS
+  inicial: 104,8 KB, 7,6 KB abaixo do próximo degrau do FCP.
+- **16/10/2026, S43-04 e S43-05 (#144):** `ipc-rules retire-period <período> [--dry-run]` move a
+  pasta para `rulesets/encerrados/` e recusa o ativo, os 5 anteriores, os posteriores, o que não
+  existe e o já encerrado; não faz commit. O `/health/slo` ganhou `warnings` com `ativo_defasado`
+  60 dias depois do fim do semestre do ativo, sem mudar o status. O harness dos gabaritos acha as
+  regras de um período encerrado (antes, cairia nas do ativo), e o `new-period` deixou de copiar a
+  lista de questões para o `LEIA-ME.md` do período novo (o de 2027.1 citava L3-Q9, L4-Q4 e L4-Q5).
+  ADR-12 aceita e ADR-10 revisada; guia, runbook e `rulesets/README.md` atualizados; no repositório
+  dos gabaritos, o README explica `encerrados/`.
+
+| Decisão | Por quê |
+|---|---|
+| `load_ruleset` continua e `load_rulesets` é novo | Nenhum chamador do singular mudou; o analisador troca para o plural num ponto só |
+| Janela de 6 períodos (ativo + 5) pelo nome, não pela data | O nome `AAAA.S` ordena sozinho; a data só serve ao aviso |
+| Sem a migração `0008`: o período vem da `ruleset_version` | A telemetria já grava a versão de cada análise; uma coluna a mais duplicaria o dado e exigiria migração no piloto |
+| Sem período nem questão, nenhuma leitura do manifesto | O caminho comum da verificação fica como antes da sprint (NFR-01) |
+| Trocar de período limpa lista e questão | As listas habilitadas e as questões são por período (ADR-10) |
+| `retire-period` move e não commita | O Git é a retenção: a pasta encerrada continua no histórico, e o commit é revisável |
+| Aviso de `ATIVO` defasado só no `/health/slo` | Trocar o período é decisão da coordenação (S31-09); a automação só lembra |
+| e2e da lista atrasada fica para depois da troca do `ATIVO` | O compose carrega só 2026.2 (o 2027.1 é posterior ao ativo); o caso está coberto pelos testes da API e do Vitest |
+
 ## Sprint 39 — Qualidade interna, operação e documentação
 
 A Sprint 39 (S39-01 a S39-06; US-14, US-15, US-20 e US-35) começou em 16/10/2026, depois da 40. A
