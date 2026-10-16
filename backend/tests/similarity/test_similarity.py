@@ -155,6 +155,7 @@ def _without_coverage() -> Iterator[None]:
             current.start()
 
 
+@pytest.mark.timing
 def test_two_50_kb_codes_are_compared_within_the_budget() -> None:
     big = _big_program()
     other = big.replace("valor_", "saida_").replace("dado_", "info_")

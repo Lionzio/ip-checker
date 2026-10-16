@@ -38,4 +38,5 @@ Thumbs.db
 
 # Relatórios da CI (S35-02 e S35-03)
 coverage.json
+frontend/coverage/
 .lighthouseci/

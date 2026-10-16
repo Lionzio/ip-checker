@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import yaml
 
+from db_support import fresh_schema
 from ipc_analyzer.engine.ruleset import CompiledRuleset, load_ruleset, resolve_ruleset_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -79,3 +80,15 @@ def write_ruleset(tmp_path: Path) -> Callable[[object], Path]:
 @pytest.fixture(scope="session")
 def base_ruleset() -> CompiledRuleset:
     return load_ruleset(BASE_RULESET)
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Marca com ``db`` todo teste de um módulo que usa o PostgreSQL de teste (S39-03).
+
+    Esses testes recriam o esquema a cada teste no mesmo banco, então a CI local os roda em série
+    (``-m db``) e o resto em paralelo (``-n 4 -m "not db"``).
+    """
+    for item in items:
+        module = getattr(item, "module", None)
+        if module is not None and getattr(module, "fresh_schema", None) is fresh_schema:
+            item.add_marker(pytest.mark.db)

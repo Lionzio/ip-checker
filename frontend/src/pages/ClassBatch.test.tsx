@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,6 +86,133 @@ describe("Turma inteira (S40-01)", () => {
 
     expect(screen.getByText("1 arquivo ficou de fora")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Corrigir a turma" })).toBeDisabled();
+  });
+});
+
+describe("Turma inteira: erros, cancelar e CSV (S39-03)", () => {
+  const files = (count: number) => Array.from({ length: count }, (_, index) => new File([VALID], `aluno${index + 1}.py`));
+
+  it("Cancelar para no meio e mantém o que já foi conferido", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    const original = client.validateBatch;
+    let calls = 0;
+    client.validateBatch = (request, signal) => {
+      calls += 1;
+      if (calls === 1) return original(request, signal);
+      // A segunda parte só termina quando a correção é cancelada.
+      return new Promise((_resolve, reject) => signal?.addEventListener("abort", () => reject(new DOMException("", "AbortError"))));
+    };
+    const user = await ready(client);
+    await pick(user, files(25));
+
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+    expect(await screen.findByText("20 de 25 arquivos conferidos.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(await screen.findByText("Correção cancelada: 20 de 25 arquivos foram conferidos.")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Resultado da turma" })).getAllByRole("row")).toHaveLength(21);
+    expect(screen.getByRole("button", { name: "Corrigir a turma" })).toBeEnabled();
+  });
+
+  it("Baixar CSV salva um arquivo com o nome da lista", async () => {
+    const created: Blob[] = [];
+    const createObjectURL = vi.fn((blob: Blob) => {
+      created.push(blob);
+      return "blob:turma";
+    });
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const downloads: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    });
+    const user = await ready();
+    await pick(user, [new File([VALID], "ana.py")]);
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+    await screen.findByRole("region", { name: "Resultado da turma" });
+
+    await user.click(screen.getByRole("button", { name: "Baixar CSV" }));
+
+    expect(downloads).toEqual(["ip-checker-turma-lista-1.csv"]);
+    expect(await created[0]?.text()).toContain("ana;Válida");
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:turma");
+    click.mockRestore();
+  });
+
+  it("aceita os arquivos arrastados para a área tracejada", async () => {
+    await ready();
+    const area = screen.getByText("Ou arraste os arquivos ou o .zip para cá.").parentElement as HTMLElement;
+    const dropped = [new File([VALID], "ana.py"), new File([LOOP], "bruno.py")];
+
+    const over = fireEvent.dragOver(area, { dataTransfer: { types: ["Files"], files: dropped } });
+    fireEvent.drop(area, { dataTransfer: { types: ["Files"], files: dropped } });
+
+    expect(over).toBe(false); // o dragOver aceita arquivos (preventDefault)
+    expect(await screen.findByText("2 arquivos prontos.")).toBeInTheDocument();
+  });
+
+  it("uma recusa do servidor no meio diz quantos foram conferidos", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.validateBatch = () => Promise.reject(new ApiError(422, "INVALID_INPUT", "A lista mudou."));
+    const user = await ready(client);
+    await pick(user, files(2));
+
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+
+    expect(await screen.findByText("A lista mudou. 0 de 2 arquivos foram conferidos.")).toBeInTheDocument();
+  });
+
+  it("sem rede, avisa e mantém os resultados já recebidos", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.validateBatch = () => Promise.reject(new TypeError("Failed to fetch"));
+    const user = await ready(client);
+    await pick(user, files(1));
+
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+
+    expect(await screen.findByText(/Não foi possível falar com o servidor/)).toBeInTheDocument();
+  });
+
+  it("depois de 5 novas tentativas sem vaga, desiste com a mensagem do servidor", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    let calls = 0;
+    client.validateBatch = () => {
+      calls += 1;
+      return Promise.reject(new ApiError(503, "OVERLOADED", "O serviço está ocupado.", 1));
+    };
+    const user = await ready(client);
+    await pick(user, files(1));
+
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+    await vi.advanceTimersByTimeAsync(8000);
+
+    expect(await screen.findByText("O serviço está ocupado. 0 de 1 arquivos foram conferidos.")).toBeInTheDocument();
+    expect(calls).toBe(6); // a primeira e as 5 novas tentativas
+    vi.useRealTimers();
+  });
+
+  it("leva para Entrar quando a sessão vence durante a correção", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.validateBatch = () => Promise.reject(new ApiError(401, "UNAUTHENTICATED", "Entre de novo."));
+    const user = await ready(client);
+    await pick(user, files(1));
+
+    await user.click(screen.getByRole("button", { name: "Corrigir a turma" }));
+
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+  });
+
+  it("avisa quando as listas não carregam", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.listLists = () => Promise.reject(new ApiError(503, "DATABASE_UNAVAILABLE", "Fora do ar."));
+    render(
+      <MemoryRouter initialEntries={["/turma"]}>
+        <App client={client} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Não foi possível carregar as listas.")).toBeInTheDocument();
   });
 });
 

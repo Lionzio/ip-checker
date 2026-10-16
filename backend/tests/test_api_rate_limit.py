@@ -360,6 +360,7 @@ def test_rate_limited_requests_are_logged_without_ip_or_session(
 # --- Admissão (NFR-05, US-18) ------------------------------------------------------------------
 
 
+@pytest.mark.timing
 def test_saturated_service_answers_overloaded_quickly(capfd: pytest.CaptureFixture[str]) -> None:
     analyzer = Analyzer(delay_s=0.8)
     settings = ApiSettings(
