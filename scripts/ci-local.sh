@@ -81,9 +81,14 @@ step "Backend: formatação" backend run ruff format --check .
 step "Backend: mypy" backend run mypy
 step "Backend: fronteiras" backend run lint-imports
 step "Ruleset e golden" backend run ipc-rules validate ../rulesets --golden tests/golden
-step "Backend: pytest (cobertura >= 90%)" env \
+# S39-03: o pytest em duas etapas. Primeiro, em paralelo (4 processos), tudo que não usa o banco nem
+# mede o relógio; depois, em série, os testes do PostgreSQL (que recriam o esquema no mesmo banco) e
+# os de tempo (marcador timing). A segunda soma a cobertura à primeira (--cov-append) e confere os 90%.
+step "Backend: pytest em paralelo (sem banco e sem tempo)" \
+  bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider -n 4 -m 'not db and not timing' --cov-fail-under=0"
+step "Backend: pytest em série (banco e tempo; cobertura >= 90%)" env \
   IPC_TEST_DATABASE_URL="postgresql://postgres:$pg_password@127.0.0.1:$pg_port/ipc_test" \
-  bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider"
+  bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider -m 'db or timing' --cov-append"
 step "Backend: cobertura por pasta (motor >= 90%, resto >= 80%)" bash -c \
   "cd backend && '$uv' run coverage json -q -o coverage.json \
    && '$uv' run python scripts/coverage_by_folder.py coverage.json"
@@ -147,7 +152,7 @@ step "Frontend: tipos do OpenAPI em dia" bash -c \
   "cd frontend && npm run -s gen:api && git diff --exit-code -- src/types/openapi.ts"
 step "Frontend: ESLint" frontend npm run -s lint
 step "Frontend: TypeScript" frontend npm run -s typecheck
-step "Frontend: Vitest" frontend npm test --silent
+step "Frontend: Vitest (cobertura das páginas >= 80%)" frontend npm run test:coverage --silent
 step "Frontend: build" frontend npm run -s build
 step "Frontend: JS inicial com gzip (NFR-03)" frontend node scripts/js-budget.mjs
 step "Frontend: Lighthouse, perfil móvel (NFR-03)" frontend \

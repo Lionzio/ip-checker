@@ -380,6 +380,7 @@ def test_every_emitted_fact_belongs_to_the_rule_vocabulary() -> None:
     assert invalid == []
 
 
+@pytest.mark.timing
 def test_extraction_of_1000_lines_is_fast() -> None:
     source = "x = int(input())\nif x > 0:\n    print(x * 2, end='')\n" * 333
 
@@ -490,6 +491,7 @@ def test_recursion_is_a_cycle_in_the_call_graph(source: str, lines: list[int]) -
     assert recursive_lines(source) == lines
 
 
+@pytest.mark.timing
 def test_long_call_chain_does_not_recurse_in_the_extractor() -> None:
     # Um ciclo com 400 funções (800 linhas): o grafo é percorrido sem recursão do Python.
     count = 400

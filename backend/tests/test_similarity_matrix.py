@@ -5,6 +5,8 @@ from __future__ import annotations
 import itertools
 import time
 
+import pytest
+
 from ipc_analyzer.engine.parse import SyntaxProblem
 from ipc_analyzer.engine.similarity import MAX_MATRIX, ClassRejected, compare_all
 
@@ -49,6 +51,7 @@ def _independent() -> list[str]:
     ]
 
 
+@pytest.mark.timing
 def test_all_against_all_finds_the_two_groups_of_copies_in_a_class_of_30() -> None:
     sources = COPY_A + _independent()[:12] + COPY_B + _independent()[12:]
     assert len(sources) == 30

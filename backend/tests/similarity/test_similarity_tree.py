@@ -250,6 +250,7 @@ def test_the_class_has_a_ceiling() -> None:
     assert len(results) == MAX_CLASS
 
 
+@pytest.mark.timing
 def test_two_50_kb_codes_are_compared_in_under_one_second() -> None:
     """S27-01: as três métricas e os trechos, em menos de 1 s, medidos no worker do analisador.
 

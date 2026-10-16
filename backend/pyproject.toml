@@ -30,6 +30,7 @@ dev = [
   "mypy>=1.14",
   "pytest>=8.3",
   "pytest-cov>=6.0",
+  "pytest-xdist>=3.8,<4",
   "ruff>=0.9",
   "schemathesis>=4.28.0",
   "types-pyyaml>=6.0.12",
@@ -71,6 +72,14 @@ files = ["src", "tests"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --cov=ipc_analyzer --cov=ipc_api --cov-report=term-missing --cov-fail-under=90"
+# S39-03: os testes do PostgreSQL recriam o esquema a cada teste no mesmo banco, e os de tempo medem
+# o relógio; os dois grupos rodam em série (`-m "db or timing"`), e o resto em paralelo
+# (`-n 4 -m "not db and not timing"`) na CI local. O `db` entra sozinho em todo módulo que usa o
+# `db_support` (conftest.py); o `timing` é posto à mão em cada teste que mede o relógio.
+markers = [
+  "db: usa o PostgreSQL de teste (IPC_TEST_DATABASE_URL); roda em série",
+  "timing: mede o tempo de relógio; roda em série, para não dividir a máquina com outros testes",
+]
 
 # Fronteiras de arquitetura verificadas na CI (NFR-09, DoD): `uv run lint-imports`.
 [tool.importlinter]

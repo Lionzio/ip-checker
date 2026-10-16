@@ -66,6 +66,7 @@ def test_the_api_sends_its_budget_to_the_analyzer() -> None:
     assert seen == ["3000"]
 
 
+@pytest.mark.timing
 def test_the_api_gives_up_at_the_deadline_even_if_the_analyzer_trickles() -> None:
     async def slow(request: httpx2.Request) -> httpx2.Response:
         # O manifesto responde na hora; só a análise demora mais que o prazo.
@@ -130,12 +131,19 @@ def test_a_request_that_expires_in_the_queue_is_dropped(pool: AnalyzerPool) -> N
     assert isinstance(error, DeadlineExpired)
 
 
+@pytest.mark.timing
 def test_an_analysis_stops_at_the_deadline(pool: AnalyzerPool) -> None:
+    # O worker sobe antes de medir: rodando sozinho ou só com os testes de tempo (S39-03), o pool
+    # chega frio, e a subida entraria na conta do prazo.
+    assert asyncio.run(pool.analyze("x = 1\n", 1, deadline=time.time() + 5)).status
     started = time.monotonic()
     with pytest.raises(DeadlineExpired):
-        asyncio.run(pool.run(_sleep, 1.5, deadline=time.time() + 0.3))
+        asyncio.run(pool.run(_sleep, 5.0, deadline=time.time() + 0.3))
 
-    assert time.monotonic() - started < 1.2
+    # Abaixo dos 2 s do próprio pool (PoolConfig): quem parou a análise foi o prazo de 0,3 s, não o
+    # tempo limite nem o fim do sono de 5 s. Matar e trocar o worker leva cerca de 1 s no Windows,
+    # e o limite antigo de 1,2 s só passava com o pool deixado pronto pelo teste anterior (S39-03).
+    assert time.monotonic() - started < 1.9
     # O worker substituído continua atendendo.
     assert asyncio.run(pool.analyze("x = 1\n", 1, deadline=time.time() + 5)).status
 
@@ -162,6 +170,7 @@ def test_the_analyzer_answers_503_when_the_budget_is_gone() -> None:
 # --- Banco ---------------------------------------------------------------------------------------
 
 
+@pytest.mark.timing
 @pytest.mark.anyio
 async def test_a_slow_database_becomes_unavailable() -> None:
     started = time.monotonic()

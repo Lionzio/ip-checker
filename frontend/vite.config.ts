@@ -26,5 +26,15 @@ export default defineConfig({
     testTimeout: 15_000,
     // Os testes ponta a ponta (e2e/) rodam com o Playwright, contra o compose.
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
+    // Cobertura das páginas (S39-03): `npm run test:coverage`, a etapa do Vitest na CI local. Cada
+    // página precisa de 80% das instruções, linhas e funções e 75% dos ramos; os componentes têm
+    // testes próprios e ficam de fora da conta.
+    coverage: {
+      provider: "v8",
+      include: ["src/pages/**"],
+      exclude: ["src/**/*.test.*"],
+      reporter: ["text-summary"],
+      thresholds: { perFile: true, statements: 80, lines: 80, functions: 80, branches: 75 },
+    },
   },
 });

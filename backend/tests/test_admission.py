@@ -36,6 +36,7 @@ def test_capacity_runs_at_the_same_time_and_the_next_waits() -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.timing
 def test_waiting_longer_than_the_limit_is_overloaded() -> None:
     async def scenario() -> float:
         admission = Admission(AdmissionConfig(capacity=1, max_waiting=5, max_wait_s=0.2))
@@ -57,6 +58,7 @@ def test_waiting_longer_than_the_limit_is_overloaded() -> None:
     assert 0.15 <= asyncio.run(scenario()) < 1.0
 
 
+@pytest.mark.timing
 def test_full_waiting_room_is_refused_immediately() -> None:
     async def scenario() -> float:
         admission = Admission(AdmissionConfig(capacity=1, max_waiting=2, max_wait_s=5))

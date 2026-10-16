@@ -47,6 +47,7 @@ def test_code_is_never_executed(tmp_path: Path) -> None:
     assert not canary.exists()
 
 
+@pytest.mark.timing
 def test_infinite_loop_is_only_parsed() -> None:
     start = time.perf_counter()
 
@@ -112,6 +113,7 @@ def test_syntax_error_column_counts_characters_not_bytes() -> None:
     ],
     ids=["1000-parenteses", "250-colchetes", "cadeia-25k-somas", "300-not"],
 )
+@pytest.mark.timing
 def test_pathological_inputs_hit_analysis_limits(source: str, expected: str) -> None:
     start = time.perf_counter()
 

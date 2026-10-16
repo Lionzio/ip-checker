@@ -96,6 +96,7 @@ def test_input_errors_cross_the_process_boundary(pool: AnalyzerPool) -> None:
         asyncio.run(pool.analyze("  ", 1))
 
 
+@pytest.mark.timing
 def test_timeout_kills_and_replaces_the_worker(pool: AnalyzerPool) -> None:
     before = run(pool, _pid)
     start = time.perf_counter()
