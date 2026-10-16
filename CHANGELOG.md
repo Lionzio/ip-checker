@@ -59,7 +59,8 @@ cada PR é o `scripts/ci-local.sh --e2e`.
   e Vercel por Create Deployment (`/version.json` em `c5cd0c1` às 09:24; Plágio, Gerenciar, Perfil e
   Turma respondendo, com o JS inicial novo). Exercício de alerta (#137 e #138): 503 só por
   `latencia`, e-mail de queda às 09:37 e de volta às 09:52 (runbook). O autor guardou o segredo do
-  backup agendado; falta registrar a tarefa. O sintético fica para o autor rodar.
+  backup agendado; falta registrar a tarefa. Sintético rodado pelo autor: pelo `/health/slo`, às
+  09:56, uma verificação na janela, P95 de 18 ms no servidor (limite de 300 ms) e 0% de erros.
 
 ## Sprint 40 — A correção da turma inteira
 
