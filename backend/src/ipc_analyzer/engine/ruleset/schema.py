@@ -1,39 +1,31 @@
-"""Modelo, validação e carga do ruleset (ADR-02, FR-15).
+"""O esquema do ruleset (ADR-02, FR-15): os fatos, as regras, as exigências e as questões.
 
-As regras do catálogo R-xx são dados (``rulesets/<período>/base.yaml``), não código.
-Este módulo só valida o arquivo e monta um índice imutável ``fato -> regras``.
-Um ruleset inválido levanta ``RulesetError`` e o analisador não fica pronto (fail-fast).
+Só a forma e a validação dos dados de ``rulesets/<período>/``; a compilação está em ``compile``, e a
+carga do disco, em ``load`` (S39-02).
 """
 
 from __future__ import annotations
 
 import ast
 import builtins
-import hashlib
 import re
 import string
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, replace
 from enum import StrEnum
-from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
-import yaml
 from pydantic import (
     AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
-    ValidationError,
     field_validator,
     model_validator,
 )
 
-from ipc_analyzer.engine.guards import InputError
-from ipc_analyzer.engine.parse import SyntaxProblem, parse_source
 from ipc_analyzer.engine.predicates import REGISTRY
 
 # ---------------------------------------------------------------------------
@@ -458,316 +450,3 @@ class Question(_Frozen):
         if overlap := sorted(set(self.allow + self.allow_facts) & set(self.deny)):
             raise ValueError(f"liberado e proibido ao mesmo tempo: {overlap}")
         return self
-
-
-@dataclass(frozen=True, slots=True)
-class CompiledQuestion:
-    question: Question
-    #: Fato liberado -> condições (``None`` = sempre); a liberação vale se uma delas valer.
-    allowed: Mapping[str, tuple[Condition | None, ...]]
-    #: Fato proibido -> a regra (R-xx) que o enunciado proíbe, ou ``None`` se foi o fato.
-    denied: Mapping[str, str | None]
-    #: Proibições gerais (R-05 a R-14) que a questão libera: exigem professor (C-02, FR-21).
-    releases: tuple[str, ...]
-
-    @property
-    def id(self) -> str:
-        return self.question.question_id
-
-
-def compile_question(question: Question, ruleset: Ruleset) -> CompiledQuestion:
-    """Confere a questão contra o catálogo e monta os índices. Erros viram ``ValueError``."""
-    rules = {rule.id: rule for rule in ruleset.rules}
-    other_ids = {meta.id for meta in ruleset.meta_rules} | {r.id for r in ruleset.requirements}
-    structural = set(ruleset.structural_facts)
-
-    def rule(rule_id: str, field: str) -> Rule:
-        if rule_id in other_ids:
-            raise ValueError(
-                f"{field}: {rule_id} não é uma regra de permissão (meta-regra ou exigência); "
-                "uma questão não altera R-01 a R-04, R-02 nem R-68"
-            )
-        if rule_id not in rules:
-            raise ValueError(f"{field}: {rule_id} não existe no catálogo")
-        return rules[rule_id]
-
-    allowed: dict[str, list[Condition | None]] = {}
-    releases: list[str] = []
-    for rule_id in question.allow:
-        found = rule(rule_id, "allow")
-        if found.effect is Effect.DENY:
-            releases.append(rule_id)
-        for fact, condition in found.matches():
-            allowed.setdefault(fact, []).append(condition)
-    general = {fact: r.id for r in ruleset.rules if r.effect is Effect.DENY for fact in r.facts}
-    for fact in question.allow_facts:
-        if fact in structural:
-            raise ValueError(f"allow_facts: {fact} é estrutural e já é sempre aceito")
-        allowed.setdefault(fact, []).append(None)
-        if fact in general and general[fact] not in releases:
-            releases.append(general[fact])
-
-    denied: dict[str, str | None] = {}
-    for item in question.deny:
-        if _RULE_ID.fullmatch(item):
-            found = rule(item, "deny")
-            if found.effect is Effect.DENY:
-                raise ValueError(f"deny: {item} já é proibida em todas as listas")
-            for fact in found.facts:
-                denied.setdefault(fact, item)
-        elif item in structural:
-            raise ValueError(f"deny: {item} é estrutural e não pode ser proibido sozinho")
-        else:
-            denied[item] = None
-    if overlap := sorted(set(allowed) & set(denied)):
-        raise ValueError(f"fatos liberados e proibidos ao mesmo tempo: {overlap}")
-    return CompiledQuestion(
-        question=question,
-        allowed=MappingProxyType({fact: tuple(conds) for fact, conds in allowed.items()}),
-        denied=MappingProxyType(denied),
-        releases=tuple(sorted(releases)),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Ruleset compilado: imutável e indexado por fato.
-# ---------------------------------------------------------------------------
-
-
-class RulesetError(Exception):
-    """Ruleset inválido ou ilegível: o analisador não deve ficar pronto (fail-fast)."""
-
-
-@dataclass(frozen=True, slots=True)
-class RuleMatch:
-    """Uma regra que casa um fato, com a condição daquele fato (``None`` = casa sempre)."""
-
-    rule: Rule
-    condition: Condition | None
-
-
-@dataclass(frozen=True, slots=True)
-class CompiledRuleset:
-    ruleset: Ruleset
-    sha256: str
-    by_fact: Mapping[str, tuple[RuleMatch, ...]]
-    structural_facts: frozenset[str]
-    #: Regras por questão do período (R-01), por ``question_id``.
-    questions: Mapping[str, CompiledQuestion] = MappingProxyType({})
-    #: Soluções de referência geradas por IA, por ``question_id`` (ADR-08, sinal 2; S29-02).
-    references: Mapping[str, tuple[Reference, ...]] = MappingProxyType({})
-
-    @property
-    def version(self) -> str:
-        return self.ruleset.ruleset_version
-
-    @property
-    def target_version(self) -> tuple[int, int]:
-        """Versão do Python cuja gramática o parser usa, ex.: (3, 13) (NFR-21)."""
-        major, minor = self.ruleset.target_python.split(".")
-        return int(major), int(minor)
-
-    @property
-    def default_deny(self) -> MetaRule:
-        return next(m for m in self.ruleset.meta_rules if m.kind is MetaKind.DEFAULT_DENY)
-
-    def matches_for(self, fact: str) -> tuple[RuleMatch, ...]:
-        return self.by_fact.get(fact, ())
-
-    def rules_for(self, fact: str) -> tuple[Rule, ...]:
-        return tuple(match.rule for match in self.matches_for(fact))
-
-    def is_structural(self, fact: str) -> bool:
-        return fact in self.structural_facts
-
-    def questions_for(self, list_number: int) -> tuple[CompiledQuestion, ...]:
-        """As questões cadastradas da lista, em ordem (L3-Q2 antes de L3-Q10)."""
-        found = (q for q in self.questions.values() if q.question.list_number == list_number)
-        return tuple(sorted(found, key=lambda q: _question_order(q.id)))
-
-    def requirements_for(self, list_number: int) -> tuple[Requirement, ...]:
-        """Exigências da lista: R-02 (assunto da lista) e, na Lista 6, R-68 (recursão)."""
-        return tuple(req for req in self.ruleset.requirements if req.list_number == list_number)
-
-
-def _question_order(question_id: str) -> tuple[int, int]:
-    match = QUESTION_ID.fullmatch(question_id)
-    assert match is not None  # noqa: S101 - garantido pela validação do modelo
-    return int(match.group(1)), int(match.group(2))
-
-
-def compile_ruleset(
-    ruleset: Ruleset, raw: bytes, questions: Iterable[CompiledQuestion] = ()
-) -> CompiledRuleset:
-    index: dict[str, list[RuleMatch]] = {}
-    for rule in ruleset.rules:
-        for fact, condition in rule.matches():
-            index.setdefault(fact, []).append(RuleMatch(rule=rule, condition=condition))
-    return CompiledRuleset(
-        ruleset=ruleset,
-        sha256=hashlib.sha256(raw).hexdigest(),
-        by_fact=MappingProxyType({fact: tuple(matches) for fact, matches in index.items()}),
-        structural_facts=frozenset(ruleset.structural_facts),
-        questions=MappingProxyType({question.id: question for question in questions}),
-    )
-
-
-#: Arquivo do ruleset de um período, em ``rulesets/<período>/``.
-BASE_FILE = "base.yaml"
-#: Na raiz de ``rulesets/``, a única linha com o período ativo (``2026.2``). Trocar de período é
-#: mudar só essa linha: o analisador, o ``ipc-rules`` e a CI apontam para a raiz (S31-09).
-ACTIVE_FILE = "ATIVO"
-PERIOD = re.compile(r"\d{4}\.[12]")
-#: Pasta das regras por questão, ao lado do ``base.yaml`` (R-01, P-07).
-QUESTIONS_DIR = "questions"
-#: Pasta das soluções de referência geradas por IA, uma subpasta por questão (S29-02).
-REFERENCES_DIR = "referencias"
-#: Uma questão guarda poucas referências: 2 ou 3 assistentes, uma ou duas soluções cada (ADR-08).
-MAX_REFERENCES_PER_QUESTION = 10
-
-
-@dataclass(frozen=True, slots=True)
-class Reference:
-    """Uma solução de referência para uma questão, gerada pela equipe com uma IA a partir só do
-    enunciado (ADR-08, item 2). ``label`` é o nome do arquivo, sem a extensão (``assistente-a``).
-    """
-
-    question_id: str
-    label: str
-    source: str
-
-
-def active_period(root: Path) -> str:
-    """O período ativo, lido do arquivo ``ATIVO`` da raiz ``rulesets/`` (S31-09)."""
-    file = root / ACTIVE_FILE
-    try:
-        period = file.read_text(encoding="utf-8").strip()
-    except (OSError, UnicodeDecodeError) as exc:
-        raise RulesetError(f"não foi possível ler o período ativo {file}: {exc}") from exc
-    if not PERIOD.fullmatch(period):
-        raise RulesetError(
-            f"período ativo inválido em {file}: {period!r} (use o formato 2026.2, uma linha só)"
-        )
-    if not (root / period / BASE_FILE).is_file():
-        raise RulesetError(f"período ativo {period} sem {root / period / BASE_FILE}")
-    return period
-
-
-def resolve_ruleset_path(path: Path) -> Path:
-    """O ``base.yaml`` a carregar: aceita o próprio arquivo, a pasta de um período ou a raiz
-    ``rulesets/``, que tem o arquivo ``ATIVO`` e aponta para o período ativo (S31-09)."""
-    if not path.is_dir():
-        return path
-    if (path / ACTIVE_FILE).exists():
-        return path / active_period(path) / BASE_FILE
-    return path / BASE_FILE
-
-
-def load_ruleset(path: Path) -> CompiledRuleset:
-    """Lê, valida e compila o ruleset e as questões da pasta ``questions/`` ao lado dele.
-
-    ``path`` é o ``base.yaml``, a pasta do período ou a raiz ``rulesets/`` (período ativo).
-    Qualquer problema, num arquivo só que seja, vira ``RulesetError`` (fail-fast, FR-15).
-    """
-    path = resolve_ruleset_path(path)
-    raw, data = _read_yaml(path, "o ruleset")
-    try:
-        ruleset = Ruleset.model_validate(data)
-    except ValidationError as exc:
-        raise RulesetError(_describe(exc, path, "ruleset inválido")) from exc
-    folder_period = path.parent.name
-    if PERIOD.fullmatch(folder_period) and folder_period != ruleset.period:
-        raise RulesetError(
-            f"ruleset inválido: {path}\n  - period: {ruleset.period} numa pasta do período "
-            f"{folder_period}"
-        )
-    digest = hashlib.sha256(raw)
-    questions: list[CompiledQuestion] = []
-    folder = path.parent / QUESTIONS_DIR
-    files = sorted(folder.glob("*.yaml")) if folder.is_dir() else []
-    for file in files:
-        question_raw, question_data = _read_yaml(file, "a questão")
-        digest.update(b"\0" + file.name.encode() + b"\0" + question_raw)
-        try:
-            question = Question.model_validate(question_data)
-        except ValidationError as exc:
-            raise RulesetError(_describe(exc, file, "questão inválida")) from exc
-        if file.stem != question.question_id:
-            raise RulesetError(
-                f"questão inválida: {file}\n  - question_id: {question.question_id} precisa "
-                f"estar no arquivo {question.question_id}.yaml"
-            )
-        try:
-            questions.append(compile_question(question, ruleset))
-        except ValueError as exc:
-            raise RulesetError(f"questão inválida: {file}\n  - {exc}") from exc
-    compiled = compile_ruleset(ruleset, raw, questions)
-    references = _load_references(path.parent / REFERENCES_DIR, compiled, digest)
-    return replace(compiled, sha256=digest.hexdigest(), references=references)
-
-
-def _load_references(
-    folder: Path, compiled: CompiledRuleset, digest: hashlib._Hash
-) -> Mapping[str, tuple[Reference, ...]]:
-    """Lê ``referencias/<questão>/*.py``: cada subpasta é uma questão cadastrada, e cada arquivo
-    precisa ser Python válido dentro dos mesmos limites de uma submissão (S29-02)."""
-    if not folder.is_dir():
-        return MappingProxyType({})
-    found: dict[str, tuple[Reference, ...]] = {}
-    for question_folder in sorted(path for path in folder.iterdir() if path.is_dir()):
-        question_id = question_folder.name
-        if question_id not in compiled.questions:
-            raise RulesetError(
-                f"referências inválidas: {question_folder}\n  - a questão {question_id} não está "
-                f"cadastrada em {QUESTIONS_DIR}/"
-            )
-        files = sorted(question_folder.glob("*.py"))
-        if len(files) > MAX_REFERENCES_PER_QUESTION:
-            raise RulesetError(
-                f"referências inválidas: {question_folder}\n  - {len(files)} arquivos; o limite é "
-                f"{MAX_REFERENCES_PER_QUESTION} por questão"
-            )
-        references = []
-        for file in files:
-            try:
-                raw = file.read_bytes()
-                source = raw.decode("utf-8")
-            except (OSError, UnicodeDecodeError) as exc:
-                raise RulesetError(f"não foi possível ler a referência {file}: {exc}") from exc
-            try:
-                parsed = parse_source(source, target=compiled.target_version)
-            except InputError as exc:
-                raise RulesetError(f"referência inválida: {file}\n  - {exc.message}") from exc
-            if isinstance(parsed, SyntaxProblem):
-                raise RulesetError(
-                    f"referência inválida: {file}\n  - linha {parsed.line}: {parsed.message}"
-                )
-            name = f"{question_id}/{file.name}"
-            digest.update(b"\0" + name.encode() + b"\0" + raw)
-            references.append(Reference(question_id=question_id, label=file.stem, source=source))
-        if references:
-            found[question_id] = tuple(references)
-    return MappingProxyType(found)
-
-
-def _read_yaml(path: Path, what: str) -> tuple[bytes, dict[str, object]]:
-    try:
-        raw = path.read_bytes()
-    except OSError as exc:
-        raise RulesetError(f"não foi possível ler {what} {path}: {exc}") from exc
-    try:
-        # safe_load: o YAML nunca constrói objetos Python arbitrários.
-        data = yaml.safe_load(raw)
-    except yaml.YAMLError as exc:
-        raise RulesetError(f"YAML inválido em {path}: {exc}") from exc
-    if not isinstance(data, dict):
-        raise RulesetError(f"{what} {path} deve ser um mapeamento YAML no nível raiz")
-    return raw, data
-
-
-def _describe(exc: ValidationError, path: Path, title: str) -> str:
-    lines = [f"{title}: {path}"]
-    for error in exc.errors():
-        location = ".".join(str(part) for part in error["loc"]) or "<raiz>"
-        lines.append(f"  - {location}: {error['msg']}")
-    return "\n".join(lines)

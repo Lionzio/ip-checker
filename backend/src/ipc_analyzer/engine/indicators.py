@@ -37,6 +37,15 @@ from typing import Literal
 from ipc_analyzer.engine.display import describe
 from ipc_analyzer.engine.gabarito import GabaritoComparison
 from ipc_analyzer.engine.guards import DEFAULT_LIMITS, InputError, Limits, source_tokens
+from ipc_analyzer.engine.indicators_questions import (
+    GENERAL_RULES,
+    suggested_questions,
+)
+from ipc_analyzer.engine.indicators_words import (
+    ENGLISH_COMMENT_WORDS,
+    ENGLISH_WORDS,
+    PORTUGUESE_COMMENT_WORDS,
+)
 from ipc_analyzer.engine.models import Violation
 from ipc_analyzer.engine.parse import ParsedSource, SyntaxProblem
 from ipc_analyzer.engine.ruleset import Category, CompiledRuleset, Reference
@@ -102,10 +111,8 @@ REFERENCE_LEVELS = ((95.0, Level.ALTO), (90.0, Level.MEDIO), (80.0, Level.BAIXO)
 #: Identificadores em inglês: pelo menos 2, e a maioria dos nomes do aluno.
 ENGLISH_NAMES_MIN = 2
 
-#: Proibições gerais da lista (R-05 a R-14): anulam a questão em todas as listas.
-GENERAL_RULES = frozenset(f"R-{n:02d}" for n in range(5, 15))
+#: As proibições gerais (R-05 a R-14, ``GENERAL_RULES``) estão em ``indicators_questions.py``.
 DEFAULT_DENY_RULE = "R-04"
-MAX_QUESTIONS = 3
 #: Linhas por indício e construções citadas por motivo, para o motivo caber na tela e no
 #: contrato da API.
 MAX_LINES = 200
@@ -139,7 +146,9 @@ def compute_indicators(
     items = [replace(item, lines=item.lines[:MAX_LINES]) for item in items]
     weighted = [item.level for item in items if item.level is not None]
     level = max(weighted) if weighted else None
-    return Indicators(level=level, items=tuple(items), questions=_questions(items, violations))
+    return Indicators(
+        level=level, items=tuple(items), questions=suggested_questions(items, violations)
+    )
 
 
 # --- Sinal 1: múltiplas violações --------------------------------------------------------------
@@ -346,187 +355,6 @@ def _percent(value: float) -> str:
 
 # --- Sinal 3: marcadores de estilo -------------------------------------------------------------
 
-#: Palavras de programação em inglês que não existem em português [PREMISSA: lista inicial].
-ENGLISH_WORDS = frozenset(
-    [
-        "add",
-        "amount",
-        "answer",
-        "append",
-        "array",
-        "average",
-        "avg",
-        "calc",
-        "calculate",
-        "char",
-        "chars",
-        "check",
-        "compute",
-        "count",
-        "counter",
-        "current",
-        "data",
-        "digit",
-        "digits",
-        "element",
-        "elements",
-        "even",
-        "factorial",
-        "fib",
-        "fibonacci",
-        "find",
-        "first",
-        "flag",
-        "found",
-        "get",
-        "grade",
-        "grades",
-        "greater",
-        "helper",
-        "index",
-        "is",
-        "item",
-        "items",
-        "key",
-        "keys",
-        "last",
-        "left",
-        "length",
-        "line",
-        "lines",
-        "list",
-        "lower",
-        "main",
-        "matrix",
-        "message",
-        "new",
-        "next",
-        "num",
-        "number",
-        "numbers",
-        "odd",
-        "old",
-        "output",
-        "previous",
-        "price",
-        "process",
-        "result",
-        "results",
-        "reverse",
-        "reversed",
-        "right",
-        "row",
-        "rows",
-        "score",
-        "scores",
-        "search",
-        "second",
-        "sorted",
-        "square",
-        "start",
-        "step",
-        "string",
-        "swap",
-        "temp",
-        "text",
-        "third",
-        "upper",
-        "user",
-        "value",
-        "values",
-        "word",
-        "words",
-    ]
-)
-#: Palavras de comentário típicas do inglês e do português, para comparar as duas.
-ENGLISH_COMMENT_WORDS = frozenset(
-    [
-        "the",
-        "of",
-        "and",
-        "to",
-        "is",
-        "are",
-        "this",
-        "that",
-        "with",
-        "from",
-        "for",
-        "if",
-        "else",
-        "loop",
-        "function",
-        "return",
-        "returns",
-        "value",
-        "values",
-        "number",
-        "numbers",
-        "check",
-        "calculate",
-        "calculates",
-        "get",
-        "gets",
-        "read",
-        "reads",
-        "print",
-        "prints",
-        "user",
-        "input",
-        "list",
-        "each",
-        "all",
-        "store",
-        "stores",
-        "result",
-        "sum",
-        "count",
-        "main",
-    ]
-)
-PORTUGUESE_COMMENT_WORDS = frozenset(
-    [
-        "o",
-        "a",
-        "os",
-        "as",
-        "de",
-        "do",
-        "da",
-        "dos",
-        "das",
-        "que",
-        "para",
-        "com",
-        "um",
-        "uma",
-        "se",
-        "é",
-        "não",
-        "no",
-        "na",
-        "nos",
-        "nas",
-        "por",
-        "cada",
-        "todos",
-        "valor",
-        "número",
-        "numero",
-        "lista",
-        "soma",
-        "média",
-        "media",
-        "calcula",
-        "verifica",
-        "lê",
-        "le",
-        "imprime",
-        "usuário",
-        "usuario",
-        "resultado",
-    ]
-)
 
 _WORD = re.compile(r"[A-Za-zÀ-ÿ]+")
 _CAMEL = re.compile(r"(?<=[a-z])(?=[A-Z])")
@@ -658,49 +486,3 @@ def _english_comments(source: str) -> tuple[int, ...]:
         if english >= 2 and english > portuguese:
             lines.append(token.start[0])
     return tuple(lines)
-
-
-# --- Perguntas para a conversa (ADR-08, item 4) ------------------------------------------------
-
-
-def _questions(items: Sequence[Indicator], violations: Sequence[Violation]) -> tuple[str, ...]:
-    questions: list[str] = []
-    kinds = {item.kind: item for item in items}
-    if "salto_de_lista" in kinds:
-        item = kinds["salto_de_lista"]
-        questions.append(
-            f"Na linha {item.lines[0]}, você usou uma construção que a disciplina só apresenta "
-            "mais adiante. Onde você aprendeu e por que escolheu usá-la aqui?"
-        )
-    general = next(
-        (v for v in violations if v.category is Category.ANULACAO and v.rule_id in GENERAL_RULES),
-        None,
-    )
-    if general is not None and ("variedade" in kinds or "repeticao" in kinds):
-        questions.append(
-            f"O que o '{describe(general.construct)}' da linha {general.line} faz? Como você "
-            "escreveria esse trecho sem ele?"
-        )
-    if "referencia" in kinds:
-        item = kinds["referencia"]
-        span = f"linhas {item.lines[0]} a {item.lines[-1]}" if item.lines else "o código"
-        questions.append(
-            f"Explique, com as suas palavras, o que acontece nas {span}, e o que mudaria se a "
-            "entrada fosse diferente."
-        )
-    if "comentarios_em_ingles" in kinds or "identificadores_em_ingles" in kinds:
-        questions.append(
-            "Por que os nomes ou os comentários estão em inglês? Você pode explicar o que cada um "
-            "deles significa no programa?"
-        )
-    if "docstring" in kinds or "anotacao_de_tipo" in kinds or "main_guard" in kinds:
-        questions.append(
-            "Algumas partes do código usam recursos que a disciplina não ensina. Você pode "
-            "explicar para que servem e como funcionam?"
-        )
-    if len(questions) < 2:
-        questions.append(
-            "Faça uma pequena mudança no programa (por exemplo, outro formato de saída) e explique "
-            "o que precisou alterar."
-        )
-    return tuple(questions[:MAX_QUESTIONS])
