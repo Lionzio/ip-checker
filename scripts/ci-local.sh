@@ -154,7 +154,17 @@ step "Frontend: ESLint" frontend npm run -s lint
 step "Frontend: TypeScript" frontend npm run -s typecheck
 step "Frontend: Vitest (cobertura das páginas >= 80%)" frontend npm run test:coverage --silent
 step "Frontend: build" frontend npm run -s build
-step "Frontend: JS inicial com gzip (NFR-03)" frontend node scripts/js-budget.mjs
+budget_out=$(mktemp)
+step "Frontend: JS inicial com gzip (NFR-03)" bash -c \
+  "set -o pipefail; cd frontend && node scripts/js-budget.mjs | tee '$budget_out'"
+# A folga até o próximo degrau do FCP vai para o resumo, com o aviso abaixo de 2 KB (S39-01).
+budget_note=$(grep -m1 '^Folga até o próximo degrau do FCP' "$budget_out")
+if [ -n "$budget_note" ]; then
+  grep -q '^AVISO:' "$budget_out" && budget_note=", **com aviso**; ${budget_note,}" \
+    || budget_note="; ${budget_note,}"
+  results[-1]=${results[-1]/| ok |/| ok$budget_note |}
+fi
+rm -f "$budget_out"
 step "Frontend: Lighthouse, perfil móvel (NFR-03)" frontend \
   npx --yes @lhci/cli@0.15.1 autorun --config=lighthouserc.json
 step "Frontend: build do piloto" env IPC_API_ORIGIN=https://ip-checker-api.onrender.com \
