@@ -36,6 +36,12 @@ repositório privado, no formato ``<período>/lista-<n>/L<n>-Q<m>.py``; nunca pa
 
     uv run ipc-rules new-period 2027.1 --from 2026.2
 
+``retire-period`` (S43-04, ADR-12) encerra um período fora da janela dos 6 carregados: move a pasta
+para ``rulesets/encerrados/``, de onde o analisador nunca carrega; o commit fica com quem roda, e o
+Git guarda o histórico. ``--dry-run`` só mostra o que sairia::
+
+    uv run ipc-rules retire-period 2020.1 --dry-run
+
 A pasta nova sai validada; ativar o período é trocar a linha de ``rulesets/ATIVO``, num PR.
 
 ``schema`` (S35-05) gera os esquemas JSON do ruleset e das questões a partir dos modelos do
@@ -69,11 +75,14 @@ from ipc_analyzer.engine.ruleset import (
     PERIOD,
     QUESTIONS_DIR,
     REFERENCES_DIR,
+    RETIRED_DIR,
+    WINDOW,
     CompiledRuleset,
     RulesetError,
     active_period,
     load_ruleset,
     resolve_ruleset_path,
+    window_periods,
 )
 from ipc_analyzer.gabarito_calibration import (
     DEFAULT_MIN_TOKENS,
@@ -170,6 +179,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=DEFAULT_ROOT,
         help=f"a raiz dos rulesets (padrão: {DEFAULT_ROOT.as_posix()})",
     )
+    retire = commands.add_parser(
+        "retire-period", help="encerra um período antigo: move a pasta para encerrados/ (S43-04)"
+    )
+    retire.add_argument("period", help="o período a encerrar, como 2020.1")
+    retire.add_argument(
+        "--dry-run", action="store_true", help="só mostra o que sairia, sem tocar no disco"
+    )
+    retire.add_argument(
+        "--rulesets",
+        type=Path,
+        default=DEFAULT_ROOT,
+        help=f"a raiz dos rulesets (padrão: {DEFAULT_ROOT.as_posix()})",
+    )
     schema = commands.add_parser(
         "schema", help="gera os esquemas JSON do ruleset e das questões (S35-05)"
     )
@@ -210,6 +232,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if args.command == "new-period":
         return _new_period(args.rulesets, args.period, args.source)
+    if args.command == "retire-period":
+        return _retire_period(args.rulesets, args.period, args.dry_run)
     return _validate(args.path, args.golden)
 
 
@@ -467,6 +491,56 @@ def _import_gabaritos(
 
 def _github() -> bool:
     return os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def _retire_period(root: Path, period: str, dry_run: bool) -> int:
+    """Move ``<período>/`` para ``encerrados/<período>/``. Recusa o ativo, os da janela dos 6
+    carregados, os posteriores ao ativo (em preparação) e um período que não existe."""
+    if not PERIOD.fullmatch(period):
+        _error(f"período inválido: {period!r} (use o formato 2020.1)", root)
+        return 2
+    try:
+        active = active_period(root)
+    except RulesetError as exc:
+        _error(str(exc), root)
+        return 2
+    folder = root / period
+    if not (folder / BASE_FILE).is_file():
+        _error(f"o período {period} não existe em {root.as_posix()}", root)
+        return 1
+    if period == active:
+        _error(f"{period} é o período ativo: troque o {ACTIVE_FILE} antes de encerrá-lo", folder)
+        return 1
+    if period > active:
+        _error(f"{period} é posterior ao ativo ({active}): está em preparação", folder)
+        return 1
+    window = window_periods(root, active)
+    if period in window:
+        _error(
+            f"{period} está na janela dos {WINDOW} períodos carregados ({', '.join(window)}): só "
+            f"sai depois de haver {WINDOW} períodos mais novos (ADR-12)",
+            folder,
+        )
+        return 1
+    target = root / RETIRED_DIR / period
+    if target.exists():
+        _error(f"{target.as_posix()} já existe: o comando nunca sobrescreve", target)
+        return 1
+    files = sorted(path for path in folder.rglob("*") if path.is_file())
+    action = "sairia" if dry_run else "sai"
+    print(
+        f"{period} {action} de {folder.as_posix()} para {target.as_posix()} ({len(files)} arquivos)"
+    )
+    if dry_run:
+        print("simulação: nada foi movido (--dry-run)")
+        return 0
+    target.parent.mkdir(exist_ok=True)
+    shutil.move(str(folder), str(target))
+    print(
+        "movido. Confira com git status e faça o commit: o histórico do período continua no Git, "
+        "e o analisador não o carrega mais"
+    )
+    return 0
 
 
 def _error(message: str, file: Path) -> None:

@@ -4932,6 +4932,15 @@
           },
           "housekeeping": {
             "$ref": "#/components/schemas/SloHousekeeping"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "const": "ativo_defasado"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Avisos que não mudam o status: ativo_defasado quando o período ativo parece ter acabado há mais de 60 dias (S43-04); trocar o ATIVO é decisão da coordenação."
           }
         },
         "additionalProperties": false,

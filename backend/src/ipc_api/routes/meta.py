@@ -40,8 +40,8 @@ from ipc_api.schemas import (
     SloTelemetry,
 )
 from ipc_api.settings import ApiSettings
-from ipc_api.slo import SloMonitor
-from ipc_api.telemetry import Telemetry
+from ipc_api.slo import SloMonitor, active_looks_stale
+from ipc_api.telemetry import Telemetry, semester_of
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +206,7 @@ async def service_health(
     responses={503: {"model": SloResponse, "description": "Fora da meta do NFR-15."}},
 )
 async def slo(
+    request: Request,
     response: Response,
     monitor: Annotated[SloMonitor, Depends(get_slo)],
     telemetry: Annotated[Telemetry, Depends(get_telemetry)],
@@ -217,6 +218,9 @@ async def slo(
     if not report.healthy:
         response.status_code = 503
     stats = telemetry.stats
+    version = telemetry.ruleset_version
+    today = request.app.state.clock().date()
+    stale = version is not None and active_looks_stale(semester_of(version), today)
     return SloResponse(
         status="ok" if report.healthy else "degraded",
         window_s=int(settings.slo.window_s),
@@ -240,6 +244,7 @@ async def slo(
             inactive=housekeeping.stats.removed.inactive,
             log=housekeeping.stats.removed.log,
         ),
+        warnings=["ativo_defasado"] if stale else [],
     )
 
 

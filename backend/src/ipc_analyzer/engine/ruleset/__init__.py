@@ -35,6 +35,7 @@ from .load import (
     load_ruleset,
     load_rulesets,
     resolve_ruleset_path,
+    window_periods,
 )
 from .schema import (
     KNOWN_PREDICATES,
@@ -101,4 +102,5 @@ __all__ = [
     "load_ruleset",
     "load_rulesets",
     "resolve_ruleset_path",
+    "window_periods",
 ]
