@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { AccountTable, type Handlers } from "../components/admin/AccountTable";
+import { LogTable } from "../components/admin/LogTable";
+import { ROLE_NAMES, STATUS_NAMES } from "../components/admin/names";
+import { Section } from "../components/admin/Section";
 import { ListPanel } from "../components/ListPanel";
-import { RoleBadge } from "../components/RoleBadge";
-import { Button, Card } from "../components/ui";
+import { Button } from "../components/ui";
 import type { AdminClient } from "../services/client";
-import type { AccountStatus, ManagedAccount, ManagementLogEntry, MembersResponse, Role } from "../types/api";
+import type { ManagedAccount, ManagementLogEntry, MembersResponse, Role } from "../types/api";
 import { errorMessage, INPUT, sessionExpired } from "../ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
@@ -11,30 +14,9 @@ import { PAGE_TITLES } from "../labels";
 /**
  * Tela de gerenciamento (S15-03, FR-28): fila de pedidos, membros ativos e contas removidas. Cada
  * linha mostra só os botões que quem está logado pode usar; o backend confere de novo. O registro
- * das ações (S23-03, REC-06) só aparece para o desenvolvedor e os professores.
+ * das ações (S23-03, REC-06) só aparece para o desenvolvedor e os professores. As tabelas e as
+ * seções moram em `components/admin/` (S39-01).
  */
-const ROLE_NAMES: Record<Role, string> = {
-  desenvolvedor: "Monitor e desenvolvedor",
-  professor: "Professor",
-  monitor_chefe: "Monitor-chefe",
-  monitor: "Monitor",
-};
-const STATUS_NAMES: Partial<Record<AccountStatus, string>> = {
-  ex_monitor: "Ex-monitor",
-  conselheiro: "Conselheiro",
-  inativo: "Inativo",
-};
-const METHODS: Record<ManagedAccount["signup_method"], string> = {
-  senha: "E-mail e senha",
-  google: "Google",
-  seed: "Conta inicial",
-};
-// Como os botões (S37-03): 44 px nas telas de toque, menor a partir de sm.
-const SELECT =
-  "min-h-11 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm sm:min-h-8 dark:border-slate-600 dark:bg-slate-900";
-const TABLE = "w-full text-left text-sm";
-const TABLE_HEAD = "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
-
 interface Lists {
   requests: ManagedAccount[];
   members: MembersResponse;
@@ -215,207 +197,5 @@ export function Admin({ client, canViewLog = false, onUnauthenticated }: AdminPr
         </>
       )}
     </div>
-  );
-}
-
-interface Handlers {
-  approve: (account: ManagedAccount, role: Role) => void;
-  reject: (account: ManagedAccount) => void;
-  changeRole: (account: ManagedAccount, role: Role) => void;
-  remove: (account: ManagedAccount) => void;
-  reactivate: (account: ManagedAccount, role: Role) => void;
-}
-
-function Section({ title, empty, count, children }: { title: string; empty: string; count: number; children: React.ReactNode }) {
-  const id = `secao-${title.toLowerCase().replace(/[^a-z]+/g, "-")}`;
-  return (
-    <section aria-labelledby={id} className="flex flex-col gap-2">
-      <h3 id={id} className="text-lg font-semibold">
-        {title} <span className="text-sm font-normal text-slate-600 dark:text-slate-300">({count})</span>
-      </h3>
-      {count === 0 ? <p className="text-sm text-slate-600 dark:text-slate-300">{empty}</p> : children}
-    </section>
-  );
-}
-
-type Kind = "requests" | "active" | "removed";
-
-function AccountTable({
-  kind,
-  accounts,
-  busyId,
-  handlers,
-}: {
-  kind: Kind;
-  accounts: ManagedAccount[];
-  busyId: string | null;
-  handlers: Handlers;
-}) {
-  if (accounts.length === 0) {
-    return <p className="text-sm text-slate-600 dark:text-slate-300">Nenhuma conta corresponde à busca.</p>;
-  }
-  return (
-    <Card as="div" padding="none" className="overflow-x-auto">
-      <table className={`${TABLE} min-w-2xl`}>
-        <thead className={TABLE_HEAD}>
-          <tr>
-            <th scope="col" className="px-3 py-2 font-semibold">Nome</th>
-            <th scope="col" className="px-3 py-2 font-semibold">E-mail</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Curso</th>
-            {kind === "requests" ? (
-              <>
-                <th scope="col" className="px-3 py-2 font-semibold">Método</th>
-                <th scope="col" className="px-3 py-2 font-semibold">Pedido em</th>
-              </>
-            ) : (
-              <th scope="col" className="px-3 py-2 font-semibold">{kind === "active" ? "Cargo" : "Situação"}</th>
-            )}
-            <th scope="col" className="px-3 py-2 font-semibold">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {accounts.map((account) => (
-            <tr
-              key={account.id}
-              aria-busy={busyId === account.id || undefined}
-              className="border-t border-slate-200 align-top aria-busy:opacity-60 dark:border-slate-700"
-            >
-              <th scope="row" className="px-3 py-2 font-medium">{account.name}</th>
-              <td className="px-3 py-2 break-all">{account.email}</td>
-              <td className="px-3 py-2">{account.course}</td>
-              {kind === "requests" ? (
-                <>
-                  <td className="px-3 py-2">{METHODS[account.signup_method]}</td>
-                  <td className="px-3 py-2">{new Date(account.requested_at).toLocaleDateString("pt-BR")}</td>
-                </>
-              ) : (
-                <td className="px-3 py-2">
-                  <RoleBadge
-                    role={account.role}
-                    status={account.status}
-                    label={kind === "active" ? (account.role_label ?? account.status_label) : account.status_label}
-                  />
-                  {kind === "removed" && account.role_label !== null && (
-                    <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">Último cargo: {account.role_label}</span>
-                  )}
-                </td>
-              )}
-              <td className="px-3 py-2">
-                <Actions account={account} busy={busyId === account.id} handlers={handlers} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
-  );
-}
-
-function Actions({ account, busy, handlers }: { account: ManagedAccount; busy: boolean; handlers: Handlers }) {
-  const [chosen, setChosen] = useState<Role | "">("");
-  // Depois de cada ação as listas são recarregadas; uma escolha que não vale mais volta à primeira.
-  const role = chosen !== "" && account.roles.includes(chosen) ? chosen : (account.roles[0] ?? "");
-  const can = (action: ManagedAccount["actions"][number]) => account.actions.includes(action);
-  const roleAction = can("aprovar") ? "aprovar" : can("alterar_cargo") ? "alterar_cargo" : can("reativar") ? "reativar" : null;
-
-  if (account.actions.length === 0) {
-    return <span className="text-slate-600 dark:text-slate-300">—</span>;
-  }
-
-  const roleLabel = { aprovar: "Aprovar", alterar_cargo: "Alterar cargo", reativar: "Reativar" } as const;
-  const selectLabel = {
-    aprovar: `Cargo para aprovar ${account.name}`,
-    alterar_cargo: `Novo cargo de ${account.name}`,
-    reativar: `Cargo para reativar ${account.name}`,
-  } as const;
-
-  function submitRole() {
-    if (role === "" || roleAction === null) return;
-    if (roleAction === "aprovar") handlers.approve(account, role);
-    else if (roleAction === "alterar_cargo") handlers.changeRole(account, role);
-    else handlers.reactivate(account, role);
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {roleAction !== null && account.roles.length > 0 && (
-        <>
-          <select
-            aria-label={selectLabel[roleAction]}
-            value={role}
-            onChange={(event) => setChosen(event.target.value as Role)}
-            className={SELECT}
-          >
-            {account.roles.map((option) => (
-              <option key={option} value={option}>
-                {ROLE_NAMES[option]}
-              </option>
-            ))}
-          </select>
-          <Button
-            size="sm"
-            variant={roleAction === "aprovar" ? "primary" : "secondary"}
-            disabled={busy || role === ""}
-            onClick={submitRole}
-            aria-label={`${roleLabel[roleAction]} ${account.name}`}
-          >
-            {roleLabel[roleAction]}
-          </Button>
-        </>
-      )}
-      {can("recusar") && (
-        <Button variant="danger" size="sm" disabled={busy} onClick={() => handlers.reject(account)} aria-label={`Recusar ${account.name}`}>
-          Recusar
-        </Button>
-      )}
-      {can("remover") && (
-        <Button variant="danger" size="sm" disabled={busy} onClick={() => handlers.remove(account)} aria-label={`Remover ${account.name}`}>
-          Remover
-        </Button>
-      )}
-    </div>
-  );
-}
-
-/** "Pendente → Ativo (Monitor)" ou, na mudança de cargo, "Monitor → Monitor-chefe". */
-function change(entry: ManagementLogEntry): string {
-  if (entry.action === "alterar_cargo") return `${entry.from_role_label ?? "—"} → ${entry.to_role_label ?? "—"}`;
-  const role = entry.to_status === "ativo" && entry.to_role_label !== null ? ` (${entry.to_role_label})` : "";
-  return `${entry.from_status_label} → ${entry.to_status_label}${role}`;
-}
-
-function LogTable({ entries }: { entries: ManagementLogEntry[] }) {
-  return (
-    <Card as="div" padding="none" className="overflow-x-auto">
-      <table className={`${TABLE} min-w-xl`}>
-        <thead className={TABLE_HEAD}>
-          <tr>
-            <th scope="col" className="px-3 py-2 font-semibold">Quando</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Quem</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Ação</th>
-            <th scope="col" className="px-3 py-2 font-semibold">Mudança</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry, index) => (
-            <tr key={`${entry.at}-${index}`} className="border-t border-slate-200 align-top dark:border-slate-700">
-              <td className="px-3 py-2 whitespace-nowrap">
-                <time dateTime={entry.at}>{new Date(entry.at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</time>
-              </td>
-              <td className="px-3 py-2">
-                {entry.actor_name}
-                {entry.actor_role_label !== null && (
-                  <span className="block text-xs text-slate-600 dark:text-slate-300">{entry.actor_role_label}</span>
-                )}
-              </td>
-              <td className="px-3 py-2">
-                {entry.action_label} <span className="font-medium">{entry.target_name}</span>
-              </td>
-              <td className="px-3 py-2">{change(entry)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
   );
 }

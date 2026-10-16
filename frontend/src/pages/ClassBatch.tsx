@@ -5,10 +5,11 @@ import { ListSelector } from "../components/ListSelector";
 import { QuestionSelector } from "../components/QuestionSelector";
 import { Button, Card, ErrorText } from "../components/ui";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useLists } from "../hooks/useLists";
 import { PAGE_TITLES } from "../labels";
 import { questionOptions } from "../questions";
 import { ApiError, type ValidationClient } from "../services/client";
-import type { BatchResult, ListInfo } from "../types/api";
+import type { BatchResult } from "../types/api";
 
 interface ClassBatchProps {
   client: ValidationClient;
@@ -35,7 +36,7 @@ const STATUS_STYLES: Record<BatchResult["status"], string> = {
  */
 export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
   useDocumentTitle(PAGE_TITLES.batch);
-  const [lists, setLists] = useState<ListInfo[]>([]);
+  const { lists, error: listsError } = useLists(client, onUnauthenticated);
   const [listNumber, setListNumber] = useState<number | null>(null);
   const [questionId, setQuestionId] = useState<string | null>(null);
   const [files, setFiles] = useState<ClassFile[]>([]);
@@ -47,15 +48,6 @@ export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    client.listLists(controller.signal).then(setLists, (caught: unknown) => {
-      if (controller.signal.aborted) return;
-      if (caught instanceof ApiError && caught.status === 401) onUnauthenticated();
-      else setError("Não foi possível carregar as listas.");
-    });
-    return () => controller.abort();
-  }, [client, onUnauthenticated]);
   useEffect(() => () => controllerRef.current?.abort(), []);
 
   const running = progress !== null;
@@ -237,6 +229,7 @@ export function ClassBatch({ client, onUnauthenticated }: ClassBatchProps) {
       {progress !== null && (
         <progress className="h-2 w-full" max={progress.total} value={progress.done} aria-label="Andamento da correção" />
       )}
+      {listsError !== null && <ErrorText>{listsError}</ErrorText>}
       {error !== null && <ErrorText>{error}</ErrorText>}
       {results.length > 0 && (
         <section aria-label="Resultado da turma" className="flex flex-col gap-3">

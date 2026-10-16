@@ -25,7 +25,8 @@ describe("Cabeçalho e navegação (S26-01)", () => {
     expect(within(nav).getByRole("link", { name: "Plágio" })).not.toHaveAttribute("aria-current");
 
     await user.click(within(nav).getByRole("link", { name: "Gerenciar" }));
-    expect(within(nav).getByRole("link", { name: "Gerenciar" })).toHaveAttribute("aria-current", "page");
+    // O Gerenciar é carregado sob demanda (S39-01): a rota, e a marcação, trocam quando ele chega.
+    await waitFor(() => expect(within(nav).getByRole("link", { name: "Gerenciar" })).toHaveAttribute("aria-current", "page"));
     expect(within(nav).getByRole("link", { name: "Verificar" })).not.toHaveAttribute("aria-current");
   });
 

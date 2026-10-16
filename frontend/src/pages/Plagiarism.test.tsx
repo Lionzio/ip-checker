@@ -163,3 +163,13 @@ describe("Painel de plágio (S17-03, FR-29)", () => {
     }
   });
 });
+
+describe("Plágio: sessão vencida (S39-01)", () => {
+  it("leva para Entrar quando as listas respondem 401", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    client.listLists = () => Promise.reject(new ApiError(401, "UNAUTHENTICATED", "Entre de novo."));
+    renderAt(client);
+
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+  });
+});
