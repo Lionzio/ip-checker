@@ -77,22 +77,36 @@ def test_one_external_ip_cannot_exceed_120_per_minute(public: Client) -> None:
         for index in range(150)
     ]
 
-    answers = public.send(requests, concurrency=20)
+    # Concorrência 4: o teste mede o teto do IP, não o pool do banco. Com 20 ao mesmo tempo, o
+    # banco do compose ficava lento numa máquina carregada, e o pool cheio entrava no meio (S39-06).
+    answers = public.send(requests, concurrency=4)
 
     accepted = [answer for answer in answers if answer.status == 200]
     refused = [answer for answer in answers if answer.status != 200]
     # As requisições dos testes anteriores, no mesmo minuto, também contam para o IP.
     assert len(accepted) <= 120
     assert len(refused) >= 30
+    # Cada requisição é de uma conta nova: só o limite do IP pode recusar, em qualquer ordem.
     for answer in refused:
         _assert_rate_limited(answer)
-    assert refused[0].body["error"]["message"] == (
-        "Muitas requisições vieram da sua rede em pouco tempo."
-    )
+        assert answer.body["error"]["message"] == (
+            "Muitas requisições vieram da sua rede em pouco tempo."
+        )
+
+
+def _exhaust_the_ip(public: Client) -> None:
+    """Esgota o limite do IP neste teste, sem contar com o que sobrou dos anteriores (S39-06).
+
+    Antes, o teste seguinte dependia de o minuto do teste anterior ainda não ter virado: numa
+    máquina lenta, a janela esvaziava e a verificação passava com 200.
+    """
+    answers = public.send([validate_request(CODE) for _ in range(121)], concurrency=4)
+    assert answers[-1].status == 429
 
 
 def test_only_validation_is_limited_and_nothing_identifying_is_logged(public: Client) -> None:
     student = new_session()
+    _exhaust_the_ip(public)
     limited, lists, ready, health = public.send(
         [
             validate_request(CODE, session=student),

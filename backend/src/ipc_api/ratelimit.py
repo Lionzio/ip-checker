@@ -328,15 +328,19 @@ class ClientIdentifier:
         ip_limit = config.campus_per_min if campus else config.ip_per_min
         ip_key = self._key(b"i", ip_value)
 
-        account_id = scope.get("state", {}).get("account_id")
-        # Sem sessão, o cliente é o IP: sair da conta não rende um limite maior.
-        client_key = self._key(b"c", account_id if account_id else ip_value)
-        limits: list[tuple[bytes, int, LimitScope]] = [
-            (ip_key, ip_limit, "ip"),
-            (client_key, config.client_per_min, "client"),
-        ]
+        state = scope.get("state", {})
+        account_id = state.get("account_id")
+        limits: list[tuple[bytes, int, LimitScope]] = [(ip_key, ip_limit, "ip")]
+        # Com o banco sem resolver a sessão (S39-06), a conta é desconhecida, mas a requisição tem
+        # um cookie: contá-la como anônima pelo IP faria o monitor logado receber "Você fez muitas
+        # requisições" no lugar do 503 da rota, e todos atrás do mesmo IP dividirem 30 por minuto
+        # até a janela esvaziar. Só o limite do IP vale; a rota responde 503 com Retry-After.
+        if "session_error" not in state:
+            # Sem sessão, o cliente é o IP: sair da conta não rende um limite maior.
+            client_key = self._key(b"c", account_id if account_id else ip_value)
+            limits.append((client_key, config.client_per_min, "client"))
         # Pela página, com o segredo conferido, a borda é a Vercel e o cliente já é confiável.
-        verified = scope.get("state", {}).get("edge_verified")
+        verified = state.get("edge_verified")
         edge = None if account_id or verified else self._edge(scope)
         if edge is not None:
             # Uma chave a mais nunca afrouxa as outras: quem a forja só cria outro limite para si.

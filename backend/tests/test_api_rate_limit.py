@@ -165,6 +165,71 @@ def test_requests_without_a_session_are_refused_and_share_the_limit_of_their_ip(
     assert validate(proxied, new_student(proxied), EXTERNAL_IP).status_code == 200  # com sessão
 
 
+def _store_of(client: TestClient) -> MemoryAccountStore:
+    return cast(MemoryAccountStore, cast(FastAPI, client.app).state.authenticator.store)
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected"),
+    [("busy", (503, "OVERLOADED")), ("available", (503, "DATABASE_UNAVAILABLE"))],
+    ids=["pool-cheio", "banco-fora"],
+)
+def test_a_session_the_database_could_not_resolve_gets_503_not_429(
+    proxied: TestClient, failure: str, expected: tuple[int, str]
+) -> None:
+    """S39-06: com o banco lento, o monitor logado recebe 503, nunca "Você fez muitas requisições".
+
+    Antes, a requisição sem ``account_id`` (o banco não resolveu a sessão) contava como anônima
+    pelo IP; com 30 anônimas no minuto, o monitor logado recebia o 429 por conta.
+    """
+    for _ in range(LIMIT):  # 30 anônimas do mesmo IP: o balde de cliente do IP fica cheio
+        assert error_of(validate(proxied, None, EXTERNAL_IP)) == (401, "UNAUTHENTICATED")
+    student = new_student(proxied)
+    store = _store_of(proxied)
+
+    setattr(store, failure, failure == "busy")  # busy=True, ou available=False
+    answer = validate(proxied, student, EXTERNAL_IP)
+    setattr(store, failure, failure != "busy")
+
+    assert error_of(answer) == expected
+    assert int(answer.headers["Retry-After"]) >= 1
+    assert validate(proxied, student, EXTERNAL_IP).status_code == 200  # o banco voltou
+
+
+def test_requests_the_database_could_not_resolve_do_not_fill_the_ip_client_bucket(
+    proxied: TestClient,
+) -> None:
+    """S39-06: 30 monitores no pico do banco não deixam o IP com o limite de anônimo esgotado."""
+    students = [new_student(proxied) for _ in range(LIMIT)]
+    store = _store_of(proxied)
+
+    store.busy = True
+    for student in students:
+        assert error_of(validate(proxied, student, EXTERNAL_IP)) == (503, "OVERLOADED")
+    store.busy = False
+
+    # Antes, as 30 tinham ido para o balde de cliente do IP: a próxima anônima levaria 429.
+    assert error_of(validate(proxied, None, EXTERNAL_IP)) == (401, "UNAUTHENTICATED")
+    assert validate(proxied, students[0], EXTERNAL_IP).status_code == 200
+
+
+def test_requests_the_database_could_not_resolve_still_count_toward_the_ip_limit(
+    analyzer: Analyzer,
+) -> None:
+    """S39-06: nada afrouxa: o teto do IP continua valendo com o banco sem resolver a sessão."""
+    settings = ApiSettings(rate_limit=RateLimitConfig(trusted_proxy_hops=1, ip_per_min=5))
+    with make_client(analyzer, settings) as api:
+        students = [new_student(api) for _ in range(6)]
+        _store_of(api).busy = True
+        answers = [validate(api, student, EXTERNAL_IP) for student in students]
+
+    assert [error_of(answer) for answer in answers[:5]] == [(503, "OVERLOADED")] * 5
+    assert error_of(answers[5]) == (429, "RATE_LIMITED")
+    assert answers[5].json()["error"]["message"] == (
+        "Muitas requisições vieram da sua rede em pouco tempo."
+    )
+
+
 # --- US-17: limite por IP ----------------------------------------------------------------------
 
 
