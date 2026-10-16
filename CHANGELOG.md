@@ -53,7 +53,7 @@ ligação para a chefia saem numa `sprint-42.1`.
 | Referências e base de calibração são conjuntos diferentes | Calibrar o sinal 5 com as próprias referências daria 100% de acerto por construção |
 | Release com o piloto em `0` | A política pede as duas metas antes de ligar para a chefia (decisão do autor de 16/10/2026) |
 
-- **16/10/2026, plano da Fase 1h (#PRNUM):** o estudo de caso da extensão do Dikastis, aprovado
+- **16/10/2026, plano da Fase 1h (#146):** o estudo de caso da extensão do Dikastis, aprovado
   pelo autor nas duas partes (enunciados e códigos dos alunos), virou o plano das Sprints 49 a 54
   (`docs/plano-dikastis.md`, `docs/sprints/sprint-49.md` a `sprint-54.md`, ADR-15 a ADR-20, FR-38
   a FR-42, NFR-31 a NFR-36, US-48 a US-57, Q-37 a Q-42). A 49 corta a CI local de 14 para cerca de
