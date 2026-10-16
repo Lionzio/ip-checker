@@ -6,15 +6,12 @@ import { Button } from "./components/ui";
 import { DraftProvider } from "./draft";
 import { useDraft } from "./draftContext";
 import { useThemeEffect } from "./hooks/useTheme";
-import { Admin } from "./pages/Admin";
 import { Checker } from "./pages/Checker";
 import { GoogleComplete } from "./pages/GoogleComplete";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
-import { Plagiarism } from "./pages/Plagiarism";
 import { Privacy } from "./pages/Privacy";
 import { ForgotPassword } from "./pages/ForgotPassword";
-import { Profile } from "./pages/Profile";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Verify } from "./pages/Verify";
@@ -22,8 +19,14 @@ import type { ApiClient } from "./services/client";
 import { SessionProvider } from "./session";
 import { useSession } from "./sessionContext";
 
-/** A Turma (S40-01) é carregada só quando aberta, para não pesar no primeiro carregamento (NFR-03). */
+// As telas que não aparecem na abertura são carregadas só quando abertas, para não pesar no
+// primeiro carregamento (NFR-03): a Turma desde a S40-01; o Plágio, o Gerenciar e o Perfil desde a
+// S39-01, quando o JS inicial ficou no limite de uma janela do TCP na simulação do Lighthouse e
+// 0,3 KB a mais custavam 150 ms de FCP.
 const ClassBatch = lazy(() => import("./pages/ClassBatch").then((module) => ({ default: module.ClassBatch })));
+const Plagiarism = lazy(() => import("./pages/Plagiarism").then((module) => ({ default: module.Plagiarism })));
+const Admin = lazy(() => import("./pages/Admin").then((module) => ({ default: module.Admin })));
+const Profile = lazy(() => import("./pages/Profile").then((module) => ({ default: module.Profile })));
 
 interface AppProps {
   client: ApiClient;
@@ -103,84 +106,84 @@ function Shell({ client, demoMode }: Required<AppProps>) {
           </div>
         )}
         {(state.status === "anonymous" || state.status === "signed-in") && (
-          <Routes>
-            <Route
-              path="/"
-              element={
-                state.status === "signed-in" ? (
-                  <Checker client={client} onUnauthenticated={expireToLogin} />
-                ) : (
-                  <Landing notice={state.notice} />
-                )
-              }
-            />
-            <Route
-              path="/entrar"
-              element={
-                state.status === "signed-in" ? (
-                  <Navigate to="/" replace />
-                ) : (
-                  <Login client={client} onSignIn={enter} notice={state.notice} />
-                )
-              }
-            />
-            <Route
-              path="/registrar"
-              element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
-            />
-            <Route path="/verificar" element={<Verify client={client} />} />
-            {/* Esqueci minha senha (S24-04): abertas, porque quem esqueceu a senha não tem sessão. */}
-            <Route path="/esqueci-senha" element={<ForgotPassword client={client} />} />
-            <Route path="/redefinir-senha" element={<ResetPassword client={client} />} />
-            <Route path="/privacidade" element={<Privacy />} />
-            <Route
-              path="/google/concluir"
-              element={state.status === "signed-in" ? <Navigate to="/" replace /> : <GoogleComplete client={client} />}
-            />
-            <Route
-              path="/perfil"
-              element={
-                state.status === "signed-in" ? (
-                  <Profile client={client} account={state.account} onUpdated={setAccount} onUnauthenticated={expireToLogin} />
-                ) : (
-                  <Navigate to="/entrar" replace />
-                )
-              }
-            />
-            <Route
-              path="/plagio"
-              element={
-                state.status === "signed-in" ? (
-                  <Plagiarism client={client} onUnauthenticated={expireToLogin} />
-                ) : (
-                  <Navigate to="/entrar" replace />
-                )
-              }
-            />
-            <Route
-              path="/turma"
-              element={
-                state.status === "signed-in" ? (
-                  <Suspense fallback={<p role="status" className="py-4 text-sm">Carregando…</p>}>
+          <Suspense fallback={<p role="status" className="py-4 text-sm">Carregando…</p>}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  state.status === "signed-in" ? (
+                    <Checker client={client} onUnauthenticated={expireToLogin} />
+                  ) : (
+                    <Landing notice={state.notice} />
+                  )
+                }
+              />
+              <Route
+                path="/entrar"
+                element={
+                  state.status === "signed-in" ? (
+                    <Navigate to="/" replace />
+                  ) : (
+                    <Login client={client} onSignIn={enter} notice={state.notice} />
+                  )
+                }
+              />
+              <Route
+                path="/registrar"
+                element={state.status === "signed-in" ? <Navigate to="/" replace /> : <Register client={client} />}
+              />
+              <Route path="/verificar" element={<Verify client={client} />} />
+              {/* Esqueci minha senha (S24-04): abertas, porque quem esqueceu a senha não tem sessão. */}
+              <Route path="/esqueci-senha" element={<ForgotPassword client={client} />} />
+              <Route path="/redefinir-senha" element={<ResetPassword client={client} />} />
+              <Route path="/privacidade" element={<Privacy />} />
+              <Route
+                path="/google/concluir"
+                element={state.status === "signed-in" ? <Navigate to="/" replace /> : <GoogleComplete client={client} />}
+              />
+              <Route
+                path="/perfil"
+                element={
+                  state.status === "signed-in" ? (
+                    <Profile client={client} account={state.account} onUpdated={setAccount} onUnauthenticated={expireToLogin} />
+                  ) : (
+                    <Navigate to="/entrar" replace />
+                  )
+                }
+              />
+              <Route
+                path="/plagio"
+                element={
+                  state.status === "signed-in" ? (
+                    <Plagiarism client={client} onUnauthenticated={expireToLogin} />
+                  ) : (
+                    <Navigate to="/entrar" replace />
+                  )
+                }
+              />
+              <Route
+                path="/turma"
+                element={
+                  state.status === "signed-in" ? (
                     <ClassBatch client={client} onUnauthenticated={expireToLogin} />
-                  </Suspense>
-                ) : (
-                  <Navigate to="/entrar" replace />
-                )
-              }
-            />
-            <Route
-              path="/gerenciar"
-              element={
-                state.status === "signed-in" && state.account.can_manage ? (
-                  <Admin client={client} canViewLog={state.account.can_view_log} onUnauthenticated={expireToLogin} />
-                ) : (
-                  <Navigate to={state.status === "signed-in" ? "/" : "/entrar"} replace />
-                )
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+                  ) : (
+                    <Navigate to="/entrar" replace />
+                  )
+                }
+              />
+              <Route
+                path="/gerenciar"
+                element={
+                  state.status === "signed-in" && state.account.can_manage ? (
+                    <Admin client={client} canViewLog={state.account.can_view_log} onUnauthenticated={expireToLogin} />
+                  ) : (
+                    <Navigate to={state.status === "signed-in" ? "/" : "/entrar"} replace />
+                  )
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         )}
       </main>
       <AppFooter />
