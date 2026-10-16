@@ -130,12 +130,14 @@ IA nem é veredito.
 ## Referências e calibração na prática (S42-04 e S42-02)
 
 **Gerar as referências:** os enunciados ficam fora do repositório, um arquivo por questão
-(`L1-Q2.md`), e as chaves das IAs no `deploy/.env` local (`IPC_LLM_CHAIN` e as variáveis de cada
-IA, as mesmas do "Aprimorar com IA" no Render), preenchidas por quem mantém o projeto. De
+(`L1-Q2.md`), e as chaves das IAs num arquivo também fora do repositório, `chaves-ia.env`
+(`IPC_LLM_CHAIN` e as variáveis de cada IA, as mesmas do "Aprimorar com IA" no Render; o modelo
+está em `Desktop\IP-Checker\chaves-ia.env.exemplo`), preenchido por quem mantém o projeto. Não
+use o `deploy/.env`: lá, as mesmas variáveis ligariam a IA de verdade no compose e no e2e. De
 `backend/`:
 
 ```bash
-uv run python -m ipc_api.referencias ../rulesets/2026.2 --enunciados ../../enunciados/2026.2 --env-file ../deploy/.env
+uv run python -m ipc_api.referencias ../rulesets/2026.2 --enunciados ../../enunciados/2026.2 --env-file ../../chaves-ia.env
 ```
 
 O comando pede 2 soluções a cada IA da cadeia, só a partir do enunciado, e grava em

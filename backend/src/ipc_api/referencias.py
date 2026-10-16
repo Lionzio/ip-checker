@@ -6,11 +6,11 @@ IA" (``IPC_LLM_CHAIN``, como gemini,groq) e grava uma por arquivo, com um cabeç
 
     # As referências do sinal 5, no repositório, para a equipe revisar por PR:
     uv run python -m ipc_api.referencias ../rulesets/2026.2 --enunciados ../../enunciados/2026.2 \\
-        --env-file ../deploy/.env
+        --env-file ../../chaves-ia.env
 
     # Soluções novas para a calibração (S42-02), fora do repositório, diferentes das referências:
     uv run python -m ipc_api.referencias ../rulesets/2026.2 --enunciados ../../enunciados/2026.2 \\
-        --env-file ../deploy/.env --para-calibracao ../../calibracao --por-ia 3
+        --env-file ../../chaves-ia.env --para-calibracao ../../calibracao --por-ia 3
 
 Os enunciados ficam fora do repositório, um arquivo por questão: ``L1-Q2.md`` (ou ``.txt``). As
 chaves vêm do ambiente ou do ``--env-file`` e nunca aparecem na saída. Um arquivo que já existe é
