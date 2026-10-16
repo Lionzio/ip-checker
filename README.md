@@ -202,6 +202,12 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 46 | Plágio calibrado: precisão e revocação com plágio sintético, peso de base por questão, matriz com trechos | Proposta |
 | 47 | Grupos de acompanhamento: cada monitor com os seus alunos, sozinho ou em grupo, e o histórico só com o resultado resumido | Proposta; vai ao piloto com o aviso de privacidade aprovado |
 | 48 | Entrada com o Google no piloto: cliente OAuth, botão e ensaio de domínio e de aprovação | Proposta; no fim da fila |
+| 49 | CI incremental e mais rápida: passos pulados por impressão digital das entradas, três faixas em paralelo, auditoria só sobre o que mudou, release por passos | Proposta (plano de 16/10/2026); a primeira da fila |
+| 50 | Catálogo das listas pela extensão do Dikastis: enunciados, só o que é novo ou mudou, tela "Listas do período", `.zip` para o gerador | Proposta (plano de 16/10/2026) |
+| 51 | Gabaritos pelo painel: até dois por questão (Notion e IP CC), validados ao salvar; o repositório de gabaritos vira arquivo | Proposta (plano de 16/10/2026) |
+| 52 | Códigos dos alunos: o último de cada aluno em cada questão, cifrado, por 6 períodos; etapa 2 a cada código; tela da turma; exclusão a pedido | Proposta (plano de 16/10/2026); só com o aviso aos alunos |
+| 53 | Plágio por turma (até 100) e por período (até 600), assíncrono, com MinHash e LSH | Proposta (plano de 16/10/2026) |
+| 54 | Sincronização automática e painel de sincronizações | Proposta (plano de 16/10/2026) |
 
 O detalhe de cada sprint, com as decisões de implementação, está no [`CHANGELOG.md`](CHANGELOG.md).
 O plano das Sprints 24 a 29 nasceu da revisão de fim da Sprint 23 (técnica, visual, de CI e de
@@ -211,6 +217,7 @@ documentação) e está em 7.1 e 7.11 do blueprint. Cada sprint só começa com 
 
 | ID | Decisão |
 |---|---|
+| Plano de 16/10/2026 | Fase 1h, Sprints 49 a 54: CI incremental (ADR-20) e a integração com o Dikastis por extensão do navegador (ADR-15 a ADR-19); Q-37 a Q-42 decididas: o último código de cada aluno guardado cifrado por 6 períodos, plágio por turma e por período, dois gabaritos por questão pelo painel. Ordem: 49 → 50 → 42.1 → 51 → 52 → 53 → 54 ([`docs/plano-dikastis.md`](docs/plano-dikastis.md)) |
 | P-24 | A Sprint 41 (servidor do CIn) fica em último: depende da validação com a equipe, a coordenação e a direção, e o piloto de 2027.1 roda no Render e na Vercel (15/10/2026) |
 | Proposta de 12/10/2026 | Sprints 42 a 48 a partir da revisão das seis frentes, com os indícios de IA no piloto primeiro e a entrada com o Google no fim |
 | Decisões de 12/10/2026 | Q-26 a Q-36 decididas: dos alunos, só o nome e o resultado resumido de cada verificação, sem código nem feedback; soluções anteriores a 2023 e formulário da pesquisa descartados; gerador de referências por IA aprovado; integração com outros projetos depois. depois a Q-33 (recursão só na Lista 6), a Q-35 (critérios dos indícios de IA) e a Q-36 (satisfação medida com os feedbacks coletados pelo autor) |

@@ -68,7 +68,7 @@ completo de cada um, logo abaixo, é o que vale; quando os dois divergirem, corr
 | [Q-24](#q-24) | Questão | Decidido | 09/10/2026 | A comparação com o gabarito, sem o gabarito sair do servidor (ADR-11). |
 | [Q-25](#q-25) | Questão | Decidido | 11/10/2026 | O NFR-02 linear até 50 KB e o NFR-03 com FCP de até 1,65 s. |
 | [Q-26](#q-26) | Questão | Decidido | 12/10/2026 | Dos alunos, só o nome de exibição e, se quiser, o login do Dikastis. |
-| [Q-27](#q-27) | Questão | Decidido | 12/10/2026 | De cada verificação, só o resultado resumido, sem nada do código. |
+| [Q-27](#q-27) | Questão | Revisto | 16/10/2026 | De cada verificação, o resultado resumido (12/10/2026); desde a Q-37, também o último código de cada aluno em cada questão, cifrado (Sprint 52). |
 | [Q-28](#q-28) | Questão | Decidido | 12/10/2026 | O texto do feedback não fica no histórico do grupo. |
 | [Q-29](#q-29) | Questão | Decidido | 12/10/2026 | Os dados dos alunos saem no encerramento do período ou em 12 meses. |
 | [Q-30](#q-30) | Questão | Decidido | 12/10/2026 | O feedback cita o nome da regra, sem o R-xx. |
@@ -78,6 +78,12 @@ completo de cada um, logo abaixo, é o que vale; quando os dois divergirem, corr
 | [Q-34](#q-34) | Questão | Decidido | 12/10/2026 | A janela de períodos carregados: o ativo e os 5 anteriores. |
 | [Q-35](#q-35) | Questão | Decidido | 12/10/2026 | Os critérios dos indícios e a base de calibração sem soluções antigas. |
 | [Q-36](#q-36) | Questão | Decidido | 12/10/2026 | O formulário da pesquisa e a planilha do critério 3 foram descartados. |
+| [Q-37](#q-37) | Questão | Decidido | 16/10/2026 | Guardar o último código de cada aluno em cada questão, cifrado, para a correção e o plágio da disciplina. |
+| [Q-38](#q-38) | Questão | Decidido | 16/10/2026 | Retenção de 6 períodos (3 anos) para catálogo, códigos, resultados e pares. |
+| [Q-39](#q-39) | Questão | Decidido | 16/10/2026 | Plágio por turma (até 100) e por período (até 600), assíncrono. |
+| [Q-40](#q-40) | Questão | Decidido | 16/10/2026 | Até dois gabaritos por questão (Notion e IP CC), pelo painel; o repositório de gabaritos vira arquivo e não entra no principal. |
+| [Q-41](#q-41) | Questão | Decidido | 16/10/2026 | Os enunciados podem ir às IAs gratuitas na geração das referências, só com os casos de exemplo. |
+| [Q-42](#q-42) | Questão | Decidido | 16/10/2026 | A CI local incremental vale como evidência do PR; a release exige a rodada completa. |
 | [REC-01](#rec-01) | Recomendação | Fora do escopo | — | Um CDN com mitigação de DDoS, se o NFR-05 for violado. |
 | [REC-02](#rec-02) | Recomendação | Fora do escopo | — | Uma amostra anonimizada de soluções históricas para o corpus golden. |
 | [REC-03](#rec-03) | Recomendação | Fora do escopo | — | Publicar o ruleset da lista 48 h antes de liberá-la. |
@@ -418,6 +424,7 @@ completo de cada um, logo abaixo, é o que vale; quando os dois divergirem, corr
 
 **Impacto:** Sprint 47, ADR-13, ADR-14. **Quem valida:** Autor.
 
+**Atualização (16/10/2026, Q-37):** o autor decidiu guardar também o último código de cada aluno em cada questão, cifrado, por 6 períodos, trazido do Dikastis pela extensão (ADR-16, Sprint 52). O resultado resumido continua; o que muda é que o código passa a existir no banco, só em claro na memória da API e do analisador. A ADR-14 continua rejeitada na forma proposta (impressões ligadas à pessoa sem o código); a alternativa C dela volta em outra forma.
 ### Q-28
 
 [QUESTÃO] **Decidido (12/10/2026, autor):** o texto do feedback enviado ao aluno não fica no histórico do grupo de acompanhamento.
@@ -472,6 +479,41 @@ completo de cada um, logo abaixo, é o que vale; quando os dois divergirem, corr
 
 **Impacto:** P-09, `docs/eficacia.md`. **Quem valida:** Autor.
 
+### Q-37
+
+[QUESTÃO] **Decidido (16/10/2026, autor, com a autorização dos professores e dos monitores-chefes):** o IP-Checker passa a guardar o **último código de cada aluno em cada questão**, trazido do Dikastis pela extensão (ADR-15), **cifrado** em repouso (AES-256-GCM, chave só no Render), com o veredito do Dikastis e o resultado resumido da ADR-13, para a correção da turma e para o plágio por turma e por período (ADR-16, ADR-18). Base legal: tratamento pelo órgão público para a avaliação acadêmica da disciplina (LGPD, arts. 7º, III, e 23), que a UFPE já faz no Dikastis. Antes do piloto: o aviso aos alunos (plano de ensino e página da disciplina), o aviso de privacidade do IP-Checker atualizado, um relatório de impacto de uma página (art. 38) e a ciência do encarregado de dados da UFPE (art. 41). Nunca para outra finalidade e nunca enviado a uma IA externa. Revisa a Q-27 e o NFR-11. Isto não é parecer jurídico.
+
+**Impacto:** ADR-13, ADR-14, ADR-16, NFR-11, NFR-31, NFR-32, FR-41, Sprint 52. **Quem valida:** Autor, professores e monitores-chefes (feito em 16/10/2026); encarregado de dados da UFPE (ciência, pendente).
+
+### Q-38
+
+[QUESTÃO] **Decidido (16/10/2026, autor):** a retenção do catálogo, dos códigos dos alunos, dos resultados, dos pares de plágio e dos gabaritos é de **6 períodos (3 anos)**: quando a primeira lista de um período novo entra pela sincronização, o período mais antigo sai inteiro (quando entram as listas de 2029.2, saem as de 2026.2). Enunciados e gabaritos vão antes para o arquivo (`encerrados/`, ADR-12), porque não são dado pessoal; os códigos dos alunos são apagados de vez. O aluno pode pedir a exclusão antes do prazo (art. 18), atendida em até 15 dias. A janela é a mesma da ADR-12 (Q-34), e o volume estimado (cerca de 10 MB por período) cabe no plano gratuito.
+
+**Impacto:** NFR-31, `Housekeeping`, runbook ("Exclusão a pedido"), Sprint 52. **Quem valida:** Autor (feito).
+
+### Q-39
+
+[QUESTÃO] **Decidido (16/10/2026, autor):** o plágio ganha dois escopos novos, **por turma** (uma turma do Dikastis, como "IP CC/IA UFPE 2026.2", até 100 alunos) e **por período** (todas as turmas, até 600), em trabalho assíncrono com pré-filtro (ADR-18). O "todos contra todos" por upload (S40-02) continua para quem não sincroniza; a S46-03 (100 soluções) é absorvida.
+
+**Impacto:** ADR-07, ADR-18, FR-42, NFR-35, Sprints 46 e 53. **Quem valida:** Autor (feito).
+
+### Q-40
+
+[QUESTÃO] **Decidido (16/10/2026, autor):** até **dois gabaritos por questão**, "Notion" (a página da monitoria, colado no painel) e "IP CC" (a solução da conta IP CC UFPE no Dikastis, colada ou trazida pela extensão), igualmente válidos: na comparação vale o mais parecido, e o resultado diz qual; no alerta de vazamento, basta um. Cadastro por cliques pela chefia, com a validação contra as regras ao salvar. O repositório `ip-checker-gabaritos` **não** entra no repositório principal (confidencialidade separada; um gabarito no histórico do Git não sai mais) e vira arquivo somente leitura, com o banco como fonte e o `export-gabaritos` para o harness da CI (ADR-17). **Pendente:** confirmar no Dikastis se a conta IP CC UFPE envia as soluções das questões (spike S51-04).
+
+**Impacto:** ADR-10, ADR-11, ADR-17, FR-40, NFR-27, Sprint 51, `ip-checker-gabaritos`. **Quem valida:** Autor (feito); o spike confirma a origem IP CC.
+
+### Q-41
+
+[QUESTÃO] **Decidido (16/10/2026, autor):** os enunciados das questões podem ir ao Gemini e ao Groq (planos gratuitos) na geração das soluções de referência (S42-04), **só com os casos de exemplo**; os casos ocultos nunca saem do Dikastis. Os enunciados não são dado pessoal; são material da disciplina, e o autor liberou.
+
+**Impacto:** S42-04, S50-03, S50-06. **Quem valida:** Autor (feito).
+
+### Q-42
+
+[QUESTÃO] **Decidido (16/10/2026, autor):** a evidência de cada PR passa a ser a CI local **incremental** (ADR-20): um passo cujas entradas não mudaram desde um verde registrado é pulado e vale como verde; o resumo colado no PR diz o que rodou e o que foi pulado, com o `sha` do verde; a release exige a rodada `--completo` na ponta da `develop`. Revisa a regra da P-19 ("rodada completa e sem falha") para os PRs; para a release, ela continua.
+
+**Impacto:** P-19, NFR-36, `scripts/ci-local.sh`, `scripts/release.sh`, `ci.yml`, Sprint 49. **Quem valida:** Autor (feito).
 ### REC-01
 
 [RECOMENDAÇÃO] Fora do escopo: colocar um proxy de CDN com mitigação de DDoS (plano gratuito) na frente do Caddy, se o NFR-05 for violado em produção.

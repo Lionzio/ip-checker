@@ -69,8 +69,8 @@ junto, P-18); a Vercel só se o painel mudar. Depois, o sintético e o exercíci
 confiança), S42-05 (ligação por cargo), S42-04 (o gerador, ainda sem as referências geradas), S42-02
 (a calibração; alarmes falsos medidos nos 28 gabaritos de 2026.2, 0 na faixa alta) e S42-07 (os
 documentos, a revisar pela coordenação). Decisões no `CHANGELOG.md`. O piloto segue com
-`IPC_AI_INDICATORS=0`. Aguardando: os enunciados das 28 questões em
-`Desktop\IP-Checker\enunciados\2026.2` e as chaves das IAs, ambos com o autor; depois, a geração
-das referências (revisadas por PR), a meta de acertos e o `render.yaml` com `chefia` (S42-06),
-numa `sprint-42.1`.
+`IPC_AI_INDICATORS=0`. Aguardando: os enunciados, que pelo plano de 16/10/2026 passam a
+vir do catálogo da Sprint 50 (S50-06, o `.zip` dos enunciados), e as chaves das IAs, com o autor;
+depois, a geração das referências (revisadas por PR), a meta de acertos e o `render.yaml` com
+`chefia` (S42-06), numa `sprint-42.1`, logo depois da 50 (7.17).
 

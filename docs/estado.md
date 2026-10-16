@@ -22,7 +22,7 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Sprint 39 | Concluída e no piloto em 16/10/2026 |
 | Sprint 43 | Concluída e no piloto em 16/10/2026 (release `sprint-43`); faltam o exercício de alerta e o sintético |
 | Sprint 42 | Parte 1 na release `sprint-42` (16/10/2026); a parte 2 (referências, meta de acertos e `chefia`) espera os enunciados e as chaves das IAs |
-| Fila depois dela | 42.1 (indícios para a chefia), 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24) |
+| Fila depois dela | 49 (CI incremental) → 50 (catálogo do Dikastis) → 42.1 → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
 
 ## Esperando alguém
 
@@ -32,5 +32,6 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Revisão dos 71 textos de explicação das regras (Q-31) | Monitor-chefe, professor ou o autor | Sprint 38 |
 | Aprovação das capturas da Sprint 37 | Autor | Fora do repositório, `prints-sprint-37/` |
 | Backup agendado: registrar a tarefa (o segredo já foi guardado em 16/10/2026) | Autor | [`runbook.md`](runbook.md), "Backup agendado nesta máquina" |
+| Antes da Sprint 52: o aviso aos alunos publicado, a ciência do encarregado de dados da UFPE e a `IPC_CODE_KEY` no Render (Q-37) | Autor e coordenação | [`plano-dikastis.md`](plano-dikastis.md), seção 9 |
 | Gabaritos das Listas 5 e 6 de 2026.2 e dos períodos anteriores; o documento de permissões de 2027.1 | Autor e coordenação | P-21 e P-22 em [`decisoes.md`](decisoes.md) |
 | Quando a cota do Actions voltar (01/11/2026): os workflows na ordem do runbook | Autor ou agente | [`runbook.md`](runbook.md), "Sem GitHub Actions" |
