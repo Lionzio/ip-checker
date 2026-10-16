@@ -322,13 +322,45 @@ gh variable set BACKUP_AGE_RECIPIENT --repo Lionzio/ip-checker --body "age1..."
 A chave privada (`ipc-backup.key`) fica **fora do GitHub e do computador do dia a dia**, num
 gerenciador de senhas ou num pendrive guardado. Sem ela, nenhum backup abre; com ela, todos.
 
+### Backup agendado nesta máquina (S39-04)
+
+Enquanto o Actions estiver sem cota (P-19), e como segunda cópia depois, a tarefa "IP-Checker
+backup" do Agendador de Tarefas do Windows roda o `scripts/backup-agendado.sh` todo domingo ao
+meio-dia, ou no primeiro momento depois disso em que o computador estiver ligado e você logado.
+Ele abre o Docker Desktop se precisar e chama o `scripts/backup-local.sh` sem perguntar nada. O
+resultado de cada execução vai para `backups/piloto/agendado.log`, sem nenhum segredo.
+
+Configuração, uma vez, no PowerShell, na raiz do repositório:
+
+1. Guarde a connection string do Supabase (usuário `postgres`), cifrada com o DPAPI do Windows: só
+   o seu usuário, nesta máquina, consegue abri-la. Ela é pedida sem aparecer na tela.
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\guardar-segredo-backup.ps1
+   ```
+
+2. Crie a tarefa:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\agendar-backup.ps1
+   ```
+
+3. Rode uma vez para conferir (`Start-ScheduledTask -TaskName "IP-Checker backup"`) e veja a última
+   linha do `agendado.log`.
+
+Quando a senha do `postgres` mudar, rode o passo 1 de novo. Para tirar a tarefa:
+`Unregister-ScheduledTask -TaskName "IP-Checker backup" -Confirm:$false`. Com a máquina desligada
+por mais de uma semana, o RPO passa de 7 dias: o backup roda assim que ela voltar.
+
 ### Restaurar um backup
 
 1. Em **Actions > Backup do banco do piloto**, abra a execução da data desejada e baixe o artefato
    (`ipc-piloto-AAAA-MM-DD`). Confira o arquivo: `sha256sum -c ipc-piloto-*.sha256`.
 2. Decifre: `age --decrypt -i ipc-backup.key -o dump ipc-piloto-AAAA-MM-DD.dump.age`.
-3. **Ensaio, sem tocar no piloto:** suba um PostgreSQL descartável, aplique as migrações e restaure
-   só os dados:
+3. **Ensaio, sem tocar no piloto:** desde a S39-04, `scripts/restaurar-ensaio.sh` faz este passo
+   inteiro e cronometrado, no backup mais novo de `backups/piloto` (ou no arquivo passado), e
+   imprime a linha para a tabela abaixo. À mão, suba um PostgreSQL descartável, aplique as
+   migrações e restaure só os dados:
 
    ```bash
    docker run -d --name ipc-restore -e POSTGRES_PASSWORD=ensaio -e POSTGRES_DB=ipchecker -p 127.0.0.1:55433:5432 postgres:17-alpine
@@ -354,6 +386,7 @@ O ensaio de restauração é feito uma vez por semestre (NFR-20) e anotado aqui:
 | Data | Quem | Backup de | Resultado |
 |---|---|---|---|
 | 08/10/2026 | Claude (agente), pelo autor | `ipc-piloto-2026-10-08` (run 37753358195) | Hash conferido, migrações e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 9 s, sem contar o acesso à chave privada (NFR-20: até 30 min) |
+| 16/10/2026 | Claude (agente), pelo autor (S39-04) | `ipc-piloto-2026-10-11` (backup local) | Com `scripts/restaurar-ensaio.sh`: hash conferido, migrações (até a `0007`) e dados restaurados, linhas iguais nas 9 tabelas; RTO técnico de 7 s, sem contar o acesso à chave privada |
 
 ## Sem GitHub Actions (cota esgotada)
 
@@ -372,8 +405,9 @@ continua no ar, e o UptimeRobot continua avisando. O que fazer:
 - **Canário:** `scripts/canario-local.sh` faz o "Canário mensal" desta máquina (S35-04).
 - **Sintético e carga:** `scripts/sintetico-local.sh` faz o "Sintético diário" e
   `scripts/carga-piloto.sh` faz a "Carga no piloto" (exercício de alerta), desta máquina.
-- **Backup:** rode `scripts/backup-local.sh` pelo menos uma vez por semana (o RPO do dia a dia fica
-  em até 7 dias enquanto a cota não volta). Ele pede a connection string do Supabase sem mostrá-la
+- **Backup:** a tarefa agendada "IP-Checker backup" (seção "Backup agendado nesta máquina") roda
+  o `scripts/backup-local.sh` toda semana; sem ela, rode-o à mão pelo menos uma vez por semana (o
+  RPO do dia a dia fica em até 7 dias enquanto a cota não volta). Ele pede a connection string do Supabase sem mostrá-la
   e salva só o arquivo criptografado em `~/Desktop/IP-Checker/backups/piloto`. Guarde uma cópia
   fora do computador.
 - **Release:** `scripts/release.sh NN --ci-local` (decisão do autor de 09/10/2026) aceita, no lugar
