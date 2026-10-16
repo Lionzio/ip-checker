@@ -179,6 +179,16 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 
 - **FR-37** — Plágio medido (US-44) [PLANEJADO, Sprint 46]: precisão e revocação por faixa, num conjunto rotulado com plágio sintético (variáveis renomeadas, blocos reordenados, `for` trocado por `while`), a cada mudança no plágio; o par mostra quanto da semelhança o gabarito explica.
 
+- **FR-38** — Catálogo do período (ADR-19, US-48) [PLANEJADO, Sprint 50]: o IP-Checker guarda as listas e as questões do Dikastis de 2026.2 em diante (título, descrição, entrada, saída e só os casos de exemplo; os ocultos nunca saem do Dikastis), com o hash do conteúdo, até 5 versões anteriores do enunciado e o estado das etapas 1 e 2; a tela "Listas do período" mostra o que falta em cada questão (regras, gabaritos, referências); um `.zip` com os enunciados alimenta o gerador de referências da Sprint 42.
+
+- **FR-39** — Sincronização pela extensão do Dikastis (ADR-15, US-48, US-49, US-55) [PLANEJADO, Sprints 50, 52 e 54]: uma extensão do navegador, com a sessão do próprio monitor e um token de importação pessoal, descobre as novidades do período e envia só o que é novo ou mudou (novo acrescenta; mudou reescreve e guarda a versão; igual nada; o que sumiu fica marcado, nunca apagado), em três modos: manual ("Verificar agora"), semi-automático (selo ao abrir o Dikastis) e automático (alarme a cada 6 horas, uma pessoa por vez); cada rodada fica no histórico "Sincronizações"; o servidor nunca fala com o Dikastis.
+
+- **FR-40** — Gabaritos pelo painel (ADR-17, US-50, US-51) [PLANEJADO, Sprint 51]: até dois gabaritos por questão, "Notion" e "IP CC", cadastrados por cliques pela chefia na tela "Gabaritos", validados ao salvar contra as regras do período e da questão (o painel mostra as violações antes de salvar), guardados no banco; a comparação com o gabarito (FR-32) usa o mais parecido e diz qual; o alerta de possível vazamento vale com qualquer um; o código do gabarito nunca vai ao monitor; o `ip-checker-gabaritos` vira arquivo, e `ipc-rules export-gabaritos` alimenta o harness da CI.
+
+- **FR-41** — Códigos dos alunos (ADR-16, US-52, US-53, US-56) [PLANEJADO, Sprint 52; Q-37 e Q-38]: o último código de cada aluno em cada questão, trazido pela extensão, guardado cifrado (AES-256-GCM) por 6 períodos, com o veredito do Dikastis e o resultado resumido da ADR-13; a etapa 2 (verificador, indícios para quem vê, plágio incremental) roda a cada código novo, e um código sem catálogo fica "aguardando a questão"; a tela da turma mostra alunos × questões; exclusão a pedido do aluno em até 15 dias; o aviso aos alunos e a ciência do encarregado de dados da UFPE antes do piloto.
+
+- **FR-42** — Plágio por turma e por período (ADR-18, US-54) [PLANEJADO, Sprint 53; Q-39; absorve a S46-03]: comparação assíncrona de todos os códigos de uma questão numa turma (até 100) ou no período (até 600), com impressões MinHash e pré-filtro LSH (nenhum par acima de 90% perdido), incremental para códigos novos, pares a partir de 80% guardados pelo prazo do NFR-31, gabaritos e referências de IA como linhas especiais, progresso na tela, grupos acima de 90% e trechos lado a lado; o upload da S40-02 continua para quem não sincroniza.
+
 ### 3.3 Requisitos Não Funcionais
 
 | ID | Categoria | Requisito | Métrica | Valor-alvo | Método de verificação |
@@ -193,7 +203,7 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-08 | Segurança | Limites por análise (P-04) | Limites aplicados; % do corpus malicioso tratado sem 5xx | Timeout de 2 s (kill), `RLIMIT_AS` de 256 MB, ≤ 60.000 nós, profundidade ≤ 200, ≤ 50 KB, ≤ 1.000 linhas; 100% do corpus | Suíte de segurança da DoD (seção 8) na CI |
 | NFR-09 | Segurança | Código do aluno nunca executado nem importado | Usos proibidos no código-fonte do projeto | 0 usos de `eval`, `exec`, `compile` (fora de `engine/parse.py`), `__import__`, `importlib`, `runpy` ou `pickle` sobre a entrada | Regras de segurança do ruff (Bandit), guarda de código em pytest e Semgrep com regras próprias (`.semgrep/ip-checker.yml`, S31-04, P-20), bloqueantes em todo PR |
 | NFR-10 | Segurança | Transporte, cabeçalhos e CORS | Versão de TLS, cabeçalhos presentes, origens aceitas, nota | TLS ≥ 1.2, HSTS e CSP sem `unsafe-inline` em scripts. Na Fase 1 (SPA na Vercel, API no Render), mesma origem desde a Sprint 16, pelo *rewrite* de `/api/*` na Vercel (ADR-04), com o CORS só como plano B (`IPC_CORS_ORIGINS`, P-15); nas Fases 0 e 2, mesma origem e nenhum cabeçalho CORS. SSL Labs ≥ A | Teste automatizado de cabeçalhos e CORS pós-deploy; SSL Labs por release |
-| NFR-11 | Privacidade | O código não persiste em logs, banco ou disco | Ocorrências de um marcador canário | 0 ocorrências | Teste canário na CI (pytest, pelos logs, pelo banco e pela borda); a busca mensal em produção desde a S35-04 (`canary.yml`, `docs/runbook.md`, "Canário mensal") |
+| NFR-11 | Privacidade | O código não persiste em logs, banco ou disco em claro (revisto em 16/10/2026 pela ADR-16 [PLANEJADO, Sprint 52]: só a tabela `submissions`, cifrada, pelo prazo do NFR-31; nunca em log, telemetria, feedback, resumo ou IA externa) | Ocorrências de um marcador canário | 0 ocorrências | Teste canário na CI (pytest, pelos logs, pelo banco e pela borda); a busca mensal em produção desde a S35-04 (`canary.yml`, `docs/runbook.md`, "Canário mensal") |
 | NFR-12 | Privacidade | Minimização e retenção da telemetria | Colunas existentes; idade máxima dos registros | Só as colunas do esquema 5.2.4; nenhum registro com mais de 12 meses (P-06) | Teste de esquema na CI; verificação mensal do job de expurgo |
 | NFR-13 | Segurança | Dependências e imagens | CVEs críticas ou altas corrigíveis | 0 | gitleaks, `pip-audit` e `npm audit` em todo PR (`ci.yml`, job "Auditoria") e, com o Trivy da imagem do piloto, no workflow semanal `audit.yml`; bloqueantes desde a S31-03 (09/10/2026), depois da primeira triagem (P-20) |
 | NFR-14 | Observabilidade | Logs estruturados | % de requisições com os campos obrigatórios; campos proibidos | 100% com `request_id`, `route`, `status`, `latency_ms`, `payload_bytes`, `ruleset_version` e `outcome`; 0 campos com código ou IP | Teste de esquema de log na CI |
@@ -213,6 +223,12 @@ A tabela completa (P-xx, C-xx, Q-xx e REC-xx), com o impacto e quem valida cada 
 | NFR-28 | Desempenho | Custo da comparação com o gabarito (ADR-11) | P95 do `POST /api/v1/validate` com a comparação; tempo da comparação no analisador | P95 ≤ 200 ms e P99 ≤ 500 ms (os do NFR-01) com a comparação ligada; comparação de 2 códigos de 50 KB dentro do orçamento da similaridade (NFR-25) | "Carga no piloto" com uma questão com gabarito; teste de orçamento em `tests/similarity` |
 | NFR-29 | Privacidade | Dados de alunos nos grupos de acompanhamento (ADR-13) [PLANEJADO, Sprint 47] | Colunas guardadas; idade dos registros; ocorrências de código | Só o nome de exibição e, opcionalmente, o login do Dikastis (Q-26), nunca CPF, e-mail ou matrícula; de cada verificação, só o resultado resumido (Q-27), sem o feedback (Q-28); 0 ocorrências de código (canário do NFR-11); nada de um período depois do encerramento dele ou de 12 meses do fim, o que vier primeiro (Q-29) | Teste de esquema e canário na CI; teste do expurgo por período |
 | NFR-30 | Desempenho | Plágio da turma inteira (S40-02, S46-03) [PARCIAL: 60 soluções na S40-02; 100 na S46-03] | Tempo no worker | Matriz de 100 soluções (120 KB no total) em ≤ 5 s | Teste de orçamento com a turma sintética |
+| NFR-31 | Privacidade | Retenção do catálogo, dos códigos, dos resultados e dos pares de plágio (ADR-16, Q-38) [PLANEJADO, Sprint 52] | Períodos guardados; prazo da exclusão a pedido | 6 períodos (3 anos): quando a primeira lista de um período novo entra, o mais antigo sai inteiro, com enunciados e gabaritos arquivados antes; exclusão a pedido do aluno em ≤ 15 dias | Teste com 7 períodos no `Housekeeping`; registro das contagens; runbook da exclusão |
+| NFR-32 | Segurança | Código do aluno cifrado em repouso (ADR-16) [PLANEJADO, Sprint 52] | Registros com código em claro; onde a chave existe | 0 registros em claro (AES-256-GCM, nonce por registro, identificador como dado associado); a chave `IPC_CODE_KEY` só no ambiente da `api` no Render, gravada pelo autor | Teste que lê a tabela; chave errada falha; canário nos logs e na telemetria |
+| NFR-33 | Compatibilidade | Ritmo da extensão no Dikastis (ADR-15) [PLANEJADO, Sprint 50] | Pedidos por segundo; pedidos por sincronização sem novidade | ≤ 2 pedidos por segundo por extensão; sem novidade, ≤ 1 pedido por tarefa | Teste do adaptador com o Dikastis falso |
+| NFR-34 | Manutenibilidade | Parada limpa quando a API do Dikastis muda (ADR-15) [PLANEJADO, Sprint 50] | Resultados parciais gravados; clareza da mensagem | 0 gravações parciais; a mensagem diz o endereço e o campo que mudaram | Teste do adaptador com respostas de formato alterado |
+| NFR-35 | Desempenho | Plágio por turma e por período no piloto (ADR-18) [PLANEJADO, Sprint 53; substitui o NFR-30 na escala] | Tempo total do job no 0,1 CPU | 600 códigos de uma questão em ≤ 10 min; 100 em ≤ 2 min; nenhum par acima de 90% perdido pelo pré-filtro | Medida no piloto com códigos sintéticos (S53-06) e o corpus sintético de plágio |
+| NFR-36 | Manutenibilidade | Tempo da CI (ADR-20) [PLANEJADO, Sprint 49] | Duração da CI local por tipo de PR; minutos faturados no Actions por PR | PR típico ≤ 6 min; PR só de `.md` ≤ 1 min; release `--completo` ≤ 9 min (hoje, 13 a 15 min em todos os casos); no Actions, metade dos minutos de hoje por PR | Medição antes e depois (S49-07) no CHANGELOG; resumo da CI com o tempo de cada faixa |
 
 ## 4. Backlog de User Stories
 
@@ -274,6 +290,7 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-22 | Aluno | receber a verificação em menos de 1 s mesmo na véspera do prazo | não abandonar a ferramenta no momento de maior uso | Dado uma carga de 500 req/min, Quando verifico, Então o P95 no servidor é ≤ 200 ms (NFR-01, NFR-04); Dado uma carga de 1.500 req/min, Quando o sistema satura, Então recebo 503 com `Retry-After` em vez de um erro genérico (NFR-05) | Must | FR-19 |
 | US-23 | Professor/Coordenação | receber, ao fim do piloto, um relatório com os critérios de eficácia medidos | decidir com dados se o projeto migra para o servidor do CIn | Dado o fim do piloto, Quando o relatório é gerado, Então ele mostra, para cada critério da P-09, o valor medido, a meta e se foi atingido; Dado que a coordenação aprova a migração, Quando o runbook de migração é executado, Então o serviço passa a rodar no servidor do CIn com a mesma `ruleset_version` e sem perda da telemetria | Should | FR-17 |
 | US-35 | Monitor-mantenedor | ensaiar o rollback e a restauração do backup do piloto, com o tempo medido | saber, antes de um incidente de verdade, que o piloto volta ao ar e não perde as contas | Dado o runbook, Quando faço o rollback da API e da página, Então as duas voltam à versão anterior em ≤ 5 min e o tempo fica registrado; Dado o backup cifrado mais recente, Quando o restauro num banco descartável, Então as contagens batem com as do piloto e o RTO fica registrado (NFR-20) | Should | — |
+| US-57 | Monitor-mantenedor (desenvolvedor) | que a CI local rode só o que mudou, em paralelo, e que a release ainda prove todos os passos | esperar minutos, e não um quarto de hora, por cada PR, sem enfraquecer a prova | Dado um PR que muda só um arquivo da API, Quando rodo a CI local, Então Lighthouse, Vitest, segurança e benchmark são pulados com "igual ao verde de <sha>" e a rodada termina em ≤ 6 min; Dado um PR só de `.md`, Então só o teste dos links roda; Dada a release, Quando algum passo não tem verde para a ponta da `develop`, Então o `release.sh` recusa | Should | NFR-36 |
 
 ### Épico E6 — Acesso restrito e gestão da equipe (P-13)
 
@@ -306,6 +323,20 @@ Desde a P-13 (02/10/2026), quem usa a ferramenta é a equipe da disciplina: nas 
 | US-45 | Monitor | criar o meu grupo de acompanhamento, convidar colegas e cadastrar os alunos pelos quais sou responsável | acompanhar os mesmos alunos sozinho, em dupla ou em trio | Dado um convite, Quando o colega aceita, Então ele vê o histórico do grupo; Dado um aluno em dois grupos, Então aparece nos dois; Dado alguém que sai do grupo, Então os registros continuam | Could | FR-36 |
 | US-46 | Monitor | ver o histórico de um aluno meu, com quem fez cada verificação | acompanhar a evolução e dividir o trabalho | Dado um aluno do grupo, Quando abro o histórico, Então vejo, de cada verificação, o resultado resumido (lista, questão, validada ou anulada e por quê), a faixa dos indícios e do alerta de plágio e quem executou, sem o código nem o feedback; Dado um monitor fora do grupo, Quando chama a rota, Então recebe 403 | Could | FR-36 |
 | US-47 | Monitor-chefe ou professor | ver todos os grupos do período, só para leitura | supervisionar a monitoria sem editar o trabalho dos monitores | Dado o Gerenciar, Então vejo os grupos e o histórico; Dado uma tentativa de edição, inclusive pela API, Então recebo 403 | Could | FR-36 |
+
+### Épico E9 — Integração com o Dikastis (plano de 16/10/2026; Q-37 a Q-41 decididas no mesmo dia)
+
+| ID | Persona | Ação | Valor Esperado | Critérios de Aceite | Prioridade (MoSCoW) | FRs atendidos |
+|---|---|---|---|---|---|---|
+| US-48 | Monitor-mantenedor | sincronizar as listas e as questões do Dikastis com um clique | não copiar enunciados à mão a cada período | Dada a Lista 3 com 8 questões no Dikastis, Quando clico em "Verificar agora" e "Enviar", Então as 8 aparecem no catálogo com título, entrada, saída e exemplos, e nenhum caso oculto | Must | FR-38, FR-39 |
+| US-49 | Monitor-mantenedor | que a extensão traga só as novidades | não pesar no Dikastis e ver o que mudou | Dada uma sincronização anterior, Quando a Lista 4 é publicada e uma questão da Lista 3 é corrigida, Então só a Lista 4 e essa questão são enviadas, a questão é reescrita com a versão anterior no histórico, e o resto fica igual | Must | FR-39 |
+| US-50 | Membro da chefia | registrar o gabarito Notion e o gabarito IP CC de uma questão por cliques | cadastrar gabaritos em minutos, sem Git | Dada a L2-Q4, Quando colo o código no cartão "Gabarito Notion" e salvo, Então o painel mostra "sem violação" ou as regras e linhas acionadas, e o gabarito passa a valer na comparação | Must | FR-40 |
+| US-51 | Membro da equipe | ver qual gabarito (Notion ou IP CC) mais se parece com o código do aluno | entender a solução em relação às duas oficiais | Dada uma questão com os dois gabaritos, Quando verifico, Então a comparação mostra a semelhança com o mais parecido e diz qual é | Should | FR-32, FR-40 |
+| US-52 | Coordenação | que os códigos dos alunos fiquem guardados com segurança por 3 anos | comparar entre turmas e períodos sem expor os alunos | Dado um código de 2026.2, Então ele está cifrado no banco; Quando as listas de 2029.2 entram, Então os códigos de 2026.2 são apagados e a contagem fica registrada | Must | FR-41 |
+| US-53 | Membro da equipe | ver o resultado de cada aluno em cada questão assim que o código chega | corrigir a lista com a análise pronta, sem colar nada | Dado um código novo da L1-Q3, Quando a sincronização termina, Então a tela da turma mostra o resultado resumido dele; Dado um código de uma questão ainda sem catálogo, Então ele aparece "aguardando a questão" | Must | FR-41 |
+| US-54 | Membro da equipe | comparar todos os códigos de uma questão na turma ou no período inteiro | achar plágio entre turmas | Dados 242 códigos da L3-Q2 em três turmas, Quando peço "período", Então vejo o progresso e, ao fim, os grupos acima de 90% com os trechos lado a lado | Must | FR-42 |
+| US-55 | Membro da chefia | ligar a sincronização automática | que o catálogo e os códigos cheguem sem eu lembrar | Dado o modo automático ligado, Quando passam 6 horas com o navegador aberto e o Dikastis logado, Então a extensão sincroniza e mostra uma notificação com o resumo | Could | FR-39 |
+| US-56 | Aluno (titular dos dados) | pedir a exclusão dos meus códigos | exercer o direito da LGPD | Dado o pedido, Quando a chefia o registra, Então os códigos e os pares do aluno são apagados em até 15 dias, e o pedido fica no registro | Must | FR-41 |
 
 ## 5. Arquitetura do Sistema e Stack
 
@@ -681,6 +712,9 @@ Nas Fases 0 e 2, o banco é um contêiner `postgres` fixado por digest, só na r
 | LLM | Adaptadores próprios com `httpx`: `openai_compat` (OpenAI, Groq, DeepSeek e outros compatíveis), `gemini` e `fake` | Uma interface pequena (`generate`) cobre os provedores pedidos sem SDKs pesados, e o provedor falso deixa os testes determinísticos | LangChain e afins: muitas dependências para uma chamada só. Um SDK por provedor: quatro dependências e quatro formatos de erro |
 | Plágio | `tokenize` e `ast` da stdlib, no analisador, com *winnowing* próprio (ADR-05) | Nenhuma dependência nova, o mesmo isolamento da análise e o reaproveitamento da coleta de nomes do aluno (`symbols.py`) | MOSS ou JPlag como serviço: enviam o código a terceiros ou exigem Java no servidor |
 | Roteamento da SPA | React Router | Telas novas (Entrar, Registrar, Perfil, Gerenciamento e Plágio) com URL própria e guarda de rota | Estado manual no `App`: não escala bem para sete telas |
+| Extensão do Dikastis [PLANEJADO, Sprint 50] | TypeScript, Manifest V3, Vite com várias entradas (popup, script da página, service worker), Vitest com um Dikastis falso, ESLint; popup em HTML e TS, sem framework | Roda na aba do Dikastis com a sessão de quem já tem acesso; o servidor nunca fala com o Dikastis (ADR-15); instalada pelo modo de desenvolvedor, sem loja | Script com navegador automatizado: precisa de senha ou perfil logado e grava códigos no disco. O servidor chamando o Dikastis: credenciais de monitor no Render |
+| Cifra dos códigos dos alunos [PLANEJADO, Sprint 52] | `cryptography` (AES-256-GCM) na `api`, chave `IPC_CODE_KEY` só no Render | Código de aluno cifrado em repouso (NFR-32), com nonce por registro e o identificador como dado associado; biblioteca mantida e auditada | Cifra no banco (`pgcrypto`): a chave passaria pelo SQL e pelos logs do Supabase |
+| Plágio em escala [PLANEJADO, Sprint 53] | MinHash (128 valores) e LSH próprios sobre a árvore canonizada da ADR-07, no analisador; jobs em tabelas do Postgres | Pré-filtro sem dependência nova e no mesmo isolamento; o período inteiro (600) cabe no plano gratuito em pedaços (ADR-18) | Serviço de fila dedicado: fora do plano gratuito. Comparação completa de todos os pares: 179.700 por questão |
 
 ### 5.4 Modelo de ameaças
 
@@ -710,6 +744,36 @@ Premissa operacional (Zero Trust): todo código submetido e toda requisição an
 | 20. Acusação injusta de plágio | Soluções independentes de questões curtas ficam muito parecidas | Resultado apresentado como indício, aviso de código curto, decisão sempre da equipe, método e pesos documentados (ADR-05) | Corpus de pares com soluções independentes curtas (NFR-25) | Médio: inerente a qualquer detector em exercícios pequenos |
 | 21. Link de verificação desviado ou consumido | `Host` forjado no registro gera um link para outro domínio; o antivírus do e-mail abre o link e gasta o token | O link usa só `IPC_PUBLIC_BASE_URL`; ele abre uma página da SPA, que confirma por `POST`, e um `GET` não consome o token | Teste com `Host` forjado e com `GET` no link | Baixo |
 
+### 5.5 Integração com o Dikastis (plano de 16/10/2026, Sprints 50 a 54)
+
+Proposta em [`plano-dikastis.md`](plano-dikastis.md) (ADR-15 a ADR-19). O servidor nunca fala com o Dikastis: quem lê o Dikastis é uma extensão do navegador, no computador de quem já tem acesso, com a sessão dessa pessoa.
+
+```mermaid
+flowchart LR
+  subgraph Navegador do monitor
+    DK[Aba do Dikastis, logada] --- EXT[Extensão IP-Checker: popup, script da página, service worker]
+  end
+  EXT -->|leitura, até 2 pedidos/s| DAPI[(API do Dikastis)]
+  EXT -->|HTTPS, token de importação, /api/v1/import/*| VER[Vercel: reescreve /api com o segredo da borda]
+  VER --> API[API FastAPI no Render]
+  API --> DB[(Supabase Postgres: catálogo, gabaritos, códigos cifrados, resultados, pares, jobs)]
+  API -->|rede interna| ANA[Analisador isolado: regras, indícios, plágio, impressões]
+  WEB[Página React: Listas, Gabaritos, Turma, Plágio, Sincronizações] --> VER
+  API -->|Housekeeping: retenção de 6 períodos| DB
+```
+
+| Componente | O que faz | Onde |
+|---|---|---|
+| Extensão (`extensao/`) | Adaptador único da API do Dikastis (ritmo, repetição, conferência de formato), normalização do catálogo e hash, manifesto e diferença, envio em partes com retomada, popup e alarmes | Navegador do monitor |
+| Rotas `/api/v1/import/*` | Manifesto e gravação do catálogo e das submissões, com o token de importação pessoal e a origem da extensão conferida | `api` |
+| Catálogo e etapa 1 | `periods`, `classes`, `task_lists`, `questions`, `question_versions`; tela "Listas do período"; `.zip` dos enunciados | `api`, banco, página |
+| Gabaritos | Tabela `gabaritos` (Notion e IP CC), validação ao salvar pelo analisador, tela "Gabaritos" para a chefia, `export-gabaritos` para o harness | `api`, analisador, página |
+| Códigos e etapa 2 | `students`, `submissions` (código cifrado com AES-GCM), fila da etapa 2, tela da turma, retenção de 6 períodos e exclusão a pedido no `Housekeeping` | `api`, analisador, banco |
+| Plágio em escala | `fingerprints` (MinHash), `similarity_jobs` e `similarity_pairs`; `fingerprint`, `similarity/candidates` e a comparação em lote no analisador | `api`, analisador, banco |
+| Sincronizações | `import_runs` e `import_tokens`; tela "Sincronizações"; aviso por e-mail quando a sincronização para | `api`, página |
+
+O detalhe das tabelas, das rotas, da cifra e da sequência de uma sincronização está em `plano-dikastis.md`, seção 4.2.
+
 ## 6. ADRs (Architecture Decision Records)
 
 Desde a S28-04, cada ADR fica num arquivo próprio em [`docs/adr/`](adr/), com contexto, decisão,
@@ -724,14 +788,20 @@ decisão atualiza o status do ADR antigo e aponta para o novo.
 | [ADR-04](adr/ADR-04-autenticacao-sessao-e-autorizacao-da-equipe.md) | Autenticação, sessão e autorização da equipe | Proposto em 02/10/2026 (P-13 e P-14); implementado nas Sprints 13 a 16; confirmado no piloto em 08/10/2026 (P-15) |
 | [ADR-05](adr/ADR-05-metodo-de-deteccao-de-plagio.md) | Método de detecção de plágio | Implementado na Sprint 17 |
 | [ADR-06](adr/ADR-06-feedback-por-llm-com-moldura-deterministica.md) | Feedback por LLM com moldura determinística | Implementado na Sprint 18; revisão proposta nas Sprints 44 e 45 (7.16) |
-| [ADR-07](adr/ADR-07-plagio-por-arvore-canonizada-insensivel-a.md) | Plágio por árvore canonizada, insensível à ordem | Implementado na Sprint 27; revisão proposta na Sprint 46 (7.16) |
+| [ADR-07](adr/ADR-07-plagio-por-arvore-canonizada-insensivel-a.md) | Plágio por árvore canonizada, insensível à ordem | Implementado na Sprint 27; revisão proposta na Sprint 46 (7.16) e na ADR-18 (Sprint 53) |
 | [ADR-08](adr/ADR-08-indicios-de-uso-de-ia-nunca.md) | Indícios de uso de IA, nunca veredito | Aceito em 06/10/2026 (Q-21); implementado na Sprint 29; política aprovada em 09/10/2026; desligado no piloto até a calibração, na Sprint 42 (7.16) |
-| [ADR-09](adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md) | Integração com outros projetos da monitoria | Proposto em 07/10/2026 (Q-23); não confirmada |
-| [ADR-10](adr/ADR-10-questoes-e-gabaritos-por-periodo.md) | Questões e gabaritos por período | Aceito em 08/10/2026 (Q-14); decisão 3 revista pela ADR-12 (proposta) |
-| [ADR-11](adr/ADR-11-comparacao-com-o-gabarito.md) | Comparação com o gabarito na verificação, no plágio e nos indícios | Aceito em 09/10/2026 (Q-24); implementado na Sprint 32 |
-| [ADR-12](adr/ADR-12-varios-periodos-e-retencao-por-encerramento.md) | Vários períodos carregados e retenção por encerramento | Proposto em 12/10/2026; Sprint 43 |
-| [ADR-13](adr/ADR-13-grupos-de-acompanhamento-e-dados-de-alunos.md) | Grupos de acompanhamento e dados de alunos | Proposto em 12/10/2026; Q-26 a Q-29 decididas no mesmo dia; Sprint 47 |
-| [ADR-14](adr/ADR-14-impressoes-digitais-persistentes.md) | Impressões digitais persistentes para plágio entre períodos e sinais com histórico | Rejeitado em 12/10/2026 (Q-27: só o resultado resumido é guardado) |
+| [ADR-09](adr/ADR-09-integracao-com-outros-projetos-da-monitoria.md) | Integração com outros projetos da monitoria | Proposto em 07/10/2026 (Q-23); não confirmada; o Dikastis vira fonte de dados pela ADR-15 (proposta, 16/10/2026) |
+| [ADR-10](adr/ADR-10-questoes-e-gabaritos-por-periodo.md) | Questões e gabaritos por período | Aceito em 08/10/2026 (Q-14); decisão 3 revista pela ADR-12 (aceita, Sprint 43); item 2 revisto pela ADR-17 (proposta, 16/10/2026) |
+| [ADR-11](adr/ADR-11-comparacao-com-o-gabarito.md) | Comparação com o gabarito na verificação, no plágio e nos indícios | Aceito em 09/10/2026 (Q-24); implementado na Sprint 32; item 2 revisto pela ADR-17 (proposta, 16/10/2026) |
+| [ADR-12](adr/ADR-12-varios-periodos-e-retencao-por-encerramento.md) | Vários períodos carregados e retenção por encerramento | Aceito em 16/10/2026 (Sprint 43) |
+| [ADR-13](adr/ADR-13-grupos-de-acompanhamento-e-dados-de-alunos.md) | Grupos de acompanhamento e dados de alunos | Proposto em 12/10/2026; Q-26 a Q-29 decididas no mesmo dia; Sprint 47; convive com a ADR-16 (proposta, 16/10/2026) |
+| [ADR-14](adr/ADR-14-impressoes-digitais-persistentes.md) | Impressões digitais persistentes para plágio entre períodos e sinais com histórico | Rejeitado em 12/10/2026 (Q-27: só o resultado resumido é guardado); a alternativa C volta em outra forma na ADR-16 (proposta, 16/10/2026, Q-37) |
+| [ADR-15](adr/ADR-15-integracao-com-o-dikastis-por-extensao.md) | Integração com o Dikastis por uma extensão do navegador | Proposto em 16/10/2026; aprovado pelo autor no mesmo dia; Sprints 50, 52 e 54 |
+| [ADR-16](adr/ADR-16-codigo-dos-alunos-guardado-cifrado.md) | Código dos alunos guardado, cifrado, por 6 períodos | Proposto em 16/10/2026 (Q-37 e Q-38); revisa a Q-27, o NFR-11 e a ADR-13; Sprint 52 |
+| [ADR-17](adr/ADR-17-gabaritos-no-banco-pelo-painel.md) | Gabaritos no banco, até dois por questão, cadastrados pelo painel | Proposto em 16/10/2026 (Q-40); revisa a ADR-10 (item 2) e a ADR-11 (item 2); Sprint 51 |
+| [ADR-18](adr/ADR-18-plagio-por-turma-e-por-periodo.md) | Plágio por turma (até 100) e por período (até 600), assíncrono, com pré-filtro | Proposto em 16/10/2026 (Q-39); revisa a ADR-07; Sprint 53 |
+| [ADR-19](adr/ADR-19-catalogo-no-banco-e-analise-em-duas-etapas.md) | Catálogo no banco e análise em duas etapas | Proposto em 16/10/2026; Sprints 50 e 52 |
+| [ADR-20](adr/ADR-20-ci-incremental-por-impressao-digital.md) | CI incremental por impressão digital das entradas de cada passo | Proposto em 16/10/2026 (Q-42); Sprint 49 |
 
 ## 7. Roadmap de Sprints e Tasks do MVP
 
@@ -747,6 +817,7 @@ Cadência e capacidade conforme P-02 e Q-13: um único desenvolvedor, com 4 a 8 
 - **Fase 1e — Piloto verificado, decisões, dados e prontidão (Sprints 30–36), criada em 07/10/2026 a partir da lista de pendências depois da release da Sprint 29:** o pipeline do piloto sem passo pulado, com alerta, backup e rollback ensaiados (30); as decisões com a coordenação e o NTI e a auditoria bloqueante (31); a comparação com o gabarito na verificação, no plágio e nos indícios (32, ADR-11, incluída em 09/10/2026); os gabaritos, as questões de 2027.1 e a calibração dos indícios (33); a prontidão para 2027.1 (34); os controles ainda [PLANEJADO] (35); e a Fase 2, bloqueada pela P-09 e pela Q-12 (renumerada para 41 em 11/10/2026). As tasks estão em 7.12, as opções das decisões em 7.13 e a rastreabilidade em 7.14.
 - **Fase 1f — Polimento (Sprints 36–40), criada em 11/10/2026:** até o fim do piloto, melhorar o que existe: os defeitos e os documentos da equipe (36), a tela de verificação (37), a explicação de cada regra e a exportação (38), a qualidade interna, a operação e a documentação (39) e a correção da turma inteira (40). As tasks estão em 7.15.
 - **Fase 1g — Indícios, período, feedback, plágio, acompanhamento e Google (Sprints 42–48), proposta de 12/10/2026:** a partir da revisão das seis frentes ([`revisao-seis-frentes.md`](revisao-seis-frentes.md)): os indícios de IA ligados no piloto (42, a pedido do autor), o período na página e a retenção por encerramento (43), o feedback rastreável e o padrão do monitor (44), o "Aprimorar com IA" com validação e crítica (45), o plágio calibrado (46), os grupos de acompanhamento dos alunos (47) e a entrada com o Google no piloto (48, no fim da fila). As decisões sobre dados de alunos (Q-26 a Q-29) foram tomadas em 12/10/2026, e a 47 só vai ao piloto com o aviso de privacidade aprovado pela coordenação. As tasks estão em 7.16.
+- **Fase 1h — CI incremental e integração com o Dikastis (Sprints 49 a 54), plano de 16/10/2026:** a CI local passa a pular o que não mudou e a rodar em faixas (49); uma extensão do navegador traz do Dikastis o catálogo das listas e questões (50), os gabaritos entram pelo painel, dois por questão (51), o último código de cada aluno é guardado cifrado por 6 períodos com a análise em duas etapas (52), o plágio passa a rodar por turma e por período (53) e a sincronização fica automática (54). Primeira fase que guarda código de aluno (Q-37, ADR-16), só com o aviso aos alunos e a ciência do encarregado de dados da UFPE. Ordem: 49 → 50 → 42.1 → 51 → 52 → 53 → 54, depois 44, 45, 46 (o que sobrar), 47 e 48; a 41 continua por último (P-24). Detalhe em [`plano-dikastis.md`](plano-dikastis.md) e [`sprints/`](sprints/README.md).
 - **Fase 2 — Servidor do CIn (Sprint 41):** após 2027.1 e só se a P-09 for atingida. Adiada, junto com a Q-12, para depois do piloto. Desde 15/10/2026 (P-24), é a última da fila: a entrada no servidor do CIn depende da apresentação e da validação com monitores, monitores-chefe, professores, coordenadores e diretores, e o piloto de 2027.1 deve rodar no Render e na Vercel.
 
 Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com metade da capacidade (P-02); se isso se confirmar, o feedback termina na Sprint 20 e as listas deslocam uma sprint, ainda antes do início de 2027.1. Com 4 h por semana em todo o período (cerca de 4 SP por sprint), o bloco novo só termina em fevereiro de 2027, a Lista 2 fica pronta no início de março e as Listas 3 a 6 ficam no limite das suas liberações. O ritmo real das Sprints 1 a 12 foi bem maior que 6 SP por sprint; a premissa continua como teto até ser recalibrada.
@@ -801,6 +872,13 @@ Sensibilidade ao ritmo: as Sprints 18 e 19 caem no recesso de fim de ano, com me
 | 46 (sob comando do autor) | Plágio calibrado | US-31, US-38, US-44 | Precisão e revocação medidas com plágio sintético; IDF de base por questão; matriz com trechos | Corpus pequeno até a P-21 |
 | 47 (sob comando do autor) | Grupos de acompanhamento e histórico dos alunos | US-45, US-46, US-47 | Grupos com convite e aceite; histórico com o resultado resumido, sem código nem feedback; expurgo por período | Primeiro dado pessoal de alunos; aviso de privacidade aprovado pela coordenação antes da release |
 | 48 (no fim da fila) | Entrada com o Google no piloto | US-25 | Cliente OAuth criado pelo autor; botão do Google no piloto; ensaio de domínio e de aprovação | Tela de consentimento publicada |
+| 42.1 (sob comando do autor, depois da 50) | Indícios para a chefia | US-34 | Referências de IA geradas a partir dos enunciados do catálogo (S50-06), revisadas por PR; meta de acertos da calibração; `render.yaml` com `chefia` | Cota das IAs gratuitas na geração |
+| 49 (sob comando do autor) | CI incremental e mais rápida | US-14, US-57 | Passos pulados por impressão digital das entradas; três faixas em paralelo e a faixa silenciosa; auditoria só sobre o que mudou; release por passos; PR típico ≤ 6 min e só `.md` ≤ 1 min | Passo pulado por entradas mal declaradas (a release roda `--completo`) |
+| 50 (sob comando do autor) | Catálogo das listas pela extensão do Dikastis | US-48, US-49, US-34 | Extensão instalada; catálogo de 2026.2 no banco, só com o que é novo ou mudou; tela "Listas do período"; `.zip` dos enunciados para o gerador | A API do Dikastis muda sem aviso |
+| 51 (sob comando do autor) | Gabaritos pelo painel (Notion e IP CC) | US-50, US-51 | Dois gabaritos por questão por cliques, validados ao salvar; comparação com o mais parecido; o repositório de gabaritos vira arquivo | A conta IP CC UFPE pode não enviar soluções |
+| 52 (sob comando do autor; aviso aos alunos antes) | Códigos dos alunos: guarda, retenção e etapa 2 | US-52, US-53, US-56 | Último código de cada aluno cifrado no banco; etapa 2 a cada código; tela da turma; retenção de 6 períodos; exclusão a pedido | Dado pessoal no IP-Checker: cifra, aviso, retenção |
+| 53 (sob comando do autor) | Plágio por turma e por período | US-54, US-44 | Jobs assíncronos com MinHash e LSH; turma até 100 e período até 600; grupos e trechos lado a lado | O 0,1 CPU no NFR-35 |
+| 54 (sob comando do autor) | Sincronização automática e painel de sincronizações | US-55, US-20 | Alarme a cada 6 horas com trava; tela "Sincronizações"; aviso quando para | Sessão do Dikastis expira |
 | Backlog (após o piloto) | Melhorias de experiência | US-10 | Tela de permissões da lista, editor com realce (CodeMirror) e análise do fluxo de controle no plágio (ADR-07, alternativa D, reavaliada com os números da Sprint 46); o upload de `.py` e a alternância de tema entraram nas Sprints 38 e 37 | Dependem da avaliação do piloto |
 
 ### 7.2 Onde está o detalhe de cada sprint
@@ -816,6 +894,7 @@ outros documentos, ficaram assim:
 | 7.13 Decisões em aberto: opções para quem decide | [`decisoes.md`](decisoes.md), no fim |
 | 7.14 Matriz de rastreabilidade das pendências | [`historico/sprints-01-35.md`](historico/sprints-01-35.md) |
 | 7.15 e 7.16 Tasks das Sprints 36 a 48 | [`sprints/`](sprints/README.md), um arquivo por sprint |
+| 7.17 Tasks das Sprints 49 a 54 (plano de 16/10/2026) | [`sprints/`](sprints/README.md) e [`plano-dikastis.md`](plano-dikastis.md) |
 
 ## 8. Definition of Done (DoD)
 
@@ -829,6 +908,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] As regras de segurança do ruff e a guarda de código (`backend/tests/test_code_guards.py`) não encontram `eval`, `exec`, `compile` (fora de `engine/parse.py`), `__import__`, `importlib`, `runpy`, `pickle` nem `subprocess` sobre dados de requisição.
 - [ ] As dependências estão fixadas com hash em `uv.lock` e `package-lock.json`.
 - [ ] Nenhuma regra de permissão foi codificada fora de `rulesets/**`. Todo `rule_id` usado em código ou teste existe no catálogo R-xx.
+- [ ] [PLANEJADO, a partir da Sprint 50] A extensão do Dikastis pede só as permissões de `dikastis.com.br`, do domínio do IP-Checker, `storage`, `alarms` e `notifications`; o token do Dikastis nunca sai do domínio do Dikastis; todo conhecimento da API do Dikastis fica no adaptador, testado com um Dikastis falso.
 
 ### Testes
 
@@ -841,6 +921,9 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] Quando a entrega afeta o caminho de requisição (a partir da Sprint 28), o `deploy/load/run_load.py` no plano do piloto ou o workflow "Carga no piloto" mostra o P95 dentro do NFR-01; os cenários do NFR-04 e do NFR-05 estão no mesmo `run_load.py` desde a S34-03 (`--scenario nfr04` e `nfr05`), à mão.
 - [ ] [PLANEJADO, a partir da Sprint 46] Uma mudança no plágio não baixa a precisão nem a revocação medidas pelo `ipc-rules calibrate-plagio` (FR-37).
 - [ ] [PLANEJADO, a partir da Sprint 47] Toda rota dos grupos de acompanhamento tem a matriz cargo × ação × alvo testada por chamada direta, e o canário do NFR-11 cobre as tabelas da ADR-13.
+- [ ] [PLANEJADO, a partir da Sprint 49] Um passo da CI local só é pulado com um verde registrado para as entradas atuais dele (ADR-20); a release roda `--completo`, e o resumo colado no PR diz quais passos rodaram e quais foram pulados, com o `sha` do verde.
+- [ ] [PLANEJADO, a partir da Sprint 52] Toda rota que toca o catálogo, os gabaritos ou os códigos dos alunos tem a matriz cargo × ação testada por chamada direta e a origem conferida; o canário do NFR-11 cobre `submissions` (em claro) e os logs; nenhum código de aluno aparece em teste, PR, log ou telemetria.
+- [ ] [PLANEJADO, a partir da Sprint 53] Uma mudança no plágio em escala não perde nenhum par acima de 90% do corpus sintético pelo pré-filtro, e a medida do NFR-35 no piloto está registrada antes da release.
 
 ### Segurança: submissões maliciosas contra o isolamento e o motor de regras
 
@@ -887,6 +970,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] Toda premissa ou questão nova ou resolvida foi registrada em `docs/decisoes.md` (seção 1.3).
 - [ ] O aviso de privacidade foi atualizado quando mudaram os dados pessoais guardados ou enviados a terceiros (a partir da Sprint 14).
 - [ ] [PLANEJADO, a partir da Sprint 44] O `estilo.yaml` do feedback passa no esquema, e as mudanças de tom foram revisadas por um monitor-chefe, um professor ou o desenvolvedor (Q-31).
+- [ ] [PLANEJADO, a partir da Sprint 52] O aviso de privacidade, o aviso aos alunos e o relatório de impacto (ADR-16) foram atualizados quando mudou o que se guarda dos alunos, e a ciência do encarregado de dados da UFPE está registrada em `decisoes.md`.
 
 ### Implantação
 
@@ -897,6 +981,7 @@ Cada item é verificado como sim ou não. Uma task ou história só está pronta
 - [ ] O UptimeRobot monitora `/ready`, `/health/slo` e a SPA a cada 5 min, com alerta por e-mail, configurado pelo autor conforme `deploy/piloto.md` e registrado no runbook.
 - [ ] Toda migração de banco é reversível e foi testada antes de ir para o piloto (a partir da Sprint 13).
 - [ ] [PLANEJADO, a partir da Sprint 47] Uma migração que cria tabelas com dados pessoais de alunos traz a função de expurgo e o teste dela (NFR-29).
+- [ ] [PLANEJADO, a partir da Sprint 52] Toda tabela com código de aluno guarda só o texto cifrado (NFR-32), com a chave `IPC_CODE_KEY` gravada pelo autor no Render, nunca por agente, e a rotação da chave documentada no runbook; a retenção de 6 períodos (NFR-31) tem teste e registro de contagem.
 - [ ] Os segredos novos (banco de contas, cliente OAuth, e-mail e LLM) existem só no ambiente da `api`, nunca no do `analyzer` nem no build da página (a partir da Sprint 13).
 
 ## 9. Integração com outros projetos da monitoria (possibilidade)

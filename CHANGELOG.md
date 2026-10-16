@@ -53,6 +53,17 @@ ligação para a chefia saem numa `sprint-42.1`.
 | Referências e base de calibração são conjuntos diferentes | Calibrar o sinal 5 com as próprias referências daria 100% de acerto por construção |
 | Release com o piloto em `0` | A política pede as duas metas antes de ligar para a chefia (decisão do autor de 16/10/2026) |
 
+- **16/10/2026, plano da Fase 1h (#PRNUM):** o estudo de caso da extensão do Dikastis, aprovado
+  pelo autor nas duas partes (enunciados e códigos dos alunos), virou o plano das Sprints 49 a 54
+  (`docs/plano-dikastis.md`, `docs/sprints/sprint-49.md` a `sprint-54.md`, ADR-15 a ADR-20, FR-38
+  a FR-42, NFR-31 a NFR-36, US-48 a US-57, Q-37 a Q-42). A 49 corta a CI local de 14 para cerca de
+  5 minutos por PR (passos pulados por impressão digital das entradas, três faixas em paralelo,
+  auditoria só sobre o que mudou) e vem primeiro; a 50 traz o catálogo das listas do Dikastis e
+  destrava a 42.1; a 51 põe os gabaritos no banco pelo painel (dois por questão); a 52 guarda o
+  último código de cada aluno, cifrado, por 6 períodos (a primeira sprint com código de aluno,
+  Q-37); a 53 faz o plágio por turma e por período; a 54 fecha com a sincronização automática.
+  Nada foi implementado ainda: cada sprint começa com o comando do autor.
+
 ## Sprint 43 — Período na página e retenção por encerramento
 
 A Sprint 43 (S43-01 a S43-05; US-37, US-39 e US-40; ADR-12) começou e terminou em 16/10/2026,
