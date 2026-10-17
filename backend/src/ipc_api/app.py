@@ -60,6 +60,7 @@ from ipc_api.ratelimit import (
 from ipc_api.routes import (
     admin,
     auth,
+    catalog,
     feedback,
     google,
     importing,
@@ -383,6 +384,7 @@ def create_app(
     app.include_router(feedback.router)
     app.include_router(importing.tokens)
     app.include_router(importing.catalog)
+    app.include_router(catalog.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)
     return app

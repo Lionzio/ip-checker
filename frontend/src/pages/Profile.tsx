@@ -4,7 +4,9 @@ import { PasswordRequirements } from "../components/PasswordRequirements";
 import { ThemeField } from "../components/ThemeField";
 import { TreatmentField } from "../components/TreatmentField";
 import { passwordAccepted } from "../passwordPolicy";
-import type { AuthClient } from "../services/client";
+import type { AuthClient, ImportTokenClient } from "../services/client";
+import { ImportTokens } from "../components/ImportTokens";
+import { IMPORT_ROLES } from "../importRoles";
 import type { Account, Treatment } from "../types/api";
 import { Button } from "../components/ui";
 import { errorMessage, INPUT, sessionExpired } from "../ui";
@@ -12,14 +14,17 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { PAGE_TITLES } from "../labels";
 
 interface ProfileProps {
-  client: AuthClient;
+  client: AuthClient & ImportTokenClient;
   account: Account;
   onUpdated: (account: Account) => void;
   /** A API respondeu 401: a sessão venceu ou foi encerrada. */
   onUnauthenticated?: () => void;
 }
 
-/** Perfil (FR-26): nome, curso, tratamento, senha e o tema da página (S37-05). O cargo não se altera por aqui. */
+/**
+ * Perfil (FR-26): nome, curso, tratamento, senha, o tema da página (S37-05) e, para a chefia, o token de
+ * importação da extensão do Dikastis (S50-04). O cargo não se altera por aqui.
+ */
 export function Profile({ client, account, onUpdated, onUnauthenticated }: ProfileProps) {
   useDocumentTitle(PAGE_TITLES.profile);
   return (
@@ -37,6 +42,7 @@ export function Profile({ client, account, onUpdated, onUnauthenticated }: Profi
         </h2>
         <ThemeField />
       </section>
+      {IMPORT_ROLES.has(account.role) && <ImportTokens client={client} onUnauthenticated={onUnauthenticated} />}
       <Link to="/" className="text-sm text-blue-700 underline dark:text-blue-300">
         Voltar ao painel
       </Link>

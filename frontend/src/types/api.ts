@@ -34,6 +34,13 @@ export type SimilarityMatrixResponse = Schemas["SimilarityMatrixResponse"];
 export type MatrixPair = Schemas["MatrixPair"];
 export type MatrixSolution = Schemas["MatrixSolution"];
 export type ListPanel = Schemas["ListPanelResponse"];
+/** O catálogo das listas do período, sincronizado pela extensão do Dikastis (S50-06). */
+export type CatalogResponse = Schemas["CatalogResponse"];
+export type CatalogListInfo = Schemas["CatalogListInfo"];
+export type CatalogQuestionInfo = Schemas["CatalogQuestionInfo"];
+/** O token de importação da extensão (S50-04); o valor só vem na criação. */
+export type ImportTokenInfo = Schemas["ImportTokenInfo"];
+export type ImportTokenCreated = Schemas["ImportTokenCreated"];
 /** Indícios de uso de IA, só para a equipe (Sprint 29, ADR-08). */
 export type Indicators = Schemas["Indicators"];
 export type Indicator = Schemas["Indicator"];

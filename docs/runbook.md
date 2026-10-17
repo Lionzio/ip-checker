@@ -20,6 +20,8 @@ S28-03). Cada seção começa pelo sintoma. A configuração das contas está em
 | O sintético ou o canário falhou | Sintético diário (S34-02) ou Canário mensal (S35-04) |
 | A coordenação pede para desligar o painel de indícios, ou ele mostrou algo indevido | Indícios de uso de IA, "Desligar os indícios" |
 | Começou um período novo (ou chegaram gabaritos novos) | Indícios de uso de IA, "Recalibrar a cada período" |
+| A extensão do Dikastis diz que o formato do Dikastis mudou | A sincronização parou: o formato do Dikastis mudou |
+| Um token de importação vazou, ou a pessoa saiu da chefia | Revogar um token de importação |
 
 ## Voltar para a versão anterior (rollback)
 
@@ -189,6 +191,36 @@ O `/health/service` e o `/ready` respondem 503. No Render, o log mostra o motivo
   Médio (blueprint, 5.4); registre a decisão.
 - **Ruleset inválido:** o analisador não sobe com um ruleset ou uma questão inválida (FR-15). Isso
   não deveria passar da CI (`ipc-rules validate`); faça o rollback e corrija por PR.
+
+## A sincronização parou: o formato do Dikastis mudou
+
+O popup da extensão diz "O formato do Dikastis mudou em `<endereço>`: o campo `<campo>` deveria ser
+`<tipo>`". A leitura parou inteira e **nada foi enviado** ao IP-Checker (NFR-34): o catálogo fica
+como estava na última sincronização.
+
+1. Abra o Dikastis logado, as ferramentas do desenvolvedor (F12) → **Network**, e abra a página que
+   corresponde ao endereço (turmas, uma tarefa ou um problema). Veja o novo nome ou tipo do campo
+   **sem copiar valores** (nada de enunciado nem de dado de aluno no PR).
+2. Corrija o validador em `extensao/src/dikastis/formatos.ts`, as respostas sintéticas em
+   `extensao/test/respostas/dikastis.ts` e o registro em `extensao/docs/api-dikastis.md`, no mesmo
+   PR, com a CI local verde.
+3. Suba a versão em `extensao/package.json` e `extensao/manifest.json` (o teste confere as duas),
+   faça o merge e avise quem sincroniza para rodar `npm run build` e **Atualizar** a extensão.
+
+Se o problema for o hash (a API responde 422 "O hash da questão ... não confere"), a regra mudou de
+um lado só: `backend/src/ipc_api/importing/hashing.py` e `extensao/src/catalogo/hash.ts` têm de
+passar pelos mesmos `extensao/test/vetores-hash.json`.
+
+## Revogar um token de importação
+
+Um token vazou (num print, num chat) ou a pessoa saiu da chefia:
+
+1. A própria pessoa: **Perfil** → **Token de importação** → **Revogar**. Vale na hora.
+2. Sem acesso à conta: quem gerencia a equipe muda o cargo para monitor (o token deixa de valer,
+   porque só a chefia importa) ou remove a conta; os tokens e as rodadas somem com a conta.
+3. Para conferir, no SQL Editor do Supabase (só leitura):
+   `SELECT label, created_at, revoked_at, last_used_at FROM app.import_token ORDER BY created_at DESC;`
+   O valor do token nunca está no banco, só o hash.
 
 ## Indícios de uso de IA (S42-05 e S42-07)
 

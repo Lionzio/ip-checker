@@ -91,6 +91,9 @@ definir uma senha ali. O cargo não muda pelo perfil: quem aprova os cadastros �
 Em **Aparência**, no Perfil (ou no menu da conta), o tema pode ser **claro**, **escuro** ou **do
 sistema**, que segue a escolha do seu computador ou celular. A escolha vale só neste navegador.
 
+Para a chefia e o desenvolvedor, o Perfil tem também o **Token de importação** da extensão do
+Dikastis (seção "Listas do período e a extensão do Dikastis").
+
 A sessão termina depois de 12 horas sem uso, em no máximo 7 dias, e também quando você sai, troca
 a senha, muda de cargo ou é removido da equipe.
 
@@ -200,6 +203,71 @@ O resultado tem uma linha por aluno: o nome do arquivo sem o `.py` (dois `ana.py
 arquivo passa dos limites da verificação), as violações por categoria, as regras e a semelhança
 com o gabarito. **Baixar CSV** leva a tabela para o Excel ou o Planilhas, **sem o código**. Para
 o feedback de um aluno, abra o arquivo dele em **Verificar**. Nada é guardado.
+
+## Listas do período e a extensão do Dikastis
+
+A tela **Listas**, no cabeçalho, mostra as listas e as questões do período que já estão no
+IP-Checker, trazidas do Dikastis por uma extensão do navegador (Sprint 50; ADR-15 e ADR-19). Cada
+questão mostra a versão do enunciado e o que já existe para ela: o **enunciado** (sempre, quando
+ela está ali), as **regras** próprias (o ruleset do período) e o **gabarito**. Uma lista ou questão
+que sumiu do Dikastis fica marcada como "não encontrada na última sincronização"; nada é apagado.
+A chefia e o desenvolvedor veem **Baixar enunciados (.zip)**, com um `L1-Q1.md` por questão das
+listas, que alimenta o gerador de referências de IA (`python -m ipc_api.referencias --enunciados`).
+
+A extensão é de quem cuida da sincronização (a chefia ou o desenvolvedor); o resto da equipe só
+usa a tela. Ela lê o Dikastis **com a sua sessão**, no seu navegador, só as listas, os enunciados e
+os casos de exemplo, no máximo 2 pedidos por segundo, e envia ao IP-Checker só o que é novo ou
+mudou. Nunca lê placar, submissões, pessoas nem os casos ocultos, e o seu token do Dikastis não
+sai do site do Dikastis.
+
+### Instalar a extensão
+
+1. No repositório, em `extensao/`: `npm ci` e depois `npm run build`. A pasta `extensao/dist` é a
+   extensão.
+2. No Chrome, abra `chrome://extensions`, ligue o **Modo do desenvolvedor** (no canto superior
+   direito), clique em **Carregar sem compactação** e escolha a pasta `extensao/dist`. No Edge, o
+   mesmo em `edge://extensions`.
+3. A extensão aparece como **IP-Checker: listas do Dikastis**. Fixe o ícone na barra (o quebra-cabeça
+   → o alfinete) para ver o selo de novidades.
+4. Recarregue as abas do Dikastis que já estavam abertas.
+
+Numa versão nova, rode `npm run build` de novo e clique em **Atualizar** em `chrome://extensions`
+(ou no ícone de recarregar do cartão da extensão).
+
+### O token de importação
+
+1. No IP-Checker, abra **Perfil** → **Token de importação**, escreva onde ele vai ficar (por
+   exemplo, "Chrome do notebook") e clique em **Criar token**.
+2. **Copie o token na hora**: ele aparece uma vez só. O IP-Checker guarda só um resumo dele.
+3. No ícone da extensão → **Ajustes**, cole o token e clique em **Salvar**. O endereço já vem com o
+   do piloto.
+
+O token vale 90 dias, e cada conta tem no máximo 3 ativos. Para trocar, crie outro e revogue o
+antigo no Perfil (**Revogar**). Um token revogado, vencido ou de uma conta que saiu da chefia para
+de funcionar na hora.
+
+### Sincronizar
+
+1. Abra o Dikastis numa aba e entre na sua conta.
+2. Com o modo **Verificar sozinho ao abrir o Dikastis** ligado (o padrão), a extensão confere as
+   novidades ao abrir o Dikastis, no máximo a cada 30 minutos, e põe o número delas no selo do
+   ícone.
+3. Clique no ícone e em **Verificar agora**: o popup mostra o período, as listas, as questões, as
+   novas ou alteradas e as que sumiram. Ler o Dikastis leva alguns segundos.
+4. Clique em **Enviar**: vão só as questões novas ou alteradas. Se a conexão cair no meio, clique em
+   **Enviar** de novo, e ela continua de onde parou.
+5. Confira na tela **Listas**.
+
+Mensagens do popup:
+
+- **Sem sessão no Dikastis:** entre na sua conta numa aba do Dikastis e tente de novo.
+- **O IP-Checker recusou o token:** crie outro no Perfil e cole nos Ajustes.
+- **O formato do Dikastis mudou em ... (campo ...):** nada foi enviado; avise o desenvolvedor
+  (runbook, "A sincronização parou: o formato do Dikastis mudou").
+- **O IP-Checker está indisponível:** espere alguns minutos (o servidor gratuito pode estar
+  acordando) e tente de novo.
+- **Recarregue a aba do Dikastis:** a aba foi aberta antes de a extensão ser instalada ou
+  atualizada.
 
 ## Feedback para o aluno
 
@@ -394,7 +462,9 @@ ninguém. As etiquetas de cargo têm cor e nome: professor (verde), monitor-chef
 ## Privacidade
 
 O código analisado, comparado ou usado no feedback não é guardado em lugar nenhum. A conta guarda
-nome, e-mail, curso, tratamento e cargo; a senha, só como resumo criptográfico. O aviso completo está
+nome, e-mail, curso, tratamento e cargo; a senha, só como resumo criptográfico. O token de
+importação da extensão também é guardado só como resumo, e o catálogo das listas (enunciados e
+casos de exemplo do Dikastis) não tem nenhum dado pessoal. O aviso completo está
 na própria página, no link **Aviso de privacidade** do rodapé.
 
 ## Quando o IP-Checker erra

@@ -8,6 +8,69 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 50 — Catálogo das listas pela extensão do Dikastis
+
+A Sprint 50 (S50-01 a S50-08; US-48, US-49 e US-34; ADR-15 e ADR-19) começou e terminou em
+16/10/2026, a primeira da integração com o Dikastis ([`plano-dikastis.md`](docs/plano-dikastis.md)).
+A missão é que nenhum monitor copie um enunciado à mão de novo, e que o IP-Checker saiba, a cada
+semana do período, quais listas e questões já existem no Dikastis. As personas são o
+monitor-mantenedor que sincroniza, o monitor-chefe que acompanha o catálogo e precisa dos
+enunciados para as referências de IA, e o membro da equipe que só vê as listas. Nenhum dado de
+aluno: a extensão nunca lê placar, submissões, pessoas nem os casos ocultos.
+
+- **16/10/2026, S50-04 e S50-05 (#149):**
+  - **Migração `0008`:** `app.catalog_period`, `catalog_class`, `catalog_list` (com
+    `catalog_list_task`: a mesma lista em várias turmas é uma só), `catalog_question` (o enunciado e
+    só os casos de exemplo), `catalog_question_version` (as 5 versões anteriores), `import_run` e
+    `import_token` (só o SHA-256). Só acréscimos; a API não apaga questões, listas nem rodadas, e
+    tokens e rodadas somem com a conta. Aplicada pelo autor no deploy.
+  - **Token de importação no Perfil:** só a chefia e o desenvolvedor criam; o valor `ipc_imp_…`
+    aparece só na criação (`Cache-Control: no-store`); 90 dias, no máximo 3 ativos, revogável, com
+    limite próprio de 30 pedidos por minuto. Deixa de valer quando a conta sai da chefia.
+  - **Rotas da extensão** (`/api/v1/import/catalog/manifest` e `/questions`): só com o token (o
+    cookie da sessão não abre); a origem `chrome-extension://hbndgmplpohgfbmdemopbbibfocbkdhh` é
+    aceita só nelas. O manifesto devolve o que falta; o novo acrescenta, o que mudou reescreve e
+    guarda a versão, o igual não muda nada, o que sumiu fica marcado e volta limpo. A API recalcula
+    o hash do enunciado e recusa o que não confere.
+- **16/10/2026, S50-01, S50-02, S50-03 e S50-07 (#150):**
+  - **A extensão** (`extensao/`): Manifest V3 com ID fixo pela chave pública, só `storage` e os dois
+    domínios; Vite (popup e service worker como módulos, script da página em IIFE), TypeScript
+    estrito, ESLint e Vitest (125 testes, 98,9% das instruções).
+  - **Adaptador do Dikastis:** o token da sessão é lido só no script da página; no máximo 2 pedidos
+    por segundo, mesmo simultâneos; repetição só em 429, 5xx e sem resposta; um validador por
+    endereço que para tudo, sem enviar nada, se um campo mudar (NFR-34).
+  - **Descoberta e mapeamento:** turmas de 2026.2 em diante, Lista/Prova/Treino, `26.2L1Q1` →
+    `L1-Q1` (também com emoji e `20.2L1Q01`), cada questão lida uma vez entre as turmas, só os casos
+    de exemplo; envio só do que falta, em partes de até 100 KB, com retomada.
+  - **Semi-automático:** ao abrir o Dikastis, só o manifesto, no máximo a cada 30 minutos, com o
+    número de novidades no selo do ícone.
+  - **CI:** passos da extensão na faixa C e o `npm audit` dela na faixa B do `ci-local.sh`; o
+    `release.sh` e o `ci.yml` (job `extensao`) também.
+- **16/10/2026, S50-06 e S50-08:**
+  - **Tela "Listas do período"** (`/listas`, carregada sob demanda; JS inicial 105,3 KB com gzip,
+    folga de 7,1 KB até o próximo degrau do FCP): as listas, as turmas, as datas e, por questão, a
+    versão e o estado da etapa 1 (enunciado, regras próprias, gabarito); o que sumiu do Dikastis
+    aparece marcado. `GET /api/v1/periods/{p}/catalog` não traz texto de enunciado nem de gabarito.
+  - **`.zip` dos enunciados** (`GET /api/v1/periods/{p}/catalog/statements.zip`, só a chefia): um
+    `L1-Q1.md` por questão das listas, no formato que o `python -m ipc_api.referencias --enunciados`
+    lê.
+  - **Token no Perfil:** criar, copiar (uma vez) e revogar.
+  - **Documentos:** ADR-15 e ADR-19 aceitas; guia da equipe ("Listas do período e a extensão do
+    Dikastis": instalar, o token, sincronizar); runbook ("A sincronização parou: o formato do
+    Dikastis mudou" e "Revogar um token de importação"); FR-38, FR-39, NFR-33 e NFR-34; aviso de
+    privacidade.
+
+| Decisão | Por quê |
+|---|---|
+| A API do Dikastis descoberta pelo JavaScript público, sem login | Nenhuma senha digitada pela IA e nenhum dado de aluno visto; a conferência real fica para a primeira sincronização com o autor |
+| O ID da extensão no código (`DEFAULT_EXTENSION_ID`), e `IPC_IMPORT_EXTENSION_IDS` opcional | Nada muda no `render.yaml` nesta release (P-18); o teste do manifesto confere que o `key` dá esse ID |
+| Os nomes `catalog_*` nas tabelas | Não confundir com as tabelas de contas e de telemetria; o plano usava nomes provisórios |
+| NFR-33 revista: sem novidade, 1 pedido por tarefa e 1 por questão | O Dikastis não diz quando um problema mudou; o hash precisa do enunciado. Cerca de 50 pedidos, 25 s, para as 28 questões de 2026.2 |
+| O estado das referências de IA fora da tela nesta sprint | O manifesto do analisador não diz quais questões têm referências; entra na 42.1, que gera as primeiras |
+| A origem da extensão aceita só em `/api/v1/import/*` | O resto da API continua só com a própria página (ADR-04); as rotas da extensão não aceitam o cookie |
+| Os vetores do hash num arquivo lido pelo pytest e pelo Vitest | As duas implementações não divergem sem a CI acusar; a regra tira só espaço, tab e quebra das pontas porque o `strip()` e o `trim()` tiram caracteres diferentes |
+| `alarms` e `notifications` fora do manifesto | Só a Sprint 54 (modo automático) precisa deles: permissões mínimas |
+
 ## Sprint 49 — CI incremental e mais rápida
 
 A Sprint 49 (S49-01 a S49-07; US-14 e US-57; ADR-20, Q-42) começou e terminou em 16/10/2026, a
@@ -43,7 +106,8 @@ compartilhada. Só scripts e CI: nada muda no Render nem na Vercel.
   - **Medida (S49-07), máquina do autor, mesmo commit:** rodada completa em 9,9 min (595 s) (antes,
     13 a 15 min em série); sem mudança de código, 21 s, com 28 passos pulados; uma mudança só no
     backend, cerca de 8 min (a faixa A, os testes de tempo, a segurança e o e2e). Das 6 rodadas
-    do dia, duas acharam defeitos reais da própria sprint: o `` que o Python escreve no
+    do dia, duas acharam defeitos reais da própria sprint: o `
+` que o Python escreve no
     Windows entrava nos hashes e nos alvos do Semgrep, e o teste de tempo da janela de períodos
     (Sprint 43) reprovava por ruído logo depois das faixas (agora é o melhor de três medições).
 

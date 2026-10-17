@@ -51,3 +51,13 @@ Do plano de 16/10/2026 ([`plano-dikastis.md`](../plano-dikastis.md)); o plano co
 - A API do Dikastis muda: o adaptador para com a mensagem certa, e a correção é uma versão nova da extensão.
 - Duas pessoas sincronizando ao mesmo tempo: a diferença por hash torna o reenvio inofensivo.
 - Enunciados com imagens ou fórmulas que o Markdown não carrega: o hash usa só o texto; a tela avisa quando um enunciado tem anexos que não vieram.
+
+**Situação (16/10/2026):** concluída na release `sprint-50`, no mesmo dia do plano: PR A (#149;
+S50-04 e S50-05), PR B (#150; S50-01, S50-02, S50-03 e S50-07) e o PR C (S50-06 e S50-08).
+Decisões no `CHANGELOG.md`. O que mudou em relação ao plano: as tabelas se chamam `catalog_*`; o
+ID da extensão fica no código, sem `IPC_IMPORT_EXTENSION_IDS` no `render.yaml`; o manifesto não
+pede `alarms` nem `notifications` (Sprint 54); a NFR-33 foi revista (sem novidade, uma leitura por
+questão, porque o Dikastis não diz quando um problema mudou); e o estado das referências de IA na
+tela fica para a 42.1. Falta, com o autor: a migração `0008`, o deploy (Render e Vercel), a
+instalação da extensão, o token e a primeira sincronização de verdade (critérios 1 e 2 de aceite),
+o exercício de alerta e o sintético.

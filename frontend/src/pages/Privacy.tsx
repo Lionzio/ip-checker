@@ -28,6 +28,12 @@ export function Privacy() {
           conta Google.
         </li>
         <li>Cargo, situação da conta, data do pedido e quem o aprovou ou recusou.</li>
+        <li>
+          Para a chefia e o desenvolvedor, os tokens de importação da extensão do Dikastis, guardados
+          só como resumo criptográfico, com o nome dado a cada um e as datas de criação, de uso e de
+          revogação. O catálogo das listas (enunciados e casos de exemplo do Dikastis) não tem dados
+          pessoais.
+        </li>
       </ul>
       <p>
         Esses dados servem para dar acesso só à equipe, aprovar os cadastros e montar a apresentação

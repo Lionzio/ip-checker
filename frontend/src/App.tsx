@@ -27,6 +27,7 @@ const ClassBatch = lazy(() => import("./pages/ClassBatch").then((module) => ({ d
 const Plagiarism = lazy(() => import("./pages/Plagiarism").then((module) => ({ default: module.Plagiarism })));
 const Admin = lazy(() => import("./pages/Admin").then((module) => ({ default: module.Admin })));
 const Profile = lazy(() => import("./pages/Profile").then((module) => ({ default: module.Profile })));
+const Lists = lazy(() => import("./pages/Lists").then((module) => ({ default: module.Lists })));
 
 interface AppProps {
   client: ApiClient;
@@ -166,6 +167,16 @@ function Shell({ client, demoMode }: Required<AppProps>) {
                 element={
                   state.status === "signed-in" ? (
                     <ClassBatch client={client} onUnauthenticated={expireToLogin} />
+                  ) : (
+                    <Navigate to="/entrar" replace />
+                  )
+                }
+              />
+              <Route
+                path="/listas"
+                element={
+                  state.status === "signed-in" ? (
+                    <Lists client={client} account={state.account} onUnauthenticated={expireToLogin} />
                   ) : (
                     <Navigate to="/entrar" replace />
                   )
