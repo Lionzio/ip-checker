@@ -31,11 +31,12 @@ services:
       # de uma variável que só some do render.yaml. Para um novo exercício, veja o runbook.
       - key: IPC_SLO_P95_MS
         value: "200"
-      # Indícios de uso de IA (ADR-08, S29): a política foi aprovada (Q-21); desligados no piloto até
-      # a calibração com os critérios da Q-35 (Sprint 42, docs/indicios-de-ia.md). Ligar é trocar
-      # o valor aqui, por PR.
+      # Indícios de uso de IA (ADR-08, S29): a política foi aprovada (Q-21). Ligados só para a chefia
+      # (desenvolvedor, professores e monitores-chefes) desde a Sprint 42.1, com as duas metas da
+      # calibração da Q-35 cumpridas (docs/indicios-de-ia.md). Toda a equipe ("1") só depois de uma
+      # lista com o registro de casos, por outro PR. Desligar: "0" no painel do Render (runbook).
       - key: IPC_AI_INDICATORS
-        value: "0"
+        value: chefia
       - key: IPC_ENABLED_LISTS
         value: "1,2,3,4,5,6"
       # Pela página, o X-Forwarded-For chega com o cliente (escrito pela Vercel), o IP da Vercel e

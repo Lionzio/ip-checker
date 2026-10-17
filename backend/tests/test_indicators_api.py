@@ -157,12 +157,14 @@ def test_the_analyzer_service_computes_them_only_when_asked(real_analyzer: TestC
     assert 2 <= len(with_them["indicators"]["questions"]) <= 3
 
 
-def test_the_pilot_keeps_them_off_until_the_policy_is_approved() -> None:
-    # ADR-08 e S29-04: ligar no piloto é mudar o render.yaml por PR, depois da política aprovada.
+def test_the_pilot_shows_them_only_to_the_leadership_and_the_code_starts_off() -> None:
+    # ADR-08 e S42-06: ligar no piloto é mudar o render.yaml por PR. Desde a Sprint 42.1, com as
+    # metas da calibração da Q-35 cumpridas, só a chefia vê o painel; toda a equipe ("1") vem depois
+    # de uma lista com o registro de casos. Fora do piloto, o padrão continua desligado.
     blueprint = yaml.safe_load((REPO_ROOT / "render.yaml").read_text(encoding="utf-8"))
     env = {item["key"]: item.get("value") for item in blueprint["services"][0]["envVars"]}
 
-    assert env["IPC_AI_INDICATORS"] == "0"
+    assert env["IPC_AI_INDICATORS"] == "chefia"
     assert ApiSettings().ai_indicators == "0"
 
 
