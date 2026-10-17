@@ -13,6 +13,11 @@ rules:
     message: >-
       eval, exec e compile executam código. O motor só analisa a AST do código do aluno, nunca o
       executa (ADR-01); dado de requisição nunca vira código.
+    # As referências de IA (S42-04) são dados: o motor só as lê como AST e compara, nunca as
+    # executa; e a L4-Q4 de 2026.2 pede eval(input()) no enunciado (Sprint 42.1).
+    paths:
+      exclude:
+        - "rulesets/*/referencias/**"
     pattern-either:
       - pattern: eval(...)
       - pattern: exec(...)
