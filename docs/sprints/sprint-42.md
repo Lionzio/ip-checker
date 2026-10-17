@@ -76,3 +76,10 @@ depois, a geração das referências (revisadas por PR), a meta de acertos e o `
 enunciados saem do botão **Baixar enunciados (.zip)** da tela "Listas do período" (um `L1-Q1.md`
 por questão), descompactado na pasta do `--enunciados`, depois da primeira sincronização.
 
+**Situação (17/10/2026):** parte 2 concluída na release `sprint-42.1` (#152 e #153): 102
+referências de IA nas 34 questões das Listas 1 a 5 de 2026.2, a partir dos enunciados do catálogo
+(S42-04); a calibração com as duas metas cumpridas (0 gabaritos na faixa alta e 83,0% das 206
+soluções geradas na média ou alta; S42-02), depois de remover as 8 referências que repetiam o
+gabarito; e `IPC_AI_INDICATORS: chefia` no `render.yaml` (S42-06), que liga o painel no deploy.
+Falta: o deploy, a conferência do piloto com `PILOT_AI_INDICATORS=chefia`, o sintético, o
+exercício de alerta e, depois de uma lista com o registro de casos, o PR com `1`.

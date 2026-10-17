@@ -8,6 +8,38 @@ Cada release na `main` ganha a tag `sprint-NN` e um GitHub Release com a seção
 (`scripts/release.sh`). O ruleset tem versão própria (`ruleset_version`), citada nas sprints que o
 mudaram.
 
+## Sprint 42.1 — Referências de IA e a calibração completa dos indícios
+
+A Sprint 42.1 (S42-02, S42-04 e S42-06; US-34; ADR-08 e Q-35) começou e terminou em 17/10/2026, logo
+depois da 50, que trouxe os enunciados do Dikastis. A missão é a mesma da 42: que o monitor decida
+com quem conversar a partir de evidências, sem que o painel possa ser lido como prova. As personas
+são a chefia, a primeira a ver o painel, e o monitor-mantenedor que calibra. Esta release leva as
+referências e a mudança do `render.yaml` para `chefia`; o painel liga no deploy.
+
+- **17/10/2026, o gerador e as referências (#152):**
+  - **Gerador:** enunciados de até 40 KB (os maiores de 2026.2 têm 25 KB), respostas de até 8.192
+    tokens e 120 s por pedido (os modelos que raciocinam antes de responder cortavam a resposta
+    antes do código) e, num 413 do Groq gratuito, de novo com 4.096 e 2.048 tokens.
+  - **Referências (S42-04):** 102 nas 34 questões das Listas 1 a 5 de 2026.2, de três modelos
+    (Gemini, gpt-oss e Qwen, os dois últimos no Groq), geradas só a partir dos enunciados do
+    catálogo. A única que veio com erro (de indentação) foi apagada e gerada de novo, sem correção
+    à mão; as respostas sem bloco de código não viram arquivo.
+  - **`ipc-rules calibrate --remover-redundantes`:** apaga as referências 95% ou mais iguais ao
+    gabarito da questão. Nas questões simples, a IA escreve a solução padrão, a mesma da equipe:
+    sem a remoção, os gabaritos de L1-Q1 e L1-Q3 caíam na faixa alta. Saíram 8.
+  - **Calibração (S42-02):** 28 gabaritos, 0 na faixa alta; 206 soluções novas geradas por IA,
+    83,0% na média ou alta (Gemini 81,7%, gpt-oss 100%, Qwen 69,2%). As faixas não mudaram.
+- **17/10/2026, a ligação (S42-06, #153):** `IPC_AI_INDICATORS: chefia` no `render.yaml`, sozinho
+  no PR (P-18): o painel aparece só para o desenvolvedor, os professores e os monitores-chefes.
+
+| Decisão | Por quê |
+|---|---|
+| Remover as referências que repetem o gabarito, e não subir a faixa alta | Os gabaritos ficavam 100% iguais à referência: nenhum limiar separa 100% de 100%, e um limiar maior perderia acertos |
+| Três modelos na base, com o Gemini completando até as 200 soluções | A cota diária gratuita do Groq rendeu poucas dezenas de pedidos; os acertos medidos por modelo mostram que o Gemini não infla o resultado |
+| Referências inválidas apagadas e geradas de novo, nunca corrigidas | A referência precisa ser o que a IA escreveu, para o sinal medir o que pretende |
+| O `ruleset_version` continua `2026.2.7` | A versão muda só com o `base.yaml`; o `ruleset_sha256` já cobre as referências |
+| A base de calibração fica fora do repositório | Ela é a prova contra o sinal: se entrasse, viraria referência |
+
 ## Sprint 50 — Catálogo das listas pela extensão do Dikastis
 
 A Sprint 50 (S50-01 a S50-08; US-48, US-49 e US-34; ADR-15 e ADR-19) começou e terminou em

@@ -146,6 +146,18 @@ Desde a S42-04, uma questão só com gabarito, sem regras cadastradas, também g
 arquivo que já existe é pulado: com a cota das IAs gratuitas esgotada, rode de novo mais tarde. As
 referências entram por PR, revisado por quem cadastra a questão.
 
+**Referências redundantes (Sprint 42.1):** nas questões simples, a IA escreve a solução padrão,
+a mesma do gabarito da equipe. Uma referência assim não distingue IA de quem resolve do jeito
+padrão e põe o gabarito na faixa alta. Depois de cada geração, rode a calibração com
+`--remover-redundantes`: ela apaga as referências 95% ou mais iguais ao gabarito da questão (o
+limiar da faixa alta do sinal) antes de medir. Em 2026.2, saíram 8, todas de L1-Q1 e L1-Q3.
+
+**Os limites do gerador:** enunciados de até 40 KB (os maiores de 2026.2 têm 25 KB); respostas de
+até 8.192 tokens, porque os modelos que raciocinam antes de responder gastavam o limite antigo
+no raciocínio; num 413 (o Groq gratuito conta o teto da resposta nos 8 mil tokens por minuto),
+o pedido é repetido com 4.096 e depois com 2.048. A cota diária gratuita do Groq rende poucas
+dezenas de pedidos com enunciados desse tamanho: o gerador retoma de onde parou.
+
 **Gerar a base de calibração:** o mesmo comando, com `--para-calibracao ../../calibracao --por-ia 3`,
 grava soluções **novas**, diferentes das referências, fora do repositório.
 
@@ -157,7 +169,8 @@ período").
 | Data | Base | Resultado |
 |---|---|---|
 | 16/10/2026 | 28 gabaritos de 2026.2 (Listas 1 a 4) | Alarmes falsos: 28 na faixa "nenhum", 0 na alta (meta cumprida); 2 com o marcador de validação da entrada, sem peso |
-| — | Soluções geradas por IA | Espera os enunciados e as chaves das IAs |
+| 17/10/2026 | Os mesmos 28 gabaritos, com as 102 referências de IA (Sprint 42.1) | Alarmes falsos: 0 na alta (meta cumprida), 2 na média e 1 na baixa, todos pelo sinal da referência; antes de remover as 8 referências redundantes, 2 na alta (L1-Q1 e L1-Q3) |
+| 17/10/2026 | 206 soluções novas geradas por IA a partir dos enunciados do catálogo (169 do Gemini, 24 do gpt-oss e 13 do Qwen), diferentes das referências | Acertos: 83,0% na média ou alta (meta: 50%; cumprida); por modelo, 81,7%, 100% e 69,2%. Com os gabaritos, 234 soluções, acima das 200 da premissa |
 
 ## Como ligar no piloto
 

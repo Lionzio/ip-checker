@@ -245,8 +245,12 @@ A cada período novo, ou quando chegarem gabaritos novos (P-21), meça de novo a
 Q-35, de `backend/`:
 
 ```bash
-uv run ipc-rules calibrate ../rulesets/2026.2 --gabaritos ../../ip-checker-gabaritos --geradas ../../calibracao
+uv run ipc-rules calibrate ../rulesets/2026.2 --gabaritos ../../ip-checker-gabaritos --geradas ../../calibracao --remover-redundantes
 ```
+
+O `--remover-redundantes` (Sprint 42.1) apaga antes as referências de IA 95% ou mais iguais ao
+gabarito da questão: elas repetem a solução padrão e acusariam quem resolve do jeito padrão.
+As apagadas aparecem na saída; leve a remoção ao repositório por PR.
 
 A meta é nenhum gabarito na faixa alta e pelo menos metade das soluções geradas por IA na média ou
 na alta. As soluções geradas ficam fora do repositório (`Desktop\IP-Checker\calibracao`) e saem do
