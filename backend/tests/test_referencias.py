@@ -81,7 +81,7 @@ def test_statements_up_to_40_kb_are_read_and_larger_ones_refused(tmp_path: Path)
     assert list(statements(tmp_path)) == ["L4-Q5"]
 
     (tmp_path / "L5-Q5.md").write_text("x" * 40_001, encoding="utf-8")
-    with pytest.raises(ValueError, match="L5-Q5.md: enunciado acima de 40000 bytes"):
+    with pytest.raises(ValueError, match=r"L5-Q5.md: enunciado acima de 40000 bytes"):
         statements(tmp_path)
 
 
@@ -117,6 +117,8 @@ def test_the_prompt_carries_only_the_statement_and_the_file_has_the_header(
     assert STATEMENT in prompt.user
     assert "solução 1 de 2" in prompt.user
     assert "aluno" not in prompt.user.lower()
+    # Sprint 42.1: espaço para o raciocínio dos modelos e um programa completo.
+    assert prompt.max_output_tokens == 8_192
     text = jobs[0].target.read_text(encoding="utf-8")
     assert text.startswith(
         "# Solução gerada por IA (S42-04, ADR-08): falsa, modelo modelo-x, 16/10"

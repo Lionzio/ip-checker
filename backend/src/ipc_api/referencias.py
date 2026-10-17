@@ -54,9 +54,12 @@ MAX_STATEMENT_BYTES = 40_000
 MAX_SOLUTION_BYTES = 51_200
 #: As referências cabem no carregador: até 10 por questão (MAX_REFERENCES_PER_QUESTION).
 MAX_PER_AI = 5
-#: Resposta longa o bastante para um programa completo.
-MAX_OUTPUT_TOKENS = 2_048
-TIMEOUT_S = 60.0
+#: Resposta longa o bastante para um programa completo. Era 2.048 até a Sprint 42.1: os modelos que
+#: raciocinam antes de responder (gpt-oss no Groq, Gemini) gastavam o limite no raciocínio e a
+#: resposta vinha cortada, sem o bloco de código, nos enunciados maiores.
+MAX_OUTPUT_TOKENS = 8_192
+#: Uma resposta de até 8 mil tokens, com o raciocínio, leva mais que os 60 s de antes.
+TIMEOUT_S = 120.0
 #: Depois de um 429 (cota), espera e tenta de novo, até ``RETRIES`` vezes.
 WAIT_S = 60.0
 RETRIES = 3
