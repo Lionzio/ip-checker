@@ -21,10 +21,10 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 |---|---|
 | Sprint 39 | Concluída e no piloto em 16/10/2026 |
 | Sprint 43 | Concluída e no piloto em 16/10/2026 (release `sprint-43`); faltam o exercício de alerta e o sintético |
-| Sprint 42 | Parte 1 na release `sprint-42` (16/10/2026); a parte 2 (referências, meta de acertos e `chefia`) espera os enunciados e as chaves das IAs |
+| Sprint 42 | Parte 1 na release `sprint-42` (16/10/2026); parte 2 na `sprint-42.1` (17/10/2026): 102 referências de IA, as metas da calibração cumpridas e `chefia` no `render.yaml`, que liga o painel no deploy |
 | Sprint 49 | Concluída em 16/10/2026 (release `sprint-49`, só scripts e CI; sem deploy) |
 | Sprint 50 | Concluída em 16/10/2026 (release `sprint-50`: a extensão do Dikastis, o token de importação, a migração `0008` e a tela "Listas do período"); no piloto depois da migração e do deploy, com o autor |
-| Fila depois dela | 42.1 (com o `.zip` dos enunciados) → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
+| Fila depois dela | 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
 
 ## Esperando alguém
 

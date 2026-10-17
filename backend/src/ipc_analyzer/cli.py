@@ -72,7 +72,7 @@ from typing import Any
 
 import yaml
 
-from ipc_analyzer.ai_calibration import calibrate_q35
+from ipc_analyzer.ai_calibration import calibrate_q35, redundant_references
 from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.guards import InputError
 from ipc_analyzer.engine.indicators import Level
@@ -158,6 +158,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=float,
         default=50.0,
         help="porcentagem mínima das geradas em média ou alta (padrão: 50, a meta da Q-35)",
+    )
+    calibrate.add_argument(
+        "--remover-redundantes",
+        action="store_true",
+        help="apaga as referências de IA que repetem o gabarito da questão (Sprint 42.1)",
     )
     calibrate.add_argument(
         "--max-alto",
@@ -258,7 +263,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _compile(args.path, args.saida)
     if args.command == "calibrate":
         return _calibrate(
-            args.path, args.solutions, args.max_alto, args.gabaritos, args.geradas, args.min_acerto
+            args.path,
+            args.solutions,
+            args.max_alto,
+            args.gabaritos,
+            args.geradas,
+            args.min_acerto,
+            args.remover_redundantes,
         )
     if args.command == "calibrate-gabarito":
         return _calibrate_gabarito(
@@ -364,6 +375,7 @@ def _calibrate(
     gabaritos: Path | None = None,
     generated: Path | None = None,
     min_hits: float = 50.0,
+    remove_redundant: bool = False,
 ) -> int:
     if solutions is None and gabaritos is None and generated is None:
         _error("diga o que medir: as soluções humanas, --gabaritos ou --geradas", path)
@@ -379,6 +391,20 @@ def _calibrate(
     except RulesetError as exc:
         _error(str(exc), base)
         return 1
+    if remove_redundant:
+        if gabaritos is None:
+            _error("--remover-redundantes compara com os gabaritos: use também --gabaritos", path)
+            return 2
+        removed = redundant_references(ruleset, gabaritos)
+        for item in removed:
+            file = base.parent / "referencias" / item.question_id / f"{item.label}.py"
+            file.unlink(missing_ok=True)
+            print(
+                f"referência redundante com o gabarito removida: "
+                f"referencias/{item.question_id}/{item.label}.py ({item.percent:.0f}%)"
+            )
+        if removed:
+            ruleset = load_ruleset(base)
     status = 0
     if gabaritos is not None or generated is not None:
         lines, ok = calibrate_q35(

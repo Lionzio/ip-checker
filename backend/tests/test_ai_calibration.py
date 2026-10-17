@@ -3,6 +3,7 @@ soluções geradas por IA. Tudo sintético, em ``tmp_path``; a saída nunca most
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -143,3 +144,38 @@ def test_a_generated_solution_that_is_not_python_is_refused(
     assert "1 analisadas (recusadas pelos limites ou com erro de sintaxe: 1)" in (
         capsys.readouterr().out
     )
+
+
+# --- Referências redundantes com o gabarito (Sprint 42.1) ---------------------------------------
+
+
+def test_references_that_repeat_the_gabarito_are_removed_and_the_rest_kept(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    period = shutil.copytree(BASE_RULESET.parent, tmp_path / "rulesets" / PERIOD)
+    references = period / "referencias" / "L1-Q1"
+    # A solução padrão, com outro nome de variável: a mesma do gabarito para o motor de plágio.
+    write(references, {"ia-1.py": CLEAN.replace("nota", "valor"), "ia-2.py": HIGH})
+    gabaritos = write(
+        tmp_path / "gabaritos", {f"{PERIOD}/lista-1/L1-Q1.py": f"# {CANARY}\n{CLEAN}"}
+    )
+
+    status = main(
+        ["calibrate", str(period), "--gabaritos", str(gabaritos), "--remover-redundantes"]
+    )
+
+    out = capsys.readouterr().out
+    assert status == 0
+    assert "referência redundante com o gabarito removida: referencias/L1-Q1/ia-1.py" in out
+    assert not (references / "ia-1.py").exists()
+    assert (references / "ia-2.py").exists()
+    assert "faixa alta: 0 (meta: nenhum) — cumprida" in out
+    assert CANARY not in out
+    assert "nota" not in out
+
+
+def test_removing_redundant_references_needs_the_gabaritos(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert calibrate("--remover-redundantes") == 2
+    assert "--gabaritos" in capsys.readouterr().err

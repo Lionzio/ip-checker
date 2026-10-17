@@ -14,6 +14,11 @@ período do ruleset contam; ``encerrados/`` e outros períodos ficam de fora.
 
 A saída traz contagens por faixa, por sinal e por confiança e, para os alarmes falsos, o caminho
 e os tipos de indício, nunca o código.
+
+**Referências redundantes (Sprint 42.1):** numa questão simples, a IA escreve a solução padrão, a
+mesma do gabarito da equipe. Uma referência assim não distingue IA de quem resolve do jeito
+padrão e põe o gabarito (e quem o escreve igual) na faixa alta. ``--remover-redundantes`` apaga
+as referências que repetem o gabarito da questão a partir do limiar da faixa alta do sinal.
 """
 
 from __future__ import annotations
@@ -24,13 +29,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ipc_analyzer.engine.analysis import analyze_source
-from ipc_analyzer.engine.guards import InputError
-from ipc_analyzer.engine.indicators import Level
+from ipc_analyzer.engine.guards import DEFAULT_LIMITS, InputError
+from ipc_analyzer.engine.indicators import REFERENCE_LEVELS, Level
 from ipc_analyzer.engine.ruleset import CompiledRuleset
+from ipc_analyzer.engine.similarity import Prepared, compare_prepared, prepare
 
 _LIST_DIR = re.compile(r"^lista-([1-6])$")
 _QUESTION_PREFIX = re.compile(r"^(L([1-6])-Q[1-9]\d?)(?![0-9])")
 LEVELS = ("nenhum", "baixo", "medio", "alto")
+#: Uma referência que repete o gabarito a partir daqui (a faixa alta do sinal) é redundante.
+REDUNDANT_PERCENT = REFERENCE_LEVELS[0][0]
 
 
 @dataclass(slots=True)
@@ -149,3 +157,36 @@ def calibrate_q35(
         )
         ok = ok and passed
     return lines, ok
+
+
+@dataclass(frozen=True, slots=True)
+class Redundant:
+    question_id: str
+    label: str
+    percent: float
+
+
+def redundant_references(ruleset: CompiledRuleset, gabaritos: Path) -> list[Redundant]:
+    """As referências que repetem o gabarito da própria questão (Sprint 42.1)."""
+    found: list[Redundant] = []
+    target = ruleset.target_version
+    for file in sorted((gabaritos / ruleset.ruleset.period).glob("lista-*/*.py")):
+        references = ruleset.references.get(file.stem, ())
+        if not references:
+            continue
+        try:
+            gabarito = prepare(
+                file.read_text(encoding="utf-8-sig"), target=target, limits=DEFAULT_LIMITS
+            )
+        except (InputError, UnicodeDecodeError):
+            continue
+        if not isinstance(gabarito, Prepared):
+            continue
+        for reference in references:
+            prepared = prepare(reference.source, target=target, limits=DEFAULT_LIMITS)
+            if not isinstance(prepared, Prepared):
+                continue
+            percent = compare_prepared(gabarito, prepared).percent
+            if percent >= REDUNDANT_PERCENT:
+                found.append(Redundant(file.stem, reference.label, percent))
+    return found

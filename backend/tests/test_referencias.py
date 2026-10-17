@@ -75,6 +75,16 @@ def test_only_question_files_are_statements(texts: Path) -> None:
     assert list(statements(texts, "L1-Q2")) == ["L1-Q2"]
 
 
+def test_statements_up_to_40_kb_are_read_and_larger_ones_refused(tmp_path: Path) -> None:
+    # Sprint 42.1: os enunciados reais de 2026.2 chegam a 25 KB (L4-Q5, com dois exemplos grandes).
+    (tmp_path / "L4-Q5.md").write_text("x" * 25_000, encoding="utf-8")
+    assert list(statements(tmp_path)) == ["L4-Q5"]
+
+    (tmp_path / "L5-Q5.md").write_text("x" * 40_001, encoding="utf-8")
+    with pytest.raises(ValueError, match=r"L5-Q5.md: enunciado acima de 40000 bytes"):
+        statements(tmp_path)
+
+
 def test_references_go_to_the_period_and_calibration_outside(period: Path, tmp_path: Path) -> None:
     ais = [("gemini", "m1"), ("groq", "m2")]
 
@@ -107,6 +117,8 @@ def test_the_prompt_carries_only_the_statement_and_the_file_has_the_header(
     assert STATEMENT in prompt.user
     assert "solução 1 de 2" in prompt.user
     assert "aluno" not in prompt.user.lower()
+    # Sprint 42.1: espaço para o raciocínio dos modelos e um programa completo.
+    assert prompt.max_output_tokens == 8_192
     text = jobs[0].target.read_text(encoding="utf-8")
     assert text.startswith(
         "# Solução gerada por IA (S42-04, ADR-08): falsa, modelo modelo-x, 16/10"
@@ -216,3 +228,33 @@ def test_a_job_knows_its_list(period: Path) -> None:
     (job,) = plan(period, {"L3-Q1": "x"}, [("falsa", "m")], 1, None)
     assert isinstance(job, Job)
     assert job.list_number == 3
+
+
+def test_a_request_too_large_is_retried_with_a_smaller_answer(period: Path) -> None:
+    # Sprint 42.1: o Groq gratuito recusa (413) um pedido cujo teto de resposta passa dos 8 mil
+    # tokens por minuto; o gerador tenta com 4.096 e depois com 2.048.
+    def respond(prompt: Prompt) -> str:
+        if prompt.max_output_tokens > 4_096:
+            raise ProviderError("HTTP 413", status=413)
+        return ANSWER
+
+    provider = FakeProvider(respond)
+    jobs = plan(period, {"L1-Q2": STATEMENT}, [("falsa", "m")], 1, None)
+
+    report = asyncio.run(generate(jobs, {"falsa": provider}, 1))
+
+    assert len(report.written) == 1
+    assert [p.max_output_tokens for p in provider.prompts] == [8_192, 4_096]
+
+
+def test_a_request_still_too_large_fails_without_waiting(period: Path) -> None:
+    def respond(_prompt: Prompt) -> str:
+        raise ProviderError("HTTP 413", status=413)
+
+    provider = FakeProvider(respond)
+    jobs = plan(period, {"L1-Q2": STATEMENT}, [("falsa", "m")], 1, None)
+
+    report = asyncio.run(generate(jobs, {"falsa": provider}, 1))
+
+    assert report.failed == ["L1-Q2 falsa-1: HTTP 413"]
+    assert [p.max_output_tokens for p in provider.prompts] == [8_192, 4_096, 2_048]
