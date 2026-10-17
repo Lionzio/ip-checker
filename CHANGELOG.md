@@ -46,9 +46,9 @@ aluno: a extensão nunca lê placar, submissões, pessoas nem os casos ocultos.
     número de novidades no selo do ícone.
   - **CI:** passos da extensão na faixa C e o `npm audit` dela na faixa B do `ci-local.sh`; o
     `release.sh` e o `ci.yml` (job `extensao`) também.
-- **16/10/2026, S50-06 e S50-08:**
+- **16/10/2026, S50-06 e S50-08 (#151):**
   - **Tela "Listas do período"** (`/listas`, carregada sob demanda; JS inicial 105,3 KB com gzip,
-    folga de 7,1 KB até o próximo degrau do FCP): as listas, as turmas, as datas e, por questão, a
+    folga de 6,9 KB até o próximo degrau do FCP): as listas, as turmas, as datas e, por questão, a
     versão e o estado da etapa 1 (enunciado, regras próprias, gabarito); o que sumiu do Dikastis
     aparece marcado. `GET /api/v1/periods/{p}/catalog` não traz texto de enunciado nem de gabarito.
   - **`.zip` dos enunciados** (`GET /api/v1/periods/{p}/catalog/statements.zip`, só a chefia): um
