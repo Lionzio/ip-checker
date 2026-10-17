@@ -47,8 +47,9 @@ from ipc_api.feedback.providers import (
 QUESTION = re.compile(r"^L(?P<list>[1-6])-Q[1-9]\d?$")
 PERIOD = re.compile(r"^\d{4}\.[12]$")
 STATEMENT_SUFFIXES = (".md", ".txt")
-#: Um enunciado maior que isso não é um enunciado das listas.
-MAX_STATEMENT_BYTES = 20_000
+#: Um enunciado maior que isso não é um enunciado das listas. Era 20 KB até a Sprint 42.1, quando
+#: os enunciados reais de 2026.2, vindos do catálogo (Sprint 50), chegaram a 25 KB (L4-Q5).
+MAX_STATEMENT_BYTES = 40_000
 #: O mesmo limite de uma submissão (50 KB): uma resposta maior não é uma solução das listas.
 MAX_SOLUTION_BYTES = 51_200
 #: As referências cabem no carregador: até 10 por questão (MAX_REFERENCES_PER_QUESTION).

@@ -75,6 +75,16 @@ def test_only_question_files_are_statements(texts: Path) -> None:
     assert list(statements(texts, "L1-Q2")) == ["L1-Q2"]
 
 
+def test_statements_up_to_40_kb_are_read_and_larger_ones_refused(tmp_path: Path) -> None:
+    # Sprint 42.1: os enunciados reais de 2026.2 chegam a 25 KB (L4-Q5, com dois exemplos grandes).
+    (tmp_path / "L4-Q5.md").write_text("x" * 25_000, encoding="utf-8")
+    assert list(statements(tmp_path)) == ["L4-Q5"]
+
+    (tmp_path / "L5-Q5.md").write_text("x" * 40_001, encoding="utf-8")
+    with pytest.raises(ValueError, match="L5-Q5.md: enunciado acima de 40000 bytes"):
+        statements(tmp_path)
+
+
 def test_references_go_to_the_period_and_calibration_outside(period: Path, tmp_path: Path) -> None:
     ais = [("gemini", "m1"), ("groq", "m2")]
 
