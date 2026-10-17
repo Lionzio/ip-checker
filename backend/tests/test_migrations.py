@@ -94,6 +94,7 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
     assert await migrate_down(admin, migrations, "0000") == [
+        "0008",
         "0007",
         "0006",
         "0005",
@@ -111,6 +112,7 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
         "0005",
         "0006",
         "0007",
+        "0008",
     ]
     assert await _schema_exists(admin)
 
@@ -125,7 +127,7 @@ def test_cli_up_and_status(
     assert migrate.main(["status"]) == 0
     assert (
         capsys.readouterr().out.strip()
-        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007; pendentes: nenhuma"
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
@@ -297,13 +299,74 @@ async def test_migrations_applied_before_the_checksum_get_one(admin: Any) -> Non
 @pytest.mark.anyio
 @requires_database
 async def test_versions_newer_than_the_folder_are_ignored(admin: Any, tmp_path: Path) -> None:
-    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0007, e a
+    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0008, e a
     # pasta antiga não. As migrações só acrescentam, então a versão anterior sobe normalmente.
     folder = _copy_migrations(tmp_path)
-    for path in folder.glob("0007_*"):
+    for path in folder.glob("0008_*"):
         path.unlink()
 
     assert await migrate_up(admin, discover(folder)) == []
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_the_catalog_only_grows_and_checks_its_identifiers(admin: Any) -> None:
+    # 0008 (S50-05): a API acrescenta e reescreve o catálogo, mas não apaga questões nem rodadas;
+    # o identificador da questão segue L1-Q1, e o treino é a única tarefa sem número.
+    for table, delete in (
+        ("app.catalog_question", False),
+        ("app.catalog_list", False),
+        ("app.import_run", False),
+        ("app.import_token", False),
+        ("app.catalog_question_version", True),
+    ):
+        assert await admin.fetchval("SELECT has_table_privilege('ipc_app', $1, 'INSERT')", table), (
+            table
+        )
+        assert (
+            await admin.fetchval("SELECT has_table_privilege('ipc_app', $1, 'DELETE')", table)
+            is delete
+        ), table
+    await admin.execute("INSERT INTO app.catalog_period VALUES ('2026.2', now())")
+    with pytest.raises(asyncpg.CheckViolationError):
+        await admin.execute(
+            "INSERT INTO app.catalog_list (id, period, kind, number, title, last_seen) "
+            "VALUES (gen_random_uuid(), '2026.2', 'treino', 1, 'Treino', now())"
+        )
+    list_id = await admin.fetchval(
+        "INSERT INTO app.catalog_list (id, period, kind, number, title, last_seen) "
+        "VALUES (gen_random_uuid(), '2026.2', 'lista', 1, 'Lista 1', now()) RETURNING id"
+    )
+    with pytest.raises(asyncpg.CheckViolationError):
+        await admin.execute(
+            "INSERT INTO app.catalog_question (id, period, question_id, list_id, "
+            "dikastis_problem_id, title, description, input_description, output_description, "
+            "samples, content_hash, version, first_seen, updated_at) VALUES (gen_random_uuid(), "
+            "'2026.2', 'L1Q1', $1, 'P', 'T', '', '', '', '[]', repeat('a', 64), 1, now(), now())",
+            list_id,
+        )
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_import_tokens_and_runs_go_away_with_the_account(admin: Any) -> None:
+    account = await _insert_account(admin, "Chefia", "monitor_chefe", "ativo")
+    await admin.execute("INSERT INTO app.catalog_period VALUES ('2026.2', now())")
+    await admin.execute(
+        "INSERT INTO app.import_token (id, account_id, token_hash, label, created_at, expires_at) "
+        "VALUES (gen_random_uuid(), $1, repeat('b', 64), 'Chrome', now(), now())",
+        account,
+    )
+    await admin.execute(
+        "INSERT INTO app.import_run (id, account_id, mode, period, started_at) "
+        "VALUES (gen_random_uuid(), $1, 'manual', '2026.2', now())",
+        account,
+    )
+
+    await admin.execute("DELETE FROM app.account WHERE id = $1", account)
+
+    assert await admin.fetchval("SELECT count(*) FROM app.import_token") == 0
+    assert await admin.fetchval("SELECT count(*) FROM app.import_run") == 0
 
 
 # --- Conta de verificação do deploy (S28-02) ---------------------------------------------------

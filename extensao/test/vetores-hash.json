@@ -1,0 +1,152 @@
+{
+  "descricao": "Casos do hash do enunciado (S50-05), lidos pelo pytest (backend) e pelo Vitest (extensão). Gerados pela implementação de referência em backend/src/ipc_api/importing/hashing.py.",
+  "vetores": [
+    {
+      "nome": "simples",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "de4da8398b0a028a7a9e12cfdca67bbd8c1d0a8f2825e162e615d8572b77171c"
+    },
+    {
+      "nome": "acentos em NFD valem o mesmo que em NFC",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "de4da8398b0a028a7a9e12cfdca67bbd8c1d0a8f2825e162e615d8572b77171c"
+    },
+    {
+      "nome": "CRLF e CR viram LF",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros\r\ne imprima\ra soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "444033dbeea93e58eaaf7f4a2b1f5a1ec5b8da66e375ac1d91157cc4e4ddb6e9"
+    },
+    {
+      "nome": "espaços no fim das linhas e nas pontas somem",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "  \n Leia dois inteiros   \ne imprima a soma.\t\n\n",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "856b00ffcd210d9679bd2a871ad2df87dc922cb1f0e3ab8093e1ac10b2b1c881"
+    },
+    {
+      "nome": "espaço inquebrável nas pontas fica",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": " Uma linha com A + B. ",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "a4dd13d6f5ce3506540539bc20b2ee987b7c6895d528a0706eee4d663bff0a80"
+    },
+    {
+      "nome": "sem casos de exemplo",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": []
+      },
+      "hash": "07b5cd9a397018666c6fe9e582a6138bd2b783e5dbc1effaaefdbd80604a1e8b"
+    },
+    {
+      "nome": "emoji, aspas, barra invertida e quebra no meio",
+      "questao": {
+        "title": "26.2L3Q8👮 Polícia \"boa\"",
+        "description": "Use \\n e \"aspas\".\n\nSegundo parágrafo.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "a907214099072979dbdb159d6532c8d4ee86254dcf99a9bfc7afb83d8b565ad6"
+    },
+    {
+      "nome": "casos com várias linhas",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "3\n1 2 3  \n",
+            "output": "6\r\n"
+          }
+        ]
+      },
+      "hash": "e49c62e9850d15fcfb2e97a0b8d2710288d93715eb6ab8e5b6f0c47924d467c5"
+    }
+  ]
+}

@@ -46,6 +46,8 @@ from ipc_api.feedback.service import Ai, FeedbackService
 from ipc_api.gabaritos import Gabaritos
 from ipc_api.gabaritos import load as load_gabaritos
 from ipc_api.housekeeping import Housekeeping
+from ipc_api.importing.service import ImportService
+from ipc_api.importing.store import CatalogStore, MemoryCatalogStore
 from ipc_api.logging import configure_logging
 from ipc_api.mail import EmailSender, email_sender_for
 from ipc_api.middleware import RequestContextMiddleware
@@ -55,7 +57,17 @@ from ipc_api.ratelimit import (
     RateLimitMiddleware,
     SlidingWindowLimiter,
 )
-from ipc_api.routes import admin, auth, feedback, google, meta, profile, similarity, validate
+from ipc_api.routes import (
+    admin,
+    auth,
+    feedback,
+    google,
+    importing,
+    meta,
+    profile,
+    similarity,
+    validate,
+)
 from ipc_api.settings import ApiSettings, DeveloperSettings
 from ipc_api.slo import SloMonitor
 from ipc_api.telemetry import PostgresTelemetrySink, Telemetry, TelemetrySink
@@ -136,6 +148,16 @@ async def _connect_store(settings: ApiSettings) -> AccountStore:
     return await PostgresAccountStore.connect(settings.database_url)
 
 
+def _catalog_store(store: AccountStore, memory: MemoryCatalogStore) -> CatalogStore:
+    """No banco das contas; sem banco, o de memória, que dura o app inteiro (como as contas)."""
+    from ipc_api.accounts.postgres import PostgresAccountStore
+    from ipc_api.importing.postgres import PostgresCatalogStore
+
+    if isinstance(store, PostgresAccountStore):
+        return PostgresCatalogStore(store)
+    return memory
+
+
 async def seed_developer(
     store: AccountStore, passwords: Passwords, developer: DeveloperSettings, now: datetime
 ) -> None:
@@ -195,6 +217,7 @@ def create_app(
     if config.json_logs:
         configure_logging()
     hasher = passwords or Passwords()
+    memory_catalog = MemoryCatalogStore()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -253,6 +276,8 @@ def create_app(
                 config, telemetry_sink, client, production=account_store is None
             )
             app.state.adoption = Adoption(store)
+            # A importação do Dikastis (S50-04, S50-05): no banco das contas, ou em memória.
+            app.state.importing = ImportService(_catalog_store(store, memory_catalog), clock=clock)
             app.state.housekeeping = Housekeeping(store, config.housekeeping, clock=clock)
             app.state.housekeeping.start()
             yield
@@ -299,6 +324,7 @@ def create_app(
     app.add_middleware(
         OriginCheckMiddleware,
         allowed_origins=(*config.allowed_origins, *config.cors_origins, config.page_origin),
+        import_origins=tuple(f"chrome-extension://{eid}" for eid in config.import_extension_ids),
     )
     # S30-03: no piloto, /api/* só pela página (segredo do middleware da Vercel).
     app.add_middleware(EdgeGateMiddleware, secret=config.edge_secret)
@@ -355,6 +381,8 @@ def create_app(
     app.include_router(validate.router)
     app.include_router(similarity.router)
     app.include_router(feedback.router)
+    app.include_router(importing.tokens)
+    app.include_router(importing.catalog)
     app.include_router(meta.protected)
     app.include_router(meta.router)
     return app
