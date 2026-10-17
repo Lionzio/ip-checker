@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IP-Checker: listas do Dikastis</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fundo: #ffffff;
+        --texto: #111827;
+        --suave: #4b5563;
+        --borda: #d1d5db;
+        --destaque: #1d4ed8;
+        --erro: #b91c1c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fundo: #111827;
+          --texto: #f9fafb;
+          --suave: #d1d5db;
+          --borda: #374151;
+          --destaque: #93c5fd;
+          --erro: #fca5a5;
+        }
+      }
+      body {
+        margin: 0;
+        width: 340px;
+        font: 14px/1.4 system-ui, sans-serif;
+        background: var(--fundo);
+        color: var(--texto);
+      }
+      main {
+        padding: 12px 14px 14px;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 8px;
+      }
+      p {
+        margin: 6px 0;
+      }
+      .acoes {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+      }
+      button {
+        flex: 1;
+        padding: 7px 10px;
+        border: 1px solid var(--destaque);
+        border-radius: 6px;
+        background: var(--destaque);
+        color: var(--fundo);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secundario {
+        background: transparent;
+        color: var(--destaque);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--destaque);
+        outline-offset: 2px;
+      }
+      #situacao {
+        min-height: 2.8em;
+        color: var(--suave);
+      }
+      #situacao.erro {
+        color: var(--erro);
+      }
+      details {
+        border-top: 1px solid var(--borda);
+        padding-top: 8px;
+      }
+      label {
+        display: block;
+        margin: 8px 0 2px;
+        font-weight: 600;
+      }
+      input[type="url"],
+      input[type="password"] {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid var(--borda);
+        border-radius: 6px;
+        background: var(--fundo);
+        color: var(--texto);
+        font: inherit;
+      }
+      .linha {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 10px 0;
+        font-weight: normal;
+      }
+      small {
+        color: var(--suave);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Listas do Dikastis</h1>
+      <p id="resumo">Ainda sem verificação.</p>
+      <div class="acoes">
+        <button id="verificar" type="button">Verificar agora</button>
+        <button id="enviar" type="button" class="secundario" disabled>Enviar</button>
+      </div>
+      <p id="situacao" role="status" aria-live="polite"></p>
+      <details id="ajustes">
+        <summary>Ajustes</summary>
+        <form id="formulario">
+          <label for="endereco">Endereço do IP-Checker</label>
+          <input id="endereco" type="url" required />
+          <label for="token">Token de importação</label>
+          <input id="token" type="password" autocomplete="off" spellcheck="false" />
+          <small id="token-atual">Crie o token no Perfil do IP-Checker.</small>
+          <label class="linha"
+            ><input id="semi" type="checkbox" /> Verificar sozinho ao abrir o Dikastis (a cada 30
+            min)</label
+          >
+          <div class="acoes"><button type="submit">Salvar</button></div>
+        </form>
+      </details>
+    </main>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>

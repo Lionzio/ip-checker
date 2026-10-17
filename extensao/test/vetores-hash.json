@@ -133,6 +133,46 @@
       "hash": "a907214099072979dbdb159d6532c8d4ee86254dcf99a9bfc7afb83d8b565ad6"
     },
     {
+      "nome": "U+2028 não é quebra de linha (o espaço antes dele fica)",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia  dois inteiros  e some.",
+        "input_description": "Uma linha com dois inteiros A e B.",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "179ab65f159ca1e9d4c7d3c08c47e838a6a365e13f1478b4cc09831489eba309"
+    },
+    {
+      "nome": "caractere de controle vira \\u0001 no JSON",
+      "questao": {
+        "title": "Soma de dois números",
+        "description": "Leia dois inteiros e imprima a soma.",
+        "input_description": "A\u0001B\tC",
+        "output_description": "Uma linha com A + B.",
+        "samples": [
+          {
+            "input": "1 2",
+            "output": "3"
+          },
+          {
+            "input": "-5 5",
+            "output": "0"
+          }
+        ]
+      },
+      "hash": "7767af27a618a4afc7f9f8ec3f83161d496a8ea4205fb03cc13c4c2d6d51f99f"
+    },
+    {
       "nome": "casos com várias linhas",
       "questao": {
         "title": "Soma de dois números",
