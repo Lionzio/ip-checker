@@ -7,18 +7,18 @@ import { type Page } from "@playwright/test";
 export async function pageFetch(
   page: Page,
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
 ): Promise<{ status: number; body: unknown }> {
   return page.evaluate(
-    async ({ path, method, body }) => {
+    async ({ path, method, body, headers }) => {
       const response = await fetch(path, {
         method,
-        headers: body === undefined ? {} : { "Content-Type": "application/json" },
+        headers: { ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...headers },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       const text = await response.text();
       return { status: response.status, body: text === "" ? null : (JSON.parse(text) as unknown) };
     },
-    { path, method: init.method ?? "GET", body: init.body },
+    { path, method: init.method ?? "GET", body: init.body, headers: init.headers ?? {} },
   );
 }

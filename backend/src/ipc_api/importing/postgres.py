@@ -422,6 +422,13 @@ class PostgresCatalogStore:
             )
         return [row["period"] for row in rows]
 
+    async def last_sync(self, period: str) -> datetime | None:
+        async with self._accounts.operation():
+            last: datetime | None = await self._pool.fetchval(
+                "SELECT max(started_at) FROM app.import_run WHERE period = $1", period
+            )
+        return last
+
 
 def _samples_payload(value: Any) -> list[dict[str, str]]:
     return [{"input": s.input, "output": s.output} for s in _samples(value)]

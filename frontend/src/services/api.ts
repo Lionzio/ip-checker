@@ -9,6 +9,9 @@ import type {
   Account,
   ApiErrorCode,
   AuthOptions,
+  CatalogResponse,
+  ImportTokenCreated,
+  ImportTokenInfo,
   FeedbackResponse,
   ErrorResponse,
   GooglePending,
@@ -208,6 +211,29 @@ export function createApiClient({ baseUrl = "" }: { baseUrl?: string } = {}): Ap
     async managementLog(signal) {
       const body = await call<{ items: ManagementLogEntry[] }>("/api/v1/admin/log", { method: "GET" }, signal);
       return body.items;
+    },
+    catalog(period, signal) {
+      return call<CatalogResponse>(`/api/v1/periods/${encodeURIComponent(period)}/catalog`, { method: "GET" }, signal);
+    },
+    async statementsZip(period) {
+      const response = await fetch(`${baseUrl}/api/v1/periods/${encodeURIComponent(period)}/catalog/statements.zip`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (response.ok) return response.blob();
+      const body = await readJson(response);
+      if (isErrorResponse(body)) throw new ApiError(response.status, body.error.code, body.error.message);
+      throw new ApiError(503, "ANALYZER_UNAVAILABLE", UNAVAILABLE_MESSAGE);
+    },
+    async listImportTokens(signal) {
+      const body = await call<{ tokens: ImportTokenInfo[] }>("/api/v1/profile/import-tokens", { method: "GET" }, signal);
+      return body.tokens;
+    },
+    createImportToken(label) {
+      return call<ImportTokenCreated>("/api/v1/profile/import-tokens", json("POST", { label }));
+    },
+    async revokeImportToken(id) {
+      await call<null>(`/api/v1/profile/import-tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
     },
   };
 }

@@ -14,6 +14,9 @@
  * monitora de demonstração. Nada é verificado, porque não há servidor.
  */
 import type {
+  CatalogResponse,
+  ImportTokenCreated,
+  ImportTokenInfo,
   Account,
   Indicators,
   ListInfo,
@@ -450,6 +453,13 @@ export function createMockClient({
     }
   }
 
+  const tokens: ImportTokenInfo[] = [];
+  function requireLeadership() {
+    if (account === null || !["desenvolvedor", "professor", "monitor_chefe"].includes(account.role ?? "")) {
+      throw new ApiError(403, "FORBIDDEN", "Só a chefia (monitor-chefe, professor) e o desenvolvedor fazem isso.");
+    }
+  }
+
   function requireManager() {
     if (account === null || !account.can_manage) {
       throw new ApiError(403, "FORBIDDEN", "Você não tem permissão para esta ação.");
@@ -800,6 +810,70 @@ export function createMockClient({
       await wait(latencyMs, signal);
       requireSession();
       return [{ period: RULESET_VERSION.split(".").slice(0, 2).join("."), active: true, ruleset_version: RULESET_VERSION }];
+    },
+
+    // S50-04 e S50-06: o catálogo simulado tem uma lista; os tokens ficam só na memória.
+    async catalog(period, signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      const when = "2026-10-16T12:00:00Z";
+      const question = (id: string, title: string, rules: boolean) => ({
+        question_id: id,
+        title,
+        version: 1,
+        updated_at: when,
+        missing_since: null,
+        has_rules: rules,
+        has_gabarito: !rules,
+      });
+      return {
+        period,
+        last_sync: when,
+        lists: [
+          {
+            kind: "lista",
+            number: 1,
+            title: "Lista 1",
+            starts_at: when,
+            ends_at: null,
+            classes: ["IP SI UFPE 2026.2"],
+            missing_since: null,
+            questions: [question("L1-Q1", "Eco", false), question("L1-Q2", "Dobro", true)],
+          },
+        ],
+      } satisfies CatalogResponse;
+    },
+    async statementsZip() {
+      await wait(latencyMs);
+      requireLeadership();
+      return new Blob([], { type: "application/zip" });
+    },
+    async listImportTokens(signal) {
+      await wait(latencyMs, signal);
+      requireSession();
+      return tokens.map((item) => ({ ...item }));
+    },
+    async createImportToken(label) {
+      await wait(latencyMs);
+      requireLeadership();
+      const info: ImportTokenInfo = {
+        id: `token-${(requests += 1)}`,
+        label,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        revoked_at: null,
+        last_used_at: null,
+        active: true,
+      };
+      tokens.push(info);
+      return { ...info, token: `ipc_imp_simulado${requests}` } satisfies ImportTokenCreated;
+    },
+    async revokeImportToken(id) {
+      await wait(latencyMs);
+      const found = tokens.find((item) => item.id === id && item.active);
+      if (found === undefined) throw new ApiError(404, "ACCOUNT_NOT_FOUND", "Esse token não existe ou já foi revogado.");
+      found.active = false;
+      found.revoked_at = new Date().toISOString();
     },
 
     async validate(request: ValidateRequest, signal) {

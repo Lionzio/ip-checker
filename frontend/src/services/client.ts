@@ -2,6 +2,9 @@ import type {
   Account,
   ApiErrorCode,
   AuthOptions,
+  CatalogResponse,
+  ImportTokenCreated,
+  ImportTokenInfo,
   FeedbackRequest,
   FeedbackResponse,
   GooglePending,
@@ -105,7 +108,27 @@ export interface FeedbackClient {
   feedback(request: FeedbackRequest, signal?: AbortSignal): Promise<FeedbackResponse>;
 }
 
-export type ApiClient = ValidationClient & AuthClient & AdminClient & PlagiarismClient & FeedbackClient;
+/** As listas do período, sincronizadas pela extensão do Dikastis (S50-06). */
+export interface CatalogClient {
+  catalog(period: string, signal?: AbortSignal): Promise<CatalogResponse>;
+  /** O .zip dos enunciados das listas (chefia), para o gerador de referências. */
+  statementsZip(period: string): Promise<Blob>;
+}
+
+/** O token de importação da extensão (S50-04): só a chefia e o desenvolvedor criam. */
+export interface ImportTokenClient {
+  listImportTokens(signal?: AbortSignal): Promise<ImportTokenInfo[]>;
+  createImportToken(label: string): Promise<ImportTokenCreated>;
+  revokeImportToken(id: string): Promise<void>;
+}
+
+export type ApiClient = ValidationClient &
+  AuthClient &
+  AdminClient &
+  PlagiarismClient &
+  FeedbackClient &
+  CatalogClient &
+  ImportTokenClient;
 
 /** Erro no formato `{ error: { code, message, retry_after_s } }` do contrato (5.2.2). */
 export class ApiError extends Error {

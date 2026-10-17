@@ -23,7 +23,8 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Sprint 43 | Concluída e no piloto em 16/10/2026 (release `sprint-43`); faltam o exercício de alerta e o sintético |
 | Sprint 42 | Parte 1 na release `sprint-42` (16/10/2026); a parte 2 (referências, meta de acertos e `chefia`) espera os enunciados e as chaves das IAs |
 | Sprint 49 | Concluída em 16/10/2026 (release `sprint-49`, só scripts e CI; sem deploy) |
-| Fila depois dela | 50 (catálogo do Dikastis) → 42.1 → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
+| Sprint 50 | Concluída em 16/10/2026 (release `sprint-50`: a extensão do Dikastis, o token de importação, a migração `0008` e a tela "Listas do período"); no piloto depois da migração e do deploy, com o autor |
+| Fila depois dela | 42.1 (com o `.zip` dos enunciados) → 51 → 52 → 53 → 54, depois 44, 45, 46, 47 e 48; a 41 (servidor do CIn) por último (P-24). Plano de 16/10/2026 em [`plano-dikastis.md`](plano-dikastis.md) |
 
 ## Esperando alguém
 
@@ -36,3 +37,4 @@ cada release; o detalhe fica no [`CHANGELOG.md`](../CHANGELOG.md) e nas [sprints
 | Antes da Sprint 52: o aviso aos alunos publicado, a ciência do encarregado de dados da UFPE e a `IPC_CODE_KEY` no Render (Q-37) | Autor e coordenação | [`plano-dikastis.md`](plano-dikastis.md), seção 9 |
 | Gabaritos das Listas 5 e 6 de 2026.2 e dos períodos anteriores; o documento de permissões de 2027.1 | Autor e coordenação | P-21 e P-22 em [`decisoes.md`](decisoes.md) |
 | Quando a cota do Actions voltar (01/11/2026): os workflows na ordem do runbook | Autor ou agente | [`runbook.md`](runbook.md), "Sem GitHub Actions" |
+| Sprint 50 no piloto: a migração `0008`, "faça o deploy", instalar a extensão, criar o token, a primeira sincronização, o exercício de alerta e o sintético | Autor | [`sprints/sprint-50.md`](sprints/sprint-50.md) e o guia da equipe |

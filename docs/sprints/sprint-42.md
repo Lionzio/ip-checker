@@ -72,5 +72,7 @@ documentos, a revisar pela coordenação). Decisões no `CHANGELOG.md`. O piloto
 `IPC_AI_INDICATORS=0`. Aguardando: os enunciados, que pelo plano de 16/10/2026 passam a
 vir do catálogo da Sprint 50 (S50-06, o `.zip` dos enunciados), e as chaves das IAs, com o autor;
 depois, a geração das referências (revisadas por PR), a meta de acertos e o `render.yaml` com
-`chefia` (S42-06), numa `sprint-42.1`, logo depois da 50 (7.17).
+`chefia` (S42-06), numa `sprint-42.1`, logo depois da 50 (7.17). Desde a `sprint-50`, os
+enunciados saem do botão **Baixar enunciados (.zip)** da tela "Listas do período" (um `L1-Q1.md`
+por questão), descompactado na pasta do `--enunciados`, depois da primeira sincronização.
 

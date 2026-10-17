@@ -118,3 +118,35 @@ class CatalogQuestionsResult(_Strict):
     created: int
     updated: int
     unchanged: int
+
+
+# --- O catálogo na página (S50-06) -----------------------------------------------------------
+
+
+class CatalogQuestionInfo(_Strict):
+    question_id: str
+    title: str
+    version: int
+    updated_at: datetime
+    missing_since: datetime | None = Field(
+        description="Quando a questão deixou de aparecer no Dikastis; nulo se ainda aparece."
+    )
+    has_rules: bool = Field(description="O ruleset do período tem regras próprias da questão.")
+    has_gabarito: bool = Field(description="A questão tem gabarito (o texto nunca vem aqui).")
+
+
+class CatalogListInfo(_Strict):
+    kind: ListKind
+    number: int | None
+    title: str
+    starts_at: datetime | None
+    ends_at: datetime | None
+    classes: list[str] = Field(description="As turmas do Dikastis em que a lista aparece.")
+    missing_since: datetime | None
+    questions: list[CatalogQuestionInfo]
+
+
+class CatalogResponse(_Strict):
+    period: str
+    last_sync: datetime | None = Field(description="A última sincronização da extensão.")
+    lists: list[CatalogListInfo]

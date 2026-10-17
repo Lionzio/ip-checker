@@ -255,6 +255,15 @@ async def test_what_disappeared_is_marked_and_cleared_when_it_returns(catalog: C
     assert all(q.missing_since is None for q in stored)
 
 
+async def test_the_last_sync_is_the_last_manifest(catalog: Catalog) -> None:
+    assert await catalog.store.last_sync(PERIOD) is None
+    await sync(catalog, [lista(1, [])])
+    await sync(catalog, [lista(1, [])], now=NOW + timedelta(hours=2))
+
+    assert await catalog.store.last_sync(PERIOD) == NOW + timedelta(hours=2)
+    assert await catalog.store.last_sync("2027.1") is None
+
+
 async def test_the_same_list_in_two_classes_is_one_list(catalog: Catalog) -> None:
     items = [question("L1-Q1")]
     lists = [lista(1, items), lista(1, items, school_class=EC)]

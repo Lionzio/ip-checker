@@ -83,6 +83,8 @@ class CatalogStore(Protocol):
 
     async def periods(self) -> list[str]: ...
 
+    async def last_sync(self, period: str) -> datetime | None: ...
+
 
 def list_key(kind: ListKind, number: int | None) -> tuple[str, int]:
     return kind, number or 0
@@ -291,6 +293,10 @@ class MemoryCatalogStore:
 
     async def periods(self) -> list[str]:
         return sorted(self.known_periods, reverse=True)
+
+    async def last_sync(self, period: str) -> datetime | None:
+        """Quando foi a última rodada (o manifesto) do período."""
+        return max((r.started_at for r in self.runs.values() if r.period == period), default=None)
 
 
 def question_order(question_id: str) -> tuple[str, int, int]:

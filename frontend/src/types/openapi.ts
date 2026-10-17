@@ -593,6 +593,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/periods/{period}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** As listas e questões do período, com o estado da etapa 1 (S50-06) */
+        get: operations["catalog_api_v1_periods__period__catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/periods/{period}/catalog/statements.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Os enunciados das listas do período em .zip, para o gerador de referências */
+        get: operations["statements_api_v1_periods__period__catalog_statements_zip_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lists": {
         parameters: {
             query?: never;
@@ -845,6 +879,31 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["QuestionReference"][];
         };
+        /** CatalogListInfo */
+        CatalogListInfo: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "treino" | "lista" | "prova";
+            /** Number */
+            number: number | null;
+            /** Title */
+            title: string;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /**
+             * Classes
+             * @description As turmas do Dikastis em que a lista aparece.
+             */
+            classes: string[];
+            /** Missing Since */
+            missing_since: string | null;
+            /** Questions */
+            questions: components["schemas"]["CatalogQuestionInfo"][];
+        };
         /** CatalogManifest */
         CatalogManifest: {
             /** Period */
@@ -908,6 +967,35 @@ export interface components {
             /** Content Hash */
             content_hash: string;
         };
+        /** CatalogQuestionInfo */
+        CatalogQuestionInfo: {
+            /** Question Id */
+            question_id: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Missing Since
+             * @description Quando a questão deixou de aparecer no Dikastis; nulo se ainda aparece.
+             */
+            missing_since: string | null;
+            /**
+             * Has Rules
+             * @description O ruleset do período tem regras próprias da questão.
+             */
+            has_rules: boolean;
+            /**
+             * Has Gabarito
+             * @description A questão tem gabarito (o texto nunca vem aqui).
+             */
+            has_gabarito: boolean;
+        };
         /** CatalogQuestionsIn */
         CatalogQuestionsIn: {
             /**
@@ -928,6 +1016,18 @@ export interface components {
             updated: number;
             /** Unchanged */
             unchanged: number;
+        };
+        /** CatalogResponse */
+        CatalogResponse: {
+            /** Period */
+            period: string;
+            /**
+             * Last Sync
+             * @description A última sincronização da extensão.
+             */
+            last_sync: string | null;
+            /** Lists */
+            lists: components["schemas"]["CatalogListInfo"][];
         };
         /** ClassSolution */
         ClassSolution: {
@@ -4266,6 +4366,113 @@ export interface operations {
                 };
             };
             /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_periods__period__catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: o período não segue o formato AAAA.S. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE: tente de novo em instantes. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    statements_api_v1_periods__period__catalog_statements_zip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Um L1-Q1.md por questão de lista (as provas e o treino ficam de fora). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: só a chefia e o desenvolvedor baixam os enunciados. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: o período não segue o formato AAAA.S. Ou o período ainda não tem enunciados de listas. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE: o banco não respondeu; tente de novo. */
             503: {
                 headers: {
                     [name: string]: unknown;

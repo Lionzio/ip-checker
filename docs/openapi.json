@@ -2631,6 +2631,159 @@
         ]
       }
     },
+    "/api/v1/periods/{period}/catalog": {
+      "get": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "As listas e questões do período, com o estado da etapa 1 (S50-06)",
+        "operationId": "catalog_api_v1_periods__period__catalog_get",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: o período não segue o formato AAAA.S.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE: tente de novo em instantes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/periods/{period}/catalog/statements.zip": {
+      "get": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Os enunciados das listas do período em .zip, para o gerador de referências",
+        "operationId": "statements_api_v1_periods__period__catalog_statements_zip_get",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Um L1-Q1.md por questão de lista (as provas e o treino ficam de fora).",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: só a chefia e o desenvolvedor baixam os enunciados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: o período não segue o formato AAAA.S. Ou o período ainda não tem enunciados de listas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lists": {
       "get": {
         "tags": [
@@ -3218,6 +3371,98 @@
         ],
         "title": "CatalogListIn"
       },
+      "CatalogListInfo": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "treino",
+              "lista",
+              "prova"
+            ],
+            "title": "Kind"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "classes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Classes",
+            "description": "As turmas do Dikastis em que a lista aparece."
+          },
+          "missing_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Since"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogQuestionInfo"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "number",
+          "title",
+          "starts_at",
+          "ends_at",
+          "classes",
+          "missing_since",
+          "questions"
+        ],
+        "title": "CatalogListInfo"
+      },
       "CatalogManifest": {
         "properties": {
           "period": {
@@ -3399,6 +3644,62 @@
         ],
         "title": "CatalogQuestionIn"
       },
+      "CatalogQuestionInfo": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "missing_since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Since",
+            "description": "Quando a questão deixou de aparecer no Dikastis; nulo se ainda aparece."
+          },
+          "has_rules": {
+            "type": "boolean",
+            "title": "Has Rules",
+            "description": "O ruleset do período tem regras próprias da questão."
+          },
+          "has_gabarito": {
+            "type": "boolean",
+            "title": "Has Gabarito",
+            "description": "A questão tem gabarito (o texto nunca vem aqui)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "title",
+          "version",
+          "updated_at",
+          "missing_since",
+          "has_rules",
+          "has_gabarito"
+        ],
+        "title": "CatalogQuestionInfo"
+      },
       "CatalogQuestionsIn": {
         "properties": {
           "run_id": {
@@ -3453,6 +3754,42 @@
           "unchanged"
         ],
         "title": "CatalogQuestionsResult"
+      },
+      "CatalogResponse": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync",
+            "description": "A última sincronização da extensão."
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogListInfo"
+            },
+            "type": "array",
+            "title": "Lists"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period",
+          "last_sync",
+          "lists"
+        ],
+        "title": "CatalogResponse"
       },
       "ClassSolution": {
         "properties": {

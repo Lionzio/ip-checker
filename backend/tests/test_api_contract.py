@@ -264,6 +264,8 @@ schema = (
         ]
     )
     .exclude(path_regex=r"^/api/v1/(admin|auth/google|import)/|^/api/v1/profile/import-tokens")
+    # O .zip dos enunciados (S50-06) recusa a monitora dos casos gerados (403).
+    .exclude(path_regex=r"/statements\.zip$")
 )
 
 
@@ -644,6 +646,22 @@ def test_import_statuses_follow_the_contract() -> None:
         assert run(one, "DELETE", chefe, path_parameters=ids).status_code == 404
         assert run(one, "DELETE", chefe, path_parameters={"token_id": "x"}).status_code == 422
         assert run(manifest_path, "POST", token=raw, body=manifest, **json_body).status_code == 401
+
+        # S50-06: o catálogo (equipe) e o .zip (chefia).
+        catalog_path = "/api/v1/periods/{period}/catalog"
+        zip_path = "/api/v1/periods/{period}/catalog/statements.zip"
+        period = {"period": "2026.2"}
+        # Sem o analisador neste app, o catálogo responde o 503 documentado; o 200 vem dos
+        # casos gerados, com o analisador de verdade.
+        assert run(catalog_path, "GET", monitor, path_parameters=period).status_code == 503
+        assert run(catalog_path, "GET", path_parameters=period).status_code == 401
+        bad_period = {"period": "2026.3"}
+        assert run(catalog_path, "GET", monitor, path_parameters=bad_period).status_code == 422
+        assert run(zip_path, "GET", monitor, path_parameters=period).status_code == 403
+        assert run(zip_path, "GET", path_parameters=period).status_code == 401
+        empty = {"period": "2027.1"}
+        assert run(zip_path, "GET", chefe, path_parameters=empty).status_code == 422
+        assert run(zip_path, "GET", chefe, path_parameters=period).status_code == 200
 
 
 def test_google_statuses_follow_the_contract() -> None:

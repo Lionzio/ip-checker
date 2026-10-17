@@ -67,6 +67,11 @@ export function AppHeader({ account, onSignOut }: AppHeaderProps) {
                     {NAV_LABELS.batch}
                   </NavLink>
                 </li>
+                <li>
+                  <NavLink to="/listas" className={navClass}>
+                    {NAV_LABELS.lists}
+                  </NavLink>
+                </li>
                 {account.can_manage && (
                   <li>
                     <NavLink to="/gerenciar" className={navClass}>
