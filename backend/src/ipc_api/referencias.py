@@ -32,7 +32,7 @@ import os
 import re
 import sys
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -58,6 +58,9 @@ MAX_PER_AI = 5
 #: raciocinam antes de responder (gpt-oss no Groq, Gemini) gastavam o limite no raciocínio e a
 #: resposta vinha cortada, sem o bloco de código, nos enunciados maiores.
 MAX_OUTPUT_TOKENS = 8_192
+#: Depois de um 413 (pedido grande demais para o limite de tokens por minuto da IA, como os
+#: 8 mil do Groq gratuito, que conta o teto da resposta), tenta de novo com estes tetos menores.
+SMALLER_OUTPUT_TOKENS = (4_096, 2_048)
 #: Uma resposta de até 8 mil tokens, com o raciocínio, leva mais que os 60 s de antes.
 TIMEOUT_S = 120.0
 #: Depois de um 429 (cota), espera e tenta de novo, até ``RETRIES`` vezes.
@@ -203,14 +206,19 @@ async def generate(
             report.failed.append(f"{job.question} {job.ai}-{job.number}: cota esgotada")
             continue
         text = None
-        for attempt in range(RETRIES + 1):
+        prompt = prompt_for(job, per_ai)
+        smaller = list(SMALLER_OUTPUT_TOKENS)
+        attempt = 0
+        while True:
             try:
-                text = await providers[job.ai].generate(
-                    prompt_for(job, per_ai), timeout_s=TIMEOUT_S
-                )
+                text = await providers[job.ai].generate(prompt, timeout_s=TIMEOUT_S)
                 break
             except ProviderError as exc:
+                if exc.status == 413 and smaller:
+                    prompt = replace(prompt, max_output_tokens=smaller.pop(0))
+                    continue
                 if exc.status == 429 and attempt < RETRIES:
+                    attempt += 1
                     await sleep(wait_s)
                     continue
                 if exc.status == 429:

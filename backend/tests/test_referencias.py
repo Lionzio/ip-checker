@@ -228,3 +228,33 @@ def test_a_job_knows_its_list(period: Path) -> None:
     (job,) = plan(period, {"L3-Q1": "x"}, [("falsa", "m")], 1, None)
     assert isinstance(job, Job)
     assert job.list_number == 3
+
+
+def test_a_request_too_large_is_retried_with_a_smaller_answer(period: Path) -> None:
+    # Sprint 42.1: o Groq gratuito recusa (413) um pedido cujo teto de resposta passa dos 8 mil
+    # tokens por minuto; o gerador tenta com 4.096 e depois com 2.048.
+    def respond(prompt: Prompt) -> str:
+        if prompt.max_output_tokens > 4_096:
+            raise ProviderError("HTTP 413", status=413)
+        return ANSWER
+
+    provider = FakeProvider(respond)
+    jobs = plan(period, {"L1-Q2": STATEMENT}, [("falsa", "m")], 1, None)
+
+    report = asyncio.run(generate(jobs, {"falsa": provider}, 1))
+
+    assert len(report.written) == 1
+    assert [p.max_output_tokens for p in provider.prompts] == [8_192, 4_096]
+
+
+def test_a_request_still_too_large_fails_without_waiting(period: Path) -> None:
+    def respond(_prompt: Prompt) -> str:
+        raise ProviderError("HTTP 413", status=413)
+
+    provider = FakeProvider(respond)
+    jobs = plan(period, {"L1-Q2": STATEMENT}, [("falsa", "m")], 1, None)
+
+    report = asyncio.run(generate(jobs, {"falsa": provider}, 1))
+
+    assert report.failed == ["L1-Q2 falsa-1: HTTP 413"]
+    assert [p.max_output_tokens for p in provider.prompts] == [8_192, 4_096, 2_048]
