@@ -74,6 +74,8 @@ if $ci_local; then
       "Frontend: tipos do OpenAPI em dia" "Frontend: ESLint" "Frontend: TypeScript"
       "Frontend: Vitest (cobertura das páginas >= 80%)" "Frontend: build"
       "Frontend: JS inicial com gzip (NFR-03)" "Frontend: build do piloto"
+      "Auditoria: dependências npm da extensão" "Extensão: ESLint" "Extensão: TypeScript"
+      "Extensão: Vitest (cobertura >= 80%)" "Extensão: build"
       "Backend: pytest de tempo (timing; cobertura >= 90%)"
       "Backend: cobertura por pasta (motor >= 90%, resto >= 80%)" "Backend: benchmark do motor (NFR-02)"
       "Frontend: Lighthouse, perfil móvel (NFR-03)" "Segurança (isolamento e imagem do piloto)"

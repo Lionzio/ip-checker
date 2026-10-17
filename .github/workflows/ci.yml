@@ -33,6 +33,7 @@ jobs:
       # (sem base para comparar), todos rodam.
       backend: ${{ steps.decide.outputs.backend }}
       frontend: ${{ steps.decide.outputs.frontend }}
+      extensao: ${{ steps.decide.outputs.extensao }}
       deploy: ${{ steps.decide.outputs.deploy }}
       engine: ${{ steps.decide.outputs.engine }}
     steps:
@@ -81,19 +82,21 @@ jobs:
               echo "::notice::Só documentação (.md) mudou; os testes não rodam."
             fi
           fi
-          backend=$heavy; frontend=$heavy; deploy=$heavy; engine=$heavy
+          backend=$heavy; frontend=$heavy; extensao=$heavy; deploy=$heavy; engine=$heavy
           if [ "$heavy" = "true" ] && [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             files=$(git diff --name-only "$BASE" "$GITHUB_SHA")
-            grep -qE '^(backend/|rulesets/|scripts/|\.github/)' <<< "$files" || backend=false
+            grep -qE '^(backend/|rulesets/|scripts/|extensao/test/vetores-hash\.json|\.github/)' <<< "$files" || backend=false
             grep -qE '^(frontend/|docs/openapi\.json|\.github/)' <<< "$files" || frontend=false
+            grep -qE '^(extensao/|backend/src/ipc_api/settings\.py|\.github/)' <<< "$files" || extensao=false
             grep -qE '^(deploy/|backend/|render\.yaml|\.github/)' <<< "$files" || deploy=false
             grep -qE '^(backend/src/ipc_analyzer/engine/|backend/tests/benchmark/|backend/pyproject\.toml|backend/uv\.lock|rulesets/|\.github/)' <<< "$files" || engine=false
-            echo "::notice::backend=$backend frontend=$frontend deploy=$deploy engine=$engine (pelos caminhos alterados)"
+            echo "::notice::backend=$backend frontend=$frontend extensao=$extensao deploy=$deploy engine=$engine (pelos caminhos alterados)"
           fi
           {
             echo "heavy=$heavy"
             echo "backend=$backend"
             echo "frontend=$frontend"
+            echo "extensao=$extensao"
             echo "deploy=$deploy"
             echo "engine=$engine"
           } >> "$GITHUB_OUTPUT"
@@ -320,6 +323,38 @@ jobs:
         env:
           IPC_API_ORIGIN: https://ip-checker-api.onrender.com
         run: npm run build:vercel
+
+  extensao:
+    # S50-01: a extensão do Dikastis (Manifest V3), com os mesmos passos da página.
+    name: Extensão do Dikastis (lint, tipos, testes, build)
+    needs: changes
+    if: needs.changes.outputs.extensao == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: extensao
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: extensao/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: Auditoria das dependências
+        run: npm audit --audit-level=high
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Vitest (cobertura >= 80% no núcleo)
+        run: npm run test:coverage
+      - name: Build (dist/, a pasta carregada no Chrome)
+        run: npm run build
 
   e2e:
     name: Smoke e2e (compose completo + Playwright)

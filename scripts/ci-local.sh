@@ -58,13 +58,16 @@ set -f
 # --- Passos com impressão digital (S49-01) ----------------------------------------------------
 # Todo passo depende também do próprio script da CI e do ci-passos.py.
 common="scripts/ci-local.sh scripts/ci-passos.py"
-in_backend="backend rulesets"
+# Os vetores do hash do enunciado (S50-05) são lidos pelo pytest e pelo Vitest.
+in_backend="backend rulesets extensao/test/vetores-hash.json"
 in_frontend="frontend docs/openapi.json"
+# A extensão do Dikastis (S50-01); o teste do manifesto confere o ID no settings.py da API.
+in_extensao="extensao backend/src/ipc_api/settings.py"
 in_engine="backend/src/ipc_analyzer/engine backend/tests/benchmark backend/pyproject.toml backend/uv.lock rulesets"
 in_security="backend deploy rulesets"
 in_docs="docs *.md backend/tests/test_docs_links.py"
 in_semgrep=". :!.semgrep :!frontend/src/types/openapi.ts :!docs :!*.md"
-in_e2e=". :!docs :!*.md"
+in_e2e=". :!docs :!*.md :!extensao"
 if [ -d ../ip-checker-gabaritos ]; then in_gabaritos="$in_backend ../ip-checker-gabaritos"; else in_gabaritos=""; fi
 
 results=()
@@ -125,6 +128,7 @@ trap cleanup EXIT
 
 backend() { (cd backend && "$uv" "$@"); }
 frontend() { (cd frontend && "$@"); }
+extensao() { (cd extensao && "$@"); }
 
 # --- Faixas em paralelo (S49-02) --------------------------------------------------------------
 # Cada faixa roda num subshell com o próprio log e os próprios resultados; o texto é mostrado em
@@ -256,6 +260,8 @@ lane_b() {
   if [ -n "$history_clone" ]; then rm -rf "$history_clone"; fi
   step_fp "Auditoria: dependências npm (npm audit)" "frontend/package-lock.json frontend/package.json" --max-age-days 7 \
     bash -c "cd frontend && npm audit --audit-level=high"
+  step_fp "Auditoria: dependências npm da extensão" "extensao/package-lock.json extensao/package.json" --max-age-days 7 \
+    bash -c "cd extensao && npm audit --audit-level=high"
 }
 
 lane_c() {
@@ -287,6 +293,16 @@ lane_c() {
   fi
   step_fp "Frontend: build do piloto" "$in_frontend" env IPC_API_ORIGIN=https://ip-checker-api.onrender.com \
     bash -c "cd frontend && npm run -s build:vercel && rm -rf .vercel"
+  # S50-01: a extensão do Dikastis, com os mesmos passos da página.
+  if [ -d extensao/node_modules ]; then
+    step_fp "Extensão: dependências" "extensao/package-lock.json extensao/package.json" extensao npm ci --no-audit --no-fund
+  else
+    step "Extensão: dependências" extensao npm ci --no-audit --no-fund
+  fi
+  step_fp "Extensão: ESLint" "$in_extensao" extensao npm run -s lint
+  step_fp "Extensão: TypeScript" "$in_extensao" extensao npm run -s typecheck
+  step_fp "Extensão: Vitest (cobertura >= 80%)" "$in_extensao" extensao npm run -s test:coverage
+  step_fp "Extensão: build" "$in_extensao" extensao npm run -s build
 }
 
 run_lane() {  # run_lane NOME FUNÇÃO: subshell com log e resultados próprios

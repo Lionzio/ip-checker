@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "IP-Checker: listas do Dikastis",
+  "short_name": "IP-Checker",
+  "version": "0.50.0",
+  "description": "Lê as listas e os enunciados de IP no Dikastis (com a sua sessão) e envia ao IP-Checker só o que é novo ou mudou.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu7SOCvJlYeOtKVI+u9vL1UauJtgnFMiJvqNG5sIAPrrAUycjXloylPbKo8cljcLs915UiwOBmkD8RtbB0irdOzy33ZTOwDOsKAgkxwhU5A+pHhhcEhN1x9Rqc6Nt8zDFy5SuUh1mWpRCdWiL+6jDNU6Ujd2UF+a1svxho/0bbtoumiTFAR6LnIokpv+akZEygOHxtAam5dYJe3IKpmI62HPiWO3/ZUkyJdP5Bx4uOX4YNT1cth8J7MD5xdE8JVW+4LGYS/MxWkRA5VL8ua+Y9yJ3rAS1OuTGFQuqfNHIasnsptV+g2Xvj6TScY9BWeRRE/drsi+ZH1tTb6OQdepetQIDAQAB",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage"],
+  "host_permissions": ["https://dikastis.com.br/*", "https://ip-checker-red-phi.vercel.app/*"],
+  "optional_host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "IP-Checker: listas do Dikastis" },
+  "content_scripts": [
+    {
+      "matches": ["https://dikastis.com.br/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
