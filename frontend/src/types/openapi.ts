@@ -524,6 +524,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profile/import-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Os tokens de importação da própria conta, sem o valor */
+        get: operations["list_tokens_api_v1_profile_import_tokens_get"];
+        put?: never;
+        /** Cria um token de importação (chefia e desenvolvedor); o valor aparece só aqui */
+        post: operations["create_token_api_v1_profile_import_tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profile/import-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoga um token de importação da própria conta */
+        delete: operations["revoke_token_api_v1_profile_import_tokens__token_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import/catalog/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recebe o que a extensão viu no Dikastis e devolve o que falta (S50-05) */
+        post: operations["manifest_api_v1_import_catalog_manifest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/import/catalog/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Grava as questões novas ou alteradas de uma rodada (S50-05) */
+        put: operations["questions_api_v1_import_catalog_questions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lists": {
         parameters: {
             query?: never;
@@ -742,6 +811,124 @@ export interface components {
              */
             gabarito_similarity?: number | null;
         };
+        /** CatalogClass */
+        CatalogClass: {
+            /** Dikastis Org Id */
+            dikastis_org_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Course
+             * @enum {string}
+             */
+            course: "SI" | "EC" | "CC/IA" | "CC" | "outro";
+        };
+        /** CatalogListIn */
+        CatalogListIn: {
+            /** Dikastis Task Id */
+            dikastis_task_id: string;
+            /** Class Org Id */
+            class_org_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "treino" | "lista" | "prova";
+            /** Number */
+            number: number | null;
+            /** Title */
+            title: string;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /** Questions */
+            questions: components["schemas"]["QuestionReference"][];
+        };
+        /** CatalogManifest */
+        CatalogManifest: {
+            /** Period */
+            period: string;
+            /**
+             * Mode
+             * @default manual
+             * @enum {string}
+             */
+            mode: "manual" | "semi";
+            /** Classes */
+            classes: components["schemas"]["CatalogClass"][];
+            /** Lists */
+            lists: components["schemas"]["CatalogListIn"][];
+        };
+        /** CatalogManifestResult */
+        CatalogManifestResult: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /**
+             * Need
+             * @description Os problemas do Dikastis cujo enunciado falta ou mudou.
+             */
+            need: string[];
+            /** Unchanged */
+            unchanged: number;
+            /**
+             * Missing
+             * @description As questões do período que não vieram desta vez.
+             */
+            missing: string[];
+        };
+        /** CatalogQuestionIn */
+        CatalogQuestionIn: {
+            /** Question Id */
+            question_id: string;
+            /** Dikastis Problem Id */
+            dikastis_problem_id: string;
+            /**
+             * List Kind
+             * @enum {string}
+             */
+            list_kind: "treino" | "lista" | "prova";
+            /** List Number */
+            list_number: number | null;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Input Description */
+            input_description: string;
+            /** Output Description */
+            output_description: string;
+            /** Samples */
+            samples: components["schemas"]["SampleIn"][];
+            /** Time Limit Ms */
+            time_limit_ms?: number | null;
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** CatalogQuestionsIn */
+        CatalogQuestionsIn: {
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Period */
+            period: string;
+            /** Questions */
+            questions: components["schemas"]["CatalogQuestionIn"][];
+        };
+        /** CatalogQuestionsResult */
+        CatalogQuestionsResult: {
+            /** Created */
+            created: number;
+            /** Updated */
+            updated: number;
+            /** Unchanged */
+            unchanged: number;
+        };
         /** ClassSolution */
         ClassSolution: {
             /**
@@ -950,6 +1137,76 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** ImportTokenCreate */
+        ImportTokenCreate: {
+            /**
+             * Label
+             * @description Um nome para lembrar onde o token está, como "Chrome do notebook".
+             */
+            label: string;
+        };
+        /** ImportTokenCreated */
+        ImportTokenCreated: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Active */
+            active: boolean;
+            /**
+             * Token
+             * @description O token, mostrado só nesta resposta; guarde-o na extensão.
+             */
+            token: string;
+        };
+        /** ImportTokenInfo */
+        ImportTokenInfo: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Active */
+            active: boolean;
+        };
+        /** ImportTokens */
+        ImportTokens: {
+            /** Tokens */
+            tokens: components["schemas"]["ImportTokenInfo"][];
         };
         /** Indicator */
         Indicator: {
@@ -1315,6 +1572,15 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** QuestionReference */
+        QuestionReference: {
+            /** Dikastis Problem Id */
+            dikastis_problem_id: string;
+            /** Question Id */
+            question_id: string;
+            /** Content Hash */
+            content_hash: string;
+        };
         /** ReadyResponse */
         ReadyResponse: {
             /**
@@ -1396,6 +1662,13 @@ export interface components {
              * @enum {string}
              */
             role: "desenvolvedor" | "professor" | "monitor_chefe" | "monitor";
+        };
+        /** SampleIn */
+        SampleIn: {
+            /** Input */
+            input: string;
+            /** Output */
+            output: string;
         };
         /** SimilarityBand */
         SimilarityBand: {
@@ -3683,6 +3956,316 @@ export interface operations {
                 };
             };
             /** @description OVERLOADED, ANALYZER_UNAVAILABLE ou DATABASE_UNAVAILABLE. Veja retry_after_s. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_tokens_api_v1_profile_import_tokens_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTokens"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_token_api_v1_profile_import_tokens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTokenCreated"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: só a chefia e o desenvolvedor criam tokens; ou ORIGIN_MISMATCH. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: rótulo inválido ou já há 3 tokens ativos. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_token_api_v1_profile_import_tokens__token_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ACCOUNT_NOT_FOUND: o token não existe, é de outra conta ou já foi revogado. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: o identificador do token não é um UUID. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    manifest_api_v1_import_catalog_manifest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogManifest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogManifestResult"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: o manifesto está fora do formato ou dos limites. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas sincronizações seguidas com o mesmo token. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    questions_api_v1_import_catalog_questions_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogQuestionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogQuestionsResult"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: envie em partes menores. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: fora do formato, hash que não confere ou rodada desconhecida. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: muitas sincronizações seguidas com o mesmo token. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo. */
             503: {
                 headers: {
                     [name: string]: unknown;

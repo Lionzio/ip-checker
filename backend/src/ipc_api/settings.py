@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal
@@ -73,6 +74,24 @@ def _ai_indicators_from_env(env: Mapping[str, str]) -> AiIndicators:
     raise ValueError(f"IPC_AI_INDICATORS inválida: {value!r}. Use 0, chefia ou 1.")
 
 
+#: O ID da extensão do Dikastis do repositório (``extensao/manifest.json``, chave pública fixa).
+DEFAULT_EXTENSION_ID = "hbndgmplpohgfbmdemopbbibfocbkdhh"
+_EXTENSION_ID = re.compile(r"[a-p]{32}")
+
+
+def _extension_ids(value: str | None) -> tuple[str, ...]:
+    """``IPC_IMPORT_EXTENSION_IDS``: IDs separados por vírgula; vazia ou ausente, o padrão."""
+    if value is None or not value.strip():
+        return (DEFAULT_EXTENSION_ID,)
+    ids = tuple(item.strip() for item in value.split(",") if item.strip())
+    for item in ids:
+        if not _EXTENSION_ID.fullmatch(item):
+            raise ValueError(
+                f"IPC_IMPORT_EXTENSION_IDS inválida: {item!r} não é um ID de extensão."
+            )
+    return ids
+
+
 @dataclass(frozen=True, slots=True)
 class DeveloperSettings:
     """A conta criada por *seed* na subida da API (P-14, S13-01)."""
@@ -127,6 +146,9 @@ class ApiSettings:
     login_throttle: LoginThrottleConfig = field(default_factory=LoginThrottleConfig)
     #: Origens aceitas, além da própria, em requisições que mudam estado (CSRF, ADR-04).
     allowed_origins: tuple[str, ...] = ()
+    #: A extensão do Dikastis (S50-04, ADR-15): as origens chrome-extension://<id> aceitas só nas
+    #: rotas /api/v1/import/*. O padrão é o ID fixo da extensão do repositório (extensao/).
+    import_extension_ids: tuple[str, ...] = (DEFAULT_EXTENSION_ID,)
     developer: DeveloperSettings = field(default_factory=DeveloperSettings)
     #: Envio de e-mail (S14-02, Q-17): SMTP do provedor ou, no compose, o Mailpit.
     email: EmailConfig = field(default_factory=EmailConfig)
@@ -200,6 +222,7 @@ class ApiSettings:
             session=_session_from_env(env),
             login_throttle=_login_throttle_from_env(env),
             allowed_origins=parse_origins(env.get("IPC_ALLOWED_ORIGINS", "")),
+            import_extension_ids=_extension_ids(env.get("IPC_IMPORT_EXTENSION_IDS")),
             developer=_developer_from_env(env),
             email=EmailConfig.from_env(env),
             google=GoogleConfig.from_env(env),

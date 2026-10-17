@@ -2248,6 +2248,389 @@
         ]
       }
     },
+    "/api/v1/profile/import-tokens": {
+      "get": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Os tokens de importação da própria conta, sem o valor",
+        "operationId": "list_tokens_api_v1_profile_import_tokens_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTokens"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Cria um token de importação (chefia e desenvolvedor); o valor aparece só aqui",
+        "operationId": "create_token_api_v1_profile_import_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportTokenCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportTokenCreated"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: só a chefia e o desenvolvedor criam tokens; ou ORIGIN_MISMATCH.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: rótulo inválido ou já há 3 tokens ativos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessao": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/import-tokens/{token_id}": {
+      "delete": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Revoga um token de importação da própria conta",
+        "operationId": "revoke_token_api_v1_profile_import_tokens__token_id__delete",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Token Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ACCOUNT_NOT_FOUND: o token não existe, é de outra conta ou já foi revogado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: o identificador do token não é um UUID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/catalog/manifest": {
+      "post": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Recebe o que a extensão viu no Dikastis e devolve o que falta (S50-05)",
+        "operationId": "manifest_api_v1_import_catalog_manifest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogManifest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogManifestResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: o manifesto está fora do formato ou dos limites.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas sincronizações seguidas com o mesmo token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ImportToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/import/catalog/questions": {
+      "put": {
+        "tags": [
+          "importação do Dikastis"
+        ],
+        "summary": "Grava as questões novas ou alteradas de uma rodada (S50-05)",
+        "operationId": "questions_api_v1_import_catalog_questions_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogQuestionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogQuestionsResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão (Perfil) ou sem token de importação válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ORIGIN_MISMATCH: a requisição veio de outro site ou de outra extensão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: envie em partes menores.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: fora do formato, hash que não confere ou rodada desconhecida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: muitas sincronizações seguidas com o mesmo token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou OVERLOADED: o banco não respondeu; tente de novo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ImportToken": []
+          }
+        ]
+      }
+    },
     "/api/v1/lists": {
       "get": {
         "tags": [
@@ -2709,6 +3092,367 @@
           "rule_ids"
         ],
         "title": "BatchResult"
+      },
+      "CatalogClass": {
+        "properties": {
+          "dikastis_org_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[\\w-]+$",
+            "title": "Dikastis Org Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "course": {
+            "type": "string",
+            "enum": [
+              "SI",
+              "EC",
+              "CC/IA",
+              "CC",
+              "outro"
+            ],
+            "title": "Course"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dikastis_org_id",
+          "name",
+          "course"
+        ],
+        "title": "CatalogClass"
+      },
+      "CatalogListIn": {
+        "properties": {
+          "dikastis_task_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[\\w-]+$",
+            "title": "Dikastis Task Id"
+          },
+          "class_org_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[\\w-]+$",
+            "title": "Class Org Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "treino",
+              "lista",
+              "prova"
+            ],
+            "title": "Kind"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionReference"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dikastis_task_id",
+          "class_org_id",
+          "kind",
+          "number",
+          "title",
+          "questions"
+        ],
+        "title": "CatalogListIn"
+      },
+      "CatalogManifest": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}\\.[12]$",
+            "title": "Period"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "semi"
+            ],
+            "title": "Mode",
+            "default": "manual"
+          },
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogClass"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Classes"
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogListIn"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Lists"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period",
+          "classes",
+          "lists"
+        ],
+        "title": "CatalogManifest"
+      },
+      "CatalogManifestResult": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "need": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Need",
+            "description": "Os problemas do Dikastis cujo enunciado falta ou mudou."
+          },
+          "unchanged": {
+            "type": "integer",
+            "title": "Unchanged"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing",
+            "description": "As questões do período que não vieram desta vez."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "need",
+          "unchanged",
+          "missing"
+        ],
+        "title": "CatalogManifestResult"
+      },
+      "CatalogQuestionIn": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "pattern": "^[LP][1-9]\\d?-Q[1-9]\\d?$",
+            "title": "Question Id"
+          },
+          "dikastis_problem_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[\\w-]+$",
+            "title": "Dikastis Problem Id"
+          },
+          "list_kind": {
+            "type": "string",
+            "enum": [
+              "treino",
+              "lista",
+              "prova"
+            ],
+            "title": "List Kind"
+          },
+          "list_number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Number"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Description"
+          },
+          "input_description": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Input Description"
+          },
+          "output_description": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Output Description"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/SampleIn"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Samples"
+          },
+          "time_limit_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 600000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Limit Ms"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "dikastis_problem_id",
+          "list_kind",
+          "list_number",
+          "title",
+          "description",
+          "input_description",
+          "output_description",
+          "samples",
+          "content_hash"
+        ],
+        "title": "CatalogQuestionIn"
+      },
+      "CatalogQuestionsIn": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}\\.[12]$",
+            "title": "Period"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogQuestionIn"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "minItems": 1,
+            "title": "Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "period",
+          "questions"
+        ],
+        "title": "CatalogQuestionsIn"
+      },
+      "CatalogQuestionsResult": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "unchanged": {
+            "type": "integer",
+            "title": "Unchanged"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "created",
+          "updated",
+          "unchanged"
+        ],
+        "title": "CatalogQuestionsResult"
       },
       "ClassSolution": {
         "properties": {
@@ -3196,6 +3940,172 @@
           "status"
         ],
         "title": "HealthResponse"
+      },
+      "ImportTokenCreate": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "description": "Um nome para lembrar onde o token está, como \"Chrome do notebook\"."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "ImportTokenCreate"
+      },
+      "ImportTokenCreated": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "O token, mostrado só nesta resposta; guarde-o na extensão."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "created_at",
+          "expires_at",
+          "revoked_at",
+          "last_used_at",
+          "active",
+          "token"
+        ],
+        "title": "ImportTokenCreated"
+      },
+      "ImportTokenInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "created_at",
+          "expires_at",
+          "revoked_at",
+          "last_used_at",
+          "active"
+        ],
+        "title": "ImportTokenInfo"
+      },
+      "ImportTokens": {
+        "properties": {
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/ImportTokenInfo"
+            },
+            "type": "array",
+            "title": "Tokens"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tokens"
+        ],
+        "title": "ImportTokens"
       },
       "Indicator": {
         "properties": {
@@ -4088,6 +4998,35 @@
         ],
         "title": "QuestionInfo"
       },
+      "QuestionReference": {
+        "properties": {
+          "dikastis_problem_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[\\w-]+$",
+            "title": "Dikastis Problem Id"
+          },
+          "question_id": {
+            "type": "string",
+            "pattern": "^[LP][1-9]\\d?-Q[1-9]\\d?$",
+            "title": "Question Id"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dikastis_problem_id",
+          "question_id",
+          "content_hash"
+        ],
+        "title": "QuestionReference"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -4268,6 +5207,27 @@
           "role"
         ],
         "title": "RoleChoice"
+      },
+      "SampleIn": {
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Input"
+          },
+          "output": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Output"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "input",
+          "output"
+        ],
+        "title": "SampleIn"
       },
       "SimilarityBand": {
         "properties": {
@@ -5441,6 +6401,11 @@
         "description": "Sessão de uma conta ativa da equipe, criada por POST /api/v1/auth/login. HttpOnly, Secure e SameSite=Lax; o servidor guarda só o hash do identificador.",
         "in": "cookie",
         "name": "__Host-ipc_session"
+      },
+      "ImportToken": {
+        "type": "http",
+        "description": "O token de importação da extensão do Dikastis (Perfil → Token de importação).",
+        "scheme": "bearer"
       }
     }
   }

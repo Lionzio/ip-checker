@@ -79,6 +79,8 @@ def can_view_log(actor: Account) -> bool:
 #: Quem vê os indícios de uso de IA com ``IPC_AI_INDICATORS=chefia`` (S42-05, Q-35): a chefia,
 #: durante a primeira lista, antes de toda a equipe.
 INDICATORS_LEADERSHIP = frozenset({Role.DESENVOLVEDOR, Role.PROFESSOR, Role.MONITOR_CHEFE})
+#: Quem cria o token de importação da extensão do Dikastis (S50-04): a chefia e o desenvolvedor.
+IMPORT_ROLES = INDICATORS_LEADERSHIP
 
 
 def sees_indicators(actor: Account, mode: str) -> bool:

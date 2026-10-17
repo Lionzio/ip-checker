@@ -62,10 +62,20 @@ def _origin_allowed(origin: str, host: str | None, allowed: frozenset[str]) -> b
     return parts.scheme in {"http", "https"} and host is not None and parts.netloc == host.lower()
 
 
+#: As rotas da extensão do Dikastis (S50-04): só nelas a origem chrome-extension://<id> vale.
+IMPORT_PREFIX = "/api/v1/import/"
+
+
 class OriginCheckMiddleware:
-    def __init__(self, app: ASGIApp, allowed_origins: tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        allowed_origins: tuple[str, ...],
+        import_origins: tuple[str, ...] = (),
+    ) -> None:
         self.app = app
         self.allowed = frozenset(origin.rstrip("/").lower() for origin in allowed_origins)
+        self.import_allowed = self.allowed | frozenset(origin.lower() for origin in import_origins)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if (
@@ -77,7 +87,8 @@ class OriginCheckMiddleware:
             return
         headers = Headers(scope=scope)
         origin = headers.get("origin")
-        if origin is None or _origin_allowed(origin, headers.get("host"), self.allowed):
+        allowed = self.import_allowed if scope["path"].startswith(IMPORT_PREFIX) else self.allowed
+        if origin is None or _origin_allowed(origin, headers.get("host"), allowed):
             await self.app(scope, receive, send)
             return
         state: dict[str, Any] = scope.setdefault("state", {})

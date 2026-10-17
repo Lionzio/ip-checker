@@ -197,6 +197,15 @@ class PostgresAccountStore:
         finally:
             self._pending -= 1
 
+    @property
+    def pool(self) -> Any:
+        """O pool, para os repositórios que dividem a conexão (``importing/postgres.py``)."""
+        return self._pool
+
+    def operation(self, deadline_s: float = DB_DEADLINE_S) -> Any:
+        """O mesmo prazo e a mesma recusa rápida com o pool cheio de ``_op`` (S50-05)."""
+        return self._op(deadline_s)
+
     @classmethod
     async def connect(cls, dsn: str) -> PostgresAccountStore:
         # Poucas conexões: uma instância da API (ADR-03) e consultas curtas.

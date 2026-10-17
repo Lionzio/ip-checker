@@ -44,6 +44,7 @@ from ipc_api.accounts.models import Role, Status
 from ipc_api.accounts.store import MemoryAccountStore
 from ipc_api.admission import AdmissionConfig
 from ipc_api.auth.google import GoogleConfig
+from ipc_api.importing.hashing import content_hash
 from ipc_api.openapi import build, render
 from ipc_api.ratelimit import RateLimitConfig
 from ipc_api.settings import ApiSettings
@@ -248,7 +249,8 @@ def contract(api_app: FastAPI) -> Any:
 # Login, logout, registro e troca de senha gerados ao acaso recusariam credenciais, encerrariam a
 # sessão dos demais casos ou esbarrariam em nomes já usados; o gerenciamento recusa a sessão de
 # monitora dos casos gerados (403) e contas sorteadas (404); o Google redireciona para a página.
-# Os status de todos eles são provocados um a um nos testes de acesso restrito abaixo.
+# A importação do Dikastis (S50-04) recusa a monitora (403) e pede um token que os casos gerados
+# não têm (401). Os status de todos eles são provocados um a um nos testes de acesso restrito.
 schema = (
     schemathesis.pytest.from_fixture("contract")
     .exclude(
@@ -261,7 +263,7 @@ schema = (
             "/api/v1/feedback",
         ]
     )
-    .exclude(path_regex=r"^/api/v1/(admin|auth/google)/")
+    .exclude(path_regex=r"^/api/v1/(admin|auth/google|import)/|^/api/v1/profile/import-tokens")
 )
 
 
@@ -553,6 +555,95 @@ def test_management_statuses_follow_the_contract() -> None:
             )
             == 409
         )
+
+
+def test_import_statuses_follow_the_contract() -> None:
+    # S50-04 e S50-05: o token no Perfil (sessão) e as rotas da extensão (token de importação).
+    app, store = make_app(ApiSettings())
+    contract = _schema()
+    contract.app = app
+    refusals = [positive_data_acceptance, not_a_server_error, ignored_auth]
+    monitor = {COOKIE: open_session(store, member(store))}
+    chefe = {COOKIE: open_session(store, member(store, role=Role.MONITOR_CHEFE))}
+    tokens = "/api/v1/profile/import-tokens"
+    one = "/api/v1/profile/import-tokens/{token_id}"
+    json_body: dict[str, Any] = {"media_type": "application/json"}
+
+    def run(
+        path: str,
+        method: str,
+        cookies: dict[str, str] | None = None,
+        token: str | None = None,
+        **case: Any,
+    ) -> httpx2.Response:
+        headers = {"Authorization": f"Bearer {token}"} if token else None
+        response: httpx2.Response = (
+            contract[path][method]
+            .Case(**case)
+            .call_and_validate(cookies=cookies, headers=headers, excluded_checks=refusals)
+        )
+        return response
+
+    texts = {
+        "title": "Eco",
+        "description": "Leia N.",
+        "input_description": "N.",
+        "output_description": "N.",
+    }
+    digest = content_hash(**texts, samples=[])
+    item = {
+        "question_id": "L1-Q1",
+        "dikastis_problem_id": "P1",
+        "list_kind": "lista",
+        "list_number": 1,
+        **texts,
+        "samples": [],
+        "content_hash": digest,
+    }
+    manifest = {
+        "period": "2026.2",
+        "classes": [{"dikastis_org_id": "C1", "name": "IP SI", "course": "SI"}],
+        "lists": [
+            {
+                "dikastis_task_id": "T1",
+                "class_org_id": "C1",
+                "kind": "lista",
+                "number": 1,
+                "title": "Lista 1",
+                "questions": [
+                    {"dikastis_problem_id": "P1", "question_id": "L1-Q1", "content_hash": digest}
+                ],
+            }
+        ],
+    }
+    with TestClient(app):
+        assert run(tokens, "GET", chefe).status_code == 200
+        assert run(tokens, "GET").status_code == 401
+        created = run(tokens, "POST", chefe, body={"label": "Chrome"}, **json_body)
+        assert created.status_code == 201
+        assert (
+            run(tokens, "POST", monitor, body={"label": "Chrome"}, **json_body).status_code == 403
+        )
+        assert run(tokens, "POST", chefe, body={"label": ""}, **json_body).status_code == 422
+        raw, token_id = created.json()["token"], created.json()["id"]
+
+        manifest_path = "/api/v1/import/catalog/manifest"
+        questions_path = "/api/v1/import/catalog/questions"
+        assert run(manifest_path, "POST", body=manifest, **json_body).status_code == 401
+        bad = {**manifest, "period": "2026.3"}
+        assert run(manifest_path, "POST", token=raw, body=bad, **json_body).status_code == 422
+        result = run(manifest_path, "POST", token=raw, body=manifest, **json_body)
+        assert result.status_code == 200
+        body = {"run_id": result.json()["run_id"], "period": "2026.2", "questions": [item]}
+        assert run(questions_path, "PUT", token=raw, body=body, **json_body).status_code == 200
+        tampered = {**body, "questions": [{**item, "description": "Outro."}]}
+        assert run(questions_path, "PUT", token=raw, body=tampered, **json_body).status_code == 422
+
+        ids = {"token_id": token_id}
+        assert run(one, "DELETE", chefe, path_parameters=ids).status_code == 204
+        assert run(one, "DELETE", chefe, path_parameters=ids).status_code == 404
+        assert run(one, "DELETE", chefe, path_parameters={"token_id": "x"}).status_code == 422
+        assert run(manifest_path, "POST", token=raw, body=manifest, **json_body).status_code == 401
 
 
 def test_google_statuses_follow_the_contract() -> None:
