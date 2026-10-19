@@ -96,6 +96,11 @@ def _check_gabarito(gabarito: str | None) -> None:
         )
 
 
+def _check_gabaritos(gabarito: str | None, gabaritos: list[str] | None) -> None:
+    for item in (gabarito, *(gabaritos or ())):
+        _check_gabarito(item)
+
+
 def _pool(request: Request) -> AnalyzerPool:
     pool: AnalyzerPool = request.app.state.pool
     return pool
@@ -210,7 +215,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                 f"O código tem {thousands(size)} bytes; o limite é "
                 f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
             )
-        _check_gabarito(body.gabarito)
+        _check_gabaritos(body.gabarito, body.gabaritos)
         # A questão é conferida aqui, antes do worker: uma questão inexistente nem entra na fila.
         resolve_question(ruleset, body.list_number, body.question_id)
         result = await pool.analyze(
@@ -221,6 +226,7 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
             indicators=body.indicators,
             gabarito=body.gabarito,
             period=ruleset.ruleset.period,
+            gabaritos=body.gabaritos or (),
             reference_question=body.reference_question if body.indicators else None,
         )
         request.state.outcome = result.status
@@ -272,13 +278,14 @@ def create_app(settings: AnalyzerSettings | None = None) -> FastAPI:
                     f"Código {label}: o código tem {thousands(size)} bytes; o limite é "
                     f"{thousands(DEFAULT_LIMITS.max_bytes)} bytes (50 KB)."
                 )
-        _check_gabarito(body.gabarito)
+        _check_gabaritos(body.gabarito, body.gabaritos)
         result, gabarito = await pool.compare(
             body.first,
             body.second,
             deadline=_deadline(request),
             gabarito=body.gabarito,
             period=period,
+            gabaritos=body.gabaritos or (),
         )
         response = SimilarityResponse.from_result(result, gabarito)
         request.state.outcome = response.status

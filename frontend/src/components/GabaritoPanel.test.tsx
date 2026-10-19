@@ -24,6 +24,44 @@ const COMPARED: GabaritoComparison = {
   message: "Semelhança com o gabarito oficial da questão.",
 };
 
+describe("Os dois gabaritos (Sprint 51, ADR-17)", () => {
+  it("o título diz qual gabarito valeu na verificação", () => {
+    const { rerender } = render(<GabaritoPanel comparison={{ ...COMPARED, kind: "ip_cc" }} onSelectLines={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { name: "Comparação com o Gabarito IP CC · L1-Q1" })).toBeInTheDocument();
+
+    rerender(<GabaritoPanel comparison={{ ...COMPARED, kind: "notion" }} onSelectLines={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Comparação com o Gabarito Notion · L1-Q1" })).toBeInTheDocument();
+  });
+
+  it("no plágio, cada código diz com qual gabarito foi comparado", async () => {
+    const client = createMockClient({ latencyMs: 0, signedIn: true });
+    const band = { id: "altas_chances" as const, label: "Altas chances de plágio", minimum: 95 };
+    client.listLists = () =>
+      Promise.resolve([{ number: 1, title: "Condicionais", questions: [], gabaritos: ["L1-Q1"] }] satisfies ListInfo[]);
+    client.compare = vi.fn(async () => ({
+      ...(await createMockClient({ latencyMs: 0, signedIn: true }).compare("x = 1", "y = 1")),
+      gabarito: {
+        question_id: "L1-Q1",
+        status: "compared" as const,
+        a: { similarity: 97.0, band, kind: "notion" as const },
+        b: { similarity: 41.0, band: { id: "sem_suspeitas" as const, label: "Sem suspeitas", minimum: 0 }, kind: "ip_cc" as const },
+        leak_alert: false,
+        message: "A e B comparados também com o gabarito oficial da questão.",
+      },
+    }));
+    const user = renderApp(client, "/plagio");
+
+    await user.selectOptions(await screen.findByLabelText("Questão (para comparar também com o gabarito)"), "L1-Q1");
+    await user.type(screen.getByLabelText("Código A"), "x = 1");
+    await user.type(screen.getByLabelText("Código B"), "y = 1");
+    await user.click(screen.getByRole("button", { name: "Verificar" }));
+
+    expect(await screen.findByText("Código A com o Gabarito Notion:")).toBeInTheDocument();
+    expect(screen.getByText("Código B com o Gabarito IP CC:")).toBeInTheDocument();
+  });
+});
+
 describe("Comparação com o gabarito na verificação (S32-06, ADR-11)", () => {
   it("mostra a semelhança com a faixa, as construções e os trechos do aluno", async () => {
     const select = vi.fn();

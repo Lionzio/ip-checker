@@ -49,6 +49,8 @@ export type ListInfo = Schemas["ListInfo"];
 /** Uma questão com regra específica cadastrada no período (R-01, Sprint 24). */
 export type QuestionInfo = Schemas["QuestionInfo"];
 export type GabaritoComparison = Schemas["GabaritoComparison"];
+/** Os dois gabaritos de uma questão (Sprint 51, ADR-17): o do Notion e o da conta IP CC. */
+export type GabaritoKind = NonNullable<GabaritoComparison["kind"]>;
 export type SimilarityGabarito = Schemas["SimilarityGabarito"];
 export type ErrorResponse = Schemas["ErrorResponse"];
 /** A conta logada (Sprint 13). O tratamento só aparece para o próprio titular. */

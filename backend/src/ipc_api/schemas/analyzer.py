@@ -64,6 +64,8 @@ class AnalyzerGabarito(_Strict):
     only_student: list[Construct] = Field(max_length=30)
     only_gabarito: list[Construct] = Field(max_length=30)
     student_lines: list[AnalyzerLines] = Field(max_length=100)
+    #: A posição do gabarito mais parecido na lista enviada (Sprint 51): 0 ou 1.
+    index: Annotated[int, Field(ge=0, le=1)] = 0
 
 
 class AnalyzerSimilarity(_Strict):

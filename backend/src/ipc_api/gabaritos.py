@@ -1,30 +1,26 @@
-"""Gabaritos oficiais na memória da API (ADR-11, NFR-27; S32-02).
+"""Gabaritos oficiais na memória da API (ADR-11, NFR-27; S32-02, revisto na Sprint 51).
 
-Ao subir, a API baixa os gabaritos do repositório privado (ADR-10) pela API do GitHub, por HTTPS,
-com uma credencial só de leitura restrita a esse repositório (``IPC_GABARITOS_REPO`` e
-``IPC_GABARITOS_TOKEN``), e os guarda **só na memória do processo**: nunca em disco, na imagem, no
-log, na telemetria ou numa resposta. No desenvolvimento, ``IPC_GABARITOS_DIR`` lê uma pasta local
-com a mesma organização (o clone do repositório, ou gabaritos sintéticos nos testes).
+Desde a Sprint 51 (ADR-17), o banco é a fonte da verdade: a chefia cadastra os gabaritos pela tela
+"Gabaritos" (``ipc_api.answer_keys``), e a API os carrega do banco ao subir e a cada escrita. A
+API não baixa mais nada do GitHub: ``IPC_GABARITOS_REPO`` e ``IPC_GABARITOS_TOKEN`` são ignoradas,
+com um aviso no log, até saírem do Render. ``IPC_GABARITOS_DIR`` continua lendo uma pasta local com
+a organização ``<período>/lista-<n>/L<n>-Q<m>.py``: no desenvolvimento, no compose do e2e e no
+import dos gabaritos para o banco (``python -m ipc_api.answer_keys.transfer``).
 
-Só entram arquivos ``<período>/lista-<n>/L<n>-Q<m>.py``, com limites por arquivo e no total. Sem
-configuração, ou com qualquer falha, a comparação fica desligada, a página avisa e o resto da API
-segue normal: ``/ready`` não depende dos gabaritos. Os logs dizem só quantos arquivos entraram, ou o
-tipo da falha, nunca um caminho, um trecho ou a credencial.
+Os gabaritos ficam **só na memória do processo** e no banco: nunca em disco, na imagem, no log, na
+telemetria ou numa resposta ao monitor. Sem gabarito nenhum, a comparação fica desligada, a página
+avisa e o resto da API segue normal: ``/ready`` não depende dos gabaritos. Os logs dizem só quantos
+entraram, ou o tipo da falha, nunca um caminho, um trecho ou uma credencial.
 """
 
 from __future__ import annotations
 
-import asyncio
-import base64
-import binascii
 import logging
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
-
-import httpx2
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -35,47 +31,40 @@ PATH = re.compile(
 MAX_FILE_BYTES = 51_200
 MAX_TOTAL_BYTES = 5 * 1024 * 1024
 MAX_FILES = 1_000
-#: Downloads de arquivos ao mesmo tempo.
-CONCURRENCY = 8
 
 Status = Literal["disabled", "loading", "loaded", "failed"]
+
+#: As variáveis do repositório de gabaritos, lidas até a Sprint 50 (ADR-10).
+LEGACY_VARIABLES = ("IPC_GABARITOS_REPO", "IPC_GABARITOS_TOKEN", "IPC_GABARITOS_BRANCH")
 
 
 @dataclass(frozen=True, slots=True)
 class GabaritosConfig:
-    repo: str | None = None
-    token: str | None = field(default=None, repr=False)
-    branch: str = "main"
     local_dir: Path | None = None
-    api_url: str = "https://api.github.com"
-    timeout_s: float = 20.0
     #: Alerta de possível vazamento no plágio (ADR-11, item 5): A com B, A com o gabarito e B com o
     #: gabarito acima disto [PREMISSA: 95%, calibrado na S33-02] ...
     alert_percent: float = 95.0
     #: ... e os dois códigos com pelo menos estes tokens normalizados [PREMISSA: o mesmo limite do
     #: aviso de código curto do plágio].
     alert_min_tokens: int = 60
+    #: Alguma variável do repositório antigo ainda está definida (no Render, até o autor tirar).
+    legacy_variables: bool = False
 
     @property
     def enabled(self) -> bool:
-        return self.local_dir is not None or (bool(self.repo) and bool(self.token))
+        return self.local_dir is not None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> GabaritosConfig:
         defaults = cls()
-        repo = env.get("IPC_GABARITOS_REPO") or None
-        if repo is not None and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
-            raise ValueError(f"IPC_GABARITOS_REPO inválida: {repo!r}. Use dono/repositório.")
         local = env.get("IPC_GABARITOS_DIR") or None
         return cls(
-            repo=repo,
-            token=env.get("IPC_GABARITOS_TOKEN") or None,
-            branch=env.get("IPC_GABARITOS_BRANCH") or defaults.branch,
             local_dir=Path(local) if local else None,
             alert_percent=float(env.get("IPC_GABARITO_ALERT_PERCENT", defaults.alert_percent)),
             alert_min_tokens=int(
                 env.get("IPC_GABARITO_ALERT_MIN_TOKENS", defaults.alert_min_tokens)
             ),
+            legacy_variables=any(env.get(name) for name in LEGACY_VARIABLES),
         )
 
 
@@ -153,21 +142,19 @@ class Gabaritos:
         self.status = "loaded"
 
 
-async def load(
-    config: GabaritosConfig,
-    target: Gabaritos,
-    transport: httpx2.AsyncBaseTransport | None = None,
-) -> None:
-    """Carrega os gabaritos em ``target``; nunca levanta exceção (a API sobe de qualquer jeito)."""
+async def load(config: GabaritosConfig, target: Gabaritos) -> None:
+    """Carrega a pasta local em ``target``; nunca levanta exceção (a API sobe de qualquer jeito)."""
+    if config.legacy_variables:
+        logger.warning(
+            "IPC_GABARITOS_REPO e IPC_GABARITOS_TOKEN não são mais lidas (Sprint 51): os gabaritos "
+            "vêm do banco; tire as variáveis do Render e revogue o token (runbook)"
+        )
     if not config.enabled:
         target.status = "disabled"
         return
     target.status = "loading"
     try:
-        if config.local_dir is not None:
-            items = _from_dir(config.local_dir)
-        else:
-            items = await _from_github(config, transport)
+        items = read_folder(config.local_dir)  # type: ignore[arg-type]
     except GabaritoLoadError as exc:
         target.status = "failed"
         logger.warning("gabaritos indisponíveis: %s", exc)
@@ -176,9 +163,11 @@ async def load(
     logger.info("gabaritos carregados: %d", len(items))
 
 
-def _from_dir(root: Path) -> dict[tuple[str, str], str]:
+def read_folder(root: Path) -> dict[tuple[str, str], str]:
+    """Os gabaritos de uma pasta ``<período>/lista-<n>/L<n>-Q<m>.py``, com os limites de sempre:
+    o carregamento local e o import para o banco (Sprint 51) leem do mesmo jeito."""
     if not root.is_dir():
-        raise GabaritoLoadError("IPC_GABARITOS_DIR não é uma pasta")
+        raise GabaritoLoadError("a pasta dos gabaritos não existe")
     accepted: list[tuple[str, bytes]] = []
     for file in sorted(root.rglob("*.py")):
         relative = file.relative_to(root).as_posix()
@@ -189,67 +178,9 @@ def _from_dir(root: Path) -> dict[tuple[str, str], str]:
         except OSError:
             raise GabaritoLoadError("não foi possível ler a pasta dos gabaritos") from None
         accepted.append((relative, raw))
+    if len(accepted) > MAX_FILES:
+        raise GabaritoLoadError(f"mais de {MAX_FILES} gabaritos")
     return _index(accepted)
-
-
-async def _from_github(
-    config: GabaritosConfig, transport: httpx2.AsyncBaseTransport | None
-) -> dict[tuple[str, str], str]:
-    headers = {
-        "Authorization": f"Bearer {config.token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    async with httpx2.AsyncClient(
-        base_url=config.api_url,
-        headers=headers,
-        timeout=httpx2.Timeout(config.timeout_s),
-        transport=transport,
-        follow_redirects=False,
-        trust_env=False,
-    ) as client:
-        tree = await _json(client, f"/repos/{config.repo}/git/trees/{config.branch}?recursive=1")
-        entries = tree.get("tree") if isinstance(tree, dict) else None
-        if not isinstance(entries, list):
-            raise GabaritoLoadError("resposta inesperada do GitHub (árvore)")
-        wanted = [
-            (str(entry["path"]), str(entry["sha"]))
-            for entry in entries
-            if isinstance(entry, dict)
-            and entry.get("type") == "blob"
-            and isinstance(entry.get("path"), str)
-            and PATH.fullmatch(entry["path"]) is not None
-            and int(entry.get("size") or 0) <= MAX_FILE_BYTES
-        ]
-        if len(wanted) > MAX_FILES:
-            raise GabaritoLoadError(f"mais de {MAX_FILES} gabaritos")
-        semaphore = asyncio.Semaphore(CONCURRENCY)
-
-        async def blob(path: str, sha: str) -> tuple[str, bytes]:
-            async with semaphore:
-                data = await _json(client, f"/repos/{config.repo}/git/blobs/{sha}")
-            if not isinstance(data, dict) or data.get("encoding") != "base64":
-                raise GabaritoLoadError("resposta inesperada do GitHub (arquivo)")
-            try:
-                return path, base64.b64decode(str(data.get("content", "")))
-            except (binascii.Error, ValueError):
-                raise GabaritoLoadError("arquivo do GitHub em base64 inválido") from None
-
-        accepted = await asyncio.gather(*(blob(path, sha) for path, sha in wanted))
-    return _index(list(accepted))
-
-
-async def _json(client: httpx2.AsyncClient, path: str) -> Any:
-    try:
-        response = await client.get(path)
-    except httpx2.HTTPError as exc:
-        raise GabaritoLoadError(f"falha ao falar com o GitHub: {type(exc).__name__}") from None
-    if response.status_code != 200:
-        raise GabaritoLoadError(f"o GitHub respondeu {response.status_code}")
-    try:
-        return response.json()
-    except ValueError:
-        raise GabaritoLoadError("resposta do GitHub que não é JSON") from None
 
 
 def _index(files: list[tuple[str, bytes]]) -> dict[tuple[str, str], str]:

@@ -29,7 +29,10 @@ async function verified(client: ApiClient, code = VALID) {
   );
   await screen.findByRole("option", { name: "Lista 1: Comandos condicionais" });
   await user.selectOptions(screen.getByLabelText("Lista"), "1");
-  await user.type(screen.getByLabelText("Código Python"), code);
+  // Colar, como no teste dos indícios: digitar letra a letra no editor passava dos 15 s com a
+  // máquina carregada, e o assunto aqui é o feedback, não a digitação.
+  await user.click(screen.getByLabelText("Código Python"));
+  await user.paste(code);
   await user.click(screen.getByRole("button", { name: "Verificar" }));
   await screen.findByRole("heading", { name: "Feedback para o aluno" });
   return user;

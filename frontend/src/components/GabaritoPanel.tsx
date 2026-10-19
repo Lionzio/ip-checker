@@ -1,4 +1,5 @@
 import { BAND_STYLES, PERCENT } from "../bands";
+import { gabaritoName } from "../labels";
 import type { GabaritoComparison } from "../types/api";
 import { constructHint } from "../constructTerms";
 import { Card, LineChip } from "./ui";
@@ -42,7 +43,7 @@ export function GabaritoPanel({ comparison, onSelectLines }: GabaritoPanelProps)
   return (
     <Card aria-labelledby="gabarito-titulo" className="flex flex-col gap-3">
       <h3 id="gabarito-titulo" className="text-lg font-semibold">
-        Comparação com o gabarito · {comparison.question_id}
+        Comparação com o {gabaritoName(comparison.kind)} · {comparison.question_id}
       </h3>
       {!compared ? (
         <p role="note" className="text-sm text-slate-700 dark:text-slate-200">

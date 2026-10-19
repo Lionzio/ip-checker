@@ -28,7 +28,7 @@ test("a questão só com gabarito usa as regras da lista e mostra a comparação
   await page.getByLabel("Código Python").fill(COPY);
   await page.getByRole("button", { name: "Verificar" }).click();
 
-  const panel = page.getByRole("region", { name: "Comparação com o gabarito · L1-Q1" });
+  const panel = page.getByRole("region", { name: "Comparação com o Gabarito Notion · L1-Q1" });
   await expect(panel).toBeVisible();
   await expect(panel.getByLabel(/Semelhança com o gabarito de (9\d|100),\d%/)).toBeVisible();
   await expect(panel.getByRole("list", { name: "Em comum" })).toContainText("while");
@@ -46,5 +46,5 @@ test("no plágio, duas cópias do gabarito disparam o alerta de possível vazame
   await page.getByRole("button", { name: "Verificar" }).click();
 
   await expect(page.getByRole("alert")).toContainText("Possível vazamento do gabarito");
-  await expect(page.getByText("Código A com o gabarito:")).toBeVisible();
+  await expect(page.getByText("Código A com o Gabarito Notion:")).toBeVisible();
 });

@@ -228,3 +228,55 @@ def test_the_code_never_reaches_the_logs(
     out, err = capfd.readouterr()
     assert CANARY not in out + err + caplog.text
     assert "gabarito 2026.2 L1-Q1 notion salvo: 0 regra(s)" in caplog.text
+
+
+# --- Os dois gabaritos na comparação (Sprint 51, S51-03) ------------------------------------------
+
+#: Um gabarito "IP CC" bem diferente do aluno; o "Notion" (VALID) é quase igual.
+FAR = f"# {CANARY}\nx = int(input())\nwhile x > 0:\n    print(x)\n    x -= 1\n"
+STUDENT = "media = float(input())\nif media >= 7:\n    print('Ok')\n"
+
+
+def test_with_two_gabaritos_the_verification_says_which_was_closer(api: Any) -> None:
+    store, client = api
+    login(client, store, Role.PROFESSOR)
+    client.put(f"{BASE}/2026.2/L1-Q1/ip_cc", json={"code": FAR})
+    client.put(ONE, json={"code": VALID})
+
+    body = client.post(
+        "/api/v1/validate", json={"code": STUDENT, "list_number": 1, "question_id": "L1-Q1"}
+    ).json()
+
+    assert body["gabarito"]["status"] == "compared"
+    assert body["gabarito"]["kind"] == "notion"
+    assert body["gabarito"]["similarity"] >= 90
+    assert CANARY not in str(body)
+
+
+def test_with_only_ip_cc_the_comparison_says_ip_cc(api: Any) -> None:
+    store, client = api
+    login(client, store, Role.PROFESSOR)
+    client.put(f"{BASE}/2026.2/L1-Q1/ip_cc", json={"code": VALID})
+
+    body = client.post(
+        "/api/v1/validate", json={"code": STUDENT, "list_number": 1, "question_id": "L1-Q1"}
+    ).json()
+
+    assert body["gabarito"]["kind"] == "ip_cc"
+
+
+def test_the_plagiarism_panel_says_which_gabarito_each_side_matched(api: Any) -> None:
+    store, client = api
+    login(client, store, Role.PROFESSOR)
+    client.put(ONE, json={"code": VALID})
+    client.put(f"{BASE}/2026.2/L1-Q1/ip_cc", json={"code": FAR})
+    near_far = "y = int(input())\nwhile y > 0:\n    print(y)\n    y -= 1\n"
+
+    body = client.post(
+        "/api/v1/similarity",
+        json={"code_a": STUDENT, "code_b": near_far, "question_id": "L1-Q1"},
+    ).json()
+
+    assert body["gabarito"]["status"] == "compared"
+    assert (body["gabarito"]["a"]["kind"], body["gabarito"]["b"]["kind"]) == ("notion", "ip_cc")
+    assert CANARY not in str(body)

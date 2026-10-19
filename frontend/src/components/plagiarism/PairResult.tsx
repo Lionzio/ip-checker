@@ -1,4 +1,5 @@
 import { BAND_STYLES, PERCENT } from "../../bands";
+import { gabaritoName } from "../../labels";
 import type { SimilarityBand, SimilarityGabarito, SimilarityMatch, SimilarityResponse } from "../../types/api";
 import { Card, LineChip, SyntaxErrorBox } from "../ui";
 
@@ -102,7 +103,9 @@ export function GabaritoPair({ gabarito }: { gabarito: SimilarityGabarito }) {
             {sides.map(([label, side]) =>
               side ? (
                 <li key={label} className="flex flex-wrap items-center gap-3">
-                  <span className="font-medium">Código {label} com o gabarito:</span>
+                  <span className="font-medium">
+                    Código {label} com o {gabaritoName(side.kind)}:
+                  </span>
                   <span className="text-xl font-bold">{PERCENT.format(side.similarity)}%</span>
                   <Band band={side.band} />
                 </li>

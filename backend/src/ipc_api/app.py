@@ -176,17 +176,21 @@ async def _load_all_gabaritos(
     config: ApiSettings,
     cache: Gabaritos,
     service: GabaritoService,
-    transport: httpx2.AsyncBaseTransport | None,
+    *,
+    database: bool,
 ) -> None:
-    """Primeiro o carregamento antigo (a pasta local ou o repositório), depois o banco por cima:
-    um gabarito salvo pelo painel vale mais que o do repositório (Sprint 51, ADR-17)."""
-    await load_gabaritos(config.gabaritos, cache, transport)
+    """Primeiro a pasta local (desenvolvimento e e2e), depois o banco por cima: um gabarito
+    salvo pelo painel vale mais (Sprint 51, ADR-17)."""
+    await load_gabaritos(config.gabaritos, cache)
     try:
         count = await service.load_cache()
     except StoreUnavailable:
         logger.warning("gabaritos do banco indisponíveis ao subir; ficam os do carregamento antigo")
         return
-    if count:
+    if database:
+        # Com o banco, ele é a fonte da verdade: sem gabarito é "esta questão não tem", não
+        # "gabaritos fora do ar".
+        cache.status = "loaded"
         logger.info("gabaritos do banco: %d", count)
 
 
@@ -238,7 +242,6 @@ def create_app(
     google_transport: httpx2.AsyncBaseTransport | None = None,
     llm_providers: Sequence[Provider] | None = None,
     telemetry_sink: TelemetrySink | None = None,
-    gabaritos_transport: httpx2.AsyncBaseTransport | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> FastAPI:
     """Os parâmetros depois de ``settings`` só existem para os testes: o analyzer em memória, um
@@ -297,16 +300,18 @@ def create_app(
             )
             app.state.analyzer = client
             # Os gabaritos chegam em segundo plano (ADR-11): a API fica pronta sem esperar por eles.
+            gabarito_store = _gabarito_store(store, memory_gabaritos)
+            database = not isinstance(gabarito_store, MemoryGabaritoStore)
             app.state.gabaritos = Gabaritos(
-                status="loading" if config.gabaritos.enabled else "disabled"
+                status="loading" if config.gabaritos.enabled or database else "disabled"
             )
             # Os gabaritos pelo painel (Sprint 51): o banco é a fonte da verdade.
             app.state.gabarito_service = GabaritoService(
-                _gabarito_store(store, memory_gabaritos), client, app.state.gabaritos, clock=clock
+                gabarito_store, client, app.state.gabaritos, clock=clock
             )
             gabaritos_task = asyncio.create_task(
                 _load_all_gabaritos(
-                    config, app.state.gabaritos, app.state.gabarito_service, gabaritos_transport
+                    config, app.state.gabaritos, app.state.gabarito_service, database=database
                 )
             )
             # O semáforo pertence ao laço de eventos que atende as requisições.

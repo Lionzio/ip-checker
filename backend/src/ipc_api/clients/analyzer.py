@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Sequence
 from typing import Any
 
 import httpx2
@@ -135,7 +136,7 @@ class AnalyzerClient:
         question_id: str | None = None,
         indicators: bool = False,
         reference_question: str | None = None,
-        gabarito: str | None = None,
+        gabaritos: Sequence[str] = (),
         period: str | None = None,
     ) -> AnalyzerResult:
         payload: dict[str, Any] = {
@@ -145,9 +146,10 @@ class AnalyzerClient:
             "indicators": indicators,
             **({"reference_question": reference_question} if reference_question else {}),
         }
-        if gabarito is not None:
-            # O gabarito vai só ao analyzer, pela rede interna (ADR-11), e nunca volta.
-            payload["gabarito"] = gabarito
+        if gabaritos:
+            # Os gabaritos vão só ao analyzer, pela rede interna (ADR-11), e nunca voltam; com
+            # dois (Sprint 51), a resposta diz a posição do mais parecido.
+            payload["gabaritos"] = list(gabaritos)
         if period is not None:
             # Um período anterior ao ativo (S43-02); sem ele, o analyzer usa o ativo.
             payload["period"] = period
@@ -190,19 +192,19 @@ class AnalyzerClient:
         first: str,
         second: str,
         request_id: str | None = None,
-        gabarito: str | None = None,
+        gabaritos: Sequence[str] = (),
         period: str | None = None,
     ) -> AnalyzerSimilarity:
         payload: dict[str, Any] = {"first": first, "second": second}
-        if gabarito is not None:
-            payload["gabarito"] = gabarito
+        if gabaritos:
+            payload["gabaritos"] = list(gabaritos)
         if period is not None:
             payload["period"] = period
         status, body = await self._request("POST", "/internal/similarity", payload, request_id)
         if status == 200:
             result = _parse(AnalyzerSimilarity, body)
             if (
-                gabarito is not None
+                gabaritos
                 and result.status == "compared"
                 and (result.gabarito is None or len(result.gabarito) != 2)
             ):
