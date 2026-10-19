@@ -266,6 +266,8 @@ schema = (
     .exclude(path_regex=r"^/api/v1/(admin|auth/google|import)/|^/api/v1/profile/import-tokens")
     # O .zip dos enunciados (S50-06) recusa a monitora dos casos gerados (403).
     .exclude(path_regex=r"/statements\.zip$")
+    # Os gabaritos pelo painel (Sprint 51): o código e a escrita recusam a monitora (403).
+    .exclude(path_regex=r"^/api/v1/gabaritos/[^/]+/")
 )
 
 
@@ -662,6 +664,67 @@ def test_import_statuses_follow_the_contract() -> None:
         empty = {"period": "2027.1"}
         assert run(zip_path, "GET", chefe, path_parameters=empty).status_code == 422
         assert run(zip_path, "GET", chefe, path_parameters=period).status_code == 200
+
+
+def test_gabarito_statuses_follow_the_contract(
+    api_bundle: tuple[FastAPI, MemoryAccountStore],
+) -> None:
+    # Sprint 51 (S51-02): a lista para a equipe; o código, salvar e apagar só para a chefia.
+    app, store = api_bundle
+    contract = _schema()
+    contract.app = app
+    refusals = [positive_data_acceptance, not_a_server_error, ignored_auth]
+    monitor = {COOKIE: open_session(store, member(store))}
+    chefe = {COOKIE: open_session(store, member(store, role=Role.MONITOR_CHEFE))}
+    listing = "/api/v1/gabaritos/{period}"
+    one = "/api/v1/gabaritos/{period}/{question_id}/{kind}"
+    ids = {"period": "2026.2", "question_id": "L1-Q3", "kind": "ip_cc"}
+    json_body: dict[str, Any] = {"media_type": "application/json"}
+
+    def run(path: str, method: str, cookies: dict[str, str] | None, **case: Any) -> int:
+        response = (
+            contract[path][method]
+            .Case(**case)
+            .call_and_validate(cookies=cookies, excluded_checks=refusals)
+        )
+        return int(response.status_code)
+
+    with TestClient(app):
+        assert run(listing, "GET", monitor, path_parameters={"period": "2026.2"}) == 200
+        assert run(listing, "GET", None, path_parameters={"period": "2026.2"}) == 401
+        assert run(listing, "GET", monitor, path_parameters={"period": "2026.3"}) == 422
+        assert run(one, "GET", chefe, path_parameters=ids) == 404
+        body = {"code": "nota = float(input())\nif nota > 5:\n    print(nota)\n"}
+        assert run(one, "PUT", monitor, path_parameters=ids, body=body, **json_body) == 403
+        assert run(one, "PUT", chefe, path_parameters=ids, body=body, **json_body) == 200
+        assert run(one, "PUT", chefe, path_parameters=ids, body={"code": " "}, **json_body) == 422
+        big = {"code": "#" + "a" * 51_200}
+        assert run(one, "PUT", chefe, path_parameters=ids, body=big, **json_body) == 413
+        assert run(one, "GET", monitor, path_parameters=ids) == 403
+        assert run(one, "GET", chefe, path_parameters=ids) == 200
+        assert run(one, "DELETE", monitor, path_parameters=ids) == 403
+        assert run(one, "DELETE", chefe, path_parameters=ids) == 204
+        assert run(one, "DELETE", chefe, path_parameters=ids) == 404
+
+
+def test_gabarito_saving_without_the_analyzer_follows_the_contract() -> None:
+    def refuse(request: httpx2.Request) -> httpx2.Response:
+        raise httpx2.ConnectError("analyzer parado", request=request)
+
+    app, store = make_app(ApiSettings(), analyzer_transport=httpx2.MockTransport(refuse))
+    contract = _schema()
+    contract.app = app
+    chefe = {COOKIE: open_session(store, member(store, role=Role.PROFESSOR))}
+    with TestClient(app):
+        case = contract["/api/v1/gabaritos/{period}/{question_id}/{kind}"]["PUT"].Case(
+            path_parameters={"period": "2026.2", "question_id": "L1-Q3", "kind": "notion"},
+            body={"code": "x = 1\n"},
+            media_type="application/json",
+        )
+        response = case.call_and_validate(
+            cookies=chefe, excluded_checks=[positive_data_acceptance, not_a_server_error]
+        )
+    assert response.status_code == 503
 
 
 def test_google_statuses_follow_the_contract() -> None:

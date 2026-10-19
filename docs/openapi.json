@@ -2784,6 +2784,433 @@
         }
       }
     },
+    "/api/v1/gabaritos/{period}": {
+      "get": {
+        "tags": [
+          "gabaritos"
+        ],
+        "summary": "Os gabaritos do período, sem o código: quem salvou, quando e as regras acionadas",
+        "operationId": "list_gabaritos_api_v1_gabaritos__period__get",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GabaritosOfPeriod"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: período fora do formato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gabaritos/{period}/{question_id}/{kind}": {
+      "get": {
+        "tags": [
+          "gabaritos"
+        ],
+        "summary": "O código de um gabarito (chefia e desenvolvedor)",
+        "operationId": "read_gabarito_api_v1_gabaritos__period___question_id___kind__get",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          },
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^L[1-6]-Q[1-9]\\d?$",
+              "examples": [
+                "L2-Q4"
+              ],
+              "title": "Question Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "notion",
+                "ip_cc"
+              ],
+              "type": "string",
+              "description": "notion ou ip_cc",
+              "title": "Kind"
+            },
+            "description": "notion ou ip_cc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GabaritoText"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "GABARITO_NOT_FOUND: a questão não tem esse gabarito.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: período, questão ou tipo fora do formato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "gabaritos"
+        ],
+        "summary": "Salva um gabarito: o analisador o confere e as regras acionadas ficam registradas",
+        "operationId": "save_gabarito_api_v1_gabaritos__period___question_id___kind__put",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          },
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^L[1-6]-Q[1-9]\\d?$",
+              "examples": [
+                "L2-Q4"
+              ],
+              "title": "Question Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "notion",
+                "ip_cc"
+              ],
+              "type": "string",
+              "description": "notion ou ip_cc",
+              "title": "Kind"
+            },
+            "description": "notion ou ip_cc"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GabaritoSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GabaritoInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos. Ou ORIGIN_MISMATCH.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE: o gabarito passa dos 50 KB de uma submissão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT (vazio, erro de sintaxe, lista fora do período), UNKNOWN_PERIOD (período não carregado) ou ANALYSIS_LIMIT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes. Sem o analisador, nada é gravado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "gabaritos"
+        ],
+        "summary": "Apaga um gabarito (chefia e desenvolvedor); a auditoria registra quem apagou",
+        "operationId": "delete_gabarito_api_v1_gabaritos__period___question_id___kind__delete",
+        "security": [
+          {
+            "sessao": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "period",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}\\.[12]$",
+              "examples": [
+                "2026.2"
+              ],
+              "title": "Period"
+            }
+          },
+          {
+            "name": "question_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^L[1-6]-Q[1-9]\\d?$",
+              "examples": [
+                "L2-Q4"
+              ],
+              "title": "Question Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "notion",
+                "ip_cc"
+              ],
+              "type": "string",
+              "description": "notion ou ip_cc",
+              "title": "Kind"
+            },
+            "description": "notion ou ip_cc"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: sem sessão de uma conta ativa da equipe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos. Ou ORIGIN_MISMATCH.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "GABARITO_NOT_FOUND: a questão não tem esse gabarito.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "INVALID_INPUT: período, questão ou tipo fora do formato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/lists": {
       "get": {
         "tags": [
@@ -3843,6 +4270,7 @@
           "FORBIDDEN",
           "ACCOUNT_NOT_FOUND",
           "ACCOUNT_STATE_CHANGED",
+          "GABARITO_NOT_FOUND",
           "INTERNAL_ERROR"
         ],
         "title": "ErrorCode"
@@ -4167,6 +4595,82 @@
         "title": "GabaritoComparison",
         "description": "Comparação com o gabarito oficial da questão (ADR-11, FR-32): só porcentagem, nomes de\nconstruções e linhas do aluno; nenhum texto do gabarito."
       },
+      "GabaritoInfo": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "notion",
+              "ip_cc"
+            ],
+            "title": "Kind"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "painel",
+              "dikastis",
+              "importado"
+            ],
+            "title": "Source"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/RuleHitInfo"
+            },
+            "type": "array",
+            "title": "Violations",
+            "description": "As regras que o gabarito aciona, conferidas ao salvar; vazio é 'sem violação'."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "updated_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By Name",
+            "description": "Quem salvou por último; nulo num gabarito importado ou de uma conta apagada."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "kind",
+          "source",
+          "violations",
+          "updated_at",
+          "updated_by_name"
+        ],
+        "title": "GabaritoInfo"
+      },
+      "GabaritoSave": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 120000,
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "GabaritoSave"
+      },
       "GabaritoSide": {
         "properties": {
           "similarity": {
@@ -4187,6 +4691,95 @@
           "band"
         ],
         "title": "GabaritoSide"
+      },
+      "GabaritoText": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "notion",
+              "ip_cc"
+            ],
+            "title": "Kind"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "painel",
+              "dikastis",
+              "importado"
+            ],
+            "title": "Source"
+          },
+          "violations": {
+            "items": {
+              "$ref": "#/components/schemas/RuleHitInfo"
+            },
+            "type": "array",
+            "title": "Violations",
+            "description": "As regras que o gabarito aciona, conferidas ao salvar; vazio é 'sem violação'."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "updated_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By Name",
+            "description": "Quem salvou por último; nulo num gabarito importado ou de uma conta apagada."
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "O código do gabarito: só para a chefia e o desenvolvedor."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "kind",
+          "source",
+          "violations",
+          "updated_at",
+          "updated_by_name",
+          "code"
+        ],
+        "title": "GabaritoText"
+      },
+      "GabaritosOfPeriod": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GabaritoInfo"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period",
+          "items"
+        ],
+        "title": "GabaritosOfPeriod"
       },
       "GooglePending": {
         "properties": {
@@ -5544,6 +6137,27 @@
           "role"
         ],
         "title": "RoleChoice"
+      },
+      "RuleHitInfo": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^R-\\d{2}$",
+            "title": "Rule Id"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Line"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule_id",
+          "line"
+        ],
+        "title": "RuleHitInfo"
       },
       "SampleIn": {
         "properties": {

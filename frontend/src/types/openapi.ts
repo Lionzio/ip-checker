@@ -627,6 +627,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gabaritos/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Os gabaritos do período, sem o código: quem salvou, quando e as regras acionadas */
+        get: operations["list_gabaritos_api_v1_gabaritos__period__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gabaritos/{period}/{question_id}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** O código de um gabarito (chefia e desenvolvedor) */
+        get: operations["read_gabarito_api_v1_gabaritos__period___question_id___kind__get"];
+        /** Salva um gabarito: o analisador o confere e as regras acionadas ficam registradas */
+        put: operations["save_gabarito_api_v1_gabaritos__period___question_id___kind__put"];
+        post?: never;
+        /** Apaga um gabarito (chefia e desenvolvedor); a auditoria registra quem apagou */
+        delete: operations["delete_gabarito_api_v1_gabaritos__period___question_id___kind__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lists": {
         parameters: {
             query?: never;
@@ -1046,7 +1082,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "UNKNOWN_PERIOD" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "INTERNAL_ERROR";
+        ErrorCode: "PAYLOAD_TOO_LARGE" | "INVALID_INPUT" | "LIST_NOT_ENABLED" | "UNKNOWN_QUESTION" | "UNKNOWN_PERIOD" | "ANALYSIS_LIMIT" | "RATE_LIMITED" | "OVERLOADED" | "ANALYZER_UNAVAILABLE" | "UNAUTHENTICATED" | "INVALID_CREDENTIALS" | "DOMAIN_NOT_ALLOWED" | "ACCOUNT_PENDING_VERIFICATION" | "ACCOUNT_PENDING_APPROVAL" | "ACCOUNT_REJECTED" | "ACCOUNT_REMOVED" | "ORIGIN_MISMATCH" | "DATABASE_UNAVAILABLE" | "NAME_TAKEN" | "EMAIL_TAKEN" | "WEAK_PASSWORD" | "INVALID_TOKEN" | "EMAIL_UNAVAILABLE" | "FORBIDDEN" | "ACCOUNT_NOT_FOUND" | "ACCOUNT_STATE_CHANGED" | "GABARITO_NOT_FOUND" | "INTERNAL_ERROR";
         /** ErrorDetail */
         ErrorDetail: {
             code: components["schemas"]["ErrorCode"];
@@ -1185,6 +1221,41 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** GabaritoInfo */
+        GabaritoInfo: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "notion" | "ip_cc";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "painel" | "dikastis" | "importado";
+            /**
+             * Violations
+             * @description As regras que o gabarito aciona, conferidas ao salvar; vazio é 'sem violação'.
+             */
+            violations: components["schemas"]["RuleHitInfo"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Updated By Name
+             * @description Quem salvou por último; nulo num gabarito importado ou de uma conta apagada.
+             */
+            updated_by_name: string | null;
+        };
+        /** GabaritoSave */
+        GabaritoSave: {
+            /** Code */
+            code: string;
+        };
         /** GabaritoSide */
         GabaritoSide: {
             /**
@@ -1193,6 +1264,48 @@ export interface components {
              */
             similarity: number;
             band: components["schemas"]["SimilarityBand"];
+        };
+        /** GabaritoText */
+        GabaritoText: {
+            /** Question Id */
+            question_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "notion" | "ip_cc";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "painel" | "dikastis" | "importado";
+            /**
+             * Violations
+             * @description As regras que o gabarito aciona, conferidas ao salvar; vazio é 'sem violação'.
+             */
+            violations: components["schemas"]["RuleHitInfo"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Updated By Name
+             * @description Quem salvou por último; nulo num gabarito importado ou de uma conta apagada.
+             */
+            updated_by_name: string | null;
+            /**
+             * Code
+             * @description O código do gabarito: só para a chefia e o desenvolvedor.
+             */
+            code: string;
+        };
+        /** GabaritosOfPeriod */
+        GabaritosOfPeriod: {
+            /** Period */
+            period: string;
+            /** Items */
+            items: components["schemas"]["GabaritoInfo"][];
         };
         /** GooglePending */
         GooglePending: {
@@ -1762,6 +1875,13 @@ export interface components {
              * @enum {string}
              */
             role: "desenvolvedor" | "professor" | "monitor_chefe" | "monitor";
+        };
+        /** RuleHitInfo */
+        RuleHitInfo: {
+            /** Rule Id */
+            rule_id: string;
+            /** Line */
+            line: number;
         };
         /** SampleIn */
         SampleIn: {
@@ -4473,6 +4593,267 @@ export interface operations {
                 };
             };
             /** @description DATABASE_UNAVAILABLE: o banco não respondeu; tente de novo. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_gabaritos_api_v1_gabaritos__period__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritosOfPeriod"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: período fora do formato. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    read_gabarito_api_v1_gabaritos__period___question_id___kind__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+                question_id: string;
+                /** @description notion ou ip_cc */
+                kind: "notion" | "ip_cc";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritoText"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GABARITO_NOT_FOUND: a questão não tem esse gabarito. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: período, questão ou tipo fora do formato. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    save_gabarito_api_v1_gabaritos__period___question_id___kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+                question_id: string;
+                /** @description notion ou ip_cc */
+                kind: "notion" | "ip_cc";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GabaritoSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritoInfo"];
+                };
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos. Ou ORIGIN_MISMATCH. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: o gabarito passa dos 50 KB de uma submissão. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT (vazio, erro de sintaxe, lista fora do período), UNKNOWN_PERIOD (período não carregado) ou ANALYSIS_LIMIT. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes. Sem o analisador, nada é gravado. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_gabarito_api_v1_gabaritos__period___question_id___kind__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+                question_id: string;
+                /** @description notion ou ip_cc */
+                kind: "notion" | "ip_cc";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHENTICATED: sem sessão de uma conta ativa da equipe. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN: só a chefia e o desenvolvedor veem e cadastram o código dos gabaritos. Ou ORIGIN_MISMATCH. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GABARITO_NOT_FOUND: a questão não tem esse gabarito. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INVALID_INPUT: período, questão ou tipo fora do formato. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description DATABASE_UNAVAILABLE ou ANALYZER_UNAVAILABLE: tente de novo em instantes. */
             503: {
                 headers: {
                     [name: string]: unknown;

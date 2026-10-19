@@ -94,6 +94,7 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
 
     assert await migrate_up(admin, migrations) == []  # já aplicadas: nada a fazer
     assert await migrate_down(admin, migrations, "0000") == [
+        "0009",
         "0008",
         "0007",
         "0006",
@@ -113,6 +114,7 @@ async def test_down_reverts_and_up_reapplies(admin: Any) -> None:
         "0006",
         "0007",
         "0008",
+        "0009",
     ]
     assert await _schema_exists(admin)
 
@@ -127,7 +129,7 @@ def test_cli_up_and_status(
     assert migrate.main(["status"]) == 0
     assert (
         capsys.readouterr().out.strip()
-        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008; pendentes: nenhuma"
+        == "aplicadas: 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009; pendentes: nenhuma"
     )
     assert migrate.main(["up"]) == 0
     assert capsys.readouterr().out.strip() == "aplicadas: nenhuma"
@@ -299,10 +301,10 @@ async def test_migrations_applied_before_the_checksum_get_one(admin: Any) -> Non
 @pytest.mark.anyio
 @requires_database
 async def test_versions_newer_than_the_folder_are_ignored(admin: Any, tmp_path: Path) -> None:
-    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0008, e a
+    # Um deploy de volta para uma versão anterior (docs/runbook.md): o banco já tem a 0009, e a
     # pasta antiga não. As migrações só acrescentam, então a versão anterior sobe normalmente.
     folder = _copy_migrations(tmp_path)
-    for path in folder.glob("0008_*"):
+    for path in folder.glob("0009_*"):
         path.unlink()
 
     assert await migrate_up(admin, discover(folder)) == []
@@ -345,6 +347,62 @@ async def test_the_catalog_only_grows_and_checks_its_identifiers(admin: Any) -> 
             "'2026.2', 'L1Q1', $1, 'P', 'T', '', '', '', '[]', repeat('a', 64), 1, now(), now())",
             list_id,
         )
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_gabaritos_are_for_the_api_only_and_check_their_identity(admin: Any) -> None:
+    # 0009 (Sprint 51, NFR-27): só a API lê o código; a view de leitura nunca vê a tabela, e a
+    # auditoria só recebe inserções. Um gabarito por questão e tipo; só L1 a L6; só Notion e IP CC.
+    for privilege, expected in (("SELECT", True), ("DELETE", True)):
+        assert (
+            await admin.fetchval(
+                "SELECT has_table_privilege('ipc_app', 'app.gabarito', $1)", privilege
+            )
+            is expected
+        )
+    assert not await admin.fetchval(
+        "SELECT has_table_privilege('ipc_reader', 'app.gabarito', 'SELECT')"
+    )
+    assert not await admin.fetchval(
+        "SELECT has_table_privilege('ipc_app', 'app.gabarito_audit', 'DELETE')"
+    )
+    await admin.execute("INSERT INTO app.catalog_period VALUES ('2026.2', now())")
+    insert = (
+        "INSERT INTO app.gabarito (id, period, question_id, kind, source, code, created_at, "
+        "updated_at) VALUES (gen_random_uuid(), '2026.2', $1, $2, 'painel', 'print(1)', now(), "
+        "now())"
+    )
+    await admin.execute(insert, "L1-Q1", "notion")
+    await admin.execute(insert, "L1-Q1", "ip_cc")
+    with pytest.raises(asyncpg.UniqueViolationError):
+        await admin.execute(insert, "L1-Q1", "notion")
+    for question, kind in (
+        ("L1Q1", "notion"),
+        ("P1-Q1", "notion"),
+        ("L7-Q1", "notion"),
+        ("L1-Q1", "chatgpt"),
+    ):
+        with pytest.raises(asyncpg.CheckViolationError):
+            await admin.execute(insert, question, kind)
+
+
+@pytest.mark.anyio
+@requires_database
+async def test_a_gabarito_stays_when_the_account_that_saved_it_goes(admin: Any) -> None:
+    account = await _insert_account(admin, "Professora", "professor", "ativo")
+    await admin.execute("INSERT INTO app.catalog_period VALUES ('2026.2', now())")
+    await admin.execute(
+        "INSERT INTO app.gabarito (id, period, question_id, kind, source, code, created_by, "
+        "created_at, updated_by, updated_at) VALUES (gen_random_uuid(), '2026.2', 'L2-Q4', "
+        "'notion', 'painel', 'print(1)', $1, now(), $1, now())",
+        account,
+    )
+
+    await admin.execute("DELETE FROM app.account WHERE id = $1", account)
+
+    row = await admin.fetchrow("SELECT created_by, updated_by FROM app.gabarito")
+    assert (row["created_by"], row["updated_by"]) == (None, None)
 
 
 @pytest.mark.anyio
