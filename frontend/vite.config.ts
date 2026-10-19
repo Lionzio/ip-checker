@@ -24,6 +24,10 @@ export default defineConfig({
     // Com a espera dos findBy em 3 s (setup.ts, S38), um teste com várias esperas passava do
     // limite padrão de 5 s com a máquina carregada; 15 s cobrem isso sem esconder um travamento.
     testTimeout: 15_000,
+    // No máximo 4 processos (Sprint 51): um por núcleo (16 no notebook do autor), cada um com o seu
+    // jsdom, esgotava a RAM livre (menos de 3 GB, com o Docker aberto), e os testes do feedback e do
+    // token passavam dos 15 s; com 4, a suíte inteira roda em ~35 s, sem falhas.
+    maxWorkers: 4,
     // Os testes ponta a ponta (e2e/) rodam com o Playwright, contra o compose.
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
     // Cobertura das páginas (S39-03): `npm run test:coverage`, a etapa do Vitest na CI local. Cada
