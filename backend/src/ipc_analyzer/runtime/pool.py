@@ -17,7 +17,7 @@ import asyncio
 import logging
 import multiprocessing
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,7 +27,7 @@ from pebble import ProcessExpired, ProcessPool
 
 from ipc_analyzer.engine.analysis import analyze_source
 from ipc_analyzer.engine.feedback import FeedbackInput, feedback_input
-from ipc_analyzer.engine.gabarito import GabaritoComparison, compare_with_gabarito
+from ipc_analyzer.engine.gabarito import GabaritoComparison, compare_with_best
 from ipc_analyzer.engine.guards import AnalysisLimitError
 from ipc_analyzer.engine.models import AnalysisResult
 from ipc_analyzer.engine.parse import SyntaxProblem
@@ -116,6 +116,7 @@ def _analyze_in_worker(
     gabarito: str | None = None,
     period: str | None = None,
     reference_question: str | None = None,
+    gabaritos: tuple[str, ...] = (),
 ) -> AnalysisResult:
     return analyze_source(
         source,
@@ -125,6 +126,7 @@ def _analyze_in_worker(
         with_indicators=with_indicators,
         gabarito=gabarito,
         reference_question=reference_question,
+        gabaritos=gabaritos,
     )
 
 
@@ -137,18 +139,25 @@ def _feedback_in_worker(
 
 
 def _compare_in_worker(
-    first: str, second: str, gabarito: str | None = None, period: str | None = None
+    first: str,
+    second: str,
+    gabarito: str | None = None,
+    period: str | None = None,
+    gabaritos: tuple[str, ...] = (),
 ) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
     """Os dois códigos entre si e, com o gabarito, cada um com ele (ADR-11, item 5); os fatos
     estruturais da comparação com o gabarito são os do período do gabarito (S43-01)."""
     ruleset = _ruleset(period)
     result = compare_sources(first, second, target=ruleset.target_version)
-    if gabarito is None or isinstance(result, InvalidSide):
+    # Com dois gabaritos (Sprint 51), cada código vale com o mais parecido; o alerta de vazamento
+    # precisa de um só (ADR-17, item 3).
+    candidates = gabaritos or ((gabarito,) if gabarito is not None else ())
+    if not candidates or isinstance(result, InvalidSide):
         return result, ()
     return result, tuple(
-        compare_with_gabarito(
+        compare_with_best(
             code,
-            gabarito,
+            candidates,
             target=ruleset.target_version,
             structural=ruleset.structural_facts,
         )
@@ -245,6 +254,7 @@ class AnalyzerPool:
         gabarito: str | None = None,
         period: str | None = None,
         reference_question: str | None = None,
+        gabaritos: Sequence[str] = (),
     ) -> AnalysisResult:
         return await self.run(
             _analyze_in_worker,
@@ -255,6 +265,7 @@ class AnalyzerPool:
             gabarito,
             period,
             reference_question,
+            tuple(gabaritos),
             deadline=deadline,
         )
 
@@ -280,11 +291,18 @@ class AnalyzerPool:
         deadline: float | None = None,
         gabarito: str | None = None,
         period: str | None = None,
+        gabaritos: Sequence[str] = (),
     ) -> tuple[Similarity | InvalidSide, tuple[GabaritoComparison | None, ...]]:
         """Plágio (S17-02): os dois códigos são comparados no worker, com o mesmo isolamento; com o
-        gabarito (ADR-11), cada um também é comparado com ele."""
+        gabarito (ADR-11), cada um também é comparado com ele (com dois, com o mais parecido)."""
         return await self.run(
-            _compare_in_worker, first, second, gabarito, period, deadline=deadline
+            _compare_in_worker,
+            first,
+            second,
+            gabarito,
+            period,
+            tuple(gabaritos),
+            deadline=deadline,
         )
 
     async def compare_class(

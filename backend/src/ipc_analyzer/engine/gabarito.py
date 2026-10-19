@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import hashlib
 from collections import OrderedDict
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, replace
 
 from ipc_analyzer.engine.display import describe
 from ipc_analyzer.engine.facts import extract_facts
@@ -41,6 +41,9 @@ class GabaritoComparison:
     #: Trechos do código do aluno (primeira e última linha) com a estrutura de um trecho do
     #: gabarito, na ordem do código.
     student_lines: tuple[tuple[int, int], ...]
+    #: Com dois gabaritos (Sprint 51, ADR-17), a posição do mais parecido na lista recebida;
+    #: a API sabe o tipo de cada posição (Notion, IP CC).
+    index: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +88,26 @@ def compare_with_gabarito(
         only_gabarito=_named(reference.constructs - constructs),
         student_lines=_merge((match.a.first, match.a.last) for match in result.matches),
     )
+
+
+def compare_with_best(
+    source: str,
+    gabaritos: Sequence[str],
+    *,
+    target: tuple[int, int],
+    structural: frozenset[str],
+    limits: Limits = DEFAULT_LIMITS,
+) -> GabaritoComparison | None:
+    """Compara com cada gabarito e devolve o mais parecido, com a posição dele (Sprint 51): os
+    dois gabaritos de uma questão são igualmente válidos (ADR-17, item 3). Empate: o primeiro."""
+    best: GabaritoComparison | None = None
+    for index, gabarito in enumerate(gabaritos):
+        found = compare_with_gabarito(
+            source, gabarito, target=target, structural=structural, limits=limits
+        )
+        if found is not None and (best is None or found.percent > best.percent):
+            best = replace(found, index=index)
+    return best
 
 
 def _prepared_gabarito(

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from ipc_analyzer.engine.facts import extract_facts
-from ipc_analyzer.engine.gabarito import compare_with_gabarito
+from ipc_analyzer.engine.gabarito import compare_with_best
 from ipc_analyzer.engine.guards import (
     DEFAULT_LIMITS,
     InvalidInputError,
@@ -27,12 +29,14 @@ def analyze_source(
     with_indicators: bool = False,
     gabarito: str | None = None,
     reference_question: str | None = None,
+    gabaritos: Sequence[str] = (),
 ) -> AnalysisResult:
     """Analisa o código para a lista indicada e, se houver, para a questão (R-01).
 
     Com ``with_indicators``, calcula também os indícios de uso de IA (ADR-08, S29-01), a partir das
     violações e da mesma árvore, sem guardar nada. Com ``gabarito``, compara o código com o
-    gabarito oficial da questão (ADR-11), e a semelhança entra também nos indícios.
+    gabarito oficial da questão (ADR-11), e a semelhança entra também nos indícios. Com
+    ``gabaritos`` (até dois, Sprint 51), vale o mais parecido, e a comparação diz a posição dele.
     ``reference_question`` é a questão das referências de IA (S42-04), que pode não ter regras
     cadastradas (uma questão só com gabarito); sem ela, vale ``question_id``.
 
@@ -49,16 +53,13 @@ def analyze_source(
             syntax_error=parsed,
         )
     violations, truncated = evaluate(extract_facts(parsed), ruleset, list_number, question=question)
-    comparison = (
-        compare_with_gabarito(
-            source,
-            gabarito,
-            target=ruleset.target_version,
-            structural=ruleset.structural_facts,
-            limits=limits,
-        )
-        if gabarito is not None
-        else None
+    candidates = tuple(gabaritos) or ((gabarito,) if gabarito is not None else ())
+    comparison = compare_with_best(
+        source,
+        candidates,
+        target=ruleset.target_version,
+        structural=ruleset.structural_facts,
+        limits=limits,
     )
     indicators = (
         compute_indicators(

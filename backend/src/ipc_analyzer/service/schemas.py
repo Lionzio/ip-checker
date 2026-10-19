@@ -37,6 +37,9 @@ class AnalyzeRequest(BaseModel):
     indicators: bool = False
     #: O gabarito oficial da questão (ADR-11), vindo da memória da API; nunca volta na resposta.
     gabarito: str | None = None
+    #: Os dois gabaritos da questão (Sprint 51, ADR-17): vale o mais parecido; a resposta diz a
+    #: posição dele, e a API sabe o tipo de cada posição.
+    gabaritos: list[str] | None = Field(default=None, max_length=2)
     #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
     period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
     #: A questão das referências de IA (S42-04), mesmo sem regras cadastradas (só com gabarito).
@@ -122,6 +125,8 @@ class GabaritoOut(BaseModel):
     only_student: list[str]
     only_gabarito: list[str]
     student_lines: list[LinesOut]
+    #: A posição do gabarito mais parecido na lista recebida (Sprint 51).
+    index: int = 0
 
     @classmethod
     def of(cls, comparison: GabaritoComparison) -> GabaritoOut:
@@ -134,6 +139,7 @@ class GabaritoOut(BaseModel):
             student_lines=[
                 LinesOut(first=first, last=last) for first, last in comparison.student_lines
             ],
+            index=comparison.index,
         )
 
 
@@ -190,6 +196,8 @@ class SimilarityRequest(BaseModel):
     second: str
     #: O gabarito da questão (ADR-11): cada código é comparado também com ele.
     gabarito: str | None = None
+    #: Os dois gabaritos da questão (Sprint 51): cada código vale com o mais parecido.
+    gabaritos: list[str] | None = Field(default=None, max_length=2)
     #: O período das regras (S43-01), como 2026.2; sem ele, vale o ativo.
     period: str | None = Field(default=None, pattern=r"^\d{4}\.[12]$")
 
