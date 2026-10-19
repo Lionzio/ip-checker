@@ -81,6 +81,9 @@ def can_view_log(actor: Account) -> bool:
 INDICATORS_LEADERSHIP = frozenset({Role.DESENVOLVEDOR, Role.PROFESSOR, Role.MONITOR_CHEFE})
 #: Quem cria o token de importação da extensão do Dikastis (S50-04): a chefia e o desenvolvedor.
 IMPORT_ROLES = INDICATORS_LEADERSHIP
+#: Quem vê o código dos gabaritos e os cadastra pelo painel (Sprint 51, ADR-17): a chefia e o
+#: desenvolvedor. O monitor vê só a existência, a data e a comparação.
+GABARITO_ROLES = INDICATORS_LEADERSHIP
 
 
 def sees_indicators(actor: Account, mode: str) -> bool:

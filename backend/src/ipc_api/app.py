@@ -25,11 +25,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
-from ipc_api.accounts.models import DeveloperSeed
+from ipc_api.accounts.models import DeveloperSeed, StoreUnavailable
 from ipc_api.accounts.passwords import Passwords, password_problems
 from ipc_api.accounts.store import AccountStore
 from ipc_api.admission import Admission
 from ipc_api.adoption import Adoption
+from ipc_api.answer_keys.service import GabaritoService
+from ipc_api.answer_keys.store import GabaritoStore, MemoryGabaritoStore
 from ipc_api.auth.accounts import AccountService
 from ipc_api.auth.google import Expiring, GoogleOidc
 from ipc_api.auth.google_accounts import GoogleAccounts
@@ -62,6 +64,7 @@ from ipc_api.routes import (
     auth,
     catalog,
     feedback,
+    gabaritos,
     google,
     importing,
     meta,
@@ -159,6 +162,34 @@ def _catalog_store(store: AccountStore, memory: MemoryCatalogStore) -> CatalogSt
     return memory
 
 
+def _gabarito_store(store: AccountStore, memory: MemoryGabaritoStore) -> GabaritoStore:
+    """Os gabaritos no banco das contas (Sprint 51); sem banco, os de memória, que duram o app."""
+    from ipc_api.accounts.postgres import PostgresAccountStore
+    from ipc_api.answer_keys.postgres import PostgresGabaritoStore
+
+    if isinstance(store, PostgresAccountStore):
+        return PostgresGabaritoStore(store)
+    return memory
+
+
+async def _load_all_gabaritos(
+    config: ApiSettings,
+    cache: Gabaritos,
+    service: GabaritoService,
+    transport: httpx2.AsyncBaseTransport | None,
+) -> None:
+    """Primeiro o carregamento antigo (a pasta local ou o repositório), depois o banco por cima:
+    um gabarito salvo pelo painel vale mais que o do repositório (Sprint 51, ADR-17)."""
+    await load_gabaritos(config.gabaritos, cache, transport)
+    try:
+        count = await service.load_cache()
+    except StoreUnavailable:
+        logger.warning("gabaritos do banco indisponíveis ao subir; ficam os do carregamento antigo")
+        return
+    if count:
+        logger.info("gabaritos do banco: %d", count)
+
+
 async def seed_developer(
     store: AccountStore, passwords: Passwords, developer: DeveloperSettings, now: datetime
 ) -> None:
@@ -219,6 +250,7 @@ def create_app(
         configure_logging()
     hasher = passwords or Passwords()
     memory_catalog = MemoryCatalogStore()
+    memory_gabaritos = MemoryGabaritoStore()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -268,8 +300,14 @@ def create_app(
             app.state.gabaritos = Gabaritos(
                 status="loading" if config.gabaritos.enabled else "disabled"
             )
+            # Os gabaritos pelo painel (Sprint 51): o banco é a fonte da verdade.
+            app.state.gabarito_service = GabaritoService(
+                _gabarito_store(store, memory_gabaritos), client, app.state.gabaritos, clock=clock
+            )
             gabaritos_task = asyncio.create_task(
-                load_gabaritos(config.gabaritos, app.state.gabaritos, gabaritos_transport)
+                _load_all_gabaritos(
+                    config, app.state.gabaritos, app.state.gabarito_service, gabaritos_transport
+                )
             )
             # O semáforo pertence ao laço de eventos que atende as requisições.
             app.state.admission = Admission(config.admission)
@@ -385,6 +423,7 @@ def create_app(
     app.include_router(importing.tokens)
     app.include_router(importing.catalog)
     app.include_router(catalog.router)
+    app.include_router(gabaritos.router)
     app.include_router(meta.protected)
     app.include_router(meta.router)
     return app

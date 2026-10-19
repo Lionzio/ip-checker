@@ -83,12 +83,21 @@ class GabaritoLoadError(Exception):
     """Falha ao carregar; a mensagem nunca traz conteúdo, caminho de gabarito nem credencial."""
 
 
+#: Os tipos de gabarito, na ordem de preferência quando só um vale (Sprint 51, ADR-17).
+KIND_PREFERENCE = ("notion", "ip_cc")
+
+
 @dataclass(slots=True)
 class Gabaritos:
-    """Os gabaritos carregados, por período e questão. Começa vazio ("loading" ou "disabled")."""
+    """Os gabaritos carregados, por período e questão. Começa vazio ("loading" ou "disabled").
+
+    Desde a Sprint 51, cada questão tem até dois gabaritos, "notion" e "ip_cc" (``pair``); ``get``
+    devolve o preferido, para quem compara com um só. O repositório antigo entra como "notion".
+    """
 
     status: Status = "disabled"
     _items: dict[tuple[str, str], str] = field(default_factory=dict, repr=False)
+    _kinds: dict[tuple[str, str], dict[str, str]] = field(default_factory=dict, repr=False)
 
     @property
     def count(self) -> int:
@@ -108,8 +117,39 @@ class Gabaritos:
             for number, ids in sorted(found.items())
         }
 
+    def pair(self, period: str, question_id: str) -> tuple[tuple[str, str], ...]:
+        """Os gabaritos da questão, como ``(tipo, código)``, o Notion antes do IP CC."""
+        key = (period, question_id)
+        kinds = self._kinds.get(key)
+        if kinds is None:
+            code = self._items.get(key)
+            return () if code is None else (("notion", code),)
+        return tuple((kind, kinds[kind]) for kind in KIND_PREFERENCE if kind in kinds)
+
+    def put(self, period: str, question_id: str, kind: str, code: str) -> None:
+        """Um gabarito salvo pelo painel (Sprint 51): a verificação seguinte já o usa."""
+        key = (period, question_id)
+        self._kinds.setdefault(key, dict(self.pair(period, question_id)))[kind] = code
+        self._refresh(key)
+        self.status = "loaded"
+
+    def remove(self, period: str, question_id: str, kind: str) -> None:
+        key = (period, question_id)
+        self._kinds.setdefault(key, dict(self.pair(period, question_id))).pop(kind, None)
+        self._refresh(key)
+
+    def _refresh(self, key: tuple[str, str]) -> None:
+        kinds = self._kinds.get(key) or {}
+        preferred = next((kinds[k] for k in KIND_PREFERENCE if k in kinds), None)
+        if preferred is None:
+            self._items.pop(key, None)
+            self._kinds.pop(key, None)
+        else:
+            self._items[key] = preferred
+
     def replace(self, items: dict[tuple[str, str], str]) -> None:
         self._items = items
+        self._kinds = {}
         self.status = "loaded"
 
 
