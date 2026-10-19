@@ -204,7 +204,7 @@ Correções urgentes seguem o mesmo caminho: entram na `develop` e depois avanç
 | 48 | Entrada com o Google no piloto: cliente OAuth, botão e ensaio de domínio e de aprovação | Proposta; no fim da fila |
 | 49 | CI incremental e mais rápida: passos pulados por impressão digital das entradas, três faixas em paralelo, auditoria só sobre o que mudou, release por passos | Concluída em 16/10/2026 (release `sprint-49`, #148): rodada completa em 9,9 min (595 s) (antes, 13 a 15 min); sem mudanças de código, 21 s |
 | 50 | Catálogo das listas pela extensão do Dikastis: enunciados, só o que é novo ou mudou, tela "Listas do período", `.zip` para o gerador | Concluída em 16/10/2026 (release `sprint-50`, #149, #150 e #151); no piloto depois da migração `0008` e do deploy, com a primeira sincronização com o autor |
-| 51 | Gabaritos pelo painel: até dois por questão (Notion e IP CC), validados ao salvar; o repositório de gabaritos vira arquivo | Proposta (plano de 16/10/2026) |
+| 51 | Gabaritos pelo painel: até dois por questão (Notion e IP CC), validados ao salvar; o repositório de gabaritos vira arquivo; os indícios de IA para toda a equipe (S51-08) | Planejada em 19/10/2026 (manual fora do repositório); a release e o deploy esperam o fim da primeira lista com a chefia usando o painel de indícios (previsão: início de novembro de 2026) |
 | 52 | Códigos dos alunos: o último de cada aluno em cada questão, cifrado, por 6 períodos; etapa 2 a cada código; tela da turma; exclusão a pedido | Proposta (plano de 16/10/2026); só com o aviso aos alunos |
 | 53 | Plágio por turma (até 100) e por período (até 600), assíncrono, com MinHash e LSH | Proposta (plano de 16/10/2026) |
 | 54 | Sincronização automática e painel de sincronizações | Proposta (plano de 16/10/2026) |
