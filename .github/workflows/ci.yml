@@ -214,7 +214,8 @@ jobs:
     # a variável GABARITOS_REPO (dono/repositório) está definida, e baixa o repositório com uma chave
     # de implantação só de leitura, cuja parte privada fica no segredo GABARITOS_SSH_KEY (ADR-10;
     # antes, um token pessoal). A pasta gabaritos/ é ignorada pelo Git, e os testes mostram só
-    # arquivo, regra e linha, nunca o código.
+    # arquivo, regra e linha, nunca o código. Desde a Sprint 51 (ADR-17), os gabaritos vivem no
+    # banco e o repositório é um arquivo, atualizado pelo export (runbook, "Gabaritos").
     name: Gabaritos (zero violação, Q-14)
     # PRs do Dependabot não recebem os segredos do Actions: sem a chave, o checkout falharia.
     needs: changes

@@ -115,10 +115,11 @@ async def validate(
     check = check_question(view, body.list_number, body.question_id, gabaritos)
     # Uma questão só com gabarito (ADR-11, item 6) usa as regras da lista.
     registered = check is not None and check.registered
-    gabarito = (
-        gabaritos.get(check.period, body.question_id)
+    # Os gabaritos da questão (Sprint 51): até dois, Notion e IP CC; vale o mais parecido.
+    pair = (
+        gabaritos.pair(check.period, body.question_id)
         if check is not None and body.question_id is not None
-        else None
+        else ()
     )
 
     try:
@@ -135,7 +136,7 @@ async def validate(
                 reference_question=(
                     body.question_id if with_indicators and check is not None else None
                 ),
-                gabarito=gabarito,
+                gabaritos=[code for _kind, code in pair],
                 period=requested(view),
             )
             analysis_ms = round((time.perf_counter() - started) * 1000)
@@ -193,22 +194,25 @@ async def validate(
             if with_indicators and result.indicators is not None
             else None
         ),
-        gabarito=_gabarito(body.question_id, gabarito, gabaritos, result),
+        gabarito=_gabarito(body.question_id, pair, gabaritos, result),
     )
 
 
 def _gabarito(
     question_id: str | None,
-    text: str | None,
+    pair: tuple[tuple[str, str], ...],
     gabaritos: Gabaritos,
     result: AnalyzerResult,
 ) -> GabaritoComparison | None:
     if question_id is None:
         return None
-    if text is None:
+    if not pair:
         return gabarito_result.missing(question_id, gabaritos)
     return gabarito_result.for_validation(
-        question_id, result.gabarito, syntax_error=result.status == "syntax_error"
+        question_id,
+        result.gabarito,
+        syntax_error=result.status == "syntax_error",
+        kinds=[kind for kind, _code in pair],
     )
 
 
@@ -268,10 +272,11 @@ async def validate_batch(
     )
     check = check_question(view, body.list_number, body.question_id, gabaritos)
     registered = check is not None and check.registered
-    gabarito = (
-        gabaritos.get(check.period, body.question_id)
+    # Os gabaritos da questão (Sprint 51): até dois, Notion e IP CC; vale o mais parecido.
+    pair = (
+        gabaritos.pair(check.period, body.question_id)
         if check is not None and body.question_id is not None
-        else None
+        else ()
     )
     results: list[BatchResult] = []
     version = view.ruleset_version if view else telemetry.ruleset_version or ""
@@ -290,7 +295,7 @@ async def validate_batch(
                     request_id=request_id,
                     question_id=body.question_id if registered else None,
                     indicators=False,
-                    gabarito=gabarito,
+                    gabaritos=[code for _kind, code in pair],
                     period=requested(view),
                 )
                 analysis_ms = round((time.perf_counter() - started) * 1000)

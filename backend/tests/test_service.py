@@ -402,6 +402,34 @@ def test_similarity_with_the_gabarito_compares_each_side(client: TestClient) -> 
     assert "canario_gab" not in response.text
 
 
+def test_with_two_gabaritos_the_response_says_which_was_closer(client: TestClient) -> None:
+    # Sprint 51 (ADR-17): a API manda o Notion e o IP CC; vale o mais parecido, pela posição.
+    code = "nota = float(input())\nif nota >= 7:\n    print('aprovado')\n"
+    far = "x = 1\nwhile x < 10:\n    x += 3\nprint(x)\n"
+
+    analysis = client.post(
+        "/internal/analyze",
+        json={"code": code, "list_number": 1, "gabaritos": [far, GABARITO]},
+    ).json()
+    similarity = client.post(
+        "/internal/similarity",
+        json={"first": code, "second": far, "gabaritos": [far, GABARITO]},
+    ).json()
+
+    assert (analysis["gabarito"]["index"], analysis["gabarito"]["percent"]) == (1, 100.0)
+    assert [side["index"] for side in similarity["gabarito"]] == [1, 0]
+    assert "canario_gab" not in str(analysis) + str(similarity)
+
+
+def test_more_than_two_gabaritos_are_refused(client: TestClient) -> None:
+    response = client.post(
+        "/internal/analyze",
+        json={"code": "x = 1\n", "list_number": 1, "gabaritos": ["x = 1\n"] * 3},
+    )
+
+    assert response.status_code == 422
+
+
 def test_an_oversized_gabarito_is_refused_without_its_content(client: TestClient) -> None:
     big = "x = 1\n" * 9_000
 

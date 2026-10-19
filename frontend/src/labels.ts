@@ -1,4 +1,4 @@
-import type { ApiErrorCode, Category, Notice } from "./types/api";
+import type { ApiErrorCode, Category, GabaritoKind, Notice } from "./types/api";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   ANULACAO: "Anulação imediata",
@@ -59,3 +59,14 @@ export const CATEGORY_COUNTS: Record<Category, readonly [string, string]> = {
   FORA_DA_LISTA: ["fora da lista", "fora da lista"],
   NAO_CONSTA: ["não consta no documento", "não constam no documento"],
 };
+
+/** O nome de cada gabarito (Sprint 51, ADR-17), igual na verificação, no plágio e na tela Gabaritos. */
+export const GABARITO_KIND_LABELS: Record<GabaritoKind, string> = {
+  notion: "Gabarito Notion",
+  ip_cc: "Gabarito IP CC",
+};
+
+/** "Gabarito Notion", "Gabarito IP CC" ou, sem o tipo (servidor antigo), só "gabarito". */
+export function gabaritoName(kind: GabaritoKind | null | undefined): string {
+  return kind ? GABARITO_KIND_LABELS[kind] : "gabarito";
+}

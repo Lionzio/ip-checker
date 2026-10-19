@@ -1218,6 +1218,11 @@ export interface components {
              * @description Trechos do aluno com a estrutura de um trecho do gabarito.
              */
             student_lines: components["schemas"]["LineSpan"][];
+            /**
+             * Kind
+             * @description Qual gabarito valeu: com dois (Notion e IP CC, Sprint 51), o mais parecido com o código; nulo sem comparação.
+             */
+            kind?: ("notion" | "ip_cc") | null;
             /** Message */
             message: string;
         };
@@ -1264,6 +1269,11 @@ export interface components {
              */
             similarity: number;
             band: components["schemas"]["SimilarityBand"];
+            /**
+             * Kind
+             * @description Qual gabarito valeu para este código (Sprint 51).
+             */
+            kind?: ("notion" | "ip_cc") | null;
         };
         /** GabaritoText */
         GabaritoText: {

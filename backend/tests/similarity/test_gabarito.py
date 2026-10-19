@@ -9,7 +9,11 @@ from dataclasses import asdict
 
 from ipc_analyzer.engine import gabarito as module
 from ipc_analyzer.engine.analysis import analyze_source
-from ipc_analyzer.engine.gabarito import GabaritoComparison, compare_with_gabarito
+from ipc_analyzer.engine.gabarito import (
+    GabaritoComparison,
+    compare_with_best,
+    compare_with_gabarito,
+)
 from ipc_analyzer.engine.ruleset import CompiledRuleset
 
 CANARY = "canario_gabarito_7f3a"
@@ -139,3 +143,42 @@ def test_a_distant_solution_is_not_an_indicator(base_ruleset: CompiledRuleset) -
     assert result.indicators is None or all(
         item.signal != "gabarito" for item in result.indicators.items
     )
+
+
+# --- Dois gabaritos por questão (Sprint 51, ADR-17) ----------------------------------------------
+
+
+def _best(code: str, gabaritos: list[str], ruleset: CompiledRuleset) -> GabaritoComparison | None:
+    return compare_with_best(
+        code, gabaritos, target=ruleset.target_version, structural=ruleset.structural_facts
+    )
+
+
+def test_with_two_gabaritos_the_most_similar_wins_and_says_which(
+    base_ruleset: CompiledRuleset,
+) -> None:
+    result = _best(RENAMED, [INDEPENDENT, GABARITO], base_ruleset)
+
+    assert result is not None
+    assert result.index == 1
+    assert result.percent >= 99.0
+
+
+def test_a_tie_keeps_the_first_and_none_compares_nothing(base_ruleset: CompiledRuleset) -> None:
+    tie = _best(GABARITO, [GABARITO, GABARITO], base_ruleset)
+
+    assert tie is not None
+    assert tie.index == 0
+    assert _best(GABARITO, [], base_ruleset) is None
+
+
+def test_the_analysis_compares_with_both_and_keeps_the_best(
+    base_ruleset: CompiledRuleset,
+) -> None:
+    result = analyze_source(
+        RENAMED, list_number=3, ruleset=base_ruleset, gabaritos=(INDEPENDENT, GABARITO)
+    )
+
+    assert result.gabarito is not None
+    assert result.gabarito.index == 1
+    assert CANARY not in str(asdict(result.gabarito))

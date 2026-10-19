@@ -4571,6 +4571,22 @@
             "title": "Student Lines",
             "description": "Trechos do aluno com a estrutura de um trecho do gabarito."
           },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "notion",
+                  "ip_cc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind",
+            "description": "Qual gabarito valeu: com dois (Notion e IP CC, Sprint 51), o mais parecido com o código; nulo sem comparação."
+          },
           "message": {
             "type": "string",
             "maxLength": 1000,
@@ -4682,6 +4698,22 @@
           },
           "band": {
             "$ref": "#/components/schemas/SimilarityBand"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "notion",
+                  "ip_cc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind",
+            "description": "Qual gabarito valeu para este código (Sprint 51)."
           }
         },
         "additionalProperties": false,

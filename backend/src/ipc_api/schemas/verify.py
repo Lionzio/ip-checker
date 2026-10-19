@@ -225,6 +225,9 @@ class SimilarityResponse(_Strict):
 class GabaritoSide(_Strict):
     similarity: Percent = Field(description="Semelhança com o gabarito, com uma casa decimal.")
     band: SimilarityBand
+    kind: Literal["notion", "ip_cc"] | None = Field(
+        default=None, description="Qual gabarito valeu para este código (Sprint 51)."
+    )
 
 
 class SimilarityGabarito(_Strict):

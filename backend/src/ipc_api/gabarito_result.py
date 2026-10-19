@@ -7,6 +7,9 @@ aqui: ele só existe na memória da API e na chamada interna ao analyzer.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Literal
+
 from ipc_api.gabaritos import Gabaritos, GabaritosConfig
 from ipc_api.schemas import (
     AnalyzerGabarito,
@@ -66,8 +69,24 @@ def missing(question_id: str, gabaritos: Gabaritos) -> GabaritoComparison:
     return _empty(question_id, "unavailable", UNAVAILABLE)
 
 
+def kind_of(
+    comparison: AnalyzerGabarito, kinds: Sequence[str]
+) -> Literal["notion", "ip_cc"] | None:
+    """O tipo do gabarito que valeu, pela posição que o analisador devolveu (Sprint 51)."""
+    kind = kinds[comparison.index] if comparison.index < len(kinds) else None
+    if kind == "notion":
+        return "notion"
+    if kind == "ip_cc":
+        return "ip_cc"
+    return None
+
+
 def for_validation(
-    question_id: str, comparison: AnalyzerGabarito | None, *, syntax_error: bool
+    question_id: str,
+    comparison: AnalyzerGabarito | None,
+    *,
+    syntax_error: bool,
+    kinds: Sequence[str] = ("notion",),
 ) -> GabaritoComparison:
     if comparison is None:
         return _empty(question_id, "not_compared", SYNTAX if syntax_error else NOT_COMPARED)
@@ -81,6 +100,7 @@ def for_validation(
         only_student=comparison.only_student,
         only_gabarito=comparison.only_gabarito,
         student_lines=[LineSpan(first=s.first, last=s.last) for s in comparison.student_lines],
+        kind=kind_of(comparison, kinds),
         message=COMPARED,
     )
 
@@ -91,6 +111,7 @@ def for_similarity(
     gabaritos: Gabaritos,
     has_gabarito: bool,
     config: GabaritosConfig,
+    kinds: Sequence[str] = ("notion",),
 ) -> SimilarityGabarito:
     def empty(status: str, message: str) -> SimilarityGabarito:
         return SimilarityGabarito.model_validate(
@@ -118,8 +139,8 @@ def for_similarity(
     return SimilarityGabarito(
         question_id=question_id,
         status="compared",
-        a=GabaritoSide(similarity=shown[1], band=_band(a.percent)),
-        b=GabaritoSide(similarity=shown[2], band=_band(b.percent)),
+        a=GabaritoSide(similarity=shown[1], band=_band(a.percent), kind=kind_of(a, kinds)),
+        b=GabaritoSide(similarity=shown[2], band=_band(b.percent), kind=kind_of(b, kinds)),
         leak_alert=alert,
         message=LEAK_ALERT if alert else SIMILARITY_COMPARED,
     )

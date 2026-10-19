@@ -92,7 +92,7 @@ async def similarity(
     response.headers["Cache-Control"] = "no-store"
     _check(body.code_a, "A")
     _check(body.code_b, "B")
-    gabarito: str | None = None
+    pair: tuple[tuple[str, str], ...] = ()
     # Sem questão nem período, a comparação não precisa do manifesto.
     view = (
         await resolve_period(analyzer, body.period)
@@ -103,14 +103,14 @@ async def similarity(
         # A numeração oficial diz a lista (L3-Q2 é da Lista 3, P-07).
         check = check_question(view, int(body.question_id[1]), body.question_id, gabaritos)
         if check is not None:
-            gabarito = gabaritos.get(check.period, body.question_id)
+            pair = gabaritos.pair(check.period, body.question_id)
     try:
         async with admission.slot():
             result = await analyzer.similarity(
                 body.code_a,
                 body.code_b,
                 request_id=request_id,
-                gabarito=gabarito,
+                gabaritos=[code for _kind, code in pair],
                 period=None if view is None or view.active else view.period,
             )
     except Overloaded:
@@ -138,7 +138,7 @@ async def similarity(
                 message=problem.message,
             ),
             notice=NOTICE,
-            gabarito=_gabarito(body.question_id, result, gabaritos, gabarito, settings),
+            gabarito=_gabarito(body.question_id, result, gabaritos, pair, settings),
         )
     assert result.percent is not None  # noqa: S101 - conferido pelo esquema da resposta
     assert result.token_counts is not None  # noqa: S101
@@ -153,7 +153,7 @@ async def similarity(
         notice=NOTICE,
         metrics=result.metrics,
         matches=result.matches,
-        gabarito=_gabarito(body.question_id, result, gabaritos, gabarito, settings),
+        gabarito=_gabarito(body.question_id, result, gabaritos, pair, settings),
     )
 
 
@@ -161,13 +161,18 @@ def _gabarito(
     question_id: str | None,
     result: AnalyzerSimilarity,
     gabaritos: Gabaritos,
-    text: str | None,
+    pair: tuple[tuple[str, str], ...],
     settings: ApiSettings,
 ) -> SimilarityGabarito | None:
     if question_id is None:
         return None
     return gabarito_result.for_similarity(
-        question_id, result, gabaritos, text is not None, settings.gabaritos
+        question_id,
+        result,
+        gabaritos,
+        bool(pair),
+        settings.gabaritos,
+        kinds=[kind for kind, _code in pair],
     )
 
 

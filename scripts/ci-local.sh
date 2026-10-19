@@ -68,7 +68,13 @@ in_security="backend deploy rulesets"
 in_docs="docs *.md backend/tests/test_docs_links.py"
 in_semgrep=". :!.semgrep :!frontend/src/types/openapi.ts :!docs :!*.md"
 in_e2e=". :!docs :!*.md :!extensao"
-if [ -d ../ip-checker-gabaritos ]; then in_gabaritos="$in_backend ../ip-checker-gabaritos"; else in_gabaritos=""; fi
+# Sprint 51 (ADR-17): os gabaritos vivem no banco; o harness lê o export dele
+# (python -m ipc_api.answer_keys.transfer exportar ../gabaritos-exportados) e, sem o export, o
+# repositório antigo, que virou arquivo.
+if [ -d ../gabaritos-exportados ]; then gabaritos_dir=gabaritos-exportados
+elif [ -d ../ip-checker-gabaritos ]; then gabaritos_dir=ip-checker-gabaritos
+else gabaritos_dir=""; fi
+if [ -n "$gabaritos_dir" ]; then in_gabaritos="$in_backend ../$gabaritos_dir"; else in_gabaritos=""; fi
 
 results=()
 failed=0
@@ -162,10 +168,10 @@ lane_a() {
   step_fp "Documentação: links" "$in_docs" \
     bash -c "cd backend && '$uv' run pytest -q -p no:cacheprovider --no-cov tests/test_docs_links.py"
   if [ -n "$in_gabaritos" ]; then
-    step_fp "Gabaritos (zero violação)" "$in_gabaritos" env IPC_GABARITOS_DIR=../../ip-checker-gabaritos \
+    step_fp "Gabaritos (zero violação)" "$in_gabaritos" env IPC_GABARITOS_DIR="../../$gabaritos_dir" \
       bash -c "cd backend && '$uv' run pytest tests/official_answers --no-cov -q -p no:cacheprovider"
   else
-    results+=("| Gabaritos (zero violação) | pulado: clone o ip-checker-gabaritos ao lado | — |")
+    results+=("| Gabaritos (zero violação) | pulado: exporte os gabaritos do banco para ../gabaritos-exportados | — |")
   fi
 }
 

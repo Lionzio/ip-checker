@@ -127,6 +127,13 @@ class GabaritoComparison(_Strict):
     student_lines: list[LineSpan] = Field(
         max_length=100, description="Trechos do aluno com a estrutura de um trecho do gabarito."
     )
+    kind: Literal["notion", "ip_cc"] | None = Field(
+        default=None,
+        description=(
+            "Qual gabarito valeu: com dois (Notion e IP CC, Sprint 51), o mais parecido com o "
+            "código; nulo sem comparação."
+        ),
+    )
     message: Message
 
 
