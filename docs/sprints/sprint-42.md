@@ -83,3 +83,9 @@ soluções geradas na média ou alta; S42-02), depois de remover as 8 referênci
 gabarito; e `IPC_AI_INDICATORS: chefia` no `render.yaml` (S42-06), que liga o painel no deploy.
 Falta: o deploy, a conferência do piloto com `PILOT_AI_INDICATORS=chefia`, o sintético, o
 exercício de alerta e, depois de uma lista com o registro de casos, o PR com `1`.
+
+**Situação (19/10/2026):** a `sprint-42.1` está no piloto desde 19/10/2026 (o Blueprint do Render
+aplicou o `chefia`; `tests/pilot` com `PILOT_AI_INDICATORS=chefia`, 22 passaram). O último passo do
+S42-06, o PR com `"1"` para toda a equipe, passa a ser a **S51-08** da Sprint 51 (opção A, decidida
+pelo autor em 19/10/2026): sobe com a release da 51, depois de a chefia usar o painel por uma lista
+inteira. Continuam pendentes o sintético e o exercício de alerta.
